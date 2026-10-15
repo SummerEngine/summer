@@ -1,11 +1,11 @@
 ---
 name: ambient-bed
-description: "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop."
+description: "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 ---
 
@@ -15,7 +15,7 @@ paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 
 An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaceship hum, market street, ocean cave. It plays at low energy under everything else and is never melodic. Players rarely notice a bed, but they notice the silence when a level has none.
 
-This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`: the SFX model renders texture, the music model renders melody.
+This is **not** music. Use `assets.generate_audio({ capability: 'sound_effects' })`, not `{ capability: 'music' }`: the SFX model renders texture, the music model renders melody.
 
 Generated at 15–22 seconds (the SFX duration ceiling) and looped with a Summer
 Engine import loop point and optional crossfade.
@@ -101,17 +101,17 @@ If the user wants a busier bed (market, party), still prevent foreground events:
 ### 5. Generate at the duration ceiling
 
 ```
-summer_generate_audio(
+assets.generate_audio({
   capability: "sound_effects",
   modelId: "eleven_text_to_sound_v2",
   loop: true,
   text: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
   durationSeconds: 22
-)
-// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
+})
+// Then: summer_import_from_url(url: "<asset.fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
 ```
 
-Name `modelId: "eleven_text_to_sound_v2"` with `loop: true`: it is the only sound-effect model that makes seamless loops, and without a `modelId` the person's default sound-effect model runs, which may not loop. `sound_effects` reads from **`text`**, not `prompt` — passing `prompt` is a 400 `text_required`. (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
+Name `modelId: "eleven_text_to_sound_v2"` with `loop: true`: it is the only sound-effect model that makes seamless loops, and without a `modelId` the person's default sound-effect model runs, which may not loop. `sound_effects` reads from **`text`**, not `prompt` — without `text` the call is refused (`text_required`). (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
 
 22s is the SFX ceiling. Always generate at the ceiling for ambient — longer cycle means less recognized repetition.
 
@@ -196,11 +196,16 @@ This eliminates the click and adds variation through phase-overlap (the loop ove
 For most beds, non-positional is correct (the player is *in* the place; the bed isn't an emitter):
 
 ```
-summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="AudioStreamPlayer", name="AmbientBed")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="stream", value="res://audio/ambient/forest_dawn.wav")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="bus", value="Ambient")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="volume_db", value=-12.0)
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="autoplay", value=true)
+summer_run_script(scenePath="res://levels/level_01.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "AmbientBed", ctx.find("Level"), {
+        "stream": load("res://audio/ambient/forest_dawn.wav"),
+        "bus": "Ambient",
+        "volume_db": -12.0,
+        "autoplay": true,
+    })
+    ctx.save_scene()
+""")
 ```
 
 Or attach the script in step 7 to a Node, set its `stream` to the imported audio, and skip the `AudioStreamPlayer` node — the script provides its own.
@@ -249,7 +254,7 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 
 ## Anti-patterns
 
-- **Using `summer_generate_audio({capability: 'music'})` for an ambient bed.** Music model adds melody. You don't want melody.
+- **Using `assets.generate_audio({ capability: 'music' })` for an ambient bed.** Music model adds melody. You don't want melody.
 - **Foreground events in the bed.** A wolf howl, an explosion, a clear word — these promote themselves and the bed becomes annoying.
 - **Bed louder than `-10 dB` on its bus.** Beds belong under everything; default is `-12 dB` to `-15 dB`.
 - **No loop point set.** The clip plays once and silence follows.
@@ -264,6 +269,10 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 - **Loop click after import dock setup.** Use the crossfade script (step 7).
 - **Need positional bed (a campfire crackle).** Use `AudioStreamPlayer3D` with `max_distance` matching the campfire's reasonable hearing radius (4–8m typical).
 - **Multi-room transitions.** Use Areas; on player enter, fade in destination bed and fade out source bed over 1.5s.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the bed exists. Skip steps 6-9: the loop point, the crossfade script and the `AudioStreamPlayer` are Summer Engine work. Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. Tell the person it is a long bed made to loop: their engine either loops it with a short crossfade or plays two copies that overlap.
 
 ## Fallback (no MCP)
 

@@ -1,11 +1,11 @@
 ---
 name: audio-direction
-description: "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md."
+description: "Define the game's sound (music style, SFX vocabulary, dynamic music) as .summer/audio-bible.md."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_inspect_node summer_add_node summer_project_setting summer_generate_audio
+allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_inspect_node summer_add_node summer_project_setting summer_assets_generate_audio summer_call
 paths: [".summer/**", "project.godot", "**/*.tscn", "audio/**"]
 ---
 
@@ -206,9 +206,9 @@ Ask:
 If the user wants to start generating, propose 3-5 SFX seeds aligned with the vocabulary. These are starting points, not finals. Generate them with the `sound-effect` skill: the first sound effect in a chat starts with its question (three versions from three models, picked by ear in Summer Studio), and its prompt shape is the one that tested well.
 
 ```
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fingertip taps a small wooden button, soft woody click, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a small gold coin drops onto a wooden table, bright metallic ting with a short ring, close-mic, dry, no music, no voices.", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fist hits a padded leather vest, low-mid thump, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a fingertip taps a small wooden button, soft woody click, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds: 0.5 })
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a small gold coin drops onto a wooden table, bright metallic ting with a short ring, close-mic, dry, no music, no voices.", durationSeconds: 0.5 })
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a fist hits a padded leather vest, low-mid thump, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds: 0.5 })
 ```
 
 `capability` is required; `sound_effects` reads from `text` (not `prompt`), and the length argument is `durationSeconds` (not `duration`) with a floor of 0.5 s (1 s for Stable Audio 3 SFX). Leave out `modelId` so the person's approved default model runs. Ask for the character you want inside the text and let the player only use the front of the clip — you cannot request 80 ms.
@@ -239,11 +239,11 @@ End with:
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
 | Same footstep sample for all surfaces | Players hear footsteps constantly; material-aware steps carry much of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work, and the structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors. What *is* silent on current engines is a bad value shape: a JSON object instead of an engine literal string, a misspelled `subProperty`, or a wrong-typed value returns `ok:true` yet no-ops or coerces destructively. Pass class names and literal strings, and confirm in the saved `.tres`/`.tscn`, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
+| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work, and the structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors. What *is* silent on current engines is a bad value shape: a JSON object instead of an engine literal string, a misspelled `subProperty`, or a wrong-typed value returns `ok:true` yet no-ops or coerces destructively. Pass class names and literal strings, and confirm in the saved `.tres`/`.tscn`, never from `ok` alone. See `summer_read_library` id `reference/mcp-tools-reference`. |
 
 ## Collaborative protocol
 
-This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `summer_read_library` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -251,10 +251,10 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `../../references/collaborative-protocol/collaborative-protocol.md`
-- `../../references/godot-version/godot-version.md` — Summer compatibility and
+- `summer_read_library` id `reference/collaborative-protocol`
+- `summer_read_library` id `reference/godot-version` — Summer compatibility and
   version-sensitive audio API notes
-- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `summer_read_library` id `reference/mcp-tools-reference`
 - `brainstorm-game` — produces the brief that anchors the bible
 - `art-direction` — the visual counterpart; audio must rhyme with it
 - `adaptive-music` — implements the dynamic music plan

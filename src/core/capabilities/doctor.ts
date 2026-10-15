@@ -20,15 +20,17 @@ import {
   defaultSkillMarkerCandidates,
   detectRecordedInstall,
   fetchLatestRegistryVersion,
+  fetchRegistryDistTags,
 } from "../../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../version.js";
+import { resolveSurface, type SurfaceVersion } from "../tool-profiles.js";
 const MIN_EXPECTED_MCP_TOOLS = 50;
-const REQUIRED_MCP_TOOLS = [
-  "summer_get_project_context",
-  "summer_generate_image",
-  "summer_create_debug_report",
-];
+/** Per surface: the spawned `summer mcp` reads SUMMER_SURFACE from this process's env. */
+const REQUIRED_MCP_TOOLS: Record<SurfaceVersion, string[]> = {
+  v3: ["summer_get_project_context", "summer_generate_image", "summer_create_debug_report"],
+  v4: ["summer_get_project_context", "summer_search", "summer_call", "summer_create_debug_report"],
+};
 
 export type DoctorStatus = "ok" | "warning" | "fail";
 
@@ -90,14 +92,18 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   return result;
 }
 
-function checkNodeVersion(): DoctorCheck {
-  const major = Number(process.versions.node.split(".")[0]);
-  if (Number.isFinite(major) && major >= 18) {
+/** The oldest Node major the package supports: `engines.node` in package.json. */
+export const MIN_NODE_MAJOR = 20;
+
+export function checkNodeVersion(nodeVersion: string = process.versions.node): DoctorCheck {
+  const major = Number(nodeVersion.split(".")[0]);
+  const shown = `v${nodeVersion.replace(/^v/, "")}`;
+  if (Number.isFinite(major) && major >= MIN_NODE_MAJOR) {
     return {
       id: "node-version",
       label: "Node.js",
       status: "ok",
-      message: process.version,
+      message: shown,
     };
   }
 
@@ -105,7 +111,7 @@ function checkNodeVersion(): DoctorCheck {
     id: "node-version",
     label: "Node.js",
     status: "fail",
-    message: `${process.version} (need 18+)`,
+    message: `${shown} (need ${MIN_NODE_MAJOR}+)`,
   };
 }
 
@@ -129,12 +135,12 @@ async function checkCliVersionCurrent(): Promise<DoctorCheck> {
  *  recorded by `summer setup`: a `--local-dev` link gets the local-dev form
  *  so the fix does not replace the checkout with the published package. */
 async function checkSkillsVersion(): Promise<DoctorCheck> {
-  const registry = await fetchLatestRegistryVersion();
+  const registry = await fetchRegistryDistTags();
   const result = await buildSkillsVersionCheck({
     installedCliVersion: version,
     candidates: defaultSkillMarkerCandidates(),
     recordedInstall: detectRecordedInstall,
-    ...(registry.ok ? { latestRegistryVersion: registry.version } : {}),
+    ...(registry.ok ? { latestRegistryVersion: registry.tags.latest, nextRegistryVersion: registry.tags.next } : {}),
   });
   return {
     id: "skills-version-stale",
@@ -461,11 +467,12 @@ async function checkMcpToolsList(): Promise<DoctorCheck> {
     await client.connect(transport, { timeout: 5000 });
     const listed = await client.listTools(undefined, { timeout: 5000 });
     const toolNames = listed.tools.map((tool) => tool.name).sort();
-    const missing = REQUIRED_MCP_TOOLS.filter((tool) => !toolNames.includes(tool));
+    const requiredTools = REQUIRED_MCP_TOOLS[resolveSurface(undefined)];
+    const missing = requiredTools.filter((tool) => !toolNames.includes(tool));
     const details = {
       ...resolved,
       toolCount: toolNames.length,
-      requiredTools: REQUIRED_MCP_TOOLS,
+      requiredTools,
       missing,
       server: client.getServerVersion(),
       stderr: stderr.trim().slice(-1000),

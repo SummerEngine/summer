@@ -59,7 +59,7 @@ With Summer installed, your agent can:
 
 ### You decide what your agent may do
 
-Studio > Settings > Agent permissions has six switches. They apply to every app you connect, like Claude or ChatGPT. The connect screen and the CLI sign-in page show the same switches.
+Studio > Settings > Agent permissions has six switches. They apply to every app you connect, like Claude or ChatGPT. These defaults apply now. You can change them soon. Until then, Summer Games still asks the game's owner before an agent publishes, and price, A/B test and member changes ask you first.
 
 | Switch | Default | What the agent may do without asking |
 |---|---|---|
@@ -122,7 +122,7 @@ The agent installs the asset skills and the MCP config (summer-engine 3.9.1 or n
 
 You are an AI coding agent. The user told you to install Summer Engine. **Run this playbook via your shell**: Bash on macOS/Linux or PowerShell on Windows. Detection first, then only install what's missing. (Once installed, your working guide is [`AGENTS.md`](AGENTS.md).)
 
-**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--assets-only` added, and Step 3, then stop installing. `--assets-only` writes the `assets` tool profile (generation and asset tools, no engine tools), installs only the asset skills, and leaves out Summer Games (it is for playing with friends, and leaving it out saves a sign-in). Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset operations (`assets.generate_audio`, `assets.generate_sfx_choices`, `assets.generate_image`, `assets.generate_3d`, `assets.generate_video`, `assets.search`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, run the same operation from the shell: `npx -y summer-engine@latest <area> <action> --<field> <value>` (`summer ops search <words>` finds one and its input). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest assets generate-sfx-choices --text "sword clash"`. Each asset lands in the user's Summer library; `assets.get` returns a link to the file (`downloadUrl`) for use outside Summer Engine.
+**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--assets-only` added, and Step 3, then stop installing. `--assets-only` writes the `assets` tool profile (generation and asset tools, no engine tools), installs only the asset skills, and leaves out Summer Games (it is for playing with friends, and leaving it out saves a sign-in). Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset operations (`assets.generate_audio`, `assets.generate_sfx_choices`, `assets.generate_image`, `assets.generate_3d`, `assets.generate_video`, `assets.search`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, run the same operation from the shell: `npx -y summer-engine@latest <area> <action> --<field> <value>` (`summer ops search <words>` finds one and its input). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest assets generate-sfx-choices --text "sword clash"`. Each asset lands in the user's Summer library; `assets.get` returns a `downloadUrl` to the file for use outside Summer Engine.
 
 **Windows PowerShell: type `npx.cmd` wherever this playbook says `npx`.** Plain `npx` in PowerShell runs `npx.ps1`, which Windows blocks by default ("running scripts is disabled on this system"). `npx.cmd` is the same command without that block. Never change the execution policy or turn off Windows Defender to work around it. Bash (including Git Bash on Windows) can use plain `npx`.
 
@@ -206,7 +206,7 @@ npx -y summer-engine@latest install
 npx -y summer-engine@latest login
 ```
 
-This opens the user's default browser for one sign-in that covers every Summer tool: first the Summer account ("Yes, Sign In"), then, in the same browser, a "Welcome to Summer CLI" page for the store, publishing and Grow tools (one Allow click; none if this machine was approved before). **Tell the user**: "Your browser is opening now. Sign in, click Yes, Sign In, then Allow on the next page, and come back to this terminal." The CLI checks the returned identity and stores the session in `~/.summer/`, which the engine shares. The Allow page also shows the Agent permissions switches; the user can keep the defaults or change them there, or later in Studio > Settings. If the store step does not finish within 3 minutes, the account sign-in is still saved; `summer login --store` adds the store later. Don't loop.
+This opens the user's default browser for one sign-in that covers every Summer tool: first the Summer account ("Yes, Sign In"), then, in the same browser, a "Welcome to Summer CLI" page for the store, publishing and Grow tools (one Allow click; none if this machine was approved before). **Tell the user**: "Your browser is opening now. Sign in, click Yes, Sign In, then Allow on the next page, and come back to this terminal." The CLI checks the returned identity and stores the session in `~/.summer/`, which the engine shares. If the store step does not finish within 3 minutes, the account sign-in is still saved; `summer login --store` adds the store later. Don't loop.
 
 ### Step 4: Re-run doctor to confirm
 
@@ -426,7 +426,7 @@ Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 | Command | What it does |
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
-| `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow operations in the same browser, with your Agent permissions switches. `--no-store` skips the store step. |
+| `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow operations in the same browser. `--no-store` skips the store step. |
 | `summer login --store` | Only the store sign-in (`store.upload_file` and the cloud operations: plans, the store, publishing and Grow). |
 | `summer whoami` | The signed-in account, its plan and credits. |
 | `summer <area> <action> [--<field> <value> …] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]` | Run any operation from the shell, for example `summer assets generate-image --prompt "…"` or `summer store status --game-id <id>`. |

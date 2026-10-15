@@ -1,6 +1,6 @@
 ---
 name: export-and-ship
-description: "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval."
+description: "Prepare a game export: check templates and targets, validate release assets, build after approval."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment
@@ -295,7 +295,7 @@ For each build:
 
 Per platform, point the user at the correct upload path:
 
-- **summer.games:** `summer_export_game` writes the summer.games `.zip`; `summer_publish_build` uploads it to the game's store listing after the user confirms the exact game, file and version (needs `summer login --store`). If it answers `store_auth_refused`, the user uploads the `.zip` in Studio instead.
+- **summer.games:** `summer_export_game` writes the summer.games `.zip`; `store.upload_file` uploads it to the game's store listing after the user confirms the exact game, file and version (needs `summer login --store`; through `summer_call` when your client does not list it). If the store refuses this machine's sign-in, the user uploads the `.zip` in Studio instead. The `publish-your-game` skill takes it from there to `store.publish`.
   - Per platform, the store takes: iPhone, Android, macOS and Windows in the Summer apps = one summer.games bundle (`summer_export_game` `targets`, format `bundle`; no template, no signing; a game without a server targets `ios`/`android` only). Web = an HTML5 `.zip` on Summer's WebGPU Forward+ template (`targets:["web"]`; the project must render with Forward+ or Mobile). A macOS or Windows download for the store page = `targets:["macos"]` or `["windows"]` with format `download`. Download exports need the template: `summer_export_templates` `install` fetches it from Summer's CDN.
   - Hosted games: if `summer_export_game` fails with "… is in the source graph's authority_engine domain, which the client pack leaves out", an authority root in `source-domains.json` holds a file the client loads (often the composition `.tres`). Narrow that root to the server-only files, or move the shared file under a `shared` path, then export again. Every exporter message is in the `multiplayer-publish` skill's export-errors.md; the folder rules are in `multiplayer-project`.
   - Every summer.games bundle: export with the released Summer editor from the download page, never a development build, and export again after updating Summer. Otherwise its scripts can fail to compile on players' devices and the game opens to an empty window, though every upload check passes. `release-readiness` check 7 proves it.
@@ -358,7 +358,7 @@ Use this as a one-shot grep before any export:
 
 ## Collaborative protocol
 
-This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `summer_read_library` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -366,9 +366,9 @@ No template — this is a workflow. Each project's export config and store asset
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list
-- `../../references/godot-version/godot-version.md` — Summer compatibility and
+- `summer_read_library` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_read_library` id `reference/godot-version` — Summer compatibility and
   export-template versioning
-- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
+- `summer_read_library` id `reference/collaborative-protocol` — "May I write" pattern
 - `headless-scripting` — the headless CLI pattern the export command follows
 - `tune-performance` — pre-ship performance pass

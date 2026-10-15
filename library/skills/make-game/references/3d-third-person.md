@@ -128,7 +128,7 @@ global transform and zeroes `rotation.z`.
 If the visual is a Summer humanoid package, do not use the generic setup below.
 Instantiate its `character.tscn` under `CharacterRotationRoot`, preserve the package's
 normalized `-Z` forward axis, then install the `character-movement` skill's
-`../../character-movement/references/default-third-person-controller.gd` unchanged for the standard
+default third-person controller (`summer_read_library` id `skill/character-movement/references/default-third-person-controller.gd`) unchanged for the standard
 playable controller (that skill has the byte-exact install steps and the
 verification probe). Do not hand-write an equivalent controller. Never rebuild package clips
 into a second AnimationTree.
@@ -163,7 +163,7 @@ and set `loop_mode = Animation.LOOP_LINEAR` on those at runtime.
 
 ## Level assembly
 
-Check for real assets first (`asset-strategy`: `summer_search_assets`, then
+Check for real assets first (`asset-strategy`: `assets.search`, then
 `summer_import_asset`): a ready location or kit beats CSG. Keep CSG for the
 first-motion blockout, invisible glue (death planes, triggers) and pieces no
 asset covers — do not ship a grey-box level when a real one is available.

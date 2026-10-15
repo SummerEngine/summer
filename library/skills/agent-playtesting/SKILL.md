@@ -1,6 +1,6 @@
 ---
 name: agent-playtesting
-description: "Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input."
+description: "Playtest by driving the live game: deterministic launch, frame-stamped probes, scripted or recorded input."
 ---
 
 # Agent Playtesting

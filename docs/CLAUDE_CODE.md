@@ -7,7 +7,7 @@ Claude Code can use Summer skills from `.claude/skills`.
 Paste this into Claude Code:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 Claude Code runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
@@ -43,8 +43,10 @@ npx -y summer-engine@latest setup claude-code --yes --force
 Project-local:
 
 ```bash
-npx -y summer-engine@latest skills install --recommended --agent claude-code --scope project
+npx -y summer-engine@latest skills install --all --agent claude-code --scope project
 ```
+
+`--recommended` instead of `--all` installs a smaller starter set.
 
 Single skill:
 

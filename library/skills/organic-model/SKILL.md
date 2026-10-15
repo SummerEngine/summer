@@ -1,11 +1,11 @@
 ---
 name: organic-model
-description: "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity."
+description: "Generate organic 3D shapes (trees, rocks, mushrooms, plants, crystals) where irregularity looks natural."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/organic/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -15,7 +15,7 @@ Organic shapes (trees, rocks, mushrooms, coral, alien flora, crystals, vines, bo
 
 This is the cheapest, fastest way to fill out a scene, and the first choice when the user says "this scene feels empty". The failure rate is the lowest of any 3D-asset family.
 
-Backing tool: `summer_generate_3d`. Default `hunyuan` works well here, but `trellis` is faster and the quality difference is hard to see on organic shapes. Pick `trellis` when generating many at once.
+Backing operation: `assets.generate_3d` (it answers with a job: `jobs.wait` until it finishes). Default `hunyuan` works well here, but `trellis` is faster and the quality difference is hard to see on organic shapes. Pick `trellis` when generating many at once.
 
 ## When to use
 
@@ -41,12 +41,12 @@ Organic geometry tolerates aggressive polycount cuts because the silhouette is i
 
 | Use case | Tris | Pass via |
 |---|---|---|
-| Hero tree (mid-distance, prominent) | 4k–8k | `target_polycount: 6000` |
-| Background tree (forest filler) | 1k–3k | `target_polycount: 2000` |
-| Distant tree (use billboard imposter) | 200–500 | `target_polycount: 400` |
-| Large rock / boulder | 800–2000 | `target_polycount: 1500` |
-| Small organic (mushroom, fruit, crystal) | 300–1000 | `target_polycount: 600` |
-| Vine / branch decoration | 200–500 | `target_polycount: 400` |
+| Hero tree (mid-distance, prominent) | 4k–8k | `targetPolycount: 6000` |
+| Background tree (forest filler) | 1k–3k | `targetPolycount: 2000` |
+| Distant tree (use billboard imposter) | 200–500 | `targetPolycount: 400` |
+| Large rock / boulder | 800–2000 | `targetPolycount: 1500` |
+| Small organic (mushroom, fruit, crystal) | 300–1000 | `targetPolycount: 600` |
+| Vine / branch decoration | 200–500 | `targetPolycount: 400` |
 
 Generating a forest? Make 3 hero trees + 5 background trees + 3 rocks at low polycount, then scatter via `MultiMeshInstance3D` for hundreds of copies at near-zero rendering cost.
 
@@ -55,7 +55,7 @@ Generating a forest? Make 3 hero trees + 5 background trees + 3 rocks at low pol
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<organic type>", assetType="3d_model", source="all")
+assets.search({ query: "<organic type>", assetType: "3d_model", scope: "all" })
 ```
 
 ### 2. Build the prompt
@@ -90,14 +90,16 @@ For batch generation, batch the confirmation:
 
 > About to generate 3 trees + 3 rocks + 5 mushrooms (11 generations, ~5 min). All low-poly via `trellis`. OK?
 
+`dryRun: true` on one call gives its credits (`estimate.credits`) for the batch confirmation. Start every generation of the batch first, then wait on the jobs.
+
 ```
-summer_generate_3d(
-  prompt="A tall pine tree with dense green needles and a straight trunk, slight lean. Game asset, stylized low-poly game art, white background, isolated object.",
-  model="trellis",
-  options={ target_polycount: 2000 },
-  wait=true
-)
-summer_get_asset(assetId="<assetId>")
+assets.generate_3d({
+  prompt: "A tall pine tree with dense green needles and a straight trunk, slight lean. Game asset, stylized low-poly game art, white background, isolated object.",
+  model: "trellis",
+  targetPolycount: 2000
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished; result.assetId
+assets.get({ assetId: "<assetId>" })
 summer_import_asset_by_id(assetId="<assetId>", path="res://assets/organic/pine_tree_01.glb")
 ```
 
@@ -168,6 +170,10 @@ In a 200-tree forest, only the ~10 closest trees need to be real meshes; the oth
 - **Crystal/glass organic.** Mesh comes back opaque. Generate the geometry, then assign a `StandardMaterial3D` with `transparency = ALPHA` and emissive in the editor.
 - **Bones, skulls, dead trees.** All work; organic forgives them more than props would. Add `weathered, sun-bleached` for desert / tundra feel.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-6 (scene wiring, LOD). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB; level of detail and billboards are the person's engine's job.
+
 ## Fallback (no MCP)
 
 1. Run prompts at the Summer dashboard or any 3D-gen web playground (Hunyuan, Trellis, Meshy).
@@ -193,4 +199,4 @@ After the organic models are scattered:
 - `environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
 - `asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `scene-composition` — MultiMeshInstance3D scatter pattern.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

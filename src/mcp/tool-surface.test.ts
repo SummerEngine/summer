@@ -54,6 +54,8 @@ describe("tool annotations", () => {
     // Reads: no authority flag.
     expect(byName.get("summer_get_scene_tree")).toMatchObject({ readOnlyHint: true, openWorldHint: false });
     expect(byName.get("summer_search_assets")).toMatchObject({ readOnlyHint: true, openWorldHint: true });
+    // Opening a summerengine.com page in the browser reaches outside the machine.
+    expect(byName.get("summer_open")).toMatchObject({ readOnlyHint: true, openWorldHint: true });
     // A render for the agent is a read even though it writes an image file.
     expect(byName.get("summer_screenshot")).toMatchObject({ readOnlyHint: true });
     // Adds vs changes.

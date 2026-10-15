@@ -1,11 +1,11 @@
 ---
 name: create-asset-sheet
-description: "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset."
+description: "Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_studio_workflow summer_generate_image summer_slice_asset_sheet summer_search_assets summer_import_asset_by_id summer_import_from_url
+allowed-tools: Read Grep Glob Write Edit summer_get_studio_workflow summer_assets_generate_image summer_assets_slice_sheet summer_assets_search summer_import_asset_by_id summer_import_from_url summer_import_from_url_batch summer_call
 paths: ["assets/**", "art/**", "sprites/**"]
 ---
 
@@ -42,7 +42,7 @@ Categories the classifier outputs (used to route into downstream pipelines):
 
 ## The cleanest path: the studio wizard
 
-The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `summer_open`) if they're working in the browser. The wizard:
+The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `studio.open`) if they're working in the browser. The wizard:
 
 - Offers a 2D / 3D mode toggle (2D is the slice flow described here; 3D is a soft pointer to `concept-art` + per-asset image-to-3D for now)
 - Surfaces six prompt templates (tile sheet, UI kit, menu, character pack, biome, freeform)
@@ -61,28 +61,29 @@ calls the same server-side slicer as the Studio wizard.
    `summer_get_studio_workflow({workflowId: "asset-pack"})`. Follow its ordered
    steps and report any `manual` handoff instead of pretending it ran.
 
-2. **Generate the sheet.** Call `summer_generate_image` with a prompt like:
+2. **Generate the sheet.** Call `assets.generate_image` with a prompt like:
 
    ```
    <theme> asset sheet: <comma-separated list of items>. Each item isolated with empty space around it, transparent or neutral background.
    ```
 
    - Pick model by style: pixel art → `grok-imagine`, painterly / illustrative / structured grids → `gpt-image-2`.
-   - 1024x1024 is the sweet spot. Larger sheets fragment in the slicer when individual assets get below ~64px.
+   - Square (`aspectRatio: "1:1"`, the default, about 1024x1024) is the sweet spot. Larger sheets fragment in the slicer when individual assets get below ~64px.
    - Keep the asset list to 6–20 items per sheet. Past 20, model attention degrades and slices get muddy.
 
 3. **Slice, remove background, detect, name, classify, crop, and save.** Pass
    the returned image asset id to:
 
    ```
-   summer_slice_asset_sheet({ assetId: "<generated asset id>" })
+   assets.slice_sheet({ assetId: "<generated asset id>" })
    ```
 
-   This is the same cloud slicing pipeline used by the Studio flow. Keep the
-   returned slice ids/names/categories; do not reimplement the vision boxes
-   locally.
+   This is the same cloud slicing pipeline used by the Studio flow. It answers
+   `slices` (each with `url`, `name`, `category`, `bbox`) and `source`; keep the
+   names and categories, and do not reimplement the vision boxes locally. Slicing
+   spends credits: `dryRun: true` shows how many.
 
-4. **Optional upscale.** The Studio wizard has per-slice HD upscale. Over MCP, for any crop where the longest side is under 256px, call `summer_generate_image` with the slice as `referenceImageUrl` and this prompt:
+4. **Optional upscale.** The Studio wizard has per-slice HD upscale. Over MCP, for any crop where the longest side is under 256px, call `assets.generate_image` with the slice `url` as `referenceImageUrl` and this prompt:
 
    ```
    Recreate this exact <name> at high resolution. Preserve every detail, the exact pose, the exact style. Sharper edges, more detail. Transparent background. Single isolated asset, no scene.
@@ -90,8 +91,9 @@ calls the same server-side slicer as the Studio wizard.
 
    - Don't upscale everything: each upscale is a paid generation, and large slices gain little.
 
-5. **Import what the game needs.** Use the returned asset ids with
-   `summer_import_asset_by_id`. Keep the source pack in My Assets so the agent
+5. **Import what the game needs.** The slices are image URLs, not assets: import
+   them with `summer_import_from_url_batch` (upscaled ones by their `assetId` with
+   `summer_import_asset_by_id`). Keep the source pack in My Assets so the agent
    and the human Studio session see the same result.
 
 ## Prompt patterns that work
@@ -136,6 +138,10 @@ calls the same server-side slicer as the Studio wizard.
 | Slice has a sliver of neighbor in it | Vision bbox is off by 5–15px | Expected. The slicer pads but doesn't snap-to-content yet. Live with it or upscale the slice (upscaling often cleans the edge) |
 | Upscaled slice looks invented | Source was too small / too ambiguous | Don't upscale slices below ~32×32. Or accept the hallucination and edit |
 | Detection returns wrong category | Model misjudged context | User can override in the review step; not a blocker |
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `assets.slice_sheet` and skip `summer_import_asset_by_id`: get each piece with `assets.get` (its `downloadUrl`), save the pieces where the person asked, and tell them the paths.
 
 ## What this skill does NOT do (yet)
 

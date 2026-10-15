@@ -1,11 +1,11 @@
 ---
 name: trailer-shot
-description: "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds."
+description: "Generate trailer footage: slow-mo combat, establishing shots, hero beats, splash screens, 5-10 seconds."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_call
 paths: ["assets/video/**", "trailers/**", "marketing/**"]
 ---
 
@@ -55,25 +55,25 @@ State the archetype and composition out loud before generating: "I'll do a low-a
 For shots featuring a specific character, weapon, or environment, generate a reference still first and pass it as `imageUrl`. Without it, the boss in your trailer looks different from the boss in the game.
 
 ```
-summer_generate_image(
-  prompt="<subject>, <archetype-driven framing>, cinematic, dramatic lighting, film still, wide 16:9 framing",
-  model="nano-banana-2"
-)
+assets.generate_image({
+  prompt: "<subject>, <archetype-driven framing>, cinematic, dramatic lighting, film still, wide framing",
+  model: "nano-banana-2",
+  aspectRatio: "16:9"
+})
 ```
 
-`summer_generate_image` has no size or aspect argument — `options.image_size` is dropped without an error and every MCP image comes back at the server's 1:1 default. Ask for the framing in the prompt, or build the reference in the Summer dashboard (which exposes aspect ratio) and pass its URL. Since image-to-video inherits the reference's framing, a square reference gives you a square trailer shot.
+Set `aspectRatio` to the platform's framing (`16:9`, `9:16` for vertical social, `1:1` for square). Since image-to-video inherits the reference's framing, a square reference gives you a square trailer shot.
 
 For pure environment / abstract / VFX shots, you can skip this and prompt text-to-video directly — that also unlocks `aspectRatio`, `kling-turbo`, and `veo3`.
 
 ### 3. Pick the model
 
-The available models depend on whether you pass `imageUrl`. With a reference image (step 2) the call goes to the image-to-video route, which accepts only `ltx`, `kling`, and `minimax`; `kling-turbo` and `veo3` exist on the text-to-video route only, and pairing either with an `imageUrl` is a 400 `invalid_model`.
+The available models depend on whether you pass `imageUrl`. With a reference image (step 2) the call goes to the image-to-video route; `kling-turbo` and `veo3` exist on the text-to-video route only, and pairing either with an `imageUrl` is a 400 `invalid_model`.
 
 | Model | Text-to-video | Image-to-video | Speed | When |
 |---|---|---|---|---|
 | `kling` | yes | yes | 2-4 min | Default for trailer hero shots — best motion + composition |
 | `ltx` | yes | yes | ~30s | Cheapest. B-roll, throwaway tests, blocking the composition before committing |
-| `minimax` | yes | yes | 2-3 min | Anime / stylized trailer looks |
 | `kling-turbo` | yes | **no** | 1-2 min | Same look as kling, faster, slight quality dip — but you lose `imageUrl` |
 | `veo3` | yes | **no** | 3-5 min | Most expensive. Pitch deck for investors, the one shot that has to be perfect — but you lose `imageUrl` |
 
@@ -82,20 +82,20 @@ Default: **`ltx` first to block the composition, then `kling` for the final**. F
 ### 4. Generate the shot
 
 ```
-summer_generate_video(
-  prompt="<archetype framing>, <subject>, <action>, <camera move>, <lighting>, <film grain / lens / stylistic anchor>",
-  model="kling",
-  imageUrl="<optional reference URL from step 2>",
-  duration=5,
-  aspectRatio="16:9"
-)
+assets.generate_video({
+  prompt: "<archetype framing>, <subject>, <action>, <camera move>, <lighting>, <film grain / lens / stylistic anchor>",
+  model: "kling",
+  imageUrl: "<optional reference URL from step 2>",
+  duration: 5,
+  aspectRatio: "16:9"
+})
 ```
 
-`duration` accepts **only 5 or 10** — anything else is coerced to 5.
+On `ltx` and `kling`, `duration` is 5 or 10 — anything else renders 5. `dryRun: true` returns the shot's `estimate` (credits, balance, enough) without rendering.
 
-The call is **asynchronous**: it returns `{ success, queued: true, jobId, model, resolvedModel, estimatedCost, duration }` and **no URL**. Poll `summer_check_job(jobId="<jobId>")` until it reports `completed` before showing the user anything or claiming the shot is done.
+The call answers at once with `{ status: "running", job: { id } }` and **no URL**. Call `jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })` until `finished` is true, before showing the user anything or claiming the shot is done.
 
-`aspectRatio` (`16:9`, `9:16`, `1:1`, ...) is applied on the **text-to-video path only**. The moment you pass `imageUrl` it is ignored and the clip inherits the reference image's framing — so vertical social needs a genuinely 9:16 reference, and square needs a square one. MCP image generation is square-only, so build non-square references in the Summer dashboard (which exposes aspect ratio) or crop them before use.
+`aspectRatio` (`16:9`, `9:16`, `1:1`, ...) is applied on the **text-to-video path only**. The moment you pass `imageUrl` it is ignored and the clip inherits the reference image's framing — so vertical social needs a genuinely 9:16 reference, and square needs a square one: generate the reference with that `aspectRatio`.
 
 ### 5. Review against trailer logic
 
@@ -150,7 +150,7 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 | Vertical social hero | `kling` | `vertical close-up of a young witch raising hands, magical wind, hair flowing, candle-warm key, cinematic, framed for 9:16` | 5s |
 | Pitch-deck premium shot | `veo3` | `wide cinematic of a fleet of airships emerging through cloud cover at dawn, slow truck forward, golden god-rays, soaring orchestral cinematic` | 5s |
 | Cheap B-roll iteration | `ltx` | `mid shot of a knight walking through fog, slow truck backward, dawn light, cinematic` | 5s |
-| Anime style hero | `minimax` | `anime-style hero girl draws a katana in slow motion, sakura petals swirling, dramatic side-light, dynamic camera, Ghibli painterly` | 5s |
+| Anime style hero | `kling` | `anime-style hero girl draws a katana in slow motion, sakura petals swirling, dramatic side-light, dynamic camera, Ghibli painterly` | 5s |
 
 ### Bad prompts and why
 
@@ -169,7 +169,7 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 - **Using `veo3` for B-roll.** Use `ltx` for blocking and B-roll; reserve `veo3` for the one shot that has to be perfect.
 - **Generating shots without composing the trailer first.** Make a 6-shot list before generating shot 1. Otherwise you'll generate shots that don't intercut.
 - **Assuming `aspectRatio="9:16"` reframed an image-to-video call.** It is ignored whenever `imageUrl` is set — the reference image decides the framing. Pillarboxed 16:9 on TikTok / Reels / Shorts reads as a desktop YouTube embed and gets demoted by the algorithm, so fix the reference, not the argument.
-- **Treating `summer_generate_video` as synchronous.** It returns `{ queued: true, jobId }` and no URL. Poll `summer_check_job` before handing the user a link.
+- **Treating `assets.generate_video` as finished.** It answers `{ status: "running", job }` and no URL. Wait with `jobs.wait` before handing the user a link.
 - **Forgetting that Studio doesn't cut video.** The user has to take the shots into an NLE. Tell them, don't pretend Studio can stitch.
 - **Asking for "the camera does X then Y then Z".** Pick one camera move per shot.
 
@@ -178,8 +178,12 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 - **Steam capsule animated header (Steam asset).** Steam wants `.webm` at 616x353 or 1920x1080, ≤6s, 30fps, no audio, ≤4MB. Generate at 16:9, transcode in DaVinci, export `.webm` with VP9. The video model gives you the source; format conversion is on you.
 - **Pitch deck for investors.** One shot, `veo3`, money composition (low-angle hero or wide establishing).
 - **Vertical for TikTok / Shorts.** The reference image must genuinely be portrait — `aspectRatio` is ignored once `imageUrl` is set. Frame the subject in the upper-middle so titles can sit at the bottom.
-- **Subject is a UGC environment the player built.** Take a screenshot of the in-engine view, run it through `summer_generate_image` as `referenceImageUrl` to "upgrade" the look, then use that as the video reference. The model can stylize a screenshot; it can't invent the user's level.
-- **Logo splash with motion graphics.** Generate a static logo card in `summer_generate_image` (or use the user's existing logo PNG), then prompt video as `static composition of <logo>, only background particles drifting, cinematic, room for title text` — keep the foreground motionless.
+- **Subject is a UGC environment the player built.** Take a screenshot of the in-engine view, run it through `assets.generate_image` as `referenceImageUrl` to "upgrade" the look, then use that as the video reference. The model can stylize a screenshot; it can't invent the user's level.
+- **Logo splash with motion graphics.** Generate a static logo card with `assets.generate_image` (or use the user's existing logo PNG), then prompt video as `static composition of <logo>, only background particles drifting, cinematic, room for title text` — keep the foreground motionless.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and 7 and skip step 6 (import for archive). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The MP4 goes straight into the person's video editor.
 
 ## Fallback (no MCP)
 
@@ -209,4 +213,4 @@ Once the shots are generated:
 - `music-track` — trailer score.
 - `sound-effect` — cut SFX (whooshes, impacts, stingers).
 - `concept-art` — generate the reference image axis when no asset exists yet.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.

@@ -344,7 +344,8 @@ async function main() {
   console.log(`Engine detected: version ${engineVersion} on port ${engine.port} (${engine.source})`);
   console.log(`CLI under test:  summer-engine ${cliVersion} (local build)\n`);
 
-  const mcpArgs = [join(CLI_DIR, "dist/bin/summer.js"), "mcp"];
+  // The gate reads the 3.x tools' answers; 4.0 serves v4 by default.
+  const mcpArgs = [join(CLI_DIR, "dist/bin/summer.js"), "mcp", "--surface", "v3"];
   if (projectArg) mcpArgs.push("--project", projectArg);
   const client = new McpStdioClient(process.execPath, mcpArgs);
 

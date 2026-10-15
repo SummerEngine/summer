@@ -459,7 +459,9 @@ skillsCommand
 
     // Claude Code: also install slash commands (`commands/*.md`)
     // into `~/.claude/commands/`. Other agents don't have an equivalent today.
-    if (agent === "claude-code") {
+    // The commands start and route game work in the engine, so the asset
+    // skills (--assets, setup --assets-only) leave them out.
+    if (agent === "claude-code" && !opts.assets) {
       const commandResults = installClaudeCommands(scope, Boolean(opts.force));
       for (const r of commandResults) {
         console.log(`  ${r.action} command ${r.name} -> ${r.path}`);

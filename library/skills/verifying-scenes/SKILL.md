@@ -1,6 +1,6 @@
 ---
 name: verifying-scenes
-description: "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms."
+description: "Prove scene work landed: snapshot, diff, screenshots, runtime reads, 3D audits, shot sheets and zooms."
 ---
 
 # Verifying Scenes

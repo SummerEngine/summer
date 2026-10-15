@@ -135,7 +135,7 @@ for free.
 ## Level scene
 
 The real level comes from real assets, not primitives: route the need through
-the `asset-strategy` skill (`summer_search_assets`, then `summer_import_asset` /
+the `asset-strategy` skill (`assets.search`, then `summer_import_asset` /
 `summer_import_asset_by_id`), import a ready location or kit that fits, and build
 gameplay inside it; weapons and props should share its style. A PlaneMesh ground
 is only the walk-test blockout and for pieces no asset covers — never the

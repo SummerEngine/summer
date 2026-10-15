@@ -157,7 +157,7 @@ Rules that make it work:
 
 ## Asset Generation
 
-Godogen calls external image, video and image-to-3D providers with their own API keys, then cuts animated sprites from generated video (frame extraction, loop detection, background removal, imagemagick for resize and crop). In Summer, route asset work through `asset-strategy` and the Summer generation tools (`summer_generate_image`, `summer_generate_3d`, `summer_generate_video`) instead of wiring provider keys into the project.
+Godogen calls external image, video and image-to-3D providers with their own API keys, then cuts animated sprites from generated video (frame extraction, loop detection, background removal, imagemagick for resize and crop). In Summer, route asset work through `asset-strategy` and the Summer generation operations (`assets.generate_image`, `assets.generate_3d`, `assets.generate_video`) instead of wiring provider keys into the project.
 
 ## Implementation Steps
 

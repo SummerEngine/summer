@@ -2,6 +2,8 @@
 
 > Which Summer MCP tool to call. Skills reference tool names exactly as written here.
 
+**Operations.** Summer's cloud work is named by operation (`area.action`): `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Engine tools keep their `summer_*` names below. Every answer has one shape: `done` with a `result`, `running` with a `job`, `needs_approval` with a link for the person, `dry_run` with a `preview`, or an `error` with a `code` and one `next` step. The person decides once what their agent may do: publishing (including `assets.make_public`), spending and building run at once by default, and deleting for good asks. An operation whose group they have not granted answers `needs_approval` with a link: give the link to the person, then `jobs.wait` on the `apr:` job.
+
 ## When to use Summer MCP vs. host tools
 
 **Use Summer MCP for** anything that needs the live editor or the engine's import pipeline:
@@ -35,7 +37,7 @@
 | `summer_get_scene_tree` | Read current scene graph. Always do this before mutating. |
 | `summer_open_main_scene` | Open the project's main scene. |
 | `summer_open_scene` | Open a specific `.tscn`. |
-| `summer_open` | Navigate for the user: open a summerengine.com page (billing, my games, pricing, an MCP guide) or an editor surface (scene, node, script, file, a dock) by intent name, or `print` the URL / op. Destinations: the `product-map` reference; when to use it: the `navigate-summer` skill. |
+| `studio.open` (3.x `summer_open`; through `summer_call`) | Navigate for the user: open a summerengine.com page (billing, my games, pricing, an MCP guide) or an editor surface (scene, node, script, file, a dock) by intent name (`target`), or `open: false` to get the URL / op only. Runs in the Summer MCP on this computer. Destinations: the `product-map` reference; when to use it: the `navigate-summer` skill. |
 | `summer_create_scene` | Create a new scene. |
 | `summer_instantiate_scene` | Add an existing scene or 3D model as a child node; `position` / `rotation_degrees` / `scale` (or `transform`) place it in the same call. |
 | `summer_inspect_node` | Read a single node's properties (about 5 KB). `fields` keeps only named properties/globs plus derived `transform`, `global_transform`, `scene_file_path`, `aabb`, `warnings` — e.g. `fields:['transform','global_transform','scene_file_path']`. |
@@ -198,36 +200,47 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_debugger_warnings` | Runtime warnings from the debugger panel. |
 | `summer_get_script_errors` | Script compilation errors. |
 
-### Asset library (8)
+### Asset library (6)
 
-| Tool | Use |
+| Tool or operation | Use |
 |---|---|
-| `summer_search_assets` | Free public asset search (community library + user's own). Sources: `library`, `community`, `my_assets`, `all`. `style` keeps one art direction (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel); `preview` returns a numbered picture of the first 9 results; curated packs first unless `includeCommunity`. |
-| `summer_list_my_assets` | List/search the signed-in user's generated and uploaded assets. Empty query lists recent assets. |
-| `summer_get_asset` | Fetch one exact asset by ID with file URL, download URL, viewer URL, metadata, license, and visibility. |
-| `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |
+| `assets.search` | Free asset search: `query`, `scope` (`library` = the public Summer library, the default; `mine` = the person's own generated and uploaded assets, where an empty query lists the newest; `all`), `assetType` (`2d_image`, `animation`, `3d_model`, `audio`, `music`, `all`), `style` (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel: keeps one art direction), `limit` (at most 20), `cursor`. Answers `items` (`assetId`, `title`, `type`, `source`, `fileUrl`, `thumbnailUrl`, `format`, `license`) and `nextCursor`. There is no picture preview of the results and no community toggle. |
+| `assets.get` | One exact asset by `assetId`: `fileUrl`, `downloadUrl`, `viewerUrl`, `status` (`expired`: regenerate it), file name, type and size, visibility, license, tags and `parentAssetId`. |
 | `summer_import_asset` | Search, choose the top match, download, run the engine import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
 | `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. |
-| `summer_slice_asset_sheet` | Detect and crop every distinct asset from a generated sheet image into named individual assets (works without the engine; import the results afterwards). |
+| `assets.slice_sheet` | Detect and crop every distinct item of a sheet image the person owns: `slices` with `url`, `name`, `category`, `bbox` (works without the engine; import the URLs afterwards with `summer_import_from_url_batch`). Spends credits. |
 
-### Asset generation (7 — metered)
+### Asset generation (metered)
+
+Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`credits`, `balance`, `enough`) and makes nothing; never quote prices. Model lists are the enums in each operation's input (`summer_search` returns it).
+
+| Operation | Use |
+|---|---|
+| `assets.generate_image` | Draw or edit an image: `prompt`, `model`, `style`, `aspectRatio`, `width` + `height` (minimum size), `numImages`, `referenceImageUrl` (edit), `removeBackground`, `seed`. Answers `assets` (`assetId`, `fileUrl`, real `width`/`height`). |
+| `assets.generate_3d` | Text-, image- or multi-view-to-3D, optionally rigged and animated: `kind`, `prompt`, `imageUrl` / `imageUrls`, `model`, `rig`, `animationNames`, `targetPolycount`, `topology`. **Always a job.** |
+| `assets.generate_audio` | Speech, sound effect, music or dialogue: `capability`, `text` / `prompt` / `inputs`, `voiceId` (a game-cast voice), `modelId`, `durationSeconds`, `loop`, `voiceSettings`. Sound effects without `modelId` use the person's approved default. |
+| `assets.generate_sfx_choices` | One sound effect from 2-4 models, shown on a Summer Studio page where the person approves one or more. Answers `choiceSetId` and `reviewUrl`. |
+| `assets.choices` | Read the person's picks for a choice set (`approved`, `note`, `audioUrl`, `assetId`); `waitSeconds` waits for them. Free. |
+| `assets.generate_video` | Text- or image-to-video: `prompt`, `imageUrl`, `model`, `duration`, `aspectRatio`, `resolution`, `negativePrompt`. **Always a job.** |
+| `assets.generate_motion` | Animate a rigged model: `rigAssetId`, `backend`, `motionNames` (library) or `prompts` (text to motion). **Always a job**, except clips the rig already has (`reused`). |
+| `makers.<tool>` | One-shot recipes (MCP names `summer_tool_<tool>`): `makers.npc_voice`, `makers.trailer_forge`, ... `summer_search` lists them with their input. |
+
+### Your assets
+
+| Operation | Use |
+|---|---|
+| `assets.remove_background` | Transparent copies of up to 8 of the person's images (originals stay). Spends credits. |
+| `assets.update` | Title, description, tags, and `private` or `team` visibility. To list an asset for everyone, `assets.make_public`. |
+| `assets.make_public` | Lists one of the person's assets for everyone in Summer's asset store (publishing). Runs at once when the person lets their agent publish (the default), else answers `needs_approval` with a link. |
+| `assets.delete` | Deletes one of their assets for good. Asks the person unless they let their agent delete: it answers `needs_approval` with a link, and nothing is deleted until they confirm. |
+| `assets.upload_begin` → `assets.upload_complete` | Upload a PNG/JPEG/WebP from disk: a signed form to POST the file to, then the confirm step that makes the asset. |
+
+### Jobs and batches
 
 | Tool | Use |
 |---|---|
-| `summer_generate_image` | AI image gen. |
-| `summer_generate_3d` | Image-to-3D. |
-| `summer_generate_audio` | SFX / music gen. Sound effects: `modelId` picks ElevenLabs SFX v2, Sonilo SFX 1.1 or Stable Audio 3 SFX; omitted = the person's approved default. |
-| `summer_generate_sfx_choices` | One sound effect from several models, shown on a Summer Studio page where the person approves one or more. |
-| `summer_get_choices` | Read which sound-effect versions the person approved (audioUrl, assetId, note). |
-| `summer_generate_video` | Video gen. |
-| `summer_generate_motion` | Generate/apply 3D skeletal motion from a rigged asset. |
-
-### Job tracking (2)
-
-| Tool | Use |
-|---|---|
-| `summer_check_job` | Poll a generation job. |
+| `jobs.wait` | Wait up to `timeoutSeconds` (at most 50) for a job from any operation that answered `running` or `needs_approval`; call again until `finished`. The finished job's `result` holds the asset ids. `jobs.get` reads it once. |
 | `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. A `ReparentNode` keeps the moved node's scene-owned children and grandchildren (the engine op drops them from the saved file) and is verified from the saved `.tscn` (`persisted:true` / `verified:true`, else `failure_reason: not_persisted`); a raw `ConnectSignal` is refused — use `summer_connect_signal`. `scenePersistence.saved` only means the SaveScene ran. |
 
 ### Meta (5)
@@ -238,7 +251,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_studio_workflow` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. |
 | `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. Compact by default (a few KB: `sceneSummary`, scalar `health` with capability counts); `include:['scene_tree','capabilities','settings']` adds the heavy blocks, `omitted` says how. |
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
-| `summer_get_board` | Read the person's approved planning board (look, characters, place, storyboard, picks), with the look and picked cards as images to compare screenshots against. Needs the project id from the build brief; works without the engine. |
+| `plans.get` (3.x `summer_get_board`) | Read the person's game plan (look, characters, place, storyboard, picks): every item with its id, picture URL and revision, to compare screenshots against. `projects.get({ projectId })` gives the project's `planId` from the project id in the build brief; works without the engine. |
 
 ### Creator platform (4)
 
@@ -246,8 +259,17 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 |---|---|
 | `summer_export_game` | Export the game in the file the Summer Games store takes, headless (no window), no running editor needed. `format:"bundle"` (default): the `summer.games` `.zip` the Summer apps run; `targets` picks `ios`, `android`, `macos`, `windows` (a game without a server: phones only) through a named `summer.games <targets>` preset in `export_presets.cfg`. `format:"download"` with one target: `web` (HTML5 `.zip` on Summer's WebGPU Forward+ template; refuses Compatibility projects), `macos` (ad hoc signed `.app` zip, `macos-universal`) or `windows` (`.exe` with embedded pack, zipped, `windows-x64`). Returns path, sha256, size, bundle manifest or store platform, warnings. |
 | `summer_export_templates` | `list` or `install` export templates from Summer's CDN (`downloads.summer.games/engine-templates/<summerVersion>/manifest.json`) into the engine's user template folder (`<data>/Godot/export_templates/<FULL_CONFIG>/`), sha256-checked. Only download exports need them; store bundles need none. `summerVersion` is read on macOS, passed elsewhere. |
-| `summer_publish_build` | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build, name its client pack; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. |
+| `store.upload_file` (3.x `summer_publish_build`; through `summer_call`) | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. Without a shell, `store.upload_begin`, `store.upload_sign_parts` and `store.upload_complete` take the bytes in parts. |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
+
+### Hosted store, publishing and Grow tools
+
+These come from the hosted Summer server (the one ChatGPT and Claude connect to) and are mounted into the local MCP after `summer login`; `summer tool <name>` reaches them too.
+
+- **Store page:** `summer_store_list_games`, `summer_store_create_game`, `summer_store_get_listing` (the page, the checklist and `availableTags`), `summer_store_update_listing` (text, tags, long description, support contact, release date, content rating), `summer_store_set_art`, `summer_store_set_trailer`, `summer_store_set_sound`, `summer_store_preview_link`, `summer_store_jams` and `summer_store_enter_jam`.
+- **Builds and release:** `summer_build_begin_upload` / `_sign_parts` / `_complete_upload` / `_status` (the local `summer_publish_build` does these from disk), `summer_store_version_*` for web and native downloads, `summer_store_submit` (one approval link for the owner), `summer_store_cancel_submission`, `summer_store_review`, `summer_store_releases`, `summer_build_release`.
+- **Grow:** `summer_grow_overview` and `summer_grow_analytics` (store page views, launches, play sessions, play time, custom events), `summer_grow_event_catalog`, `summer_grow_event_trend`, `summer_grow_event_funnel`, `summer_grow_members`, `summer_grow_ab_tests`, `summer_grow_prices`, `summer_grow_event_limit`, `summer_grow_apply` and `summer_grow_applications`.
+- **Guides:** the `publish-your-game`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_read_library`).
 
 ### Library search (2)
 
@@ -262,26 +284,30 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 |---|---|
 | `summer_library_feedback` | Report library-entry outcomes (worked/wrong/outdated/...) so entries get fixed and re-ranked. Fire-and-forget with a 1s cap; enum-first schema with no field for project files, chat content, or code; honors `SUMMER_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`. |
 
-### Summer Apps (13)
+### Summer Apps
 
-Team tools inside Summer Studio that agents build: shared, live on the team's data and engine. Load the `summer-apps` and `summer-apps-design` skills first.
+Team tools inside Summer Studio that agents build: shared, live on the team's data and engine. Load the `summer-apps` and `summer-apps-design` skills first. A call written `apps.action({...})` is the tool `summer_apps_action` when your client lists it, else `summer_call({ op: "apps.action", input: {...} })`.
 
-| Tool | Use |
+| Operation | Use |
 |---|---|
-| `summer_app_guide` | The build guide: when to build, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules, worked examples. |
-| `summer_app_list` | The apps in the person's workspaces. |
-| `summer_app_create` | New scratch app; the person's Studio tab opens it. |
-| `summer_app_publish` | New immutable version from a local `dir`, `files` or a `layout`, plus the manifest. |
-| `summer_app_get` | Manifest, current files and a data summary. |
-| `summer_app_update` | Rename, move to a folder, keep, archive or restore an app. |
-| `summer_app_events` | Long-poll (up to 50 s) what the app sends agents, errors, feedback and tool calls. |
-| `summer_app_page` | Read, fill and press the open app's declared fields and buttons. |
-| `summer_app_screenshot` | See the app without the person: a headless, read-only render (PNG) with console, errors, refused calls and the declared page; `width` 390 for a phone, `theme` dark, `out` saves the PNG. |
-| `summer_app_data` | Read or write the app's shared collections; no app needs to be open, the team sees writes live. |
-| `summer_app_tools` | The app's declared agent tools. |
-| `summer_app_call` | Run an agent tool inside the person's open app; `app_not_open` otherwise. |
-| `summer_app_report_gap` | Report an SDK capability an app needed and did not have. |
-| `summer_app_dock` | Dock an app in the editor (left, right, bottom), close it, list docks; `engine_lacks_op` on engines without app docks. |
+| `apps.guide` | The build guide by `section`: when to build, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules, worked examples. |
+| `apps.list` | The apps in the person's workspaces (`workspaceId`, `q`, `limit`, `cursor`). |
+| `apps.create` | New scratch app; the person's Studio tab opens it. |
+| `apps.publish` | New immutable version from `files` (`{ path, content, encoding }`, `index.html` at the root) or a `layout`, plus the `manifest`. |
+| `apps.get` | Manifest, current files and a data summary. |
+| `apps.update` | Rename, move to a folder, keep, archive, restore or pin an app (`name`, `folder`, `status`, `pinned`). |
+| `apps.duplicate` / `apps.add_starter` | Copy an app (to another team too); add one of Summer's starter apps to a team. |
+| `apps.delete` | Delete an app for good. Asks the person: answers `needs_approval` with a link. |
+| `apps.rollback` / `apps.update_starter` | Make an older version the live one; update a changed starter app to the newest starter. Each asks the app's owner (`needs_approval` with a link). |
+| `apps.events` | Long-poll (up to 50 s) what the app sends agents, errors, feedback and tool calls; pass the `cursor` back as `after`. |
+| `apps.page` / `apps.use_page` | Read the open app's declared fields and buttons; fill (`fill`) and press (`press`) them. Critical ones are the person's. |
+| `apps.screenshot` | See the app without the person: a headless, read-only render (the picture) with console, errors, refused calls and the declared page; `width` 390 for a phone, `theme` dark. |
+| `apps.read_data` / `apps.write_data` | Read (`items`, `nextCursor`) or write (`ops`, up to 100) the app's shared collections; no app needs to be open, the team sees writes live. |
+| `apps.tools` | The app's declared agent tools and collections. |
+| `apps.call` | Run an agent tool inside the person's open app; a `conflict` error with the app's link when it is not open. |
+| `apps.feedback` | Tell the app's makers it works (`thumbs: "up"`) or needs work, with a `note`. |
+| `apps.report_gap` | Report an SDK capability an app needed and did not have. |
+| `apps.dock` (3.x `summer_app_dock`; through `summer_call`) | Dock an app in the editor (left, right, bottom), close it, list docks; runs in the Summer MCP on this computer; `engine_lacks_op` on engines without app docks. |
 | `summer_enable_plugin` | Enable an editor plugin (`res://addons/<name>/`) and get the real load result (`enabled`, autoloads, or a failure `code`); older engines answer `queued: true, enabled: null` instead of claiming success. |
 
 ## Common pattern
@@ -306,12 +332,14 @@ Read big things in parts, never whole:
 
 Every asset-generation skill should follow this loop:
 
-1. `summer_search_assets` or `summer_list_my_assets` — reuse before generating when reasonable.
-2. `summer_generate_image` / `summer_generate_3d` / `summer_generate_audio` — metered creation.
-3. `summer_check_job` if the generation was async.
-4. `summer_get_asset` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
+1. `assets.search` (`scope: "all"`, or `"mine"` for the person's own) — reuse before generating when reasonable.
+2. `assets.generate_image` / `assets.generate_3d` / `assets.generate_audio` — metered creation (`dryRun: true` first when the person should see the credits).
+3. `jobs.wait` when the answer was `running` (3D, video, animation), until the job is finished.
+4. `assets.get` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
 5. `summer_import_asset_by_id` — import the exact result through the engine's import pipeline.
-6. `summer_get_asset_download_url` — only when the user explicitly wants a downloadable file/link.
+6. The `downloadUrl` from `assets.get` — only when the user explicitly wants a downloadable file/link.
+
+`whoami()` shows the signed-in account: plan, `credits` (their balance) and whether generation is unlocked.
 
 ## summer_set_resource_property — nested properties
 

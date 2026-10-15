@@ -1,6 +1,6 @@
 ---
 name: character-movement
-description: "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state."
+description: "Player controllers for 2D and 3D, plus the standard third-person controller for Summer humanoids."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: character-controllers
@@ -248,7 +248,7 @@ func _physics_process(_delta: float) -> void:
 
 Survivors-style games with 200+ agents: enemies are `Area2D` moved with
 `position += dir * speed * delta`, NOT physics bodies. See the `make-game`
-skill's `../make-game/references/2d-survivors.md`. The PLAYER stays a CharacterBody2D.
+skill's survivors blueprint (`summer_read_library` id `skill/make-game/references/2d-survivors.md`). The PLAYER stays a CharacterBody2D.
 
 ## 3D controller (first + third person)
 
@@ -287,7 +287,7 @@ func _physics_process(delta: float) -> void:
 When the player visual is a Summer character package:
 
 1. Produce or import the package first — it comes from the shared character
-   pipeline (`character-model`; `summer_generate_3d` with rigging and animations)
+   pipeline (`character-model`; `assets.generate_3d` with `rig` and `animationNames`)
    and carries `character.tscn` plus its `character.json` manifest. Instantiate
    `character.tscn`; for clip wiring without this controller see
    `character-animation-wiring`.

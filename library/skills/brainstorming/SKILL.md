@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: "Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior."
+description: "Explore user intent, requirements and design before any creative work: features, mechanics, behavior."
 ---
 
 # Brainstorming Ideas Into Designs

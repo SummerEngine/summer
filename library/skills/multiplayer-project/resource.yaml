@@ -1,7 +1,7 @@
 id: skill/multiplayer-project
 kind: skill
 version: 1.0.0
-summary: "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run."
+summary: "Set up a Summer multiplayer project: entry scenes, World and queue files, joining, a first Local Play."
 use_when:
   - "making a Summer game playable online or co-op: the first multiplayer setup"
   - "adding multiplayer to a Summer game: the client and authority scenes, summer.build.json, world.json and joining a queue"

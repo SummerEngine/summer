@@ -11,19 +11,19 @@
 - Style words that map to motion work ("happily", "slowly", "tiredly"); story or
   appearance words do not.
 
-## Controls (`summer_generate_motion`, `backend: "text-to-motion"`)
+## Controls (`assets.generate_motion`, `backend: "text-to-motion"`)
 
 | Field | Default | Use |
 | --- | --- | --- |
-| `prompt` / `prompts` | - | One action, or 1-8 actions (each 1-300 chars); one clip each. Pass one of the two, not both |
+| `prompts` | - | 1-8 actions (each 1-300 chars); one clip each |
 | `takes` | 1 | 1-4; 2-3 when choosing a hero clip. Every take is billed |
 | `cfgScale` | 3 | 1.5-8; 5 for bigger, clearer gestures on stylized rigs; above 6 gets unstable |
 | `lockJoints` | none | Base bones of rooted characters (plants, turrets, statues), e.g. `["Hips","Spine"]` |
 | `idempotencyKey` | none | Stable key so a retried request is not billed twice |
-| `wait` | true | `false` returns the `jobId` at once; poll `summer_check_job` |
+| `dryRun` | false | `true` checks the rig and returns the `estimate` (credits) without making anything |
 
-Clip count = prompts x takes; each clip is billed. The queued response reports
-`clipCount` and `estimatedCost`.
+Clip count = prompts x takes; each clip is billed. The call answers with a job at once;
+`jobs.wait` follows it to the finished clips.
 
 ## Judging results
 

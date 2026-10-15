@@ -1,11 +1,11 @@
 ---
 name: multiplayer-publish
-description: "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build."
+description: "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
 user-invocable: true
-allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_open
+allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_call
 paths: ["export_presets.cfg", "summer.build.json", "world.json", "source-domains.json", "runtime-manifest.json", "project.godot"]
 ---
 
@@ -246,16 +246,17 @@ empty window. Re-export with the current Summer release.
    `summer.build.json` must be its id. The export leaves `gameId` out of the
    bundle, and the game code calls `Summer.initialize()` with no ID: a
    literal or fallback ID fails hosted with `game_identity_mismatch`.
-2. Open the game's Builds page: `summer_open` with target `game`,
+2. Open the game's Builds page: `studio.open` with target `game`,
    `gameId` and section `builds`, or summerengine.com → Studio → your game →
    Builds.
 3. Upload the `.zip` as a new Build. Summer checks it again: unknown fields,
    queue rules, both packs, and the composition match. From an agent:
-   `summer_export_game`, then `summer_publish_build` with `gameId` and
+   `summer_export_game`, then `store.upload_file` with `gameId` and
    `clientVersion`; it asks for confirmation first and needs
-   `summer login --store`. If it answers `store_auth_refused`, upload in
-   Studio.
-4. Release the Build to an environment. Its queues go live there, and
+   `summer login --store`. If the store refuses this machine's sign-in,
+   upload in Studio.
+4. Release the Build to an environment (`store.release` releases the Build
+   the owner approved with `store.publish`). Its queues go live there, and
    clients join them with `Summer.client.join(SummerJoinTarget.queue(...))`.
    The code is the same as in Local Play.
 

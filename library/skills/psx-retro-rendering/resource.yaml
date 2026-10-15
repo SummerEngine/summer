@@ -30,6 +30,7 @@ source: official
 license: MIT
 status: preview
 recommended: false
+bundled: false
 lint_exceptions:
   - url-allowlist
 lint_exception_reason: "Source citation: the body links the MIT-licensed godot-psxlike reference addon on GitHub (wyvernbw) that the extracted article names as its implementation evidence. Read-only provenance link; the skill never fetches or installs it."

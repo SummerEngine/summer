@@ -40,6 +40,10 @@ function parsePayload(text: string): unknown {
 const PASSED_CODES = new Set<ErrorCode>(["engine_not_running", "engine_lacks_op", "not_signed_in", "no_credits", "unavailable", "invalid_input", "not_found"]);
 
 const NOT_RUNNING = /Summer Engine is not running|Summer Engine( instance \S+)? is not responding on port|No running Summer editor matches/;
+/** Several editors run and none was picked for this session. */
+const SEVERAL_EDITORS = /Multiple Summer editors are running/;
+const SEVERAL_EDITORS_STEP: NextStep = { say: "Several Summer editors are open: start the agent in the project folder, or run the MCP with --project <path>." };
+const NO_PROJECT = /No project\.godot found/;
 /** withEngine's transport recipe: the call failed between this package and the engine, mid-request. */
 const TRANSPORT = /Recovery: \(1\) check the engine is running/;
 
@@ -61,13 +65,17 @@ function readAfter(op: string): NextStep {
 export function engineFailure(text: string, op: string, options: { effect: "read" | "write"; guide?: string }): Answer {
   const payload = parsePayload(text);
   const body = payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>) : null;
-  const message = (str(body?.error) ?? str(body?.message) ?? text.split("\n")[0] ?? "").slice(0, 500) || "The engine tool failed.";
+  // `error` is sometimes a code ("import_failed") and `message` the sentence.
+  const sentence = /^[a-z0-9_]+$/.test(str(body?.error) ?? "") ? (str(body?.message) ?? str(body?.error)) : (str(body?.error) ?? str(body?.message));
+  const message = (sentence ?? text.split("\n")[0] ?? "").slice(0, 500) || "The engine tool failed.";
   const details = { tool: body ?? text };
   const describe: NextStep = options.guide ? { op: "docs.read", input: { id: options.guide } } : { op: "ops.describe", input: { name: op } };
 
   const code = str(body?.code) as ErrorCode | undefined;
   const reason = str(body?.failure_reason);
-  if (code === "engine_not_running" || (!body && NOT_RUNNING.test(text))) return engineNotRunning();
+  if (code === "engine_not_running" || NOT_RUNNING.test(text)) return engineNotRunning();
+  if (SEVERAL_EDITORS.test(text)) return errorAnswer("conflict", message, { next: SEVERAL_EDITORS_STEP, details });
+  if (NO_PROJECT.test(text)) return errorAnswer("not_found", message, { next: { say: "Name the folder that holds project.godot, or open the project in Summer Engine." }, details });
   if (code === "engine_lacks_op" || reason === "engine_lacks_op" || reason === "engine_lacks_events" || /engine_lacks_op/.test(text)) {
     return errorAnswer("engine_lacks_op", message, { next: { say: "Update Summer Engine." }, details });
   }
@@ -96,7 +104,8 @@ export function engineFailure(text: string, op: string, options: { effect: "read
     case "not_found":
       return errorAnswer("not_found", message, { details });
   }
-  if (/identity_mismatch/i.test(text)) return errorAnswer("conflict", message, { next: { op: "engine.get_project_context" }, details });
+  if (/identity_mismatch|registry identity changed/i.test(text)) return errorAnswer("conflict", message, { next: { op: "engine.get_project_context" }, details });
+  if (/^[a-z_]*not_found$/.test(str(body?.error) ?? "")) return errorAnswer("not_found", message, { details });
   if (/no scene (is currently )?open|no edited scene/i.test(text)) return errorAnswer("not_found", message, { next: { op: "engine.open_main_scene" }, details });
   if (/not found|does not exist|no such/i.test(message)) return errorAnswer("not_found", message, { details });
   return errorAnswer("invalid_input", message, { next: describe, details });

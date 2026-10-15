@@ -30,6 +30,17 @@ describe("an engine tool's result as the one answer shape", () => {
     expect(answerOfEngineResult(raw, "engine.play", write)).toMatchObject({ ok: false, error: { code: "engine_not_running", retry: "safe" } });
   });
 
+  it("finds engine_not_running inside a coded failure, and names the sentence over the code", () => {
+    const importDown = JSON.stringify({ error: "import_failed", message: "Summer Engine is not running (no api-token found). Open Summer Engine first." });
+    expect(engineFailure(importDown, "engine.import_asset_by_id", write)).toMatchObject({ ok: false, error: { code: "engine_not_running" } });
+    expect(engineFailure(JSON.stringify({ error: "asset_not_found", message: "No asset a_1." }), "engine.import_asset_by_id", write)).toMatchObject({
+      ok: false,
+      error: { code: "not_found", message: "No asset a_1." },
+    });
+    const several = "Multiple Summer editors are running and this agent is not inside a Summer project. Start the agent from the project directory, or pass `summer mcp --project <path>`.";
+    expect(engineFailure(several, "engine.play", write)).toMatchObject({ ok: false, error: { code: "conflict", next: { say: expect.stringContaining("--project") } } });
+  });
+
   it("separates a read that can be retried from a change that may have partly applied", () => {
     const transport = "fetch failed\n\nRecovery: (1) check the engine is running and responsive — summer_get_project_context here";
     expect(engineFailure(transport, "engine.get_scene_tree", read)).toMatchObject({ ok: false, error: { code: "unavailable", retry: "safe" } });

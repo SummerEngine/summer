@@ -30,6 +30,12 @@ type JsonSchema = { type?: string | string[]; properties?: Record<string, JsonSc
 const RESERVED_FLAGS = new Set(["json", "dry-run", "wait", "idempotency-key", "input"]);
 const camel = (flag: string) => flag.replace(/-([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase());
 
+/** A flag's field: camelCase (`--scene-path` is scenePath), or snake_case when the schema names it so (`--look-at` is look_at). */
+function fieldName(flag: string, schema: JsonSchema | null): string {
+  const snake = flag.replace(/-/g, "_");
+  return snake !== flag && schema?.properties?.[snake] && !schema.properties[camel(flag)] ? snake : camel(flag);
+}
+
 function coerce(value: string | true, schema: JsonSchema | undefined): unknown {
   const type = Array.isArray(schema?.type) ? schema?.type[0] : schema?.type;
   if (value === true) return true;
@@ -74,9 +80,9 @@ export function parseCallFlags(argv: readonly string[], schema: JsonSchema | nul
         Object.assign(out.input, parsed);
       } else out.idempotencyKey = value;
     } else if (rawName.startsWith("no-") && !RESERVED_FLAGS.has(rawName)) {
-      fields[camel(rawName.slice(3))] = false;
+      fields[fieldName(rawName.slice(3), schema)] = false;
     } else {
-      const name = camel(rawName);
+      const name = fieldName(rawName, schema);
       const next = argv[index + 1];
       const value: string | true = inline ?? (next !== undefined && !next.startsWith("--") ? (index++, next) : true);
       const property = schema?.properties?.[name];

@@ -32,11 +32,22 @@ describe("summer_run_script with scenePath", () => {
     expect(result).not.toHaveProperty("scene_target");
   });
 
-  it("sends nothing extra when scenePath is already the edited scene", async () => {
+  it("opens scenePath even when it looks like the edited scene (the read may be stale), and restores nothing", async () => {
     const { client, sent } = fakeClient("res://a.tscn");
     const result = await runSceneScriptOn(client, { scenePath: "res://a.tscn", source: SOURCE });
-    expect(sent.map((ops) => ops[0].op)).toEqual(["RunSceneScript"]);
+    expect(sent.map((ops) => ops[0].op)).toEqual(["OpenScene", "RunSceneScript"]);
     expect(result).toMatchObject({ ok: true, scene_target: { scenePath: "res://a.tscn", opened: false } });
+    expect((result as { scene_target: Record<string, unknown> }).scene_target).not.toHaveProperty("restored");
+  });
+
+  it("says so when the earlier tab could not be read", async () => {
+    const { client, sent } = fakeClient("res://a.tscn");
+    client.getSceneState = async () => {
+      throw new Error("state read timed out");
+    };
+    const result = await runSceneScriptOn(client, { scenePath: "res://b.tscn", source: SOURCE });
+    expect(sent.map((ops) => ops[0].op)).toEqual(["OpenScene", "RunSceneScript"]);
+    expect(result).toMatchObject({ scene_target: { opened: true, restore_error: expect.stringContaining("state read timed out") } });
   });
 
   it("opens the target alone, runs, then gives the person their tab back", async () => {

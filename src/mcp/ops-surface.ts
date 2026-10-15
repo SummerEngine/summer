@@ -1,11 +1,11 @@
 import type { McpServer, RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { localEntries, localWireForm, type CatalogEntry } from "../core/ops/catalog.js";
+import { localEntries, localInputSchema, localWireForm, missingInput, type CatalogEntry } from "../core/ops/catalog.js";
 import { answerOfHosted, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
-import { answerOfEngineResult, textsOf } from "../core/ops/engine-answer.js";
+import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../core/library-search.js";
 
 /**
@@ -71,10 +71,14 @@ function toolResult(answer: Answer, raw?: unknown) {
   };
 }
 
-/** A non-engine local 3.x tool's result as the one answer shape. */
-function answerOfLocal(result: unknown): Answer {
+/** A non-engine local 3.x tool's result as the one answer shape (a few, such as apps.dock, still need the engine). */
+function answerOfLocal(result: unknown, op: string, effect: "read" | "write"): Answer {
   const record = (result && typeof result === "object" ? result : {}) as { isError?: boolean };
   const [first = ""] = textsOf(result);
+  if (record.isError) {
+    const engine = engineFailure(textsOf(result).join("\n\n"), op, { effect });
+    if (!engine.ok && ["engine_not_running", "engine_lacks_op", "conflict"].includes(engine.error.code)) return engine;
+  }
   let payload: unknown = first;
   try {
     payload = JSON.parse(first);
@@ -270,10 +274,10 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
   }
 
   /** The tool and arguments that run a local operation here, or null. */
-  function localCall(name: string, resolved: string, input: Record<string, unknown>): { tool: string; args: Record<string, unknown> } | null {
+  function localCall(name: string, resolved: string, input: Record<string, unknown>): { tool: string; args: Record<string, unknown>; split?: true } | null {
     const split: EngineSplitDef | undefined = ENGINE_SPLIT_OPS[resolved];
     // A split operation runs its 3.x tool with the action fixed; called by that 3.x name, it runs as called.
-    if (split && name !== split.tool) return tools[split.tool] ? { tool: split.tool, args: splitToolArgs(split, input) } : null;
+    if (split && name !== split.tool) return tools[split.tool] ? { tool: split.tool, args: splitToolArgs(split, input), split: true } : null;
     if (tools[name]) return { tool: name, args: input };
     const own = entries.get(resolved)?.mcpTool;
     const tool = own && tools[own] ? own : localToolsFor(resolved).find((candidate) => tools[candidate]);
@@ -298,7 +302,15 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     };
   }
 
-  async function runLocal(op: string, toolName: string, args: Record<string, unknown>, extra: unknown, dryRun: boolean): Promise<Answer> {
+  async function runLocal(op: string, call: { tool: string; args: Record<string, unknown>; split?: true }, extra: unknown, dryRun: boolean, input: Record<string, unknown>): Promise<Answer> {
+    const { tool: toolName, args } = call;
+    // A split operation's own fields first: its 3.x tool took them as optional (its fixed action may come along; it is replaced).
+    const split = call.split ? ENGINE_SPLIT_OPS[op] : undefined;
+    const missing = split ? missingInput(localInputSchema(op), Object.fromEntries(Object.entries(input).filter(([key]) => !(key in split.fixed)))) : null;
+    if (missing) {
+      const guide = guideOf(toolName);
+      return errorAnswer("invalid_input", missing, { next: guide ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } } });
+    }
     const checked = await validate(toolName, args, op);
     if ("error" in checked) return checked.error;
     const entry = entries.get(op);
@@ -314,7 +326,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     const handler = rawHandlers.get(toolName) ?? (tools[toolName].handler as Handler);
     const raw = checked.data === undefined ? await handler(extra) : await handler(checked.data, extra);
     const def = engineOpDef(op);
-    return def ? answerOfEngineResult(raw, op, { effect: def.effect, guide: guideOf(toolName) }) : answerOfLocal(raw);
+    return def ? answerOfEngineResult(raw, op, { effect: def.effect, guide: guideOf(toolName) }) : answerOfLocal(raw, op, entry?.effect === "read" ? "read" : "write");
   }
 
   async function search(query: string, area: string | undefined, limit: number): Promise<Answer> {
@@ -365,7 +377,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       if (isLocalOp(resolved)) {
         const call = localCall(name, resolved, args);
         if (!call) return toolResult(errorAnswer("not_in_profile", `${resolved} is not served by this profile.`, { next: { say: "Run the MCP with --profile engine." } }));
-        return toolResult(await runLocal(resolved, call.tool, call.args, extra, dryRun === true));
+        return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
       }
       try {
         return toolResult(answerOfHosted(await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) })));

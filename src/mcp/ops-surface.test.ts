@@ -257,6 +257,32 @@ describe("v4 engine operations", () => {
     }
   });
 
+  it("runs a split operation as its 3.x tool with the action fixed, and checks its own required fields", async () => {
+    const { server } = createMcpServer(resolveToolSelection({ profile: "engine" }, {}), { surface: "v4", cloud: fakeCloud() });
+    const registered = (server as unknown as { _registeredTools: Record<string, { handler: unknown }> })._registeredTools;
+    const sent: unknown[] = [];
+    registered.summer_camera_bookmark.handler = async (args: unknown) => {
+      sent.push(args);
+      return { content: [{ type: "text", text: JSON.stringify({ ok: true, saved: true }) }] };
+    };
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "claude-code", version: "2.0.0" });
+    await client.connect(clientSide);
+    try {
+      expect(answerOf(await client.callTool({ name: "summer_engine_save_camera_bookmark", arguments: { name: "hero" } }))).toEqual({ ok: true, status: "done", result: { ok: true, saved: true } });
+      expect(answerOf(await client.callTool({ name: "summer_call", arguments: { op: "engine.delete_camera_bookmark", input: { name: "old", action: "save" } } }))).toMatchObject({ ok: true });
+      expect(answerOf(await client.callTool({ name: "summer_call", arguments: { op: "summer_camera_bookmark", input: { action: "list" } } }))).toMatchObject({ ok: true });
+      expect(sent).toEqual([{ name: "hero", action: "save" }, { name: "old", action: "delete" }, { action: "list" }]);
+      const missing = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "engine.save_camera_bookmark", input: {}, dryRun: true } }));
+      expect(missing).toMatchObject({ ok: false, error: { code: "invalid_input", message: "name: required.", next: { op: "docs.read", input: { id: "tool/camera-bookmark" } } } });
+      expect(sent).toHaveLength(3);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("dry-runs an engine operation without the engine: the input is checked, nothing is sent", async () => {
     const { client, close } = await session("engine", "v4");
     try {
@@ -288,6 +314,18 @@ describe("v4 engine operations", () => {
       }
     };
     expect(await size("v4")).toBeLessThan((await size("v3")) * 0.55);
+  });
+});
+
+describe("v4, local operations that need the engine", () => {
+  it("say engine_not_running for a non-engine area too (apps.dock)", async () => {
+    const { client, close } = await session(undefined, "v4");
+    try {
+      const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "apps.dock", input: { action: "list" } } }));
+      expect(answer).toMatchObject({ ok: false, error: { code: "engine_not_running" } });
+    } finally {
+      await close();
+    }
   });
 });
 

@@ -17,6 +17,11 @@ describe("flags to input", () => {
     expect(parseCallFlags(["--limit", "5", "--query", "123", "--no-loop", "--tags", "a", "--tags", "b"], schema).input).toEqual({ limit: 5, query: "123", loop: false, tags: ["a", "b"] });
   });
 
+  it("finds a snake_case field from its kebab-case flag", () => {
+    const snake = { type: "object", properties: { look_at: { type: "string" }, max_seconds: { type: "number" }, scenePath: { type: "string" } } };
+    expect(parseCallFlags(["--look-at", "Vector3(0, 1, 0)", "--max-seconds", "30", "--scene-path", "res://a.tscn"], snake).input).toEqual({ look_at: "Vector3(0, 1, 0)", max_seconds: 30, scenePath: "res://a.tscn" });
+  });
+
   it("takes kebab-case, --name=value and a JSON --input", () => {
     expect(parseCallFlags(["--max-items=3", "--input", '{"gameId":"g1"}'], null).input).toEqual({ gameId: "g1", maxItems: 3 });
   });

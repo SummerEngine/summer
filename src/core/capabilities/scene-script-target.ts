@@ -3,10 +3,12 @@
  * against the scene the editor is editing and takes no target of its own, so
  * a scenePath is honored here, the same way for the MCP tool and the CLI:
  *
- * 1. Read the scene the editor is editing.
- * 2. When it is not scenePath: OpenScene scenePath, alone (never in one batch
- *    with a mutation). The engine answers ok only once that scene is the
- *    edited one, so a failed open stops here and the script never runs.
+ * 1. Read the scene the editor is editing (a snapshot up to ~300 ms old).
+ * 2. OpenScene scenePath, alone (never in one batch with a mutation), even
+ *    when the snapshot says it is already the edited scene: the person may
+ *    have switched tabs since, and opening the current scene again changes
+ *    nothing. The engine answers ok only once that scene is the edited one,
+ *    so a failed open stops here and the script never runs.
  * 3. Run the script.
  * 4. Give the person back the tab they had (OpenScene of the earlier scene),
  *    as the engine's own scene-targeted ops do.
@@ -25,7 +27,7 @@ export interface SceneScriptClient {
 
 export interface SceneTarget {
   scenePath: string;
-  /** The script's scene was not the edited one, so it was opened first. */
+  /** The script's scene was not the edited one, so its tab was brought forward. */
   opened: boolean;
   /** The scene the editor showed before, opened again after the run. */
   restored?: string;
@@ -48,29 +50,29 @@ export async function runSceneScriptOn(
 
   const scenePath = validateScenePath(args.scenePath);
   let before: string | null = null;
+  let beforeError: string | undefined;
   try {
     before = resolveCurrentScene(undefined, await client.getSceneState(), undefined);
-  } catch {
-    before = null;
+  } catch (error) {
+    beforeError = error instanceof Error ? error.message : String(error);
+  }
+
+  const open = await client.executeIdentityBoundOps([{ op: "OpenScene", path: scenePath }]);
+  const openError = extractOpError(open);
+  if (openError) {
+    return {
+      ok: false,
+      error: `Could not open ${scenePath}, so the script did not run. ${openError}`,
+      failure_reason: "scene_target_failed",
+      scene_target: { scenePath, opened: false },
+      receipt: open,
+    };
   }
 
   const opened = before !== scenePath;
-  if (opened) {
-    const open = await client.executeIdentityBoundOps([{ op: "OpenScene", path: scenePath }]);
-    const openError = extractOpError(open);
-    if (openError) {
-      return {
-        ok: false,
-        error: `Could not open ${scenePath}, so the script did not run. ${openError}`,
-        failure_reason: "scene_target_failed",
-        scene_target: { scenePath, opened: false },
-        receipt: open,
-      };
-    }
-  }
-
   const result = await client.executeIdentityBoundOps([op], undefined, timeoutMs);
   const target: SceneTarget = { scenePath, opened };
+  if (beforeError !== undefined) target.restore_error = `The scene open before could not be read, so no tab was restored: ${beforeError}`;
   if (opened && before) {
     try {
       const restore = await client.executeIdentityBoundOps([{ op: "OpenScene", path: before }]);

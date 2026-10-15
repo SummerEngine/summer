@@ -564,8 +564,11 @@ export async function startMcpServer(
   // than PROFILE_TOOL_LIMIT.
   // v4 mounts the hosted v4 surface (its direct tools; summer_search and
   // summer_call stay local and forward to it).
+  // The legacy toolset (below) mounts after this mount, and again after a retry of it.
+  let legacyHosted: ReturnType<typeof prepareHostedMount> | null = null;
   const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: v4HostedDependencies.url } : undefined, {
     ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
+    onMounted: () => void legacyHosted?.mount(),
     ...(surface === "v4"
       ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT }
       : selection.toolsets === null
@@ -574,20 +577,32 @@ export async function startMcpServer(
   });
   hostedCall = hosted.call;
   // The legacy toolset also lists the hosted 3.x names this profile listed in
-  // 3.x, from the hosted 3.x surface, each running its 3.x tool.
-  const legacyHosted = legacy.on
-    ? prepareHostedMount(server, undefined, {
-        ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
-        includeTool: (name: string) => selection.toolsets === null || selectionIncludes(selection, name, false),
-        maxTools: PROFILE_TOOL_LIMIT,
-        describe: legacyHostedDescription,
-      })
+  // 3.x, from the hosted 3.x surface, each running its 3.x tool, under the
+  // same limit as in 3.x. Its sign-in waits for the v4 mount's (a token
+  // refresh is not shared), so it starts at boot and the first tools/list
+  // still waits for it.
+  legacyHosted = legacy.on
+    ? prepareHostedMount(
+        server,
+        {
+          ...defaultHostedMountDependencies,
+          token: async () => {
+            await hosted.mount();
+            return defaultHostedMountDependencies.token();
+          },
+        },
+        {
+          ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
+          ...(selection.toolsets === null ? {} : { includeTool: (name: string) => selectionIncludes(selection, name, false), maxTools: PROFILE_TOOL_LIMIT }),
+          describe: legacyHostedDescription,
+        }
+      )
     : null;
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // One sign-in at a time: the 3.x mount waits for the v4 one (a token refresh is not shared).
-  void hosted.mount().finally(() => legacyHosted?.mount());
+  void hosted.mount();
+  void legacyHosted?.mount();
   appendMcpLogEvent("mcp:ready", {
     version,
     pid: process.pid,

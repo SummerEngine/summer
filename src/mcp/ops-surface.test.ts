@@ -11,6 +11,7 @@ import { hostedFileTools, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
 import { withV4Surface } from "../core/ops/cloud.js";
 import { HostedUnreachableError } from "../core/hosted-mcp.js";
+import { StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { OAuthError } from "../core/oauth.js";
 
 let root = "";
@@ -203,42 +204,66 @@ describe("v4, a hosted call that fails", () => {
       await close();
     }
   };
+  // What the MCP SDK throws for an HTTP error answer (status on `code`), with PSE's bodies.
+  const http = (status: number, body: Record<string, unknown>) => new StreamableHTTPError(status, `Error POSTing to endpoint: ${JSON.stringify(body)}`);
+  const refused = (code: string) => Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(`connect ${code} 127.0.0.1:443`), { code }) });
 
-  it("says unavailable, not 'sign in', when the server cannot be reached: nothing was sent", async () => {
-    const answer = await callWith(failing(new HostedUnreachableError("The hosted Summer Engine MCP did not answer: fetch failed.", "Recovery: check the network.")), { op: "games.list" });
-    expect(answer).toMatchObject({ ok: false, error: { code: "unavailable", retry: "after" } });
-    const network = await callWith(failing(new OAuthError("oauth_network_failed", "The sign-in server did not answer.", "Recovery: check your network and retry.")), { op: "games.list" });
-    expect(network.error.code).toBe("unavailable");
+  it("says not_signed_in for a sign-in problem, with the step that fixes it", async () => {
+    const missing = await callWith(failing(new OAuthError("store_login_required", "No store sign-in.", 'Recovery: run "summer login".')), { op: "games.list" });
+    expect(missing).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login" } } });
+    const expired = await callWith(failing(new OAuthError("store_login_expired", "The store sign-in expired.", 'Recovery: run "summer login --store --force".')), { op: "games.list" });
+    expect(expired).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login --store --force" } } });
+    expect(expired.error.message).not.toContain("Recovery:");
+    const revoked = await callWith(failing(http(401, { error: "invalid_token", message: "Sign in to Summer Engine to use this connector." })), { op: "assets.generate_image", input: { prompt: "a barrel" } });
+    expect(revoked).toMatchObject({ ok: false, error: { code: "not_signed_in", details: { was: "http_401" } } });
   });
 
-  it("says not_signed_in only for a sign-in problem", async () => {
-    const answer = await callWith(failing(new OAuthError("store_login_expired", "The store sign-in expired.", 'Recovery: run "summer login".')), { op: "games.list" });
-    expect(answer).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login" } } });
-    const refused = await callWith(failing(new Error("Error POSTing to endpoint (HTTP 401): Unauthorized")), { op: "games.list" });
-    expect(refused.error.code).toBe("not_signed_in");
+  it("says forbidden when the server refuses the account", async () => {
+    const answer = await callWith(failing(http(403, { error: "access_denied", reason: "email_unconfirmed" })), { op: "games.list" });
+    expect(answer).toMatchObject({ ok: false, error: { code: "forbidden", retry: "no" } });
   });
 
-  it("says outcome_unknown for a call cut off after it was sent: retry only with the same key", async () => {
+  it("says unavailable when nothing was sent: no connection, refused, the sign-in server down, a 503", async () => {
+    for (const error of [
+      new HostedUnreachableError("The hosted Summer Engine MCP did not answer: fetch failed.", "Recovery: check the network."),
+      new OAuthError("oauth_network_failed", "The sign-in server did not answer.", "Recovery: check your network and retry."),
+      new OAuthError("oauth_server_failed", "The sign-in server failed (http_503).", "Recovery: try again in a minute."),
+      refused("ECONNREFUSED"),
+      http(503, { error: "temporarily_unavailable" }),
+    ]) {
+      const answer = await callWith(failing(error), { op: "assets.generate_image", input: { prompt: "a barrel" } });
+      expect(answer, String(error)).toMatchObject({ ok: false, error: { code: "unavailable", retry: "after" } });
+    }
+  });
+
+  it("says outcome_unknown for a change cut off after it was sent: retry only with the same key", async () => {
+    for (const cutOff of [new Error("MCP error -32001: Request timed out"), new TypeError("fetch failed"), http(504, { error: "gateway_timeout" })]) {
+      const keyed = await callWith(failing(cutOff), { op: "assets.generate_image", input: { prompt: "a barrel" }, idempotencyKey: "k1" });
+      expect(keyed, String(cutOff)).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
+      const unkeyed = await callWith(failing(cutOff), { op: "assets.generate_image", input: { prompt: "a barrel" } });
+      expect(unkeyed, String(cutOff)).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "no" } });
+    }
+  });
+
+  it("says unavailable for a cut-off read or dry run: running it again changes nothing", async () => {
     const timeout = new Error("MCP error -32001: Request timed out");
-    const keyed = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" }, idempotencyKey: "k1" });
-    expect(keyed).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
-    const unkeyed = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" } });
-    expect(unkeyed).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "no" } });
-    const dryRun = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" }, dryRun: true });
-    expect(dryRun.error.code).toBe("unavailable");
+    expect((await callWith(failing(timeout), { op: "games.list" })).error).toMatchObject({ code: "unavailable", retry: "safe" });
+    expect((await callWith(failing(timeout), { op: "jobs.wait", input: { jobId: "gen:1" } })).error.code).toBe("unavailable");
+    expect((await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" }, dryRun: true })).error.code).toBe("unavailable");
   });
 
   it("answers a failed hosted direct tool in the one shape, never with a plain retry", async () => {
     const hook = hostedFileTools(new FileSaver({ saveByDefault: false }));
+    const tool = (name: string, readOnlyHint = false) => ({ name, inputSchema: { type: "object" as const }, annotations: { readOnlyHint } });
     const result = await hook.call("summer_assets_generate_3d", { prompt: "a chest", idempotencyKey: "k2" }, async () => {
-      throw new Error("fetch failed");
-    });
+      throw new TypeError("fetch failed");
+    }, tool("summer_assets_generate_3d"));
     expect(result.isError).toBe(true);
     expect(answerOf(result)).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
-    const read = await hook.call("summer_games_list", {}, async () => {
-      throw new HostedUnreachableError("The hosted Summer Engine MCP did not answer.", "Recovery: check the network.");
-    });
-    expect(answerOf(read).error.code).toBe("unavailable");
+    const read = await hook.call("summer_store_get_listing", {}, async () => {
+      throw new Error("MCP error -32001: Request timed out");
+    }, tool("summer_store_get_listing", true));
+    expect(answerOf(read).error).toMatchObject({ code: "unavailable", retry: "safe" });
   });
 });
 
@@ -517,12 +542,12 @@ describe("v4, generated files on this machine", () => {
 
     const forward = vi.fn(async () => envelope(made));
     const out = join(root, "direct");
-    const raw = await hook.call("summer_assets_generate_image", { prompt: "a barrel", out }, forward);
+    const raw = await hook.call("summer_assets_generate_image", { prompt: "a barrel", out }, forward, { name: "summer_assets_generate_image", inputSchema: { type: "object" } });
     expect(forward).toHaveBeenCalledWith({ prompt: "a barrel" });
     expect(answerOf(raw).result.assets[0].localPath).toBe(join(out, "barrel.png"));
 
     const untouched = envelope({ ok: true, status: "done", result: { items: [] } });
-    expect(await hook.call("summer_games_list", { limit: 3 }, async () => untouched)).toBe(untouched);
+    expect(await hook.call("summer_games_list", { limit: 3 }, async () => untouched, { name: "summer_games_list", inputSchema: { type: "object" } })).toBe(untouched);
   });
 
   it("lists out in the input summer_search returns for those operations", async () => {

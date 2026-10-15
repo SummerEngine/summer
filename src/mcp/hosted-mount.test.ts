@@ -10,6 +10,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { OAuthError } from "../core/oauth.js";
+import { HostedUnreachableError } from "../core/hosted-mcp.js";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer } from "./server.js";
 import { defaultHostedMountDependencies, prepareHostedMount, STORE_TOOLS_STATUS, type HostedMountDependencies } from "./hosted-mount.js";
@@ -103,6 +104,23 @@ const deps = (overrides: Partial<HostedMountDependencies> = {}): HostedMountDepe
 describe("one Summer Engine MCP: hosted tools mounted locally", () => {
   it("mounts the hosted 3.x tools from the hosted 3.x surface, asked for by name", () => {
     expect(new URL(defaultHostedMountDependencies.url()).searchParams.get("surface")).toBe("v3");
+  });
+
+  it("call() says why nothing was sent: a refused sign-in keeps an OAuth code, a server that never answered is unreachable", async () => {
+    const refused = await localSession(deps({ token: async () => "wrong-token" }));
+    try {
+      await expect(refused.mount.call("summer_store_list_games", {})).rejects.toMatchObject({ name: "OAuthError", code: "oauth_token_invalid" });
+    } finally {
+      await refused.client.close();
+      await refused.server.close();
+    }
+    const down = await localSession(deps({ url: () => "http://127.0.0.1:1/mcp" }));
+    try {
+      await expect(down.mount.call("summer_store_list_games", {})).rejects.toBeInstanceOf(HostedUnreachableError);
+    } finally {
+      await down.client.close();
+      await down.server.close();
+    }
   });
 
   it("lists the hosted publishing tools with their own schema next to the engine tools", async () => {

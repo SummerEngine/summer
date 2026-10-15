@@ -1,4 +1,4 @@
-import { defaultHostedConnectDependencies, HostedUnreachableError, type HostedClient, type HostedConnectDependencies } from "../hosted-mcp.js";
+import { defaultHostedConnectDependencies, hostedConnectFailure, HostedUnreachableError, httpStatusOf, type HostedClient, type HostedConnectDependencies } from "../hosted-mcp.js";
 import { OAuthError, resolveMcpResourceUrl } from "../oauth.js";
 import { localEntries, localInputSchema, type CatalogEntry } from "./catalog.js";
 import { errorAnswer, isLocalOp, type Answer } from "./contract.js";
@@ -46,8 +46,7 @@ export async function callHostedV4(
     await deps.token();
     client = await deps.connect(url, deps.token);
   } catch (error) {
-    if (error instanceof OAuthError) throw error;
-    throw new HostedUnreachableError(`Summer's hosted server did not answer: ${error instanceof Error ? error.message : String(error)}.`, "Recovery: check the network and try again.");
+    throw hostedConnectFailure(error, "Recovery: check the network and try again.");
   }
   try {
     return await client.callTool({ name, arguments: args });
@@ -57,35 +56,74 @@ export async function callHostedV4(
 }
 
 /** OAuth failures that mean a server did not answer, not that the person must sign in again. */
-const OAUTH_UNREACHABLE = new Set(["oauth_network_failed", "oauth_discovery_failed"]);
+const OAUTH_UNREACHABLE = new Set(["oauth_network_failed", "oauth_discovery_failed", "oauth_server_failed"]);
+/** Connection errors raised before a request is written: nothing reached the server. */
+const NOT_SENT_CAUSES = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "UND_ERR_CONNECT_TIMEOUT"]);
+/** Actions that only read; a cut-off read can simply run again. */
+const READ_ACTIONS = new Set(["list", "get", "search", "describe", "status", "wait"]);
+
+/** True for operations that only read (`games.list`, `jobs.wait`, `whoami`). */
+export function isReadOp(op: string): boolean {
+  return op === "whoami" || READ_ACTIONS.has(op.split(".")[1] ?? "");
+}
+
+function causeCode(error: unknown): string | undefined {
+  for (let e: unknown = error, depth = 0; e && depth < 4; e = (e as { cause?: unknown }).cause, depth++) {
+    const code = (e as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+  }
+  return undefined;
+}
 
 /**
- * The one answer for a hosted call that threw. A sign-in problem is
- * not_signed_in. Nothing sent (no connection) is unavailable: try again
- * later. A call cut off after it was sent may have run, so it is
- * outcome_unknown: retried only with the same idempotencyKey, else checked
- * first. A dry run changes nothing, so a cut-off one is unavailable.
+ * The one answer for a hosted call that threw, decided by what is known to
+ * have happened:
+ * - a sign-in problem (an OAuthError, a 401) is not_signed_in; an account
+ *   the server refuses (403) is forbidden;
+ * - nothing sent (never connected, connection refused, a 503 or another 4xx
+ *   the server answers before it runs anything) is unavailable;
+ * - a call cut off after it was sent may have run: outcome_unknown, retried
+ *   only with the same idempotencyKey, else checked first. A read or a dry
+ *   run changes nothing, so a cut-off one is unavailable.
  */
-export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: boolean; idempotencyKey?: string }): Answer {
-  const cause = error instanceof Error ? error.message : String(error);
-  const unauthorized = !(error instanceof HostedUnreachableError) && /\b401\b|unauthori[sz]ed/i.test(cause);
-  if ((error instanceof OAuthError && !OAUTH_UNREACHABLE.has(error.code)) || unauthorized) {
-    return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${cause}`, { next: { say: "Run: npx -y summer-engine login" } });
+export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: boolean; idempotencyKey?: string; read?: boolean }): Answer {
+  const known = error instanceof OAuthError || error instanceof HostedUnreachableError;
+  const cause = known ? error.message.replace(` ${error.recovery}`, "") : error instanceof Error ? error.message : String(error);
+  const status = httpStatusOf(error);
+  const details = { was: error instanceof OAuthError ? error.code : error instanceof HostedUnreachableError ? "unreachable" : status !== undefined ? `http_${status}` : causeCode(error) ?? "no_answer" };
+  if (status === 401 || (error instanceof OAuthError && !OAUTH_UNREACHABLE.has(error.code) && error.code !== "store_access_denied") || (!known && /invalid_token/.test(cause))) {
+    // A missing store sign-in needs a sign-in; an expired or refused one needs a fresh store sign-in.
+    const fresh = !(error instanceof OAuthError && error.code === "store_login_required");
+    return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${cause}`, { next: { say: fresh ? "Run: npx -y summer-engine login --store --force" : "Run: npx -y summer-engine login" }, details });
   }
-  if (error instanceof OAuthError || error instanceof HostedUnreachableError) {
-    return errorAnswer("unavailable", `Summer's hosted server did not answer, so ${call.op} did not run: ${cause}`, { next: { say: "Try again in a minute. If it repeats, check the network." } });
+  if (status === 403 || (error instanceof OAuthError && error.code === "store_access_denied")) {
+    return errorAnswer("forbidden", `Summer's hosted server refused this account: ${cause}`, { next: { say: "Check the account in Summer Studio (for example confirm the email), then try again." }, details });
   }
-  if (call.dryRun) {
-    return errorAnswer("unavailable", `Summer's hosted server did not answer the dry run of ${call.op}: ${cause}`, { next: { say: "Try again in a minute; a dry run changes nothing." } });
+  if (status === 429) {
+    return errorAnswer("rate_limited", `Summer's hosted server asked to slow down: ${cause}`, { next: { say: "Wait a minute, then call it again." }, details });
+  }
+  const notSent = known || status === 503 || (status !== undefined && status >= 400 && status < 500) || NOT_SENT_CAUSES.has(causeCode(error) ?? "");
+  if (notSent) {
+    const rejected = status !== undefined && status >= 400 && status < 500;
+    return errorAnswer("unavailable", `Summer's hosted server did not run ${call.op}: ${cause}`, {
+      retry: rejected ? "no" : "after",
+      next: { say: rejected ? "Update Summer: npx -y summer-engine@latest, then try again." : "Try again in a minute. If it repeats, check the network." },
+      details,
+    });
+  }
+  if (call.dryRun || call.read || isReadOp(call.op)) {
+    return errorAnswer("unavailable", `Summer's hosted server did not answer ${call.op} in time: ${cause}`, { retry: "safe", next: { say: "Call it again; it only reads." }, details });
   }
   return call.idempotencyKey
     ? errorAnswer("outcome_unknown", `Summer's hosted server did not answer in time, so it is not known whether ${call.op} ran: ${cause}`, {
         retry: "same_key",
         next: { say: "Call it again with the same idempotencyKey: Summer runs a change once per key." },
+        details,
       })
     : errorAnswer("outcome_unknown", `Summer's hosted server did not answer in time, so it is not known whether ${call.op} ran: ${cause}`, {
         retry: "no",
-        next: { say: "A read can run again. For a change, check what it would have changed (or jobs.list) before you try again." },
+        next: { say: "Check what it would have changed (or jobs.list) before you try again." },
+        details,
       });
 }
 

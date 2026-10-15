@@ -170,6 +170,10 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   for (let round = 0; round < 120 && current.ok && (current.status === "running" || current.status === "needs_approval"); round++) {
     const job = current.job.id;
     const waited = await runCloud("jobs.wait", { input: { jobId: job, timeoutSeconds: 50 }, json: true, dryRun: false, wait: false }, deps);
+    // The job runs on whatever the wait answered: a wait that did not get through names it, to wait again.
+    if (!waited.ok && waited.error.code === "unavailable") {
+      return errorAnswer("unavailable", `${waited.error.message} Job ${job} is still on Summer's server.`, { retry: waited.error.retry, next: { op: "jobs.wait", input: { jobId: job } }, details: { ...waited.error.details, job } });
+    }
     if (!waited.ok || waited.status !== "done") return waited;
     const result = waited.result as { job: { state: string; result?: unknown; error?: { code: string; message: string } }; finished: boolean };
     if (!result.finished) continue;

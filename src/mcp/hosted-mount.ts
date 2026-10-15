@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { connectHostedMcp, HostedUnreachableError, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
+import { connectHostedMcp, hostedConnectFailure, HostedUnreachableError, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
@@ -83,8 +83,8 @@ function errorText(error: { code: string; message: string; recovery: string }) {
 export interface HostedLocalHook {
   /** The input schema a client lists for the tool. */
   inputSchema(tool: Tool): Tool["inputSchema"];
-  /** Runs the call; `forward` sends arguments on to the hosted tool. */
-  call(name: string, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>): Promise<Record<string, unknown>>;
+  /** Runs the call; `forward` sends arguments on to the hosted tool, `tool` is its listing (annotations included). */
+  call(name: string, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>, tool: Tool): Promise<Record<string, unknown>>;
 }
 
 export interface HostedMountOptions {
@@ -196,14 +196,12 @@ export function prepareHostedMount(
       client = await deps.connect(url, deps.token);
     } catch (error) {
       state.status = "unavailable";
-      state.error =
-        error instanceof OAuthError
-          ? { code: error.code, message: error.message.replace(` ${error.recovery}`, ""), recovery: error.recovery }
-          : {
-              code: "store_tools_unreachable",
-              message: `The hosted Summer Engine MCP did not answer: ${error instanceof Error ? error.message : String(error)}.`,
-              recovery: 'Recovery: check the network; if it says unauthorized, run "summer login --store --force". Then call summer_store_tools.',
-            };
+      const failure = hostedConnectFailure(error, 'Recovery: check the network; if it says unauthorized, run "summer login --store --force". Then call summer_store_tools.');
+      state.error = {
+        code: failure instanceof OAuthError ? failure.code : "store_tools_unreachable",
+        message: failure.message.replace(` ${failure.recovery}`, ""),
+        recovery: failure.recovery,
+      };
       appendMcpLogEvent("mcp:hosted_mount_failed", { code: state.error.code });
       showStatusTool();
       return state;
@@ -234,7 +232,7 @@ export function prepareHostedMount(
         async (args: Record<string, unknown>) => {
           try {
             const forward = (sent: Record<string, unknown>) => client.callTool({ name: tool.name, arguments: sent }) as Promise<Record<string, unknown>>;
-            return (options.local ? await options.local.call(tool.name, args, forward) : await forward(args)) as never;
+            return (options.local ? await options.local.call(tool.name, args, forward, tool) : await forward(args)) as never;
           } catch (error) {
             return errorText({
               code: "store_tool_failed",

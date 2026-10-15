@@ -462,11 +462,16 @@ function splitShape(def: EngineSplitDef, base: Shape): Shape {
  */
 export function hostedFileTools(files: FileSaver): HostedLocalHook {
   const ops = new Map([...TAKES_OUT].map((op) => [mcpNameOf(op), op]));
-  const sent = async (name: string, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>) => {
+  const sent = async (tool: Tool, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>) => {
     try {
       return await forward(args);
     } catch (error) {
-      const failure = hostedCallFailure(error, { op: ops.get(name) ?? name, dryRun: args.dryRun === true, idempotencyKey: typeof args.idempotencyKey === "string" ? args.idempotencyKey : undefined });
+      const failure = hostedCallFailure(error, {
+        op: ops.get(tool.name) ?? tool.name,
+        dryRun: args.dryRun === true,
+        idempotencyKey: typeof args.idempotencyKey === "string" ? args.idempotencyKey : undefined,
+        read: tool.annotations?.readOnlyHint === true,
+      });
       return toolResult(failure) as Record<string, unknown>;
     }
   };
@@ -475,11 +480,11 @@ export function hostedFileTools(files: FileSaver): HostedLocalHook {
       const op = ops.get(tool.name);
       return op ? (withOutField(op, tool.inputSchema) as Tool["inputSchema"]) : tool.inputSchema;
     },
-    call: async (name, args, forward) => {
+    call: async (name, args, forward, tool) => {
       const op = ops.get(name);
-      if (!op) return sent(name, args, forward);
+      if (!op) return sent(tool, args, forward);
       const { input, out } = files.take(op, args);
-      const raw = await sent(name, input, forward);
+      const raw = await sent(tool, input, forward);
       const answer = answerOfHosted(raw);
       const saved = await files.finish(op, answer, out);
       if (saved === answer) return raw;

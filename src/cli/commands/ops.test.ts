@@ -8,6 +8,7 @@ import { FileSaver } from "../../core/ops/save-files.js";
 import { callHostedV4 } from "../../core/ops/cloud.js";
 import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
 import { OAuthError } from "../../core/oauth.js";
+import { StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 
@@ -124,6 +125,18 @@ describe("a hosted call that fails", () => {
     const cutOff = new Error("Request timed out");
     const client = { callTool: async () => { throw cutOff; }, close: async () => undefined } as unknown as HostedClient;
     await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => client })).rejects.toBe(cutOff);
+    const revoked = new StreamableHTTPError(401, 'Error POSTing to endpoint: {"error":"invalid_token"}');
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => { throw revoked; } })).rejects.toMatchObject({ name: "OAuthError", code: "oauth_token_invalid" });
+  });
+
+  it("--wait keeps the job when a wait does not get through, so the paid job is not started again", async () => {
+    const hosted = vi
+      .fn()
+      .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:8", state: "queued" } }))
+      .mockRejectedValueOnce(new Error("MCP error -32001: Request timed out"));
+    const d = deps(hosted);
+    expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree"}', "--wait", "--json"], d)).toBe(1);
+    expect(JSON.parse(d.err[d.err.length - 1])).toMatchObject({ ok: false, error: { code: "unavailable", next: { op: "jobs.wait", input: { jobId: "gen:8" } }, details: { job: "gen:8" } } });
   });
 });
 

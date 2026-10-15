@@ -10,6 +10,8 @@ import { resolveToolSelection } from "./tool-surface.js";
 import { hostedFileTools, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
 import { withV4Surface } from "../core/ops/cloud.js";
+import { HostedUnreachableError } from "../core/hosted-mcp.js";
+import { OAuthError } from "../core/oauth.js";
 
 let root = "";
 
@@ -169,17 +171,74 @@ describe("v4, engine profile", () => {
   });
 
   it("still searches the local operations when the hosted server is not reachable", async () => {
-    const offline: CloudCaller & { call: ReturnType<typeof vi.fn> } = { call: vi.fn(async () => { throw new Error("not signed in"); }) };
+    const offline: CloudCaller & { call: ReturnType<typeof vi.fn> } = {
+      call: vi.fn(async () => {
+        throw new OAuthError("store_login_required", "Not signed in to the store.", 'Recovery: run "summer login".');
+      }),
+    };
     const { client, close } = await session("engine", "v4", offline);
     try {
       const answer = answerOf(await client.callTool({ name: "summer_search", arguments: { query: "add a node" } }));
       expect(answer.result.items[0].name).toBe("engine.add_node");
-      expect(answer.warnings[0]).toContain("not signed in");
+      expect(answer.warnings[0]).toContain("Not signed in");
       const call = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "games.list" } }));
       expect(call).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
     } finally {
       await close();
     }
+  });
+});
+
+describe("v4, a hosted call that fails", () => {
+  const failing = (error: unknown): CloudCaller => ({
+    call: vi.fn(async () => {
+      throw error;
+    }),
+  });
+  const callWith = async (cloud: CloudCaller, args: Record<string, unknown>) => {
+    const { client, close } = await session("engine", "v4", cloud);
+    try {
+      return answerOf(await client.callTool({ name: "summer_call", arguments: args }));
+    } finally {
+      await close();
+    }
+  };
+
+  it("says unavailable, not 'sign in', when the server cannot be reached: nothing was sent", async () => {
+    const answer = await callWith(failing(new HostedUnreachableError("The hosted Summer Engine MCP did not answer: fetch failed.", "Recovery: check the network.")), { op: "games.list" });
+    expect(answer).toMatchObject({ ok: false, error: { code: "unavailable", retry: "after" } });
+    const network = await callWith(failing(new OAuthError("oauth_network_failed", "The sign-in server did not answer.", "Recovery: check your network and retry.")), { op: "games.list" });
+    expect(network.error.code).toBe("unavailable");
+  });
+
+  it("says not_signed_in only for a sign-in problem", async () => {
+    const answer = await callWith(failing(new OAuthError("store_login_expired", "The store sign-in expired.", 'Recovery: run "summer login".')), { op: "games.list" });
+    expect(answer).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login" } } });
+    const refused = await callWith(failing(new Error("Error POSTing to endpoint (HTTP 401): Unauthorized")), { op: "games.list" });
+    expect(refused.error.code).toBe("not_signed_in");
+  });
+
+  it("says outcome_unknown for a call cut off after it was sent: retry only with the same key", async () => {
+    const timeout = new Error("MCP error -32001: Request timed out");
+    const keyed = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" }, idempotencyKey: "k1" });
+    expect(keyed).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
+    const unkeyed = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" } });
+    expect(unkeyed).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "no" } });
+    const dryRun = await callWith(failing(timeout), { op: "assets.generate_image", input: { prompt: "a barrel" }, dryRun: true });
+    expect(dryRun.error.code).toBe("unavailable");
+  });
+
+  it("answers a failed hosted direct tool in the one shape, never with a plain retry", async () => {
+    const hook = hostedFileTools(new FileSaver({ saveByDefault: false }));
+    const result = await hook.call("summer_assets_generate_3d", { prompt: "a chest", idempotencyKey: "k2" }, async () => {
+      throw new Error("fetch failed");
+    });
+    expect(result.isError).toBe(true);
+    expect(answerOf(result)).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
+    const read = await hook.call("summer_games_list", {}, async () => {
+      throw new HostedUnreachableError("The hosted Summer Engine MCP did not answer.", "Recovery: check the network.");
+    });
+    expect(answerOf(read).error.code).toBe("unavailable");
   });
 });
 

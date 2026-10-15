@@ -1,5 +1,5 @@
-import { defaultHostedConnectDependencies, withHostedMcp, type HostedConnectDependencies } from "../hosted-mcp.js";
-import { resolveMcpResourceUrl } from "../oauth.js";
+import { defaultHostedConnectDependencies, HostedUnreachableError, type HostedClient, type HostedConnectDependencies } from "../hosted-mcp.js";
+import { OAuthError, resolveMcpResourceUrl } from "../oauth.js";
 import { localEntries, localInputSchema, type CatalogEntry } from "./catalog.js";
 import { errorAnswer, isLocalOp, type Answer } from "./contract.js";
 import { withOutField } from "./save-files.js";
@@ -30,13 +30,63 @@ export const v4HostedDependencies: HostedConnectDependencies = {
   url: v4HostedUrl(),
 };
 
-/** One call to a tool on the hosted v4 surface (the CLI's path; the MCP uses its mounted client). */
+/**
+ * One call to a tool on the hosted v4 surface (the CLI's path; the MCP uses
+ * its mounted client). A failure before the call is sent is an OAuthError
+ * (sign-in) or a HostedUnreachableError; one after it may have run.
+ */
 export async function callHostedV4(
   name: string,
   args: Record<string, unknown>,
   deps: HostedConnectDependencies = v4HostedDependencies
 ): Promise<Record<string, unknown>> {
-  return withHostedMcp((client) => client.callTool({ name, arguments: args }), deps);
+  let client: HostedClient;
+  try {
+    const url = deps.url();
+    await deps.token();
+    client = await deps.connect(url, deps.token);
+  } catch (error) {
+    if (error instanceof OAuthError) throw error;
+    throw new HostedUnreachableError(`Summer's hosted server did not answer: ${error instanceof Error ? error.message : String(error)}.`, "Recovery: check the network and try again.");
+  }
+  try {
+    return await client.callTool({ name, arguments: args });
+  } finally {
+    await client.close?.().catch(() => undefined);
+  }
+}
+
+/** OAuth failures that mean a server did not answer, not that the person must sign in again. */
+const OAUTH_UNREACHABLE = new Set(["oauth_network_failed", "oauth_discovery_failed"]);
+
+/**
+ * The one answer for a hosted call that threw. A sign-in problem is
+ * not_signed_in. Nothing sent (no connection) is unavailable: try again
+ * later. A call cut off after it was sent may have run, so it is
+ * outcome_unknown: retried only with the same idempotencyKey, else checked
+ * first. A dry run changes nothing, so a cut-off one is unavailable.
+ */
+export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: boolean; idempotencyKey?: string }): Answer {
+  const cause = error instanceof Error ? error.message : String(error);
+  const unauthorized = !(error instanceof HostedUnreachableError) && /\b401\b|unauthori[sz]ed/i.test(cause);
+  if ((error instanceof OAuthError && !OAUTH_UNREACHABLE.has(error.code)) || unauthorized) {
+    return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${cause}`, { next: { say: "Run: npx -y summer-engine login" } });
+  }
+  if (error instanceof OAuthError || error instanceof HostedUnreachableError) {
+    return errorAnswer("unavailable", `Summer's hosted server did not answer, so ${call.op} did not run: ${cause}`, { next: { say: "Try again in a minute. If it repeats, check the network." } });
+  }
+  if (call.dryRun) {
+    return errorAnswer("unavailable", `Summer's hosted server did not answer the dry run of ${call.op}: ${cause}`, { next: { say: "Try again in a minute; a dry run changes nothing." } });
+  }
+  return call.idempotencyKey
+    ? errorAnswer("outcome_unknown", `Summer's hosted server did not answer in time, so it is not known whether ${call.op} ran: ${cause}`, {
+        retry: "same_key",
+        next: { say: "Call it again with the same idempotencyKey: Summer runs a change once per key." },
+      })
+    : errorAnswer("outcome_unknown", `Summer's hosted server did not answer in time, so it is not known whether ${call.op} ran: ${cause}`, {
+        retry: "no",
+        next: { say: "A read can run again. For a change, check what it would have changed (or jobs.list) before you try again." },
+      });
 }
 
 /** The answer a hosted v4 tool result carries (its JSON text), or the one error shape. */

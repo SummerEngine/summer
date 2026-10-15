@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { formatAnswer, parseCallFlags, runOpFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
+import { callHostedV4 } from "../../core/ops/cloud.js";
+import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
+import { OAuthError } from "../../core/oauth.js";
 
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 
@@ -90,6 +93,37 @@ describe("summer <area> <action>", () => {
   it("refuses a name that is not an operation", async () => {
     const d = deps();
     expect(await runOpFromCli("Games.List", [], d)).toBe(1);
+  });
+});
+
+describe("a hosted call that fails", () => {
+  const failing = (error: unknown) =>
+    deps(
+      vi.fn(async () => {
+        throw error;
+      })
+    );
+  const answerOf = async (error: unknown, args: string[]) => {
+    const d = failing(error);
+    expect(await runOpFromCli("assets.generate_image", [...args, "--json"], d)).not.toBe(0);
+    return JSON.parse(d.err[d.err.length - 1]);
+  };
+
+  it("says not_signed_in for a sign-in problem, unavailable when nothing was sent, outcome_unknown when cut off", async () => {
+    expect((await answerOf(new OAuthError("store_login_required", "Not signed in.", 'Recovery: run "summer login".'), ["--prompt", "a barrel"])).error.code).toBe("not_signed_in");
+    expect((await answerOf(new HostedUnreachableError("Summer's hosted server did not answer: fetch failed.", "Recovery: check the network."), ["--prompt", "a barrel"])).error).toMatchObject({ code: "unavailable", retry: "after" });
+    expect((await answerOf(new Error("Request timed out"), ["--prompt", "a barrel", "--idempotency-key", "k1"])).error).toMatchObject({ code: "outcome_unknown", retry: "same_key" });
+    expect((await answerOf(new Error("Request timed out"), ["--prompt", "a barrel"])).error).toMatchObject({ code: "outcome_unknown", retry: "no" });
+  });
+
+  it("callHostedV4 tells a connection that never opened from a call cut off after it was sent", async () => {
+    const base = { url: () => "https://mcp.example.com/mcp?surface=v4", token: async () => "t" };
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => { throw new TypeError("fetch failed"); } })).rejects.toBeInstanceOf(HostedUnreachableError);
+    const signIn = new OAuthError("store_login_required", "Not signed in.", 'Recovery: run "summer login".');
+    await expect(callHostedV4("summer_call", {}, { ...base, token: async () => { throw signIn; }, connect: async () => ({}) as HostedClient })).rejects.toBe(signIn);
+    const cutOff = new Error("Request timed out");
+    const client = { callTool: async () => { throw cutOff; }, close: async () => undefined } as unknown as HostedClient;
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => client })).rejects.toBe(cutOff);
   });
 });
 

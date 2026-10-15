@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { connectHostedMcp, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
+import { connectHostedMcp, HostedUnreachableError, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
@@ -319,7 +319,9 @@ export function prepareHostedMount(
     const after = await mount();
     if (!connected) {
       const error = after.error ?? { code: "store_tools_unavailable", message: "The hosted Summer server is not connected.", recovery: 'Recovery: run "summer login".' };
-      throw new Error(`${error.message} ${error.recovery}`);
+      // Nothing was sent. A sign-in failure keeps its OAuth code; anything else is the server not answering.
+      if (error.code === "store_tools_unreachable" || error.code === "store_tools_unavailable") throw new HostedUnreachableError(error.message, error.recovery);
+      throw new OAuthError(error.code, error.message, error.recovery);
     }
     return connected.callTool({ name, arguments: args });
   }

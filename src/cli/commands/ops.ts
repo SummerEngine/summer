@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
-import { answerOfHosted, callHostedV4, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
+import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
@@ -151,7 +151,7 @@ async function runCloud(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
       await deps.hosted("summer_call", { op, input: call.input, ...(call.dryRun ? { dryRun: true } : {}), ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}) })
     );
   } catch (error) {
-    return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${error instanceof Error ? error.message : String(error)}`, { next: { say: "Run: npx -y summer-engine login" } });
+    return hostedCallFailure(error, { op, dryRun: call.dryRun, idempotencyKey: call.idempotencyKey });
   }
 }
 

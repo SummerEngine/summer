@@ -74,6 +74,17 @@ export const defaultHostedConnectDependencies: HostedConnectDependencies = {
   connect: connectHostedMcp,
 };
 
+/** The hosted server could not be reached, so no call was sent (a sign-in problem is an OAuthError instead). */
+export class HostedUnreachableError extends Error {
+  constructor(
+    message: string,
+    readonly recovery: string
+  ) {
+    super(`${message} ${recovery}`);
+    this.name = "HostedUnreachableError";
+  }
+}
+
 /** True when this machine has a store sign-in on disk (no network). */
 export async function hasStoreSignIn(): Promise<boolean> {
   return (await readStoredOAuthToken()) !== null;

@@ -9,7 +9,8 @@
  * (core/oauth.ts): it is a second grant with its own recovery
  * (`summer login --store`).
  *
- * The codes are the ones the 4.0 tools use: the closed list in SPEC-operations section 5.5 (Errors).
+ * The codes are the ones the 4.0 tools use (one closed list, shared with the
+ * hosted Summer MCP), so 4.0 changes where they sit, not their names.
  */
 
 export type SummerErrorCode = "engine_not_running" | "not_signed_in" | "no_credits" | "unavailable";

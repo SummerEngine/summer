@@ -25,41 +25,54 @@ Outdoor and indoor lighting setups for 3D scenes.
 
 ### 1. Directional Light (Sun)
 
-Every tool below takes a **required** `scenePath`: the exact `res://` scene to
-mutate (get it from `summer_get_project_context`). The snippets use
-`res://main.tscn`; a call without `scenePath` is rejected by the tool schema.
+A light is one node plus a few properties: build it with one `summer_run_script`
+call. Every scene tool takes a **required** `scenePath`, the exact `res://` scene
+to change (get it from `summer_get_project_context`); the snippets use
+`res://main.tscn`. One property change on an existing light is one
+`summer_set_prop`.
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="DirectionalLight3D", name="Sun")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="rotation_degrees", value="Vector3(-45, 30, 0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="light_energy", value="1.0")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="shadow_enabled", value="true")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="light_color", value="Color(1, 0.95, 0.9, 1)")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var world = ctx.get_or_create("Node3D", "World")
+    ctx.add_node("DirectionalLight3D", "Sun", world, {
+        "rotation_degrees": Vector3(-45, 30, 0),
+        "light_energy": 1.0,
+        "shadow_enabled": true,
+        "light_color": Color(1, 0.95, 0.9, 1),
+    })
+    ctx.save_scene()
+""")
 ```
 
 Warm sunlight: `Color(1, 0.95, 0.9, 1)`. Cool moonlight: `Color(0.8, 0.85, 1, 1)`.
 
 ### 2. WorldEnvironment (Sky + Ambient)
 
-```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="WorldEnvironment", name="WorldEnvironment")
-summer_set_prop(scenePath="res://main.tscn", path="./World/WorldEnvironment", key="environment", value="Environment")
-```
-
-Then configure the Environment's sub-properties. The Environment resource has:
+The Environment resource has:
 - `background_mode` — 2 for sky, 1 for color, 3 for canvas (`Environment.BG_SKY` = 2, `BG_COLOR` = 1, `BG_CANVAS` = 3; default is 0, `BG_CLEAR_COLOR`)
 - `sky` — Sky resource (ProceduralSkyMaterial or PhysicalSkyMaterial)
 - `ambient_light_source` — AMBIENT_SOURCE_SKY or AMBIENT_SOURCE_COLOR
 - `ambient_light_color`
 - `tonemap_mode`
 
-For a simple procedural sky:
+A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (or `PhysicalSkyMaterial`) in its `sky_material`. `summer_set_resource_property` only sets properties on a resource that already exists, so build the node, the Environment, the Sky and its material in one script:
 
 ```
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/WorldEnvironment", resourceProperty="environment", subProperty="background_mode", value="2")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var env := Environment.new()
+    env.background_mode = Environment.BG_SKY
+    env.sky = Sky.new()
+    env.sky.sky_material = ProceduralSkyMaterial.new()
+    env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+    env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    ctx.add_node("WorldEnvironment", "WorldEnvironment", ctx.find("World"), {"environment": env})
+    ctx.save_scene()
+""")
 ```
 
-A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (or `PhysicalSkyMaterial`) in its `sky_material`. `summer_set_resource_property` only sets properties on a resource that already exists, so create the `Sky` and its material in one `summer_run_script` call.
+Later, one value on that Environment is one `summer_set_resource_property` (`resourceProperty="environment"`, `subProperty="background_mode"`).
 
 **Simpler path:** start from the `3d-basic` template, which already has a sky, and copy its structure.
 
@@ -68,22 +81,34 @@ A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (
 A second, weaker directional or omni for shadow fill:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="DirectionalLight3D", name="FillLight")
-summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="rotation_degrees", value="Vector3(-30, -120, 0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="light_energy", value="0.3")
-summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="shadow_enabled", value="false")
-summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="light_color", value="Color(0.7, 0.8, 1, 1)")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("DirectionalLight3D", "FillLight", ctx.find("World"), {
+        "rotation_degrees": Vector3(-30, -120, 0),
+        "light_energy": 0.3,
+        "shadow_enabled": false,
+        "light_color": Color(0.7, 0.8, 1, 1),
+    })
+    ctx.save_scene()
+""")
 ```
 
 ## Indoor / Point Lights
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="OmniLight3D", name="Lamp")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="position", value="Vector3(2, 3, 2)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="light_energy", value="0.8")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="light_color", value="Color(1, 0.9, 0.7, 1)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="omni_range", value="8")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("OmniLight3D", "Lamp", ctx.find("World"), {
+        "position": Vector3(2, 3, 2),
+        "light_energy": 0.8,
+        "light_color": Color(1, 0.9, 0.7, 1),
+        "omni_range": 8.0,
+    })
+    ctx.save_scene()
+""")
 ```
+
+Many lamps (a street, a corridor) are a loop in the same script, not one call per lamp.
 
 ## Property Reference
 

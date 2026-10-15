@@ -126,13 +126,18 @@ One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loo
 | `AudioStreamPlayer2D` | 2D positional |
 | `AudioStreamPlayer3D` | 3D positional (weapon swing in the world, footstep) |
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is `key`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./Player", type="AudioStreamPlayer3D", name="SwingSFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stream", value="res://audio/sfx/sword_swing_01.wav")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer3D", "SwingSFX", ctx.find("Player"), {
+        "stream": load("res://audio/sfx/sword_swing_01.wav"),
+        "bus": "SFX",
+        "max_distance": 25.0,
+    })
+    ctx.save_scene()
+""")
 ```
 
 The bus must match the bible (`SFX`, `UI`, `Ambient`, …); the default bus is `Master`. If the bus does not exist, run `/audio-direction`.

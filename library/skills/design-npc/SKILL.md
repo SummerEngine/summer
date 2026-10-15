@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs
 user-invocable: true
-allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_input_map_bind
+allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_input_map_bind
 paths: ["**/*.gd", "**/*.tscn"]
 ---
 
@@ -179,30 +179,31 @@ Identify where the NPC will live (an `Enemies` parent, or directly under World).
 
 **Preferred (Summer MCP):**
 
-Every tool below takes a required `scenePath` naming the exact `res://` scene;
-a call without it is rejected by the tool schema. Better still, send the whole block as one `summer_batch(scenePath=..., ops=[...])` so
-the user can undo the enemy with a single Ctrl+Z.
+One script builds the whole enemy; `scenePath` names the exact `res://` scene,
+and the run is one undo step, so one Ctrl+Z removes the enemy:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies", type="CharacterBody3D", name="Enemy")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="CollisionShape3D", name="Body")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="MeshInstance3D", name="Mesh")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="Area3D", name="Vision")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy/Vision", type="CollisionShape3D", name="VisionShape")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="RayCast3D", name="Sight")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var enemy = ctx.add_node("CharacterBody3D", "Enemy", ctx.find("Enemies"))
+    ctx.add_node("CollisionShape3D", "Body", enemy, {"shape": CapsuleShape3D.new()})
+    ctx.add_node("MeshInstance3D", "Mesh", enemy, {"mesh": CapsuleMesh.new()})
+    var vision = ctx.add_node("Area3D", "Vision", enemy)
+    var sight_sphere = SphereShape3D.new()
+    sight_sphere.radius = 12.0
+    ctx.add_node("CollisionShape3D", "VisionShape", vision, {"shape": sight_sphere})
+    ctx.add_node("RayCast3D", "Sight", enemy, {"enabled": true, "target_position": Vector3(0, 0, -12)})
+    ctx.save_scene()
+""")
 ```
 
-Give the Vision area its sphere. Either form works — a class-name string embeds
-the resource in the scene, a `res://` path reuses a shared one. Prefer the shared
-`.tres` when several enemy archetypes want the same sight radius:
+The script embeds the sight sphere in the scene. When several enemy archetypes
+want the same sight radius, share one file instead:
+`{"shape": load("res://shapes/vision_sphere.tres")}`. Tuning one value later is
+one call:
 
 ```
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="res://shapes/vision_sphere.tres")
-# or, embedded, then tune it:
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="SphereShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enemies/Enemy/Vision/VisionShape", resourceProperty="shape", subProperty="radius", value="12.0")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enemies/Enemy/Vision/VisionShape", resourceProperty="shape", subProperty="radius", value="14.0")
 ```
 
 `summer_set_resource_property` works against scene-embedded (`[sub_resource]`)
@@ -223,9 +224,7 @@ summer_connect_signal(scenePath="res://main.tscn", emitter="./World/Enemies/Enem
 ```
 
 The parameters are `scenePath`, `emitter`, `signal`, `receiver`, `method`. There
-is no `from` / `to`; those spellings fail schema validation. The same required
-`scenePath` applies to `summer_add_node`, `summer_set_prop` and
-`summer_save_scene` in the block above.
+is no `from` / `to`; those spellings fail schema validation.
 
 **Fallback (no MCP):** write the scene as `.tscn` text. Ask the user to paste their existing scene first, then propose a unified diff.
 

@@ -125,19 +125,24 @@ ffmpeg -i title_screen_bg.mp4 -c:v libtheora -q:v 8 -an title_screen_bg.ogv
 summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/loops/title_screen_bg.ogv")
 ```
 
-Then wire it. Every scene-mutating tool takes an explicit `scenePath`, and `summer_set_prop`'s property argument is named `key`, not `property`:
+Then wire it in one script. `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://ui/title_screen.tscn", parent=".", type="VideoStreamPlayer", name="BackgroundLoop")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="stream", value="res://assets/video/loops/title_screen_bg.ogv")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="autoplay", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="loop", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="expand", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="anchors_preset", value=15)
-summer_save_scene(scenePath="res://ui/title_screen.tscn")
+summer_run_script(scenePath="res://ui/title_screen.tscn", source="""
+func run(ctx):
+    var loop_player = ctx.add_node("VideoStreamPlayer", "BackgroundLoop", null, {
+        "stream": load("res://assets/video/loops/title_screen_bg.ogv"),
+        "autoplay": true,
+        "loop": true,
+        "expand": true,
+    })
+    loop_player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)   # the loop fills the menu
+    ctx.get_scene_root().move_child(loop_player, 0)   # drawn first: the menu draws on top
+    ctx.save_scene()
+""")
 ```
 
-Anchors preset 15 is "full rect" — the loop fills the menu. Place the logo and menu buttons as children *above* the `VideoStreamPlayer` in the tree (Controls draw in tree order; later siblings render on top).
+Controls draw in tree order and later siblings render on top, so the logo and menu buttons come after the `VideoStreamPlayer` in the tree.
 
 ### 7. Mute the audio track
 

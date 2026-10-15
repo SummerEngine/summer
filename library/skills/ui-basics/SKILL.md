@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ui-and-ux
 user-invocable: false
-allowed-tools: Read Grep summer_add_node summer_set_prop summer_connect_signal summer_save_scene
+allowed-tools: Read Grep summer_run_script summer_add_node summer_set_prop summer_connect_signal summer_save_scene
 paths: ["**/*.tscn", "**/*.gd"]
 ---
 
@@ -40,42 +40,47 @@ Control or CanvasLayer (root)
 
 ## Basic Menu
 
-```
-summer_add_node(scenePath="res://main.tscn", parent="./", type="Control", name="MainMenu")
-summer_add_node(scenePath="res://main.tscn", parent="./MainMenu", type="MarginContainer", name="Margin")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin", key="anchors_preset", value="15")  # Full rect
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin", key="theme_override_constants/margin_left", value="50")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin", key="theme_override_constants/margin_right", value="50")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin", key="theme_override_constants/margin_top", value="50")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin", key="theme_override_constants/margin_bottom", value="50")
+A menu is a dozen nodes: build it in one `summer_run_script` call (one undo
+step), never as a chain of `summer_add_node` / `summer_set_prop` calls.
 
-summer_add_node(scenePath="res://main.tscn", parent="./MainMenu/Margin", type="VBoxContainer", name="VBox")
-summer_add_node(scenePath="res://main.tscn", parent="./MainMenu/Margin/VBox", type="Label", name="Title")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin/VBox/Title", key="text", value="My Game")
-summer_add_node(scenePath="res://main.tscn", parent="./MainMenu/Margin/VBox", type="Button", name="StartButton")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin/VBox/StartButton", key="text", value="Start Game")
-summer_add_node(scenePath="res://main.tscn", parent="./MainMenu/Margin/VBox", type="Button", name="QuitButton")
-summer_set_prop(scenePath="res://main.tscn", path="./MainMenu/Margin/VBox/QuitButton", key="text", value="Quit")
+```
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var menu = ctx.add_node("Control", "MainMenu")
+    menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    var margin = ctx.add_node("MarginContainer", "Margin", menu)
+    margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+        margin.add_theme_constant_override(side, 50)
+    var column = ctx.add_node("VBoxContainer", "VBox", margin)
+    ctx.add_node("Label", "Title", column, {"text": "My Game"})
+    ctx.add_node("Button", "StartButton", column, {"text": "Start Game"})
+    ctx.add_node("Button", "QuitButton", column, {"text": "Quit"})
+    ctx.save_scene()
+""")
 ```
 
-For nested theme overrides, use `summer_set_resource_property` if the property
-is on a resource. For `theme_override_constants/margin_left`, inspect the live
-node or the upstream API reference matching the current Summer technical base.
-Some constants use `add_theme_constant_override`.
+Container margins are theme constants, not plain properties: set them with
+`add_theme_constant_override` as above. `set_anchors_and_offsets_preset` pins
+a Control the way the editor's layout menu does.
 
 ## HUD (Health Bar)
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./", type="CanvasLayer", name="HUD")
-summer_add_node(scenePath="res://main.tscn", parent="./HUD", type="MarginContainer", name="TopLeft")
-summer_set_prop(scenePath="res://main.tscn", path="./HUD/TopLeft", key="anchors_preset", value="0")  # Top-left is 0; 1 is Top-right
-summer_add_node(scenePath="res://main.tscn", parent="./HUD/TopLeft", type="HBoxContainer", name="HealthContainer")
-summer_add_node(scenePath="res://main.tscn", parent="./HUD/TopLeft/HealthContainer", type="Label", name="HealthLabel")
-summer_set_prop(scenePath="res://main.tscn", path="./HUD/TopLeft/HealthContainer/HealthLabel", key="text", value="Health:")
-summer_add_node(scenePath="res://main.tscn", parent="./HUD/TopLeft/HealthContainer", type="ProgressBar", name="HealthBar")
-summer_set_prop(scenePath="res://main.tscn", path="./HUD/TopLeft/HealthContainer/HealthBar", key="max_value", value="100")
-summer_set_prop(scenePath="res://main.tscn", path="./HUD/TopLeft/HealthContainer/HealthBar", key="value", value="100")
-summer_set_prop(scenePath="res://main.tscn", path="./HUD/TopLeft/HealthContainer/HealthBar", key="size", value="Vector2(200, 20)")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var hud = ctx.add_node("CanvasLayer", "HUD")
+    var top_left = ctx.add_node("MarginContainer", "TopLeft", hud)
+    top_left.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+    var row = ctx.add_node("HBoxContainer", "HealthContainer", top_left)
+    ctx.add_node("Label", "HealthLabel", row, {"text": "Health:"})
+    ctx.add_node("ProgressBar", "HealthBar", row, {
+        "max_value": 100.0,
+        "value": 100.0,
+        "custom_minimum_size": Vector2(200, 20),   # a container sets size; ask for a minimum
+    })
+    ctx.save_scene()
+""")
 ```
 
 ProgressBar uses `value` and `max_value` for the fill. Update `value` from a script when health changes.
@@ -102,8 +107,8 @@ Wire the `pressed` signal to a handler:
 summer_connect_signal(scenePath="res://main.tscn", emitter="./MainMenu/Margin/VBox/StartButton", signal="pressed", receiver="./MainMenu", method="_on_start_pressed")
 ```
 
-`scenePath` is required on every scene-mutating tool in this skill
-(`summer_add_node`, `summer_set_prop`, `summer_connect_signal`,
+`scenePath` is required on every scene tool in this skill
+(`summer_run_script`, `summer_set_prop`, `summer_connect_signal`,
 `summer_save_scene`); the examples use `res://main.tscn`. A call without it is
 rejected before it reaches the engine.
 

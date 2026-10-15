@@ -51,7 +51,7 @@ engine's own version string. You can write game code in either:
   idioms. Confirm that the user wants C# before producing it; switching
   languages mid-project is painful.
 
-Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`. Drive the engine through `summer_*` tools — do not hand-edit `.tscn` files; the editor holds in-memory state that diverges from disk.
+Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`. Drive the engine through `summer_*` tools — do not hand-edit `.tscn` files; the editor holds in-memory state that diverges from disk. 3 or more scene edits are one `summer_run_script` with `scenePath` (snapshot, script, diff, screenshot; see `scene-scripting`), not a chain of single calls.
 
 The engine must be running for MCP tools that touch scenes or diagnostics. If it isn't, the tool returns an error pointing the user at `summer run`.
 

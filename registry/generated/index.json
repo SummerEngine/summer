@@ -266,7 +266,7 @@
       "id": "skill/3d-lighting",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "8a7615702f871e52f9cda9d0cfd8e4e78e9888c7e9c95d3cf989336bc8786e91",
+      "content_hash": "642f47e5272cdf5e6a28c2f879eb81862c6afc242ab49991a43f1a0f1560b17b",
       "summary": "Light a 3D scene: sun, omni and spot lights, WorldEnvironment, sky, shadows and ambient.",
       "use_when": [
         "setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows",
@@ -300,7 +300,7 @@
       "id": "skill/adaptive-music",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "c9d94bc63399629b12100f4ae94c0dee81163a1e4b8dc1ff2d647be1e48194bf",
+      "content_hash": "bc3a29392f8a76408bcee9668d6bc7f299f1826d6e3e9c190183a5c80c7febc1",
       "summary": "Wire music stems to game state: combat, explore, boss and tension crossfades on a shared bus.",
       "use_when": [
         "wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus",
@@ -430,7 +430,7 @@
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "60ddca09e31a656dd9ffb331826ee51c89e80b12f335b1c01decf049119c7a2a",
+      "content_hash": "0812538e1cc91ca14f46e6e38b5c2823487bfda9aae60556b0acbb730e2ed429",
       "summary": "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus.",
       "use_when": [
         "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy",
@@ -459,7 +459,7 @@
       "id": "skill/animated-loop",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "d76aeba05158bb8d9439a5d5a7a0cff48c1c5fe86da9d7c0e26f0e2923d2c16e",
+      "content_hash": "c8ba22fc30189cd6a96a966fe3081dd0b9c5c95395d20571326c3d3e052275bd",
       "summary": "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -914,7 +914,7 @@
       "id": "skill/character-animation-wiring",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "632023579492db10d862142e55a1fb677f3b6f4d7148510bb88a3ad6e54fa836",
+      "content_hash": "22de521728a2cbea7249e3a160e45432f73371d58dd77c52e99d52d5669f8795",
       "summary": "Wire a rigged character end to end: real clips and bones, locomotion states, method tracks, root motion.",
       "use_when": [
         "a rigged GLB or Meshy rig with generated clips is in the scene and needs idle/walk/run wiring with blend times",
@@ -961,7 +961,7 @@
       "id": "skill/character-model",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "b6e14d45f8199ce74ae8c9b0294f864de04b7ca5e855d11e7dff3b91283a54c8",
+      "content_hash": "df53fb288730a6400f873a577250598f2e2f1d7f15d406ae957521c48d54b092",
       "summary": "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",
@@ -1087,7 +1087,7 @@
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "9c7b3895b8f3a66f1a160b8aca05ae655a81c439278d2c0615ffc684430d4cd8",
+      "content_hash": "f08f5ed5c35901f811cabe75f23b97f0e4e22685dc347db84bdc2e86d2e674dd",
       "summary": "Generate a non-interactive cutscene: a reference-locked 5-10s video shot with optional voiced dialogue.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
@@ -1394,7 +1394,7 @@
       "id": "skill/design-level",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "b9f6c0375f7a47999ebee62eb23a79373f94a301fb4c5470c99272fa2247c939",
+      "content_hash": "626ce92f5c0d43150a81f64d456f539753ae0e56e4bfc80e43b04b585ad659af",
       "summary": "Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton.",
       "use_when": [
         "designing a single level — layout, pacing, encounters, secrets, reward gating",
@@ -1470,7 +1470,7 @@
       "id": "skill/design-npc",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "bda096f781d30b24ac80244c5504e3ae7fe9a3cfa12938dc1a3203f8307daddf",
+      "content_hash": "f4d88169fe7bfb8c758a3697a035a38b8e242c690bc2ca3169871ffb91dcf70a",
       "summary": "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -1780,7 +1780,7 @@
       "id": "skill/fps-controller",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "9feaa06fab2af36282fa66a666870ef715e700495b82e34c73a91a77de93ba83",
+      "content_hash": "61fdc450098e144fc487cdf26b3b64193dac32520f5ae5cce8a0fb3105199547",
       "summary": "First-person controller: WASD, mouse look, jump, coyote time, jump buffering, air control.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -2196,7 +2196,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "f6b16d846ad17ab84cb59b1aca45782ab890c5b876e17073a054158c6b049173",
+      "content_hash": "80e7b338d95c992afb5dcaab0bed5ec25402655ad977d89358f2e50eedf18bc5",
       "summary": "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -2502,7 +2502,7 @@
       "id": "skill/music-track",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "8cbb64ea421d7c383ffc0f9a27ea84013bbfaa23ede7809ef082ab7810cf3945",
+      "content_hash": "0f16cc393d4534efb95fc699c257b832477d42ff4ec7690b73050172711d0d2f",
       "summary": "Generate a music track: game loops of 30s or more with a loop point, or linear cinematic cues.",
       "use_when": [
         "generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track",
@@ -2762,7 +2762,7 @@
       "id": "skill/procedural-animation",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "18f33d33d24a368a296535ff9eee47ec54f3004401b0a9c7b3e8a32459ec1ca7",
+      "content_hash": "d639e83ef04bb35207fef037fd804229f28215964e44e62bb8eff2ed2ec8ab8b",
       "summary": "Runtime bone changes on top of clips: head look-at, foot IK, hand grabs a prop, lean, recoil.",
       "use_when": [
         "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll",
@@ -3212,8 +3212,8 @@
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.1.1",
-      "content_hash": "f26aec2228c24ba8abd5561957fdd49eec3a090153d0b101aa2eb6751e04057f",
+      "version": "1.2.0",
+      "content_hash": "7320d562d1101461015db368bb5788825af0b874ff622501dcc552d37b0a28a5",
       "summary": "Build scenes, levels, HUDs and wiring with one editor GDScript (summer_run_script) instead of call chains.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
@@ -3268,7 +3268,7 @@
           "template/2d-platformer"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "recommended": true
     },
     {
@@ -3490,7 +3490,7 @@
       "id": "skill/sound-effect",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "23c674eda1ac1f2028bce19eeb87dc5d4e4c9578d14daf849962dc03d680540c",
+      "content_hash": "058c9ce190d3b879f3d87c9b2c49f02134141b64877bfa2768c1db5f01d6bcd9",
       "summary": "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
@@ -3531,7 +3531,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "7ab417b4a38dee3149e1bab6eb2176a3e9c410aef5a1a311f2843fb23ef0e10b",
+      "content_hash": "1c0735c6145bd97e95163bd65b460e9780f9e57954366094956f3461a73cc9d2",
       "summary": "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -4366,7 +4366,7 @@
       "id": "skill/ui-basics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "fcdbffc62d66f658b0226ee10747ba9a1ac13faf3013215429fa2e93f88369ba",
+      "content_hash": "dc82d24a806416b8a558ec478c0d3fa833f431b73cb4924ee6942176cf4dafee",
       "summary": "Build UI: HUDs, menus, health bars, dialogue boxes, Control trees, anchors, containers and themes.",
       "use_when": [
         "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
@@ -4396,7 +4396,7 @@
       "id": "skill/ui-graphics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "e239366735f1aaefd4fd0b646781101df9b5d104fe6e47e0a1d57f8e98bdf406",
+      "content_hash": "05e2034d47412060aeaf6ae5a4e21c090ed88ec7da8c008e4b8eb30202b5f56a",
       "summary": "Generate game UI art (icons, buttons, panels, frames, HUD widgets) flat, on a transparent background.",
       "use_when": [
         "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style",
@@ -4469,7 +4469,7 @@
       "id": "skill/using-summer",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "aa88d0faea5acab3bd28acf5d41be33ac8fc42c86f120299fc87da4d46f7ed0b",
+      "content_hash": "0fd1b471bdaf1f72a2192aa61c9cd3f9f9ccba71051e9fab7f2ad42dd82b4c4a",
       "summary": "Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -4516,7 +4516,7 @@
       "id": "skill/vehicle-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "74731cb84de3d5dbbb252f2104baa7eb44593c0835fd73c43c962e4e3d594419",
+      "content_hash": "2503b600f774161e207ca41218e43ea7c4d0ecf34b0c82d82bcf9a8ae9020c13",
       "summary": "Generate a hard-surface vehicle (car, spaceship, mech, boat, tank) as a static or VehicleBody3D mesh.",
       "use_when": [
         "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter",
@@ -4644,7 +4644,7 @@
       "id": "skill/vfx-dissolve",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "3eced5eeb6cafdd015945a4526a44b4118490f4b5fc2234045119565b6dfb16e",
+      "content_hash": "48ccfce786a518356738dbe3affbe9ba20552f650d9fa7d5801c47b44013bcbc",
       "summary": "Dissolve effect: a mesh burns away with a glowing edge, from a noise-threshold ShaderMaterial.",
       "use_when": [
         "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)",
@@ -4683,7 +4683,7 @@
       "id": "skill/vfx-fire",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "5fe9d0a8a0f61ec6f92d6395d9a37383b85ca6172c03caab2ffc1765c18d5c46",
+      "content_hash": "ddd13584921c84ace9b768013974163ba45e01f4c5025506adc03d4523774215",
       "summary": "Fire effect: animated flames from GPUParticles3D, a particle shader and a noise color ramp.",
       "use_when": [
         "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle",
@@ -4764,7 +4764,7 @@
       "id": "skill/vfx-lightning",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "28f721620ffe0ec4908a42b657e642b0ccfe311b675b037a81f635e12cb8037f",
+      "content_hash": "6c46cb80d126ab3e2056b8c0d82b484d13191ffd7361d863604fa688f49b4ab5",
       "summary": "Lightning bolt effect: a jagged procedural path with a glow shader, end sparks and screen shake.",
       "use_when": [
         "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam",
@@ -4803,7 +4803,7 @@
       "id": "skill/vfx-magic-glow",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "c864bd5735624396bdb936c229bf599b39b298d17c90a5306eda2ae08a901a89",
+      "content_hash": "fa58ec2a58f7717d4ad9ebd79283d5e04ad017ab6baf48cda640e8aeddb7280b",
       "summary": "Magic-glow effect: a pulsing OmniLight3D, drifting additive motes and an optional emission shader.",
       "use_when": [
         "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp",
@@ -4843,7 +4843,7 @@
       "id": "skill/vfx-muzzle-flash",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "dd4b745c81925ae3bed3af9b88b30c4765cd53ea72805dce35bb43631f73610c",
+      "content_hash": "02f88dcd291a2ab93195d540614e0205d2873a3d804cf11e5f1bb8ba153adadb",
       "summary": "Muzzle-flash effect: a one-shot ~80 ms burst at a gun barrel, from particles or a star-burst quad.",
       "use_when": [
         "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand",
@@ -4884,7 +4884,7 @@
       "id": "skill/vfx-smoke",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "b430ba5c1f91de58da2aa801127d543252451928a40deccc8f206b8225284c16",
+      "content_hash": "75c8d6040b6a07e903da01893a926a62cf5cb8deadbb0a4f901b8e79fb2243c7",
       "summary": "Smoke effect: a rising column or puff of soft particles with a noise and density falloff shader.",
       "use_when": [
         "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke",
@@ -4922,7 +4922,7 @@
       "id": "skill/vfx-water-ripple",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "410ac2535282df29cfa2d7690684b2dfedc24d35e6d761d64b20a0b3adeb62c3",
+      "content_hash": "71f0f3c1a8e54148fe35af8da2b8c996943380180ddab39b9aed2ccf2e12b1b3",
       "summary": "Water-ripple effect: animated normal-distortion ripples on a water plane or Decal, set off by impacts.",
       "use_when": [
         "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps",
@@ -4959,7 +4959,7 @@
       "id": "skill/voice-line",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "22a7322cd6451b9596ddd550c9bb48dd435bc4b8a944fa7a73e1a4ab67af4021",
+      "content_hash": "3e235905b95bbfa7680bad047dc0d7a65037eb1ca3c33782dcf659ab5c7517a3",
       "summary": "Generate voice lines (NPC barks, narrator, dialogue) with a character-to-voice choice and multi-line support.",
       "use_when": [
         "\"the NPC needs a greeting / a bark / a narrator intro read aloud\"",

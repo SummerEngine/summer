@@ -211,7 +211,7 @@ tools.
 | `tool_unhandled` | The character called a tool with no handler | Bug: add it to `tools` |
 | `limit_reached` | A cap is used up (`scope`, `resets_at`) | Fallback until `resets_at`; never retry in a loop |
 | `credits_required` | The owner's Summer account needs credits | Fallback; the owner fixes it in Studio |
-| `ai_disabled` | The owner turned Summer Router off | Fallback for the session |
+| `router_disabled` | The owner turned Summer Router off | Fallback for the session |
 | `provider_unavailable`, `rate_limited` | Short outage or too fast | Fallback for this line; retry later |
 | `moderated` | The safety filter blocked the turn | Show your own line |
 | `invalid_input` | The input does not match the schema | Bug: fix the call |

@@ -9,7 +9,7 @@ describe("character and settings validation against the bundled registry", () =>
     expect(registry.registry).toBe("summer-router");
     expect(registry.schemas.character.required).toEqual(["id", "instructions"]);
     const tags = registry.errors.map((error) => error.tag);
-    for (const tag of ["unavailable", "not_signed_in", "mic_denied", "character_not_found", "tool_unhandled", "limit_reached", "credits_required", "ai_disabled", "provider_unavailable", "moderated", "invalid_input"]) {
+    for (const tag of ["unavailable", "not_signed_in", "mic_denied", "character_not_found", "tool_unhandled", "limit_reached", "credits_required", "router_disabled", "provider_unavailable", "moderated", "invalid_input"]) {
       expect(tags).toContain(tag);
     }
     expect(JSON.stringify(registry)).not.toMatch(/price|markup|margin|cost per/i);

@@ -216,13 +216,13 @@ describe("summer router test", () => {
   it("gives the registry fix for player-facing errors and needs --say", async () => {
     const { api } = fakeApi({
       "POST games/game_1/router/characters/guard:test": () => {
-        throw new RouterApiError(403, "ai_disabled", "Summer Router is off for this game.");
+        throw new RouterApiError(403, "router_disabled", "Summer Router is off for this game.");
       },
     });
     const off = await test(context(api), { id: "guard", say: "hi" });
     expect(off.result.error).toMatchObject({
-      code: "ai_disabled",
-      docs_url: "https://docs.summerengine.com/router/errors#ai_disabled",
+      code: "router_disabled",
+      docs_url: "https://docs.summerengine.com/router/errors#router_disabled",
       studio_url: "https://www.summerengine.com/studio/store/game_1?view=all&tab=router",
     });
     expect((await test(context(api), { id: "guard" })).exitCode).toBe(2);

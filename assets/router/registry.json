@@ -91,7 +91,7 @@
       "studio_url": "https://summerengine.com/studio/credits"
     },
     {
-      "tag": "ai_disabled",
+      "tag": "router_disabled",
       "http_status": 403,
       "retryable": false,
       "fix": "Turn on Summer Router for this game in Studio or with `summer router settings`."

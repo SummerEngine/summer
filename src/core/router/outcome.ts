@@ -119,7 +119,7 @@ export function apiFailure(error: unknown, context: ApiFailureContext = {}): Rou
       studio_url:
         error.extra.studioUrl ??
         fromRegistry?.studio_url ??
-        (error.code === "owner_approval_required" || error.code === "ai_disabled" ? context.studioUrl : undefined),
+        (error.code === "owner_approval_required" || error.code === "router_disabled" ? context.studioUrl : undefined),
       request_id: error.extra.requestId,
       details: error.extra.resetsAt ? { scope: error.extra.scope, resets_at: error.extra.resetsAt } : undefined,
     },

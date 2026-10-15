@@ -91,7 +91,7 @@ export async function doctor(ctx: RouterContext, home: string = homedir()): Prom
       add(
         settings.enabled
           ? { id: "platform", status: "ok", message: `Summer Router is on for ${gameId}.` }
-          : { id: "platform", status: "warning", message: `Summer Router is off for ${gameId} (players get ai_disabled).`, fix: "The game's owner turns it on in Studio.", url: studio }
+          : { id: "platform", status: "warning", message: `Summer Router is off for ${gameId} (players get router_disabled).`, fix: "The game's owner turns it on in Studio.", url: studio }
       );
     } catch (error) {
       const code = error instanceof RouterApiError ? error.code : "error";

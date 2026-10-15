@@ -3966,7 +3966,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "5f446e341a148d6a5f87e0f84781210fc5b76aa1f47c68a7416538a4302e5637",
+      "content_hash": "471a5a7798686312f10bc256cfd6bc53f56145ee89a4410aade294eb8f5cc5fb",
       "summary": "Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",
@@ -3974,7 +3974,7 @@
         "players talk to a character with their own voice and the character talks back",
         "speech, transcription or image generation while the game runs",
         "about to put a model name, a provider SDK or an API key into a game project",
-        "running summer router (setup, character add, push, test, limits, logs, doctor) or handling Summer Router errors such as limit_reached, ai_disabled or tool_unhandled"
+        "running summer router (setup, character add, push, test, limits, logs, doctor) or handling Summer Router errors such as limit_reached, router_disabled or tool_unhandled"
       ],
       "facets": {
         "lifecycle": [

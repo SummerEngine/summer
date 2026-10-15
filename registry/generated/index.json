@@ -9117,9 +9117,9 @@
     {
       "id": "tool/run-script",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "048c174e32beef498a5a47a08580f369b1a0be94be2d3aeb33db41ad9a9a7278",
-      "summary": "Run a GDScript `func run(ctx):` inside the live editor against the open scene — one script instead of a chain of add-node/set-prop calls.",
+      "version": "1.1.0",
+      "content_hash": "2b4e77ff65a27189271839a76185f99ceb8262c68019d72f3565317ab7af320c",
+      "summary": "Run a GDScript `func run(ctx):` inside the live editor against scenePath — one script instead of a chain of add-node/set-prop calls.",
       "use_when": [
         "a change needs 3+ related ops or any computed placement (scatter, grids, procedural meshes, bulk edits)",
         "the ctx helpers (add_node, add_mesh, grid, scatter, light rig, environment) fit the job"
@@ -9152,7 +9152,7 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_run_script",
       "remote": false,
       "authority": {

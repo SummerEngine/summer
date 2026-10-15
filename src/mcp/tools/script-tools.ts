@@ -6,8 +6,8 @@ import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
-  buildRunSceneScriptOp,
 } from "../../core/capabilities/scene-script.js";
+import { runSceneScriptOn } from "../../core/capabilities/scene-script-target.js";
 
 // Re-exported so existing tests keep importing the lookup from the tool module.
 export {
@@ -20,7 +20,7 @@ export {
 export function registerScriptTools(server: McpServer): void {
   server.tool(
     "summer_run_script",
-    `Run a GDScript snippet INSIDE the live editor, against the currently OPEN scene. This is the scene-scripting workhorse: one script replaces long chains of add-node/set-prop calls, and it can compute (loops, randomness, math, procedural meshes) what individual CRUD ops cannot.
+    `Run a GDScript snippet INSIDE the live editor, against the scene named by scenePath (opened first when it is not the edited one; the person's tab comes back after the run). Without scenePath it runs against the currently OPEN scene. This is the scene-scripting workhorse: one script replaces long chains of add-node/set-prop calls, and it can compute (loops, randomness, math, procedural meshes) what individual CRUD ops cannot.
 
 SCRIPT CONTRACT — write ONLY the body below; do not add extends/@tool lines (missing ones are prepended and reported in 'normalizations'):
 
@@ -49,6 +49,10 @@ THE LOOP: summer_world_snapshot (keep snapshot_id) -> summer_run_script -> summe
 
 Returns {ok, ran, result, reports, output, errors, duration_ms, checkpoint} — newer engines add rolled_back (a runtime error rolled the whole undo action back; the scene is untouched) and budget_enforced (max_seconds was a HARD deadline; when the budget hits, the script errors with "Summer script budget exceeded" — split the work into smaller scripts, never resubmit the same oversized one). Read 'errors' even when ok — with undo:'none', a partially-failed script may have mutated the scene. If this engine build predates RunSceneScript, the result is a structured engine_lacks_op failure (nothing is sent): use summer_run_editor_script or update Summer Engine.`,
     {
+      scenePath: z
+        .string()
+        .optional()
+        .describe("The scene to run against, e.g. 'res://main.tscn'. Opened first when it is not the edited scene, then the person's tab is restored. Omit only to run against whatever scene is open."),
       source: z.string().describe(
         "GDScript source containing `func run(ctx):`. No extends/@tool line — just the function (plus any helpers)."
       ),
@@ -67,12 +71,11 @@ Returns {ok, ran, result, reports, output, errors, duration_ms, checkpoint} — 
           "Transaction mode (newer engines). 'action' (engine default): the whole run is ONE named undo action, and a mid-script runtime error rolls it back before returning (result rolled_back:true) — no half-mutated scene. 'none': v1 behavior, checkpoint only. Older engines ignore this."
         ),
     },
-    async ({ source, max_seconds, checkpoint, undo }) =>
+    async ({ scenePath, source, max_seconds, checkpoint, undo }) =>
       withEngine(async (client) => {
         const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
         if (missing) return missing;
-        const { op, timeoutMs } = buildRunSceneScriptOp({ source, max_seconds, checkpoint, undo });
-        const result = await client.executeIdentityBoundOps([op], undefined, timeoutMs);
+        const result = await runSceneScriptOn(client, { scenePath, source, max_seconds, checkpoint, undo });
         return withOldEngineHint(result, "RunSceneScript", "use summer_run_editor_script instead");
       })
   );

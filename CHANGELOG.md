@@ -11,6 +11,7 @@ The base of Summer 4.0's agent surface: one catalog of Summer operations, named 
 - **`SUMMER_SURFACE=v4 summer <area> <action> --field value`.** The CLI view of the same catalog, with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json`. It also adds `summer whoami`, `summer ops search <words>` and `summer ops describe <op>`.
 - **Official MCP Registry.** `package.json` names the server `io.github.summerengine/summer` (`mcpName`), and the generated `server.json` lists the npm package and the hosted server.
 - The per-call usage line also says which operation the call ran, the surface (`v3` or `v4`) and the profile. It never sends arguments or results.
+- **`summer_run_script` takes `scenePath` and is stable.** The script runs against the scene you name: when it is not the edited scene, Summer opens it first (on its own, never in a batch with an edit), runs the script, then opens the scene you were looking at again. If the scene cannot be opened, the script does not run. The result says what happened in `scene_target`. Without `scenePath` it runs against the open scene, as before.
 
 ## [3.9.1] - 2026-10-15
 

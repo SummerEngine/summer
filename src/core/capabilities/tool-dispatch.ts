@@ -101,8 +101,8 @@ import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
-  buildRunSceneScriptOp,
 } from "./scene-script.js";
+import { runSceneScriptOn } from "./scene-script-target.js";
 import {
   CAMERA_BOOKMARK_ACTIONS,
   CAMERA_BOOKMARK_FALLBACK,
@@ -1589,19 +1589,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene scripting ---
-  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against the open scene", true, async (args, ctx) => {
+  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against scenePath (or the open scene)", true, async (args, ctx) => {
     const client = await ctx.engine();
     const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
     if (missing) refuseMissingOp(missing);
     const undo = optStr(args, "undo");
-    const { op, timeoutMs } = buildRunSceneScriptOp({
-      source: str(args, "source"),
-      max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
-      checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
-      undo: undo === "action" || undo === "none" ? undo : undefined,
-    });
     return requireSupportedOp(
-      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      await runSceneScriptOn(client, {
+        scenePath: optStr(args, "scenePath"),
+        source: str(args, "source"),
+        max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
+        checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
+        undo: undo === "action" || undo === "none" ? undo : undefined,
+      }),
       "RunSceneScript",
       RUN_SCRIPT_FALLBACK
     );

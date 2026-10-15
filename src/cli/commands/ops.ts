@@ -185,8 +185,8 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   return current;
 }
 
-/** A value as one shell word. */
-const shellWord = (value: string) => (/^[\w./:@+=-]+$/.test(value) ? value : JSON.stringify(value));
+/** A value as one shell word: single quotes, so the shell expands nothing in it. */
+const shellWord = (value: string) => (/^[\w./:@+=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`);
 
 /** The answer for a person; `out` is the --out to keep in the printed wait command. */
 export function formatAnswer(answer: Answer, out?: string): string {

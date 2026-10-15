@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { constants } from "node:fs";
 import { copyFile, link, mkdir, open, readdir, readFile, stat, unlink } from "node:fs/promises";
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Answer } from "./contract.js";
@@ -134,6 +134,14 @@ function withWarnings(answer: Answer, warnings: string[]): Answer {
 /** A target folder, with the file name the caller gave when `out` was a file path. */
 type Target = { dir: string; file?: string };
 
+async function isFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile();
+  } catch {
+    return false;
+  }
+}
+
 async function isDirectory(path: string): Promise<boolean> {
   try {
     return (await stat(path)).isDirectory();
@@ -151,15 +159,19 @@ const allowed = (ext: string | undefined) => (ext && ALLOWED_EXTENSIONS.has(ext.
 export type LookupHost = (host: string) => Promise<Array<{ address: string }>>;
 const lookupAll: LookupHost = (host) => lookup(host, { all: true });
 
-/** Loopback, private, link-local, carrier-grade NAT, multicast and unspecified addresses. */
+/** Unspecified, loopback, private, link-local, carrier-grade NAT, benchmark, multicast, reserved and NAT64 ranges. */
+const PRIVATE_RANGES = new BlockList();
+for (const [network, prefix] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 3]] as const) {
+  PRIVATE_RANGES.addSubnet(network, prefix, "ipv4");
+}
+for (const [network, prefix] of [["::", 96], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8], ["64:ff9b::", 96], ["64:ff9b:1::", 48]] as const) {
+  PRIVATE_RANGES.addSubnet(network, prefix, "ipv6");
+}
+
+/** An address in a range a download must not reach; IPv4-mapped IPv6 forms (::ffff:7f00:1) match the IPv4 ranges. Not an address: true. */
 export function isPrivateAddress(address: string): boolean {
-  const mapped = address.toLowerCase().startsWith("::ffff:") ? address.slice(7) : address;
-  if (isIP(mapped) === 4) {
-    const [a, b] = mapped.split(".").map(Number);
-    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
-  }
-  const v6 = mapped.toLowerCase();
-  return v6 === "::" || v6 === "::1" || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6) || v6.startsWith("ff");
+  const family = isIP(address);
+  return family === 0 || PRIVATE_RANGES.check(address, family === 4 ? "ipv4" : "ipv6");
 }
 
 /** The URL, when it is https on a public host; else why not. */
@@ -217,6 +229,8 @@ type JobMemory = { out?: string; byDefault: boolean };
 /** Saves the files of generate, assets.get and jobs.wait answers; one per session (it remembers each job's `out`). */
 export class FileSaver {
   private readonly jobs = new Map<string, JobMemory>();
+  /** URL to the file a default save wrote this session: a second wait on a finished job reuses it. */
+  private readonly defaultSaves = new Map<string, string>();
 
   constructor(private readonly options: FileSaverOptions) {}
 
@@ -287,12 +301,13 @@ export class FileSaver {
     if ("error" in target) return withWarnings(answer, [target.error]);
     const copy = structuredClone(answer);
     const warnings: string[] = [];
-    const saved = new Map<string, string>();
+    // With out the caller asked for a copy there; without it, a file this session already saved is reused.
+    const saved = out ? new Map<string, string>() : this.defaultSaves;
     let first = true;
     for (const holder of holdersOf(resultOf(copy))) {
       const url = urlOf(holder)!;
       const known = saved.get(url);
-      if (known) {
+      if (known && (await isFile(known))) {
         holder.localPath = known;
         continue;
       }
@@ -368,6 +383,7 @@ export class FileSaver {
       response = await fetchFile(current.href, { redirect: "manual", signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
       const location = response.headers.get("location");
       if (response.status < 300 || response.status >= 400 || !location) break;
+      await response.body?.cancel().catch(() => undefined);
       if (hops >= MAX_REDIRECTS) throw new Error("the download redirected too many times");
       current = await publicHttps(new URL(location, current).href, lookupHost);
     }

@@ -69,3 +69,13 @@ describe("setupSkills: preview skills install by default", () => {
     expect(result.count).toBe(0);
   });
 });
+
+describe("setupSkills without --yes", () => {
+  it("says to run setup again with --yes, not an internal command", () => {
+    const result = setupSkills("claude-code", { dryRun: false, yes: false, force: false });
+    expect(result.status).toBe("planned");
+    expect(result.message).toMatch(/^Not installed\. Run the same setup command again with --yes to install 4 skills/);
+    expect(result.message).not.toContain("summer.js");
+    expect(result.command).toBeDefined();
+  });
+});

@@ -467,17 +467,91 @@ describe("buildBootDriftNotice", () => {
 });
 
 describe("refresh channel follows where this CLI came from (release review P1-3)", () => {
-  it("a CLI ahead of npm latest refreshes from next; behind or equal refreshes from latest", async () => {
+  it("a CLI ahead of npm latest refreshes from next only when next is this CLI, else from its exact version", async () => {
     const { refreshChannel, skillsRefreshCommand } = await import("./version-check.js");
-    expect(refreshChannel("3.0.0", "2.8.2")).toBe("next");
-    expect(refreshChannel("2.8.2", "2.8.2")).toBe("latest");
+    expect(refreshChannel("3.0.0", "2.8.2", "3.0.0")).toBe("next");
+    expect(refreshChannel("3.9.1", "3.8.0", "3.1.0")).toBe("3.9.1");
+    expect(refreshChannel("3.9.1", "3.8.0")).toBe("3.9.1");
+    expect(refreshChannel("2.8.2", "2.8.2", "3.1.0")).toBe("latest");
     expect(refreshChannel("2.8.0", "2.8.2")).toBe("latest");
     expect(refreshChannel("3.0.0", undefined)).toBe("latest");
     expect(skillsRefreshCommand("claude-code", null, "next")).toBe(
       "npx clear-npx-cache && npx -y summer-engine@next setup claude-code --yes --force --channel next"
     );
+    expect(skillsRefreshCommand("claude-code", null, "3.9.1")).toBe(
+      "npx clear-npx-cache && npx -y summer-engine@3.9.1 setup claude-code --yes --force --channel 3.9.1"
+    );
     expect(skillsRefreshCommand("claude-code", null)).toBe(
       "npx clear-npx-cache && npx -y summer-engine@latest setup claude-code --yes --force"
     );
+  });
+});
+
+describe("setup's default channel never pins a release older than this CLI", () => {
+  const tags = (latest: string, next?: string) => async () =>
+    ({ ok: true as const, tags: { latest, ...(next ? { next } : {}) } });
+
+  it("runs latest when this CLI is latest or behind it", async () => {
+    const { resolveDefaultChannel } = await import("./version-check.js");
+    expect(await resolveDefaultChannel("3.8.0", { fetchDistTags: tags("3.8.0", "3.1.0") })).toEqual({ channel: "latest" });
+    expect(await resolveDefaultChannel("3.7.0", { fetchDistTags: tags("3.8.0", "3.1.0") })).toEqual({ channel: "latest" });
+  });
+
+  it("runs next only when next is this exact CLI", async () => {
+    const { resolveDefaultChannel } = await import("./version-check.js");
+    const result = await resolveDefaultChannel("3.9.1", { fetchDistTags: tags("3.8.0", "3.9.1") });
+    expect(result.channel).toBe("next");
+    expect(result.note).toMatch(/summer-engine@next/);
+  });
+
+  it("pins this exact version when next lags behind it (next 3.1.0, latest 3.8.0, CLI 3.9.1)", async () => {
+    const { resolveDefaultChannel } = await import("./version-check.js");
+    const result = await resolveDefaultChannel("3.9.1", {
+      fetchDistTags: tags("3.8.0", "3.1.0"),
+      isPublished: async () => true,
+    });
+    expect(result.channel).toBe("3.9.1");
+    expect(result.note).toMatch(/summer-engine@3\.9\.1/);
+  });
+
+  it("an unpublished build runs latest and points at --local-dev", async () => {
+    const { resolveDefaultChannel } = await import("./version-check.js");
+    for (const published of [false, null]) {
+      const result = await resolveDefaultChannel("3.9.1", {
+        fetchDistTags: tags("3.8.0", "3.1.0"),
+        isPublished: async () => published,
+      });
+      expect(result.channel).toBe("latest");
+      expect(result.note).toMatch(/--local-dev/);
+    }
+  });
+
+  it("an unreachable registry means latest with no note", async () => {
+    const { resolveDefaultChannel } = await import("./version-check.js");
+    const result = await resolveDefaultChannel("3.9.1", {
+      fetchDistTags: async () => ({ ok: false as const, reason: "registry-unreachable" as const }),
+    });
+    expect(result).toEqual({ channel: "latest" });
+  });
+});
+
+describe("fetchRegistryDistTags / isRegistryVersionPublished", () => {
+  const respond = (status: number, body: unknown) =>
+    (async () => ({ ok: status < 400, status, json: async () => body })) as unknown as typeof fetch;
+
+  it("reads every string dist-tag and requires latest", async () => {
+    const { fetchRegistryDistTags } = await import("./version-check.js");
+    expect(await fetchRegistryDistTags({ fetchImpl: respond(200, { latest: "3.8.0", next: "3.1.0" }) })).toEqual({
+      ok: true,
+      tags: { latest: "3.8.0", next: "3.1.0" },
+    });
+    expect((await fetchRegistryDistTags({ fetchImpl: respond(200, { next: "3.1.0" }) })).ok).toBe(false);
+  });
+
+  it("a 404 means not published; any other failure means unknown", async () => {
+    const { isRegistryVersionPublished } = await import("./version-check.js");
+    expect(await isRegistryVersionPublished("3.9.1", { fetchImpl: respond(200, { version: "3.9.1" }) })).toBe(true);
+    expect(await isRegistryVersionPublished("3.9.1", { fetchImpl: respond(404, {}) })).toBe(false);
+    expect(await isRegistryVersionPublished("3.9.1", { fetchImpl: respond(503, {}) })).toBe(null);
   });
 });

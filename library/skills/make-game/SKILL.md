@@ -1,6 +1,6 @@
 ---
 name: make-game
-description: "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills."
+description: "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

@@ -71,6 +71,10 @@ export interface SkillRegistryEntry {
   path: string;
   /** facets.domains from resource.yaml; the first is the primary domain. Empty on old registries. */
   domains: string[];
+  /** Bulk installs and the plugin manifests take it. false = library only
+   *  (library-author tools, research digests): readable with
+   *  summer_read_library and installable by name. Absent reads as true. */
+  bundled?: boolean;
 }
 
 const packageRoot = PACKAGE_ROOT;
@@ -85,6 +89,7 @@ interface RawSkillEntry {
   status?: unknown;
   path?: unknown;
   domains?: unknown;
+  bundled?: unknown;
 }
 
 let cache: SkillRegistryEntry[] | null = null;
@@ -120,27 +125,32 @@ export function parseSkillRegistry(json: unknown): SkillRegistryEntry[] {
       status: s.status === "preview" || s.status === "deprecated" ? s.status : "stable",
       path: s.path as string,
       domains: Array.isArray(s.domains) ? s.domains.filter((d): d is string => typeof d === "string") : [],
+      bundled: s.bundled !== false,
     }));
 }
 
-/** Skills that need the engine even though they handle assets (they wire assets into a scene). */
-const ENGINE_ASSET_SKILLS = new Set([
+/** Skills that handle assets but need more than the assets profile: they wire
+ *  assets into a scene, or (store-art) make art for a Summer Games listing. */
+const NOT_ASSETS_ONLY_SKILLS = new Set([
   "instantiate-asset-pack",
   "use-widget-asset",
   "skintokens-auto-rigging",
   "fabricating-assets",
   "lumera-single-image-scene-reconstruction",
+  "store-art",
 ]);
 
 /**
  * The assets-only install (`summer setup --assets-only`, `skills install
  * --assets`): skills that make sounds, music, voices, images, models,
- * animation and video on Summer's servers, plus the session skill
- * `using-summer`. Skills that wire assets into a running engine stay out.
+ * animation and video on Summer's servers, plus `summer-assets`, the session
+ * skill for that profile. Each says what to do without Summer Engine. The
+ * engine session skill `using-summer` and skills that wire assets into a
+ * running engine stay out.
  */
 export function isAssetSkill(skill: Pick<SkillRegistryEntry, "name" | "domains">): boolean {
-  if (skill.name === "using-summer" || skill.name === "generate-motion") return true;
-  if (ENGINE_ASSET_SKILLS.has(skill.name)) return false;
+  if (skill.name === "generate-motion") return true;
+  if (NOT_ASSETS_ONLY_SKILLS.has(skill.name)) return false;
   const domains = skill.domains ?? [];
   return domains.includes("assets") || domains.includes("generate");
 }
@@ -150,7 +160,8 @@ export function isAssetSkill(skill: Pick<SkillRegistryEntry, "name" | "domains">
  * `summer setup` both use it): `stable` and `preview` skills install —
  * preview is a label ("not yet exercised in-engine by the Summer team"),
  * carried in each skill's own guidance, not a reason to hide contributed work;
- * `deprecated` never installs in bulk. `stableOnly` opts out of preview.
+ * `deprecated` never installs in bulk, and neither does a library-only skill
+ * (`bundled: false`). `stableOnly` opts out of preview.
  * The counts let the caller say how many preview skills it installed (or, with
  * stableOnly, left out) instead of printing a bare total.
  */
@@ -158,11 +169,12 @@ export function selectSkillsForBulkInstall(
   skills: readonly SkillRegistryEntry[],
   options: { recommended?: boolean; stableOnly?: boolean; assetsOnly?: boolean }
 ): { selected: SkillRegistryEntry[]; previewIncluded: number; previewSkipped: number } {
+  const bundled = skills.filter((skill) => skill.bundled !== false);
   const candidates = options.assetsOnly
-    ? skills.filter(isAssetSkill)
+    ? bundled.filter(isAssetSkill)
     : options.recommended
-      ? skills.filter((skill) => skill.recommended)
-      : [...skills];
+      ? bundled.filter((skill) => skill.recommended)
+      : bundled;
   const stableOnly = options.stableOnly === true;
   const selected = candidates.filter(
     (skill) => skill.status === "stable" || (!stableOnly && skill.status === "preview")

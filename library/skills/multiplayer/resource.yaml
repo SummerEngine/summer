@@ -1,7 +1,7 @@
 id: skill/multiplayer
 kind: skill
 version: 1.0.0
-summary: "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next."
+summary: "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next."
 use_when:
   - "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game"
   - "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby"

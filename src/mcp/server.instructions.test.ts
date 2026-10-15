@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { SUMMER_MCP_ASSETS_INSTRUCTIONS, SUMMER_MCP_INSTRUCTIONS, createMcpServer } from "./server.js";
+import { getSkillRegistry, selectSkillsForBulkInstall } from "../core/skills-registry.js";
 import { resolveToolSelection } from "./tool-surface.js";
 
 describe("MCP server instructions (initialize response)", () => {
@@ -53,6 +54,44 @@ describe("MCP server instructions (initialize response)", () => {
       const names = new Set((await client.listTools()).tools.map((tool) => tool.name));
       const named = SUMMER_MCP_ASSETS_INSTRUCTIONS.match(/summer_[a-z0-9_]+/g) ?? [];
       expect(named.filter((name) => !names.has(name))).toEqual([]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("gives the assets profile a task plan and playbook that route only through its own tools and skills", async () => {
+    const { server } = createMcpServer(resolveToolSelection({ profile: "assets" }, {}));
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "summer-instructions-test", version: "1.0.0" });
+    await server.connect(serverTransport);
+    try {
+      await client.connect(clientTransport);
+      const names = new Set((await client.listTools()).tools.map((tool) => tool.name));
+      const text = async (name: string, args: Record<string, unknown>) =>
+        ((await client.callTool({ name, arguments: args })).content as Array<{ text: string }>)[0].text;
+      // The hosted tools (summer_tool_*, summer_store_tools) mount after sign-in, not here.
+      const missing = (value: unknown) =>
+        (JSON.stringify(value).match(/summer_[a-z0-9_]+/g) ?? []).filter(
+          (name) => !names.has(name) && !name.startsWith("summer_tool_") && name !== "summer_store_tools"
+        );
+
+      for (const goal of ["make a low-poly treasure chest model", "a sword swing sound", "a rigged knight that can run"]) {
+        const plan = JSON.parse(await text("summer_start_game_task", { goal, mode: "asset" }));
+        expect(plan.profileNote).toMatch(/no Summer Engine tools/);
+        expect(missing(plan.mcpToolPlan)).toEqual([]);
+        expect(plan.mcpToolPlan.mutate).toEqual([]);
+        const assetSkills = new Set(
+          selectSkillsForBulkInstall(getSkillRegistry(), { assetsOnly: true }).selected.map((skill) => skill.name)
+        );
+        for (const skill of plan.recommendedSkills) expect(assetSkills.has(skill.name)).toBe(true);
+        expect(plan.recommendedSkills.map((skill: { name: string }) => skill.name)).toContain("summer-assets");
+      }
+
+      const playbook = JSON.parse(await text("summer_get_agent_playbook", {}));
+      expect(playbook.profile).toBe("assets");
+      expect(missing([playbook.contentRouting, playbook.handOff])).toEqual([]);
+      expect(playbook.step0_observeFirst).toBeUndefined();
     } finally {
       await client.close();
       await server.close();

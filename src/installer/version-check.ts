@@ -46,6 +46,8 @@ export interface DriftClassification {
 }
 
 const NPM_REGISTRY_LATEST_URL = "https://registry.npmjs.org/summer-engine/latest";
+const NPM_REGISTRY_DIST_TAGS_URL = "https://registry.npmjs.org/-/package/summer-engine/dist-tags";
+const NPM_REGISTRY_PACKAGE_URL = "https://registry.npmjs.org/summer-engine";
 const REGISTRY_FETCH_TIMEOUT_MS = 3000;
 
 export function parseSemver(version: string): SemverParts | null {
@@ -121,10 +123,11 @@ export interface RegistryFetchFailure {
   message?: string;
 }
 
-export async function fetchLatestRegistryVersion(
-  options: RegistryFetchOptions = {}
-): Promise<RegistryFetchResult | RegistryFetchFailure> {
-  const url = options.url ?? NPM_REGISTRY_LATEST_URL;
+async function fetchRegistryJson(
+  defaultUrl: string,
+  options: RegistryFetchOptions
+): Promise<{ ok: true; body: unknown } | RegistryFetchFailure> {
+  const url = options.url ?? defaultUrl;
   const timeoutMs = options.timeoutMs ?? REGISTRY_FETCH_TIMEOUT_MS;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
@@ -144,15 +147,7 @@ export async function fetchLatestRegistryVersion(
         message: `registry responded ${response.status}`,
       };
     }
-    const body = (await response.json()) as { version?: unknown };
-    if (typeof body.version !== "string") {
-      return {
-        ok: false,
-        reason: "registry-unreachable",
-        message: "registry payload missing version",
-      };
-    }
-    return { ok: true, version: body.version };
+    return { ok: true, body: await response.json() };
   } catch (error) {
     return {
       ok: false,
@@ -160,6 +155,55 @@ export async function fetchLatestRegistryVersion(
       message: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export async function fetchLatestRegistryVersion(
+  options: RegistryFetchOptions = {}
+): Promise<RegistryFetchResult | RegistryFetchFailure> {
+  const result = await fetchRegistryJson(NPM_REGISTRY_LATEST_URL, options);
+  if (!result.ok) return result;
+  const body = result.body as { version?: unknown } | null;
+  if (typeof body?.version !== "string") {
+    return {
+      ok: false,
+      reason: "registry-unreachable",
+      message: "registry payload missing version",
+    };
+  }
+  return { ok: true, version: body.version };
+}
+
+export interface RegistryDistTagsResult {
+  ok: true;
+  /** dist-tag -> version, e.g. { latest: "3.8.0", next: "3.1.0" }. */
+  tags: Record<string, string>;
+}
+
+export async function fetchRegistryDistTags(
+  options: RegistryFetchOptions = {}
+): Promise<RegistryDistTagsResult | RegistryFetchFailure> {
+  const result = await fetchRegistryJson(NPM_REGISTRY_DIST_TAGS_URL, options);
+  if (!result.ok) return result;
+  const body = result.body as Record<string, unknown> | null;
+  const tags: Record<string, string> = {};
+  for (const [tag, value] of Object.entries(body ?? {})) {
+    if (typeof value === "string") tags[tag] = value;
+  }
+  if (!tags.latest) {
+    return { ok: false, reason: "registry-unreachable", message: "registry payload missing latest" };
+  }
+  return { ok: true, tags };
+}
+
+/** Whether npm has this exact version: true, false (registry says 404), or
+ *  null when the registry could not be asked. */
+export async function isRegistryVersionPublished(
+  version: string,
+  options: RegistryFetchOptions = {}
+): Promise<boolean | null> {
+  const result = await fetchRegistryJson(`${NPM_REGISTRY_PACKAGE_URL}/${encodeURIComponent(version)}`, options);
+  if (result.ok) return true;
+  return result.message === "registry responded 404" ? false : null;
 }
 
 /**
@@ -333,29 +377,63 @@ export interface RecordedInstall {
   source: "agent-config" | "running-cli";
 }
 
-export type RefreshChannel = "latest" | "next";
+/** An npm dist-tag (`latest`, `next`) or an exact version (`3.9.1`). */
+export type RefreshChannel = string;
 
-/** The npm dist-tag a refresh command should name. A CLI that is AHEAD of
- *  npm `latest` was installed from `next` (a soaking release); telling that
- *  user to run `summer-engine@latest` would silently downgrade the MCP server
- *  while leaving the newer skills in place (release review P1-3). */
-export function refreshChannel(installedVersion: string, latestVersion: string | undefined): RefreshChannel {
+/** The npm spec a refresh command or a new MCP entry should name, so the agent
+ *  never runs an older release than this CLI (release review P1-3). `latest`
+ *  unless this CLI is AHEAD of npm latest; then `next` only when the next
+ *  dist-tag is this exact version, else this exact version. A CLI that is ahead
+ *  is not always on `next`: `next` stayed on 3.1.0 while latest moved to 3.8.0,
+ *  and pinning it dropped every option newer than 3.1.0 (SUMMER_PROFILE). */
+export function refreshChannel(
+  installedVersion: string,
+  latestVersion: string | undefined,
+  nextVersion?: string
+): RefreshChannel {
   const installed = parseSemver(installedVersion);
   const latest = latestVersion ? parseSemver(latestVersion) : null;
   if (!installed || !latest) return "latest";
-  return classifyDrift(installed, latest).reason === "ahead" ? "next" : "latest";
+  if (classifyDrift(installed, latest).reason !== "ahead") return "latest";
+  return nextVersion?.trim() === installedVersion.trim() ? "next" : installedVersion.trim();
+}
+
+export interface DefaultChannelDeps {
+  fetchDistTags?: typeof fetchRegistryDistTags;
+  isPublished?: typeof isRegistryVersionPublished;
 }
 
 /** Default `summer setup` channel when neither --channel nor SUMMER_CHANNEL is
- *  given: `next` while this CLI is ahead of npm latest, else `latest`. Network
- *  failure means `latest` (never blocks setup). */
-export async function resolveDefaultChannel(installedVersion: string): Promise<{ channel: RefreshChannel; note?: string }> {
-  const registry = await fetchLatestRegistryVersion();
+ *  given: `latest`, unless this CLI is ahead of npm latest. Then `next` when
+ *  next is this exact version, this exact version when npm has it, and
+ *  otherwise (a checkout that was never published) `latest` with a note that
+ *  points at --local-dev. Network failure means `latest` (never blocks setup). */
+export async function resolveDefaultChannel(
+  installedVersion: string,
+  deps: DefaultChannelDeps = {}
+): Promise<{ channel: RefreshChannel; note?: string }> {
+  const registry = await (deps.fetchDistTags ?? fetchRegistryDistTags)();
   if (!registry.ok) return { channel: "latest" };
-  const channel = refreshChannel(installedVersion, registry.version);
-  return channel === "next"
-    ? { channel, note: `This CLI (${installedVersion}) is ahead of npm latest (${registry.version}); the MCP entry is pinned to summer-engine@next so the agent keeps running this release. Pass --channel latest to override.` }
-    : { channel };
+  const latest = registry.tags.latest;
+  const channel = refreshChannel(installedVersion, latest, registry.tags.next);
+  if (channel === "latest") return { channel };
+  if (channel === "next") {
+    return {
+      channel,
+      note: `This CLI (${installedVersion}) is the npm next release, ahead of latest (${latest}); the MCP entry runs summer-engine@next. Pass --channel latest to override.`,
+    };
+  }
+  const published = await (deps.isPublished ?? isRegistryVersionPublished)(installedVersion);
+  if (published) {
+    return {
+      channel,
+      note: `This CLI (${installedVersion}) is ahead of npm latest (${latest}); the MCP entry is pinned to summer-engine@${installedVersion} so the agent runs this release. Pass --channel latest to override.`,
+    };
+  }
+  return {
+    channel: "latest",
+    note: `This CLI (${installedVersion}) is not on npm, so the MCP entry runs summer-engine@latest (${latest}), which can lack options this CLI has. To run this build, pass --local-dev.`,
+  };
 }
 
 export interface SkillsVersionCheckInput {
@@ -363,6 +441,8 @@ export interface SkillsVersionCheckInput {
   candidates: SkillMarkerCandidate[];
   /** npm latest, when known, so the refresh command names the right dist-tag. */
   latestRegistryVersion?: string;
+  /** npm next, when known: the refresh names `next` only when it is this CLI. */
+  nextRegistryVersion?: string;
   /** Resolves how the stale agent's MCP entry was recorded; defaults to
    *  detectRecordedInstall. Seam for tests. */
   recordedInstall?: (agent: string) => Promise<RecordedInstall | null> | RecordedInstall | null;
@@ -460,7 +540,7 @@ export async function buildSkillsVersionCheck(
       ...baseDetails,
       drift: worst.drift.reason,
       ...(install ? { install } : {}),
-      recommendedAction: skillsRefreshCommand(worst.agent, install, refreshChannel(input.installedCliVersion, input.latestRegistryVersion)),
+      recommendedAction: skillsRefreshCommand(worst.agent, install, refreshChannel(input.installedCliVersion, input.latestRegistryVersion, input.nextRegistryVersion)),
     },
   };
 }
@@ -488,8 +568,7 @@ export function skillsRefreshCommand(agent: string, install: RecordedInstall | n
   if (install?.localDev && install.cliPath) {
     return `node ${install.cliPath} setup ${agent} --local-dev --yes --force`;
   }
-  const tag = channel === "next" ? "next" : "latest";
-  return `npx clear-npx-cache && npx -y summer-engine@${tag} setup ${agent} --yes --force${channel === "next" ? " --channel next" : ""}`;
+  return `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --yes --force${channel === "latest" ? "" : ` --channel ${channel}`}`;
 }
 
 /** The shape `summer setup --local-dev` writes: `node <…>/dist/bin/summer.js mcp`

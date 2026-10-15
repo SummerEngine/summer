@@ -1,6 +1,6 @@
 ---
 name: create-asset-sheet
-description: "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset."
+description: "Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -136,6 +136,10 @@ calls the same server-side slicer as the Studio wizard.
 | Slice has a sliver of neighbor in it | Vision bbox is off by 5–15px | Expected. The slicer pads but doesn't snap-to-content yet. Live with it or upscale the slice (upscaling often cleans the edge) |
 | Upscaled slice looks invented | Source was too small / too ambiguous | Don't upscale slices below ~32×32. Or accept the hallucination and edit |
 | Detection returns wrong category | Model misjudged context | User can override in the review step; not a blocker |
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `summer_slice_asset_sheet` and skip `summer_import_asset_by_id`: get each piece with `summer_get_asset_download_url`, save the pieces where the person asked, and tell them the paths.
 
 ## What this skill does NOT do (yet)
 

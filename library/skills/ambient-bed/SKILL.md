@@ -1,6 +1,6 @@
 ---
 name: ambient-bed
-description: "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop."
+description: "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -264,6 +264,10 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 - **Loop click after import dock setup.** Use the crossfade script (step 7).
 - **Need positional bed (a campfire crackle).** Use `AudioStreamPlayer3D` with `max_distance` matching the campfire's reasonable hearing radius (4–8m typical).
 - **Multi-room transitions.** Use Areas; on player enter, fade in destination bed and fade out source bed over 1.5s.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the bed exists. Skip steps 6-9: the loop point, the crossfade script and the `AudioStreamPlayer` are Summer Engine work. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Tell the person it is a long bed made to loop: their engine either loops it with a short crossfade or plays two copies that overlap.
 
 ## Fallback (no MCP)
 

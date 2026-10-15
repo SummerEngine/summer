@@ -10,6 +10,22 @@ import {
 } from "../../core/capabilities/hdri-import.js";
 import { importResolvedAsset, type GatewayAsset } from "../../core/capabilities/asset-import.js";
 import { summerRequestHeaders } from "../../core/agent-host.js";
+import {
+  codedFailure,
+  describeNetworkError,
+  EngineNotRunningError,
+  networkDetails,
+  NOT_SIGNED_IN,
+  SIGN_IN_AGAIN_RECOVERY,
+  type SummerErrorCode,
+} from "../../core/error-codes.js";
+import { engineNotRunningResult } from "./with-engine.js";
+
+/** The shared-failure fields a lookup can carry (core/error-codes.ts). */
+type Coded = { code?: SummerErrorCode; recovery?: string; details?: { cause: string } };
+
+/** No Summer account token: the same failure for every asset tool. */
+const notSignedIn = { error: "not_logged_in", message: NOT_SIGNED_IN, code: "not_signed_in" } as const;
 
 async function searchAssetsApi(params: {
   query: string;
@@ -28,15 +44,9 @@ async function searchAssetsApi(params: {
   message?: string;
   contactSheet?: string;
   error?: string;
-}> {
+} & Coded> {
   const token = await getAuthToken();
-  if (!token) {
-    return {
-      error: "Not logged in",
-      message:
-        "Not signed in. The user needs to run this in their terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login\nAsset search requires a Summer Engine account (free to create).",
-    };
-  }
+  if (!token) return { ...notSignedIn };
 
   const searchParams = new URLSearchParams();
   searchParams.set("query", params.query);
@@ -54,10 +64,15 @@ async function searchAssetsApi(params: {
   if (params.preview) searchParams.set("contactSheet", "true");
 
   const gatewayUrl = await resolveGatewayUrl();
-  const res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
-    headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(15000),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
+      headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    return { error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "unavailable", ...networkDetails(err) };
+  }
 
   const data = (await res.json()) as {
     assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number; style?: string | null }[];
@@ -72,9 +87,9 @@ async function searchAssetsApi(params: {
     if (res.status === 401) {
       return {
         error: "unauthorized",
-        message:
-          (data.message || "Auth token expired.") +
-          " The user needs to re-authenticate:\n  npx -y summer-engine@latest login --force",
+        message: data.message || "Auth token expired.",
+        code: "not_signed_in",
+        recovery: SIGN_IN_AGAIN_RECOVERY,
       };
     }
     if (res.status === 429) {
@@ -114,22 +129,20 @@ type AssetDownloadUrlResponse = {
 async function authedGetJson<T>(
   endpoint: string,
   timeoutMs = 15_000
-): Promise<{ data?: T; error?: string; message?: string; status: number }> {
+): Promise<{ data?: T; error?: string; message?: string; status: number } & Coded> {
   const token = await getAuthToken();
-  if (!token) {
-    return {
-      status: 401,
-      error: "not_logged_in",
-      message:
-        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login",
-    };
-  }
+  if (!token) return { status: 401, ...notSignedIn };
 
   const gatewayUrl = await resolveGatewayUrl();
-  const res = await fetch(`${gatewayUrl}${endpoint}`, {
-    headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${gatewayUrl}${endpoint}`, {
+      headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    return { status: 0, error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "unavailable", ...networkDetails(err) };
+  }
   const data = (await res.json()) as T & ApiErrorBody;
   if (!res.ok) {
     return {
@@ -137,6 +150,7 @@ async function authedGetJson<T>(
       data,
       error: data?.error || "request_failed",
       message: data?.message || "Request failed",
+      ...(res.status === 401 ? { code: "not_signed_in" as const, recovery: SIGN_IN_AGAIN_RECOVERY } : {}),
     };
   }
   return { status: res.status, data };
@@ -146,12 +160,12 @@ async function getAssetApi(assetId: string): Promise<{
   asset?: McpAsset;
   error?: string;
   message?: string;
-}> {
+} & Coded> {
   const result = await authedGetJson<{ asset: McpAsset }>(
     `/api/mcp/assets/${encodeURIComponent(assetId)}`
   );
   if (result.error) {
-    return { error: result.error, message: result.message };
+    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery, details: result.details };
   }
   return { asset: result.data?.asset };
 }
@@ -159,12 +173,12 @@ async function getAssetApi(assetId: string): Promise<{
 async function getAssetDownloadUrlApi(
   assetId: string,
   role: "primary" | "thumbnail"
-): Promise<{ data?: AssetDownloadUrlResponse; error?: string; message?: string }> {
+): Promise<{ data?: AssetDownloadUrlResponse; error?: string; message?: string } & Coded> {
   const result = await authedGetJson<AssetDownloadUrlResponse>(
     `/api/mcp/assets/${encodeURIComponent(assetId)}/download-url?role=${encodeURIComponent(role)}`
   );
   if (result.error) {
-    return { error: result.error, message: result.message };
+    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery, details: result.details };
   }
   return { data: result.data };
 }
@@ -178,6 +192,15 @@ function jsonSuccess(data: unknown) {
       },
     ],
   };
+}
+
+/** The body of a failed lookup: `{ok:false, code, error, recovery, message}`
+ *  for the shared failures, else the older `{error, message}`. */
+function failureBody(result: { error?: string; message?: string } & Coded, fallback: { error: string; message: string }) {
+  const message = result.message || fallback.message;
+  return result.code
+    ? codedFailure(result.code, message, { message, ...(result.details ? { details: result.details } : {}) }, result.recovery)
+    : { error: result.error || fallback.error, message };
 }
 
 function jsonError(data: unknown) {
@@ -226,19 +249,7 @@ Requires authentication (so we can attribute usage and apply per-user rate limit
       const result = await searchAssetsApi({ query, assetType, limit: Math.min(limit, 20), source, style, preview, includeCommunity });
 
       if (result.error) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                { error: result.error, message: result.message },
-                null,
-                2
-              ),
-            },
-          ],
-          isError: true,
-        };
+        return jsonError(failureBody(result, { error: "Search failed", message: "Asset search failed" }));
       }
 
       const sheet = result.contactSheet?.match(/^data:(image\/[a-z]+);base64,(.+)$/);
@@ -295,7 +306,7 @@ Cloud tool — works WITHOUT the Summer Engine app open.`,
         source: "my_assets",
       });
       if (result.error) {
-        return jsonError({ error: result.error, message: result.message });
+        return jsonError(failureBody(result, { error: "List failed", message: "Listing your assets failed" }));
       }
       return jsonSuccess({
         assets: result.assets,
@@ -321,10 +332,7 @@ Cloud tool — works WITHOUT the Summer Engine app open.`,
     async ({ assetId }) => {
       const result = await getAssetApi(assetId);
       if (result.error || !result.asset) {
-        return jsonError({
-          error: result.error || "asset_not_found",
-          message: result.message || "Asset not found.",
-        });
+        return jsonError(failureBody(result, { error: "asset_not_found", message: "Asset not found." }));
       }
       return jsonSuccess({ asset: result.asset });
     }
@@ -349,7 +357,7 @@ Cloud tool — works WITHOUT the Summer Engine app open.`,
     async ({ assetId, role }) => {
       const result = await getAssetDownloadUrlApi(assetId, role);
       if (result.error) {
-        return jsonError({ error: result.error, message: result.message });
+        return jsonError(failureBody(result, { error: "request_failed", message: "Request failed" }));
       }
       return jsonSuccess(result.data);
     }
@@ -389,10 +397,7 @@ itself does not — only this import step does).`,
     async ({ assetId, path, parent, scenePath, name }) => {
       const fetched = await getAssetApi(assetId);
       if (fetched.error || !fetched.asset) {
-        return jsonError({
-          error: fetched.error || "asset_not_found",
-          message: fetched.message || "Asset not found.",
-        });
+        return jsonError(failureBody(fetched, { error: "asset_not_found", message: "Asset not found." }));
       }
 
       try {
@@ -410,6 +415,7 @@ itself does not — only this import step does).`,
             : `Imported "${fetched.asset.title}" to ${imported.importedTo}.`,
         });
       } catch (err) {
+        if (err instanceof EngineNotRunningError) return engineNotRunningResult(err);
         const msg = err instanceof Error ? err.message : String(err);
         return jsonError({
           error: "import_failed",
@@ -439,19 +445,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
       const searchResult = await searchAssetsApi({ query, assetType, limit: 5, source });
 
       if (searchResult.error) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                { error: searchResult.error, message: searchResult.message },
-                null,
-                2
-              ),
-            },
-          ],
-          isError: true,
-        };
+        return jsonError(failureBody(searchResult, { error: "Search failed", message: "Asset search failed" }));
       }
 
       const assets = searchResult.assets || [];
@@ -517,6 +511,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
           ],
         };
       } catch (err) {
+        if (err instanceof EngineNotRunningError) return engineNotRunningResult(err);
         const msg = err instanceof Error ? err.message : String(err);
         return {
           content: [
@@ -584,6 +579,7 @@ runs through the engine). No Summer login needed.`,
             ...(err.hint ? { hint: err.hint } : {}),
           });
         }
+        if (err instanceof EngineNotRunningError) return engineNotRunningResult(err);
         const msg = err instanceof Error ? err.message : String(err);
         return jsonError({
           error: "hdri_import_failed",

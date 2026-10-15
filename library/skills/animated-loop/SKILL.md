@@ -1,6 +1,6 @@
 ---
 name: animated-loop
-description: "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer."
+description: "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -193,6 +193,10 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 - **Loop is behind translucent UI.** Generate with extra contrast headroom — the model tends toward mid-grey, and translucent UI on mid-grey reads muddy. Push for `high contrast cinematic` in the prompt.
 - **Loop seam still visible after 3 regens.** Set up two `VideoStreamPlayer` siblings and crossfade between them with a `Tween` on a 0.5s overlap. Costs an extra GPU decode but hides the seam.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
+
 ## Fallback (no MCP)
 
 If the MCP server isn't running, route the user to the Summer dashboard:
@@ -221,4 +225,4 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_video` parameter schema and error codes.

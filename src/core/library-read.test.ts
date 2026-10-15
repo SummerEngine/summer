@@ -237,10 +237,13 @@ describe("linked files load through read_library", () => {
     expect(result.links).toContainEqual({ target: "references/kit-placement-tools.md", id: "skill/spatial-placement/references/kit-placement-tools.md" });
     expect(result.text).toContain("references/kit-placement-tools.md -> skill/spatial-placement/references/kit-placement-tools.md");
     expect(lastLine(result.text)).toBe(result.footer);
-    // A link to another entry's body resolves to that entry's id.
-    const checker = await readLibraryEntry("skill/skill-test", "skill");
-    if (!checker.ok) throw new Error("expected ok");
-    expect(checker.links).toContainEqual({ target: "../../references/collaborative-protocol/collaborative-protocol.md", id: "reference/collaborative-protocol" });
+    // A link to another entry's body resolves to that entry's id. (Shipped
+    // skills no longer climb out of their folder; validate-library rejects it.)
+    const entries = loadLibraryIndex();
+    const checker = entries.find((e) => e.id === "skill/skill-test")!;
+    expect(resolveLibraryLink(checker, "SKILL.md", "../../references/collaborative-protocol/collaborative-protocol.md", { entries })).toBe(
+      "reference/collaborative-protocol"
+    );
   });
 
   it("renders an entry when the link names its body file or descriptor", async () => {

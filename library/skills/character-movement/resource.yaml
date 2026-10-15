@@ -1,7 +1,7 @@
 id: skill/character-movement
 kind: skill
 version: 1.2.1
-summary: "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state."
+summary: "Player controllers for 2D and 3D, plus the standard third-person controller for Summer humanoids."
 use_when:
   - building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk
   - wiring an imported Summer character package (character.tscn) as the playable third-person player

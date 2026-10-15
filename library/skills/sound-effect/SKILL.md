@@ -1,6 +1,6 @@
 ---
 name: sound-effect
-description: "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers."
+description: "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -126,13 +126,18 @@ One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loo
 | `AudioStreamPlayer2D` | 2D positional |
 | `AudioStreamPlayer3D` | 3D positional (weapon swing in the world, footstep) |
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is `key`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./Player", type="AudioStreamPlayer3D", name="SwingSFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stream", value="res://audio/sfx/sword_swing_01.wav")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer3D", "SwingSFX", ctx.find("Player"), {
+        "stream": load("res://audio/sfx/sword_swing_01.wav"),
+        "bus": "SFX",
+        "max_distance": 25.0,
+    })
+    ctx.save_scene()
+""")
 ```
 
 The bus must match the bible (`SFX`, `UI`, `Ambient`, …); the default bus is `Master`. If the bus does not exist, run `/audio-direction`.
@@ -156,6 +161,10 @@ Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).ins
 
 `summer_inspect_node(path="Player/SwingSFX")`: verify `stream`, `bus`, `volume_db`. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (import, wiring, scene check). With `summer_generate_sfx_choices`, the person picks in the page; then get each approved clip from its `audioUrl` or with `summer_get_asset_download_url`, save it where the person asked, and tell them the path and format.
+
 ## Fallback (no MCP)
 
 Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`), and tell the person to make it in Summer Studio, then import it.
@@ -166,4 +175,4 @@ Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`),
 - `ambient-bed` — long looping textures
 - `music-track` — music
 - `voice-line` — speech
-- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `summer_read_library` id `reference/mcp-tools-reference`

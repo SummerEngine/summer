@@ -1,7 +1,7 @@
 id: skill/multiplayer-publish
 kind: skill
-version: 1.0.0
-summary: "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build."
+version: 1.0.1
+summary: "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build."
 use_when:
   - "publishing a hosted Summer multiplayer game online so other players can join it"
   - "making the summer.games bundle of a hosted game: client.pck, server.pck and the Linux server preset"
@@ -25,5 +25,5 @@ related:
     - skill/release-readiness
 source: official
 license: MIT
-status: preview
+status: stable
 recommended: false

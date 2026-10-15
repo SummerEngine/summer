@@ -85,6 +85,13 @@ export interface HostedMountOptions {
   includeTool?: (name: string) => boolean;
   /** Mount no tool once the server has this many. Default: no limit. */
   maxTools?: number;
+  /** The description a mounted tool gets here. Default: the hosted one. */
+  describe?: (tool: Tool) => string;
+  /** Runs after each successful mount (another mount can follow it). */
+  onMounted?: () => void;
+  /** What summer_store_tools calls the hosted tools this profile mounts.
+   *  Default: the full profile's store, publishing, board and Grow tools. */
+  hostedToolsLabel?: string;
 }
 
 export function prepareHostedMount(
@@ -138,6 +145,8 @@ export function prepareHostedMount(
   let running: Promise<HostedMountState> | null = null;
   let connected: HostedClient | null = null;
 
+  const listedToolCount = () => Object.values(registries._registeredTools).filter((tool) => (tool as { enabled?: boolean }).enabled !== false).length;
+
   /** Wait for a mount in progress, at most ms; returns at once when none runs. */
   async function waitForMount(ms: number): Promise<void> {
     if (!running || ms <= 0) return;
@@ -151,9 +160,13 @@ export function prepareHostedMount(
     statusTool = server.registerTool(
       STORE_TOOLS_STATUS,
       {
+        title: "Load the hosted Summer tools",
         description:
-          "The Summer store, publishing, board and Grow tools come from the hosted Summer Engine MCP and are not loaded. Call this to see why and how to fix it (usually: run \"summer login --store\" in a terminal); it loads them when the sign-in works.",
+          `The ${options.hostedToolsLabel ?? "Summer store, publishing, board and Grow tools"} come from the hosted Summer Engine MCP and are not loaded. Call this to see why and how to fix it (usually: run "summer login --store" in a terminal); it loads them when the sign-in works.`,
         inputSchema: passthroughArgs,
+        // Registered after the server's annotation pass, so it carries its own:
+        // it asks Summer's servers which tools this sign-in may use and changes nothing.
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async () => {
         const after = await mount();
@@ -199,14 +212,15 @@ export function prepareHostedMount(
       }
       if (schemas.has(tool.name)) continue;
       if (options.includeTool && !options.includeTool(tool.name)) continue;
-      if (options.maxTools !== undefined && Object.keys(registries._registeredTools).length >= options.maxTools) {
+      // The limit is on what a client lists: tools a surface keeps unlisted (v4) do not count.
+      if (options.maxTools !== undefined && listedToolCount() >= options.maxTools) {
         if (!state.overLimit.includes(tool.name)) state.overLimit.push(tool.name);
         continue;
       }
       schemas.set(tool.name, tool);
       server.registerTool(
         tool.name,
-        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
+        { description: options.describe ? options.describe(tool) : (tool.description ?? ""), inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
         async (args: Record<string, unknown>) => {
           try {
             return (await client.callTool({ name: tool.name, arguments: args })) as never;
@@ -256,6 +270,7 @@ export function prepareHostedMount(
     connected = client;
     state.status = "mounted";
     delete state.error;
+    options.onMounted?.();
     appendMcpLogEvent("mcp:hosted_mounted", {
       tools: state.tools.length,
       prompts: state.prompts.length,

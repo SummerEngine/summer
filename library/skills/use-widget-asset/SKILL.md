@@ -1,6 +1,6 @@
 ---
 name: use-widget-asset
-description: "Wire a widget slice from a create-asset-sheet pack (panel, button, slider, bar, toggle) into NinePatchRect, TextureProgressBar, or TextureRect via sliceMeta."
+description: "Wire a widget slice from an asset pack (panel, button, bar, toggle) into NinePatchRect or TextureRect."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets

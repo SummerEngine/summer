@@ -1,6 +1,6 @@
 ---
 name: playtesting-a-feature
-description: "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count."
+description: "Before calling a gameplay feature done, run the game and walk through it. Static checks do not count."
 ---
 
 # Playtesting A Feature

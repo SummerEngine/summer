@@ -1,3 +1,5 @@
+import { useColor } from "../core/format.js";
+
 export function getBanner(version?: string): string {
   const reset = "\x1b[0m";
   
@@ -32,5 +34,6 @@ export function getBanner(version?: string): string {
     "      ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚══════╝       ",
   ];
 
+  if (!useColor()) return headerLines.join("\n");
   return headerLines.map((line, i) => `${colors[i]}${line}${reset}`).join("\n");
 }

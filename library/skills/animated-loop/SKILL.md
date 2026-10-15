@@ -1,6 +1,6 @@
 ---
 name: animated-loop
-description: "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer."
+description: "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -125,19 +125,24 @@ ffmpeg -i title_screen_bg.mp4 -c:v libtheora -q:v 8 -an title_screen_bg.ogv
 summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/loops/title_screen_bg.ogv")
 ```
 
-Then wire it. Every scene-mutating tool takes an explicit `scenePath`, and `summer_set_prop`'s property argument is named `key`, not `property`:
+Then wire it in one script. `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://ui/title_screen.tscn", parent=".", type="VideoStreamPlayer", name="BackgroundLoop")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="stream", value="res://assets/video/loops/title_screen_bg.ogv")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="autoplay", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="loop", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="expand", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="anchors_preset", value=15)
-summer_save_scene(scenePath="res://ui/title_screen.tscn")
+summer_run_script(scenePath="res://ui/title_screen.tscn", source="""
+func run(ctx):
+    var loop_player = ctx.add_node("VideoStreamPlayer", "BackgroundLoop", null, {
+        "stream": load("res://assets/video/loops/title_screen_bg.ogv"),
+        "autoplay": true,
+        "loop": true,
+        "expand": true,
+    })
+    loop_player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)   # the loop fills the menu
+    ctx.get_scene_root().move_child(loop_player, 0)   # drawn first: the menu draws on top
+    ctx.save_scene()
+""")
 ```
 
-Anchors preset 15 is "full rect" — the loop fills the menu. Place the logo and menu buttons as children *above* the `VideoStreamPlayer` in the tree (Controls draw in tree order; later siblings render on top).
+Controls draw in tree order and later siblings render on top, so the logo and menu buttons come after the `VideoStreamPlayer` in the tree.
 
 ### 7. Mute the audio track
 
@@ -193,6 +198,10 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 - **Loop is behind translucent UI.** Generate with extra contrast headroom — the model tends toward mid-grey, and translucent UI on mid-grey reads muddy. Push for `high contrast cinematic` in the prompt.
 - **Loop seam still visible after 3 regens.** Set up two `VideoStreamPlayer` siblings and crossfade between them with a `Tween` on a 0.5s overlap. Costs an extra GPU decode but hides the seam.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
+
 ## Fallback (no MCP)
 
 If the MCP server isn't running, route the user to the Summer dashboard:
@@ -221,4 +230,4 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_video` parameter schema and error codes.

@@ -9,7 +9,7 @@ allowed-tools: Read Grep Edit Write summer_get_script_errors summer_play summer_
 paths: ["**/*.gd"]
 ---
 
-# /summer-analytics — game events you can chart later
+# /summer-analytics — game events you read in Grow
 
 ## Overview
 
@@ -105,9 +105,11 @@ On the client, after a menu choice:
 
 ### 4. Read the results
 
-Open the game's analytics in Studio: `studio.open` with target `game` and
-params `gameId` (your game's id) and `section: "analytics"`. Events show up
-there after a short delay.
+`analytics.summary` (hosted, after `summer login`) returns the
+game's top custom events next to its store page views, launches and play
+time; the `grow-analytics` skill says how to read them. In Studio:
+`studio.open` with target `game`, params `gameId` (your game's id) and
+`section: "analytics"`. Events show up after a short delay.
 
 ## Result codes
 

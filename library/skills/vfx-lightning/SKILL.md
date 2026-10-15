@@ -1,6 +1,6 @@
 ---
 name: vfx-lightning
-description: "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake."
+description: "Lightning bolt effect: a jagged procedural path with a glow shader, end sparks and screen shake."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -222,31 +222,22 @@ Recommended: register one `LightningCaster` as an autoload (`/root/Lightning`) s
 
 Place one `LightningCaster` per "world" (or autoload it), then call from gameplay code.
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
+Write the two files, then place the caster with ONE `summer_run_script` call
+with an explicit `scenePath` — one transactional run, and several casters or
+anything computed is a loop in the same script:
 
 ```
 summer_write_file(path="res://addons/vfx/lightning/lightning.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/lightning/lightning_caster.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="Node3D", name="LightningCaster")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="script", value="res://addons/vfx/lightning/lightning_caster.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="bolt_color", value="Color(0.55, 0.75, 1.0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="trauma_amount", value=0.6)
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-Or, on engines with `summer_run_script` (see `scene-scripting`), the two node
-calls collapse into one transactional ctx script — worth it when placing several
-casters or anything computed:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var caster := ctx.add_node("Node3D", "LightningCaster", null)
+    var caster = ctx.add_node("Node3D", "LightningCaster", ctx.find("World"))
     caster.set_script(load("res://addons/vfx/lightning/lightning_caster.gd"))
     caster.set("bolt_color", Color(0.55, 0.75, 1.0))
     caster.set("trauma_amount", 0.6)
     ctx.save_scene()
+""")
 ```
 
 Then verify — the caster `preload`s its own shader, so a shader that failed to write

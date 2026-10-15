@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setupCommand } from "./setup.js";
+import { setupCommand, skillNamesSample } from "./setup.js";
 
 // `summer setup` always ends with a doctor pass (network + engine probes);
 // stub it so the command runs offline. `--print` already keeps the skills
@@ -121,5 +121,13 @@ describe("summer setup tool profiles", () => {
   it("refuses an unknown profile and a profile that contradicts --assets-only", async () => {
     await expect(printedSnippet(["claude-code", "--profile", "tiny", "--print"])).rejects.toThrow(/Unknown --profile "tiny"/);
     await expect(printedSnippet(["claude-code", "--assets-only", "--profile", "engine", "--print"])).rejects.toThrow(/--assets-only uses the assets profile/);
+  });
+});
+
+describe("summer setup: installed skill names", () => {
+  it("prints a short sample and how many more, not every name", () => {
+    const names = Array.from({ length: 30 }, (_, i) => `skill-${i}`);
+    expect(skillNamesSample(names)).toBe(`${names.slice(0, 8).join(" · ")} · and 22 more`);
+    expect(skillNamesSample(["a", "b"])).toBe("a · b");
   });
 });

@@ -1,6 +1,6 @@
 ---
 name: facial-and-lipsync
-description: "Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions."
+description: "Make a character's mouth move with a voice-over: phonemes, viseme blendshapes, facial expressions."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

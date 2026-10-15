@@ -1,6 +1,6 @@
 ---
 name: text-to-motion
-description: "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props."
+description: "Make custom 2-second animation clips from text on the user's own rigged models: people, animals, props."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -58,7 +58,7 @@ doesn't have that move", any animation request for a non-humanoid rig.
    Pass a stable `idempotencyKey` if you might retry the same request. Prompt writing and
    every control: `prompts-and-controls.md` in this directory.
 4. **Poll to completion.** `summer_check_job(jobId)`. A job takes about 1-2 minutes. Do not
-   resubmit while it runs. (With the default `wait: true` the tool polls for you.)
+   resubmit while it runs. (`wait: true` makes the tool poll for you instead.)
 5. **Review, then import.** Import the chosen clip assets with
    `summer_import_asset_by_id(assetId, parent, scenePath)`. Offer to regenerate weak takes
    with a rephrased prompt or a higher `cfgScale`; keep the good ones.
@@ -91,6 +91,10 @@ doesn't have that move", any animation request for a non-humanoid rig.
 | `rig_asset_not_found` | Not the caller's asset | Find the user's own asset id |
 | `rig_asset_invalid` | Not a rigged GLB/FBX `3d_model` | Rig it first |
 | `insufficient_credits` (402) | Not enough credits | Fewer prompts/takes, or the user tops up |
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), follow the order up to the review in step 5 and skip the import. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Keep the good takes and name each file after its prompt.
 
 ## Do not stop early
 

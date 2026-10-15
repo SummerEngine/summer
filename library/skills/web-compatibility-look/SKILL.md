@@ -1,6 +1,6 @@
 ---
 name: web-compatibility-look
-description: "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance."
+description: "Make a browser game look high-end in the Compatibility renderer (WebGL 2): what works, recipes, speed."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: rendering-and-lighting

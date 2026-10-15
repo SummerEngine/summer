@@ -277,9 +277,18 @@ function buildSkillsRegistry(resources: LoadedResource[]): string {
         // First domain is the primary one (authors list it first); the CLI's
         // `skills list --by-domain` and the generated index group by it.
         domains: skillDomains(res),
+        // Library-only skills install by name, never in bulk (isBundledSkill).
+        ...(isBundledSkill(res) ? {} : { bundled: false }),
       };
     });
   return stableJson({ _generated: GENERATED_BANNER, skills });
+}
+
+/** resource.yaml `bundled` (omitted = true): false keeps a skill out of bulk
+ *  installs and the plugin manifests, so its description is not injected into
+ *  every session; it stays searchable, readable and installable by name. */
+export function isBundledSkill(res: LoadedResource): boolean {
+  return res.data.bundled !== false;
 }
 
 function skillDomains(res: LoadedResource): string[] {
@@ -314,7 +323,7 @@ export function buildSkillsIndexMarkdown(resources: LoadedResource[]): string {
     "The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill."
   );
   lines.push("");
-  lines.push("Status: **stable** unless marked; *preview* = not yet exercised in-engine by the Summer team; ~~deprecated~~ installs only by name. ★ = installed by `--recommended`.");
+  lines.push("Status: **stable** unless marked; *preview* = not yet exercised in-engine by the Summer team; ~~deprecated~~ installs only by name. ★ = installed by `--recommended`. (library only) = not installed in bulk or by the plugins; read it with `summer_read_library` or install it by name.");
   lines.push("");
   lines.push("## Domains");
   lines.push("");
@@ -334,7 +343,8 @@ export function buildSkillsIndexMarkdown(resources: LoadedResource[]): string {
       const star = res.data.recommended === true ? " ★" : "";
       const summary = String(res.data.summary ?? "").replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
       const also = skillDomains(res).slice(1).join(", ") || "—";
-      lines.push(`| [${name}](./${res.slug}/SKILL.md)${star}${status === "preview" ? " (preview)" : ""} | ${summary} | ${also} |`);
+      const libraryOnly = isBundledSkill(res) ? "" : " (library only)";
+      lines.push(`| [${name}](./${res.slug}/SKILL.md)${star}${status === "preview" ? " (preview)" : ""}${libraryOnly} | ${summary} | ${also} |`);
     }
     lines.push("");
   }
@@ -421,7 +431,7 @@ export function generateRegistry(rootDir: string, options?: GenerateOptions): Ge
   files.set("templates-registry.json", buildTemplatesRegistry(resources));
   files.set("skills-index.md", buildSkillsIndexMarkdown(resources));
 
-  const skillSlugs = resources.filter((r) => r.kind === "skill").map((r) => r.slug);
+  const skillSlugs = resources.filter((r) => r.kind === "skill" && isBundledSkill(r)).map((r) => r.slug);
   for (const [name, content] of buildManifests({
     version,
     toolCount: counts.byKind.tool ?? 0,

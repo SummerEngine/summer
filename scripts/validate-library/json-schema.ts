@@ -27,7 +27,7 @@ export type JsonSchema = Record<string, unknown>;
 
 export type SchemaStore = Map<string, JsonSchema>;
 
-const METADATA_KEYWORDS = new Set(["$id", "$schema", "title", "description", "comment", "$defs"]);
+const METADATA_KEYWORDS = new Set(["$id", "$schema", "title", "description", "comment", "$defs", "default"]);
 
 const SUPPORTED_KEYWORDS = new Set([
   "$ref",
@@ -50,6 +50,10 @@ const SUPPORTED_KEYWORDS = new Set([
   "minLength",
   "maxLength",
   "minProperties",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
 ]);
 
 interface Ctx {
@@ -253,6 +257,14 @@ function validateNode(data: unknown, schema: JsonSchema, path: string, ctx: Ctx)
     if (typeof schema.maxLength === "number" && str.length > schema.maxLength) {
       errors.push({ path, message: `must be at most ${schema.maxLength} characters, got ${str.length}` });
     }
+  }
+
+  if (dataType === "number") {
+    const num = data as number;
+    if (typeof schema.minimum === "number" && num < schema.minimum) errors.push({ path, message: `must be at least ${schema.minimum}, got ${num}` });
+    if (typeof schema.maximum === "number" && num > schema.maximum) errors.push({ path, message: `must be at most ${schema.maximum}, got ${num}` });
+    if (typeof schema.exclusiveMinimum === "number" && num <= schema.exclusiveMinimum) errors.push({ path, message: `must be more than ${schema.exclusiveMinimum}, got ${num}` });
+    if (typeof schema.exclusiveMaximum === "number" && num >= schema.exclusiveMaximum) errors.push({ path, message: `must be less than ${schema.exclusiveMaximum}, got ${num}` });
   }
 
   if (dataType === "array") {

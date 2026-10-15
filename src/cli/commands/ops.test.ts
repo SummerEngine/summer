@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { formatAnswer, parseCallFlags, runOpFromCli, type OpsCliDeps } from "./ops.js";
 
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
@@ -80,6 +81,44 @@ describe("summer <area> <action>", () => {
   it("refuses a name that is not an operation", async () => {
     const d = deps();
     expect(await runOpFromCli("Games.List", [], d)).toBe(1);
+  });
+});
+
+describe("summer engine <action>", () => {
+  it("runs a split operation as its 3.x tool with the action fixed", async () => {
+    const d = deps();
+    expect(await runOpFromCli("engine.save_camera_bookmark", ["--name", "hero", "--json"], d)).toBe(0);
+    expect(d.dispatch).toHaveBeenCalledWith("summer_camera_bookmark", { name: "hero", action: "save" });
+  });
+
+  it("checks required fields before anything runs, and points at the tool's guide", async () => {
+    const d = deps();
+    expect(await runOpFromCli("engine.save_camera_bookmark", ["--json"], d)).toBe(1);
+    expect(d.dispatch).not.toHaveBeenCalled();
+    expect(JSON.parse(d.err[0])).toMatchObject({ ok: false, error: { code: "invalid_input", message: "name: required.", next: { op: "docs.read", input: { id: "tool/camera-bookmark" } } } });
+  });
+
+  it("dry-runs without the engine", async () => {
+    const d = deps();
+    expect(await runOpFromCli("engine.add_node", ["--scene-path", "res://main.tscn", "--parent", ".", "--type", "Node3D", "--name", "A", "--dry-run", "--json"], d)).toBe(0);
+    expect(d.dispatch).not.toHaveBeenCalled();
+    expect(JSON.parse(d.out[0])).toMatchObject({ ok: true, status: "dry_run", preview: { valid: true } });
+  });
+
+  it("says engine_not_running with one next step, and maps the engine's failures", async () => {
+    const down = deps();
+    down.dispatch = vi.fn(async () => {
+      throw new EngineUnavailableError("Summer Engine is not running.");
+    });
+    expect(await runOpFromCli("engine.get_scene_tree", ["--json"], down)).toBe(1);
+    expect(JSON.parse(down.err[0])).toMatchObject({ ok: false, error: { code: "engine_not_running", next: { say: expect.stringContaining("Open the project") }, retry: "safe" } });
+
+    const lacks = deps();
+    lacks.dispatch = vi.fn(async () => {
+      throw new ToolResultError({ ok: false, failure_reason: "engine_lacks_op", error: "This engine build lacks RunSceneScript." }, "lacks");
+    });
+    expect(await runOpFromCli("engine.run_script", ["--source", "func run(ctx): pass", "--json"], lacks)).toBe(1);
+    expect(JSON.parse(lacks.err[0])).toMatchObject({ ok: false, error: { code: "engine_lacks_op", next: { say: "Update Summer Engine." } } });
   });
 });
 

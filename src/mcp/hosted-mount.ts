@@ -85,6 +85,8 @@ export interface HostedMountOptions {
   includeTool?: (name: string) => boolean;
   /** Mount no tool once the server has this many. Default: no limit. */
   maxTools?: number;
+  /** The description a mounted tool gets here. Default: the hosted one. */
+  describe?: (tool: Tool) => string;
 }
 
 export function prepareHostedMount(
@@ -206,7 +208,7 @@ export function prepareHostedMount(
       schemas.set(tool.name, tool);
       server.registerTool(
         tool.name,
-        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
+        { description: options.describe ? options.describe(tool) : (tool.description ?? ""), inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
         async (args: Record<string, unknown>) => {
           try {
             return (await client.callTool({ name: tool.name, arguments: args })) as never;

@@ -186,6 +186,11 @@ export function runWithToolContext<T>(tool: string, surface: ClientSurface, fn: 
   return toolContext.run({ tool, surface }, fn);
 }
 
+/** The tool call running now, if any (a tool that runs inside another one sees the outer call). */
+export function currentToolContext(): ToolContext | undefined {
+  return toolContext.getStore();
+}
+
 /** Printable ASCII only, so a header value never breaks a request. */
 const headerValue = (value: string, max: number) => value.replace(/[^\x20-\x7e]/g, "").trim().slice(0, max);
 

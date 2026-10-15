@@ -70,6 +70,8 @@ Sign in once: in Cursor Settings, open MCP and click Connect (or Authenticate) n
 
 > **Windows:** use `"command": "cmd.exe", "args": ["/c", "npx", "-y", "summer-engine@latest", "mcp"]` instead — `npx` is a `.cmd` shim on Windows and hosts that spawn it directly fail with ENOENT. `summer setup` writes the right form automatically.
 
+After `summer login` it also runs Summer's cloud operations, so Cursor needs one server. For assets, plans, the store, publishing, prices and analytics only, nothing needs installing: add `"summer-cloud": {"url": "https://mcp.summerengine.com/mcp"}` under `mcpServers` and sign in once with Connect in Cursor's MCP settings.
+
 Keep the engine open on the project:
 
 ```bash

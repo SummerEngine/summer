@@ -39,6 +39,17 @@ Paths:
 npx -y summer-engine@latest mcp
 ```
 
+After `summer login` it also runs Summer's cloud operations, so Codex needs one server.
+
+### Cloud work without the engine
+
+For assets, plans, the store, publishing, prices and analytics only, nothing needs installing. Add Summer's hosted server and sign in once:
+
+```bash
+codex mcp add summer-cloud --url https://mcp.summerengine.com/mcp
+codex mcp login summer-cloud
+```
+
 ### Summer Games
 
 `summer setup codex` also adds Summer Games, so Codex can see your friends, start parties and send messages as you:

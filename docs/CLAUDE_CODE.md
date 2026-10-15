@@ -74,6 +74,8 @@ Paths:
 
 > **Windows:** use `"command": "cmd.exe", "args": ["/c", "npx", "-y", "summer-engine@latest", "mcp"]` instead — `npx` is a `.cmd` shim on Windows and hosts that spawn it directly fail with ENOENT. `summer setup` writes the right form automatically.
 
+Without the plugin, cloud work (assets, plans, the store, publishing, prices, analytics) needs no install: `claude mcp add --transport http summer-cloud https://mcp.summerengine.com/mcp`, then `/mcp` to sign in.
+
 ### Summer Games
 
 `summer setup claude-code` also adds Summer Games, so Claude Code can see your friends, start parties and send messages as you:

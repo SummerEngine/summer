@@ -26,3 +26,5 @@ Expected agent behavior:
 First-class setup targets: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted): `gemini`, `roo-code`.
 
 Manual terminal commands still work, but the copy-paste prompt is the main path: the agent handles npm and platform details.
+
+Cloud work only (assets, plans, the store, publishing, prices, analytics) needs no install: add `https://mcp.summerengine.com/mcp` to the agent and sign in once. The README's "Connect" section has the line for each agent.

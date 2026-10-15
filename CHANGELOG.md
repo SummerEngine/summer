@@ -11,6 +11,7 @@ The base of Summer 4.0's agent surface: one catalog of Summer operations, named 
 - **`SUMMER_SURFACE=v4 summer <area> <action> --field value`.** The CLI view of the same catalog, with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json`. It also adds `summer whoami`, `summer ops search <words>` and `summer ops describe <op>`.
 - **Official MCP Registry.** `package.json` names the server `io.github.summerengine/summer` (`mcpName`), and the generated `server.json` lists the npm package and the hosted server.
 - The per-call usage line also says which operation the call ran, the surface (`v3` or `v4`) and the profile. It never sends arguments or results.
+- **The docs describe 4.0.** README, AGENTS.md and `docs/` now say how to connect (one hosted URL and one sign-in for cloud work, the local server for engine work), how agents call Summer (operations, `summer_search` and `summer_call`, one answer shape and its error codes, 3.x names that keep working), what an agent may do on its own (Agent permissions, approvals, Agent activity), how credits and auto top-up work, the two store versions for ChatGPT and Claude's connector directory, and the `summer <area> <action>` CLI.
 
 ## [3.9.1] - 2026-10-15
 

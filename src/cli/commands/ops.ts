@@ -8,7 +8,7 @@ import { loadLibraryIndex } from "../../core/library-search.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 
 /**
- * The CLI view of the operation catalog (SUMMER_SURFACE=v4):
+ * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
  *
  *   summer <area> <action> [--<field> <value> ...] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]
  *   summer whoami
@@ -215,7 +215,7 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
 
 function areaCommand(area: string): Command {
   return new Command(area)
-    .description(`Summer ${area} operations (4.0 preview): summer ${area} <action> --field value. Find them: summer ops search ${area}`)
+    .description(`Summer ${area} operations: summer ${area} <action> --field value. Find them: summer ops search ${area}`)
     .argument("<action>", "The operation's action, e.g. list or set-base")
     .allowUnknownOption(true)
     .allowExcessArguments(true)
@@ -227,14 +227,14 @@ function areaCommand(area: string): Command {
 
 export function opsCliCommands(): Command[] {
   const whoami = new Command("whoami")
-    .description("Who is signed in, and their credits (4.0 preview)")
+    .description("Who is signed in, and their credits")
     .allowUnknownOption(true)
     .allowExcessArguments(true)
     .action(async (_options: unknown, command: Command) => {
       process.exitCode = await runOpFromCli("whoami", command.args);
     });
 
-  const ops = new Command("ops").description("Find and describe Summer operations (4.0 preview)");
+  const ops = new Command("ops").description("Find and describe Summer operations");
   ops
     .command("search <words...>")
     .description("Find operations by describing the job in plain words")

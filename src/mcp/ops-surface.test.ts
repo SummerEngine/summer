@@ -98,6 +98,7 @@ describe("v4, engine profile", () => {
       const names = tools.map((tool) => tool.name);
       expect(names).toContain("summer_api_docs");
       expect(tools.find((tool) => tool.name === "summer_api_docs")!.description!.length).toBeLessThanOrEqual(300);
+      expect(tools.find((tool) => tool.name === "summer_api_docs")!.title).toBe("Look up an engine class");
       const read = await client.callTool({ name: "summer_docs_read", arguments: { id: "skill/multiplayer" } });
       const text = (read as { content: Array<{ text: string }> }).content.map((part) => part.text).join("\n");
       expect(text).toContain('report via summer_call {"op":"docs.feedback"}.');

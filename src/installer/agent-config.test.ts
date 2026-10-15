@@ -11,6 +11,7 @@ import {
   createSummerMcpServerConfig,
   normalizeChannel,
   parseAgent,
+  resolveAgentSelection,
   resolvePackageRoot,
   topLevelKey,
 } from "./agent-config.js";
@@ -624,5 +625,13 @@ describe("configureSummerGamesMcp", () => {
     });
     expect(result).toBeNull();
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe("resolveAgentSelection", () => {
+  it("names an unknown agent instead of only asking for one", () => {
+    expect(() => resolveAgentSelection("notanagent", undefined)).toThrow(/^Unknown agent "notanagent"\. Supported: .*claude-code/);
+    expect(() => resolveAgentSelection(undefined, undefined)).toThrow(/^Specify an agent: /);
+    expect(resolveAgentSelection("claude", undefined)).toBe("claude-code");
   });
 });

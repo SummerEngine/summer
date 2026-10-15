@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAuthToken } from "../core/auth.js";
+import { _resetTelemetryPingedForTests } from "../core/telemetry.js";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer } from "./server.js";
 
@@ -18,6 +19,7 @@ beforeEach(async () => {
   delete process.env.DO_NOT_TRACK;
   delete process.env.SUMMER_TOKEN;
   process.env.SUMMER_GATEWAY_URL = "https://gateway.example";
+  _resetTelemetryPingedForTests();
 });
 
 afterEach(async () => {
@@ -84,26 +86,33 @@ describe("local tool call reports", () => {
     } finally {
       await close();
     }
-    // The report is fire-and-forget (two store reads, then fetch).
+    // The session line and the call line are fire-and-forget (store reads, then fetch).
     const deadline = Date.now() + 1000;
-    while (posts.length === 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
+    while (posts.length < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
     await new Promise((resolve) => setTimeout(resolve, 20));
     return posts;
   }
 
   it("sends the tool name, success, duration and the host app name, nothing else", async () => {
     const posts = await callAndCollect();
-    expect(posts).toHaveLength(1);
-    expect(posts[0].url).toBe("https://gateway.example/api/mcp/log-local-call");
-    expect(Object.keys(posts[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "tool"]);
-    expect(posts[0].body).toMatchObject({
+    const calls = posts.filter((post) => post.body.event === "mcp_tool_call");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("https://gateway.example/api/mcp/log-local-call");
+    expect(Object.keys(calls[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "tool"]);
+    expect(calls[0].body).toMatchObject({
       client: "summer-cli",
       event: "mcp_tool_call",
       mcpClient: "claude-code",
       tool: "summer_get_agent_playbook",
       ok: true,
     });
-    expect(typeof posts[0].body.durationMs).toBe("number");
+    expect(typeof calls[0].body.durationMs).toBe("number");
+  });
+
+  it("sends one session line on the first tool call, with the host app name", async () => {
+    const posts = await callAndCollect();
+    const sessions = posts.filter((post) => post.body.event === "mcp_session_start");
+    expect(sessions.map((post) => post.body)).toEqual([{ client: "summer-cli", event: "mcp_session_start", mcpClient: "claude-code" }]);
   });
 
   it("sends nothing with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1", async () => {

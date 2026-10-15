@@ -11,6 +11,7 @@ The Claude Code plugin gets a first-run guide and Summer's hosted server, and pa
 - **The session-start hook never waits.** It no longer runs `summer doctor` (npm registry, engine probe, MCP boot); it reads local files only and returns in well under a second. On a machine without Summer it tells the agent to suggest `/summer:start`.
 - **Clean manifests.** The Claude plugin and marketplace manifests carry only documented fields (no `_generated` banner, no Codex-only fields), plus the directory listing fields (icon, documentation, support, privacy and terms links). The plugin no longer names `hooks/hooks.json` (its default location) or declares the pre-commit doctor option, which opened a settings dialog on enable; `SUMMER_PRE_COMMIT_DOCTOR=1` still turns that hook on. The repo's own `CLAUDE.md` moved to `.claude/CLAUDE.md`, because a `CLAUDE.md` at the plugin root fails the strict check.
 - README and `docs/CLAUDE_CODE.md` show the one-line plugin install: `/plugin install summer --marketplace summerengine/summer`.
+- The once-per-session usage line now names your agent app (the name it sent in the MCP handshake) and goes out on the first tool call of any kind, not only the first engine tool. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` still turns it off.
 
 ## [3.9.0] - 2026-10-14
 

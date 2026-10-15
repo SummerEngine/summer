@@ -156,7 +156,7 @@ export function registerMcpClientSource(source: (() => McpClientInfo | undefined
   mcpClientSource = source;
 }
 
-function currentMcpClient(): McpClientInfo | undefined {
+export function currentMcpClient(): McpClientInfo | undefined {
   try {
     return mcpClientSource?.() ?? undefined;
   } catch {

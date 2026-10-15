@@ -53,7 +53,7 @@ import {
   type ToolSelection,
 } from "./tool-surface.js";
 import { shapeToolResult, singleEditCounter } from "./tool-results.js";
-import { recordLocalToolCall } from "../core/telemetry.js";
+import { recordLocalToolCall, recordMcpSession } from "../core/telemetry.js";
 import { registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
@@ -308,6 +308,7 @@ function installToolCallWrapper(server: McpServer): () => number {
         // Shaping must never break the tool call; the raw result goes out.
       }
       try {
+        recordMcpSession();
         recordLocalToolCall({ tool: name, ok: !isError, durationMs, mcpClient: hostApp() });
         // Opt-in local trajectory capture: one JSONL line per tool call when
         // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a

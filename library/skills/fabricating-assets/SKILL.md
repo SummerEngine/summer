@@ -1,6 +1,6 @@
 ---
 name: fabricating-assets
-description: "Fabricate meshes with a bpy script in the user's own Blender (summer_fabricate_3d) — kits with exact dimensions, VFX meshes, post-processing generated models."
+description: "Fabricate meshes with a Blender script (summer_fabricate_3d): exact-size kits, VFX meshes, post-processing."
 ---
 
 # Fabricating Assets

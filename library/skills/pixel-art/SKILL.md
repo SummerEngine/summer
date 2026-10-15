@@ -1,6 +1,6 @@
 ---
 name: pixel-art
-description: "Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel."
+description: "Generate pixel-art sprites, items, tiles and portraits at a set resolution with a limited palette."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -193,4 +193,4 @@ After the asset is wired:
 - `sprite-sheet` — animated pixel frames.
 - `character-portrait` — high-res counterpart.
 - `asset-strategy` — meta-router.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

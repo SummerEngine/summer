@@ -1,6 +1,6 @@
 ---
 name: procedural-animation
-description: "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation."
+description: "Runtime bone changes on top of clips: head look-at, foot IK, hand grabs a prop, lean, recoil."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

@@ -1,6 +1,6 @@
 ---
 name: navigate-summer
-description: "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open."
+description: "Open a Summer web page or editor surface for the user (billing, their games, a scene) with summer_open."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta
@@ -13,7 +13,7 @@ paths: ["**/project.godot", "**/*.tscn", "**/.summer/**"]
 
 ## Overview
 
-Summer has two surfaces the user looks at: **summerengine.com** (Studio, games, billing, templates, guides, docs) and the **Summer Engine editor** (scenes, nodes, docks). `summer_open` — the same behavior as `summer open <target>` in a shell — takes an intent ("billing", "my games", "the scene I'm editing", "res://player.gd") and opens the exact page or panel, or prints the URL / engine op so you can hand it over. The **product map** reference (`../../references/product-map/product-map.md`) is the full table of destinations with their intent phrases, required context, and what the user will see.
+Summer has two surfaces the user looks at: **summerengine.com** (Studio, games, billing, templates, guides, docs) and the **Summer Engine editor** (scenes, nodes, docks). `summer_open` — the same behavior as `summer open <target>` in a shell — takes an intent ("billing", "my games", "the scene I'm editing", "res://player.gd") and opens the exact page or panel, or prints the URL / engine op so you can hand it over. The **product map** reference (`summer_read_library` id `reference/product-map`) is the full table of destinations with their intent phrases, required context, and what the user will see.
 
 Rigid skill: follow the rules below exactly.
 

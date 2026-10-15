@@ -1,7 +1,7 @@
 id: skill/grow-analytics
 kind: skill
 version: 1.0.0
-summary: "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops."
+summary: "Read a creator's Summer Grow numbers (page views, launches, sessions, play time), compare windows."
 use_when:
   - "the user asks how their game is doing on Summer Games: views, launches, players, play time"
   - "reading summer_grow_overview or summer_grow_analytics and turning the numbers into one next step"

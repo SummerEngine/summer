@@ -1,6 +1,6 @@
 ---
 name: save-load
-description: "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks."
+description: "Save and load game state: user:// paths, JSON progress vs ConfigFile settings, versioned saves, autosave."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scripting-patterns

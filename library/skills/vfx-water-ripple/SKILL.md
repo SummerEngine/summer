@@ -1,6 +1,6 @@
 ---
 name: vfx-water-ripple
-description: "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts."
+description: "Water-ripple effect: animated normal-distortion ripples on a water plane or Decal, set off by impacts."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

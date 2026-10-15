@@ -1,6 +1,6 @@
 ---
 name: multiplayer-movement
-description: "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose."
+description: "Movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

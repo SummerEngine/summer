@@ -1,6 +1,6 @@
 ---
 name: organic-model
-description: "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity."
+description: "Generate organic 3D shapes (trees, rocks, mushrooms, plants, crystals) where irregularity looks natural."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -193,4 +193,4 @@ After the organic models are scattered:
 - `environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
 - `asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `scene-composition` — MultiMeshInstance3D scatter pattern.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_3d` schema.

@@ -1,6 +1,6 @@
 ---
 name: character-animation-wiring
-description: "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion."
+description: "Wire a rigged character end to end: real clips and bones, locomotion states, method tracks, root motion."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

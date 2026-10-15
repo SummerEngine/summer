@@ -1,6 +1,6 @@
 ---
 name: vehicle-model
-description: "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D."
+description: "Generate a hard-surface vehicle (car, spaceship, mech, boat, tank) as a static or VehicleBody3D mesh."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -212,4 +212,4 @@ After the vehicle is wired:
 - `character-model` — for the driver/pilot.
 - `prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `asset-strategy` — meta-router.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.

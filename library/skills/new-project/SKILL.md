@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: "Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty."
+description: "Create a blank Summer Engine project: ask for the project name and run summer create empty."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

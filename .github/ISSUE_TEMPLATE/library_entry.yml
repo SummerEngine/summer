@@ -1,0 +1,24 @@
+name: Library entry problem
+description: A skill, template, reference or tool description is wrong, stale, or sent your agent the wrong way.
+labels: ["library"]
+body:
+  - type: input
+    id: entry
+    attributes:
+      label: Entry id
+      description: The `entry_id` from the footer of `summer_read_library`, or the skill name.
+      placeholder: skill/fps-controller
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: The prompt you gave, what the agent did after reading the entry, and what should have happened.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: summer-engine version
+      description: "`npx -y summer-engine@latest --version`"

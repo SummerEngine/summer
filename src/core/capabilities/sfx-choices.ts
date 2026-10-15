@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { codedFailure, type SummerErrorCode } from "../error-codes.js";
 
 /**
  * Sound-effect choices (summer_generate_sfx_choices + summer_get_choices).
@@ -73,6 +74,18 @@ export interface GatewayReply {
   data?: any;
   error?: string;
   status: number;
+  /** Set for the shared failures (not signed in, no credits, network). */
+  code?: SummerErrorCode;
+  recovery?: string;
+}
+
+/** A failed reply as a tool result; coded when the reply carries a code. */
+function replyFailure(reply: GatewayReply): Record<string, unknown> {
+  // An unavailable reply's data is already `{details: {cause}}`.
+  const details = reply.code === "unavailable" ? reply.data ?? {} : reply.data ? { details: reply.data } : {};
+  return reply.code
+    ? codedFailure(reply.code, reply.error ?? "Request failed", details, reply.recovery)
+    : { ok: false, error: reply.error, ...details };
 }
 
 export interface SfxChoicesDeps {
@@ -182,9 +195,7 @@ export async function generateSfxChoices(
   deps: SfxChoicesDeps
 ): Promise<Record<string, unknown>> {
   const reply = await deps.post(SFX_CHOICES_ENDPOINT, sfxChoicesRequestBody(args), SFX_CHOICES_TIMEOUT_MS);
-  if (reply.error) {
-    return { ok: false, error: reply.error, ...(reply.data ? { details: reply.data } : {}) };
-  }
+  if (reply.error) return replyFailure(reply);
   const data = reply.data ?? {};
   const clips: Clip[] = Array.isArray(data.clips) ? data.clips : [];
   const failed = Array.isArray(data.failed) ? data.failed : [];
@@ -265,9 +276,7 @@ export async function getChoices(
   const params = new URLSearchParams();
   if (args.waitSeconds) params.set("waitSeconds", String(args.waitSeconds));
   const reply = await deps.get(choicesEndpoint(args.choiceSetId), params, choicesTimeoutMs(args.waitSeconds));
-  if (reply.error) {
-    return { ok: false, error: reply.error, ...(reply.data ? { details: reply.data } : {}) };
-  }
+  if (reply.error) return replyFailure(reply);
   const data = reply.data ?? {};
   const clips: Clip[] = Array.isArray(data.clips) ? data.clips : [];
   const status = data.status === "decided" ? "decided" : "pending";

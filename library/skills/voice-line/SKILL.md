@@ -257,6 +257,10 @@ Narrator intimate:        warmer mid pitch, lower stability for breath
 - **User wants the line shorter on regen.** Edit the text first; don't try to compress with `speed` past 1.15 (artifacts).
 - **NPC bark variants.** Generate 3–5 variants of the same intent (`"They're at the gate!"`, `"Enemy approaching!"`, `"Look out!"`) and pick at random in code so the bark doesn't repeat.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-8 and skip step 9 (`AudioStreamPlayer`). Step 10 still applies when the project has a `.summer/` folder; otherwise give the person the voice id with the files. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format.
+
 ## Fallback (no MCP)
 
 Print the call (text, voice id, params, target path). User runs via the Summer dashboard, then `summer_import_from_url` the result.

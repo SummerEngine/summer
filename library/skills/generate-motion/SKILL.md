@@ -60,8 +60,8 @@ summer_generate_motion(
 )
 ```
 
-With the default `wait: true` the tool polls to completion and returns the job
-result with `animationAssetId` in it. Don't assume any other field is present —
+The tool returns a `jobId`: poll `summer_check_job` until it is terminal (or pass
+`wait: true` to make the tool poll for you). The job result has `animationAssetId` in it. Don't assume any other field is present —
 resolve the asset to get stable file/download metadata:
 
 ```
@@ -144,6 +144,10 @@ have actually seen, or route to the manual-authoring fallback.
 - **Quadruped rig.** Meshy library is humanoid-only. For quadrupeds and other non-humanoid rigs use `text-to-motion`, or hand-author / import an external library.
 - **Character is < 1m tall (child / dwarf).** Library clips assume a ~1.8m humanoid. Apply the clip; the proportions retarget but stride length looks long. Either accept it or tune `playback_speed` on the AnimationPlayer track.
 - **Character has wings / tail.** The library ignores the extra bones — they sag. Hand-author additive overlays for the extra bones, or accept the visual hit.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Get the file with `summer_get_asset_download_url` on `animationAssetId`, save it where the person asked, and tell them the path and format.
 
 ## Fallback (no MCP)
 

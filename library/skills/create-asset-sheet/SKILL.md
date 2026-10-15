@@ -137,6 +137,10 @@ calls the same server-side slicer as the Studio wizard.
 | Upscaled slice looks invented | Source was too small / too ambiguous | Don't upscale slices below ~32×32. Or accept the hallucination and edit |
 | Detection returns wrong category | Model misjudged context | User can override in the review step; not a blocker |
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `summer_slice_asset_sheet` and skip `summer_import_asset_by_id`: get each piece with `summer_get_asset_download_url`, save the pieces where the person asked, and tell them the paths.
+
 ## What this skill does NOT do (yet)
 
 - Per-asset planning and individual generation, where each asset is generated separately at full resolution.

@@ -12,6 +12,26 @@ Install Summer Engine and let's make a game.
 
 Claude Code runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
 
+## The Summer plugin
+
+The plugin is the one-step install for Claude Code (2.1.275 or later):
+
+```text
+/plugin install summer --marketplace summerengine/summer
+```
+
+Older versions: `/plugin marketplace add summerengine/summer`, then `/plugin install summer@summer-engine`.
+
+Then type `/summer:start` for the first-run guide. The plugin brings:
+
+- every Summer skill, as `/summer:<skill>` (for example `/summer:make-game`);
+- `/summer` (routes a request to the right skill) and `/summer:start`;
+- the `summer-engine` MCP server, which drives the Summer Engine desktop app and runs Summer's cloud tools after `summer login` (needs Node 20 or later);
+- the `summer-cloud` MCP server, Summer's hosted server at `https://mcp.summerengine.com/mcp`, for people without the desktop app or Node. Sign in once: type `/mcp`, choose `summer-cloud`, then **Authenticate**;
+- a session-start hook that adds one or two lines of context and never waits on the network.
+
+Turn either server off in `/mcp`. Use the plugin or `summer setup claude-code`, not both: they install the same skills.
+
 ## Install Skills
 
 User-wide:

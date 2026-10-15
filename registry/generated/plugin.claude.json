@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "_generated": "GENERATED from integrations/claude — do not edit; npm run generate:registry",
   "name": "summer",
+  "displayName": "Summer Engine",
   "version": "3.9.0",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 119-tool MCP bridge to the local desktop app.",
+  "description": "Make real, playable games with Summer Engine. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
@@ -26,6 +26,11 @@
     "multiplayer",
     "performance"
   ],
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://www.summerengine.com/mcp",
+  "supportUrl": "https://summer.games/support",
+  "privacyPolicyUrl": "https://www.summerengine.com/privacy",
+  "termsOfServiceUrl": "https://www.summerengine.com/terms",
   "skills": [
     "./library/skills/3d-lighting/",
     "./library/skills/adaptive-music/",
@@ -153,14 +158,18 @@
     "./library/skills/writing-plans/",
     "./library/skills/writing-skills/"
   ],
-  "hooks": "./hooks/hooks.json",
-  "mcpServers": "./.mcp.json",
-  "userConfig": {
-    "enable_pre_commit_doctor": {
-      "type": "boolean",
-      "title": "Run summer doctor before commits",
-      "description": "Block git commits when the Summer Engine setup needs attention (runs `summer doctor` before each `git commit`). Off by default. Reaches the hook as CLAUDE_PLUGIN_OPTION_ENABLE_PRE_COMMIT_DOCTOR; SUMMER_PRE_COMMIT_DOCTOR=1 in the environment enables it too.",
-      "default": false
+  "mcpServers": {
+    "summer-engine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "summer-engine@latest",
+        "mcp"
+      ]
+    },
+    "summer-cloud": {
+      "type": "http",
+      "url": "https://mcp.summerengine.com/mcp"
     }
   }
 }

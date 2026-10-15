@@ -3,8 +3,8 @@
 #
 # Event:    SessionStart (matcher: startup|clear|compact)
 # Purpose:  Orient Claude on every fresh Summer-enabled session.
-#           Detect Summer project + GameSoul + doctor health and surface a short
-#           greeting as additional context.
+#           Detect Summer project + GameSoul + first-run state and surface a
+#           short greeting as additional context.
 #
 # Input:    JSON on stdin with { session_id, source, model, cwd, ... }
 #           Common Claude Code env vars: $CLAUDE_PROJECT_DIR, $CLAUDE_PLUGIN_ROOT
@@ -13,8 +13,8 @@
 # Exit:     Always 0 — never block session start.
 #
 # Portability: bash 3.2+ (macOS default), POSIX-friendly, works on Git Bash.
-#              Uses `grep -E` not `grep -P`. Falls back gracefully when jq
-#              and `summer` are missing.
+#              Uses `grep -E` not `grep -P`. File checks only: no network,
+#              no child processes beyond grep/awk/find, so it returns at once.
 
 set +e  # Hooks must never kill the session.
 
@@ -64,30 +64,26 @@ if [ -f "${PROJECT_DIR}/project.godot" ]; then
     fi
 fi
 
-# Line 3: doctor fail one-liner (only on status "fail" — silent on ok/warning).
-# Doctor JSON (src/core/capabilities/doctor.ts): checks[].status is lowercase
-# "ok" | "warning" | "fail". Only runs when a `summer` CLI is on PATH: the
-# documented npx install never puts one there, and a cold `npx summer-engine`
-# fetch would exceed the 10s SessionStart budget, so we degrade silently.
-if command -v summer >/dev/null 2>&1; then
-    DOCTOR_OUT=$(summer doctor --json 2>/dev/null)
-    if [ -n "$DOCTOR_OUT" ]; then
-        FAIL_REASON=""
-        if command -v jq >/dev/null 2>&1; then
-            FAIL_REASON=$(printf '%s' "$DOCTOR_OUT" \
-                | jq -r 'first(.checks[]? | select((.status // "" | ascii_downcase) == "fail") | .message) // empty' 2>/dev/null)
-        else
-            # Crude fallback: first "message" near a "fail"
-            FAIL_REASON=$(printf '%s' "$DOCTOR_OUT" \
-                | grep -oE '"status"[[:space:]]*:[[:space:]]*"(FAIL|fail)"[^}]*"message"[[:space:]]*:[[:space:]]*"[^"]*"' \
-                | head -1 \
-                | grep -oE '"message"[[:space:]]*:[[:space:]]*"[^"]*"' \
-                | sed 's/.*"message"[[:space:]]*:[[:space:]]*"//;s/"$//')
-        fi
-        if [ -n "$FAIL_REASON" ]; then
-            LINES+=("Summer setup needs attention: ${FAIL_REASON}. Run: summer doctor")
-        fi
-    fi
+# Line 3: first-run / sign-in hint, from local files only. No network and no
+# `summer doctor` here: SessionStart blocks the session until it returns, and a
+# doctor run (npm registry, engine probe, MCP boot) can take seconds. The full
+# check is one call away (`summer doctor`, or /summer:start on a first run).
+SUMMER_HOME="${HOME}/.summer"
+ENGINE_FOUND=""
+for candidate in "/Applications/Summer.app" "${HOME}/Applications/Summer.app" \
+    "${LOCALAPPDATA:-}/Programs/Summer" "${LOCALAPPDATA:-}/SummerEngine" "${HOME}/.local/share/summer-engine"; do
+    if [ -e "$candidate" ]; then ENGINE_FOUND=1; break; fi
+done
+if [ -n "${SUMMER_BIN:-}${SUMMER_ENGINE_BINARY:-}" ]; then ENGINE_FOUND=1; fi
+# /summer:start is the Claude Code plugin command; other hosts get the CLI.
+START_HINT="run: npx -y summer-engine@latest setup"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ]; then
+    START_HINT="suggest /summer:start (sets up Summer and makes a first playable game in about five minutes)"
+fi
+if [ ! -d "$SUMMER_HOME" ] && [ -z "$ENGINE_FOUND" ] && [ -z "${SUMMER_TOKEN:-}" ]; then
+    LINES+=("Summer is not set up on this machine yet. When the user wants to make a game, ${START_HINT}.")
+elif [ ! -f "${SUMMER_HOME}/auth-token" ] && [ -z "${SUMMER_TOKEN:-}" ]; then
+    LINES+=("Summer CLI is not signed in: asset and publishing tools need \`summer login\` (or sign in to the summer-cloud server in /mcp).")
 fi
 
 # ---------- Compose context ----------

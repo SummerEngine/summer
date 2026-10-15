@@ -229,13 +229,13 @@ describe("generateRegistry: catalog outputs", () => {
 });
 
 describe("generateRegistry: manifests (golden shapes)", () => {
-  it("plugin.claude.json keeps the current field order and stamps version + tool count", () => {
+  it("plugin.claude.json keeps the current field order, stamps the version and carries both MCP servers", () => {
     const result = gen(basicRoot);
     const manifest = parse(result.files, "plugin.claude.json");
     expect(Object.keys(manifest)).toEqual([
       "$schema",
-      "_generated",
       "name",
+      "displayName",
       "version",
       "description",
       "author",
@@ -243,19 +243,26 @@ describe("generateRegistry: manifests (golden shapes)", () => {
       "repository",
       "license",
       "keywords",
+      "icon",
+      "documentationUrl",
+      "supportUrl",
+      "privacyPolicyUrl",
+      "termsOfServiceUrl",
       "skills",
-      "hooks",
       "mcpServers",
-      "userConfig",
     ]);
     expect(manifest.version).toBe("9.9.9");
-    expect(manifest.description).toContain("a 1-tool MCP bridge");
+    expect(manifest.description).toContain("/summer:start");
     expect(manifest.skills).toEqual([
       "./library/skills/alpha-skill/",
       "./library/skills/beta-skill/",
     ]);
-    expect(manifest.hooks).toBe("./hooks/hooks.json");
-    expect(manifest.mcpServers).toBe("./.mcp.json");
+    // hooks/hooks.json is the default location; naming it too can register hooks twice.
+    expect(manifest.hooks).toBeUndefined();
+    expect(manifest.mcpServers).toEqual({
+      "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] },
+      "summer-cloud": { type: "http", url: "https://mcp.summerengine.com/mcp" },
+    });
   });
 
   it("all manifests carry the full skill list (codex/cursor/factory/gemini gaps are fixed)", () => {
@@ -273,17 +280,20 @@ describe("generateRegistry: manifests (golden shapes)", () => {
         "./library/skills/alpha-skill/",
         "./library/skills/beta-skill/",
       ]);
-      expect(manifest._generated, name).toBe(manifestBanner(agent));
+      // `claude plugin validate --strict` fails on unknown fields, so the Claude manifests carry no banner.
+      expect(manifest._generated, name).toBe(agent === "claude" ? undefined : manifestBanner(agent));
     }
   });
 
-  it("manifest banners name the integration they are built from", () => {
+  it("manifest banners name the integration they are built from; the Claude manifests carry only documented fields", () => {
     expect(manifestBanner("claude")).toBe(
       "GENERATED from integrations/claude — do not edit; npm run generate:registry",
     );
     const result = gen(basicRoot);
     const marketplace = parse(result.files, "marketplace.claude.json");
-    expect(marketplace._generated).toBe(manifestBanner("claude"));
+    expect(marketplace._generated).toBeUndefined();
+    const entry = (marketplace.plugins as Record<string, unknown>[])[0];
+    for (const field of ["brandColor", "capabilities", "defaultPrompt"]) expect(entry[field], field).toBeUndefined();
   });
 
   it("per-agent format differences survive: cursor hooks file, codex interface, gemini mcp block, marketplace wrapper", () => {
@@ -439,6 +449,7 @@ describe("count-claims guard", () => {
       fs.writeFileSync(abs, text);
     };
     write("CLAUDE.md", "70 tools here\n");
+    write(".claude/CLAUDE.md", "70 tools here\n");
     write("library/references/mcp-tools-reference/mcp-tools-reference.md", "## Tool surface (70 tools)\n");
     write("_persona/summer/SOUL.md", "I know 70 tools\n");
     write(".opencode/INSTALL.md", "installs 83 skills\n");
@@ -447,6 +458,7 @@ describe("count-claims guard", () => {
     write("integrations/cursor/README.md", "a 5-skill gap\n");
     write("scripts/notes.md", "9 tools\n"); // NOT scanned
     expect(collectCountClaimFiles(root)).toEqual([
+      ".claude/CLAUDE.md",
       ".opencode/INSTALL.md",
       "CLAUDE.md",
       "_persona/summer/SOUL.md",
@@ -456,6 +468,7 @@ describe("count-claims guard", () => {
     ]);
     const violations = checkCountClaims(root, { byKind: { tool: 69, skill: 83 } });
     expect(violations.map((v) => `${v.file}:${v.line} ${v.claim}`)).toEqual([
+      ".claude/CLAUDE.md:1 70 tools",
       "CLAUDE.md:1 70 tools",
       "_persona/summer/SOUL.md:1 70 tools",
       "docs/OVERVIEW.md:1 70 tools",

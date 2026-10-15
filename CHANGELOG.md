@@ -2,6 +2,16 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+The Claude Code plugin gets a first-run guide and Summer's hosted server, and passes `claude plugin validate --strict`.
+
+- **`/summer:start`.** A new command for the first run: it checks what is on the machine, signs the user in, and gets a first game playing in about five minutes, from a template that already plays or from a board of concept art Summer draws in the chat (the hosted `summer_make_game`), built in the Summer Engine desktop app.
+- **Two MCP servers in the plugin.** `summer-engine` (the desktop bridge, as before) and the new `summer-cloud`, Summer's hosted server at `https://mcp.summerengine.com/mcp`, for people without the desktop app or Node. Sign in once with `/mcp`. Codex, Cursor and Factory keep the one local server.
+- **The session-start hook never waits.** It no longer runs `summer doctor` (npm registry, engine probe, MCP boot); it reads local files only and returns in well under a second. On a machine without Summer it tells the agent to suggest `/summer:start`.
+- **Clean manifests.** The Claude plugin and marketplace manifests carry only documented fields (no `_generated` banner, no Codex-only fields), plus the directory listing fields (icon, documentation, support, privacy and terms links). The plugin no longer names `hooks/hooks.json` (its default location) or declares the pre-commit doctor option, which opened a settings dialog on enable; `SUMMER_PRE_COMMIT_DOCTOR=1` still turns that hook on. The repo's own `CLAUDE.md` moved to `.claude/CLAUDE.md`, because a `CLAUDE.md` at the plugin root fails the strict check.
+- README and `docs/CLAUDE_CODE.md` show the one-line plugin install: `/plugin install summer --marketplace summerengine/summer`.
+
 ## [3.9.0] - 2026-10-14
 
 One sign-in for every Summer tool, tool profiles that fit every agent, shorter tool results, and Summer sees which agent app made each request.

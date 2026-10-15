@@ -5,7 +5,7 @@
  * Scope (the earlier README/AGENTS/GEMINI-only scan guarded nothing: those
  * files carry no numeric claims — the live "70 tools" literal sat unscanned in
  * library/references/mcp-tools-reference/):
- *   README.md, AGENTS.md, GEMINI.md, CLAUDE.md,
+ *   README.md, AGENTS.md, GEMINI.md, CLAUDE.md, .claude/CLAUDE.md,
  *   library/references/** /*.md, _persona/** /*.md, .opencode/** /*.md,
  *   docs/*.md (top level only — docs/design/ is not scanned),
  *   integrations/** /*.md
@@ -23,7 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /** Root-level files scanned when present. */
-export const COUNT_CLAIM_FILES = ["README.md", "AGENTS.md", "GEMINI.md", "CLAUDE.md"];
+export const COUNT_CLAIM_FILES = ["README.md", "AGENTS.md", "GEMINI.md", "CLAUDE.md", ".claude/CLAUDE.md"];
 
 /** Directories scanned recursively for *.md. */
 export const COUNT_CLAIM_DIRS = ["library/references", "_persona", ".opencode", "integrations"];

@@ -566,6 +566,11 @@ export async function readLibraryEntry(
   } else if (kind === "tool") {
     bodyTitle = "how to call";
     body = toolBody(entry, slug);
+    // An engine tool's guide: its full how-to (the v4 surface lists only a short summary).
+    const guide = readText(join(dir, "GUIDE.md"));
+    if (guide !== null) {
+      body = `${body}\n\n${guide.replace(/\s+$/, "")}`;
+    }
   } else if (kind === "template") {
     bodyTitle = "pin";
     body = templateBody(slug, deps.templates ?? safeTemplates());

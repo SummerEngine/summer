@@ -75,6 +75,8 @@ describe("readLibraryEntry over the shipped library", () => {
     expect(result.text).toContain("summer tool screenshot --args");
     expect(result.text).toContain("Engine: required");
     expect(result.text).toContain("input_schema:"); // the descriptor text
+    // An engine tool's guide: the full how-to its short 4.0 summary leaves out.
+    expect(result.text).toContain("# summer_screenshot\n\nCapture a frame from Summer Engine");
     expect(lastLine(result.text)).toMatch(/^— entry_id: tool\/screenshot@/);
     const remote = await readLibraryEntry("tool/api-docs", "skill");
     if (!remote.ok) throw new Error("expected ok");

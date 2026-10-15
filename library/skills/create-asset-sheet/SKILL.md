@@ -42,7 +42,7 @@ Categories the classifier outputs (used to route into downstream pipelines):
 
 ## The cleanest path: the studio wizard
 
-The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `summer_open`) if they're working in the browser. The wizard:
+The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `studio.open`) if they're working in the browser. The wizard:
 
 - Offers a 2D / 3D mode toggle (2D is the slice flow described here; 3D is a soft pointer to `concept-art` + per-asset image-to-3D for now)
 - Surfaces six prompt templates (tile sheet, UI kit, menu, character pack, biome, freeform)

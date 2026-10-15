@@ -6,7 +6,7 @@ use_when:
   - '"nerf the bow using the balance formula in our app"'
   - using logic that lives in an app (a balance formula, an export) while the app is open
 do_not_use_when:
-  - "plain reads and edits of app data: summer_app_data"
+  - "plain reads and edits of app data: apps.read_data, apps.write_data"
 facets:
   lifecycle:
     - build

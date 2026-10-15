@@ -3,7 +3,7 @@ kind: tool
 version: 1.0.0
 summary: See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.
 use_when:
-  - right after every summer_app_publish, to check the app renders with real data
+  - right after every apps.publish, to check the app renders with real data
   - '"does my app look right on a phone / in dark mode"'
   - finding why an app shows nothing (SDK not connected, script errors)
 do_not_use_when:

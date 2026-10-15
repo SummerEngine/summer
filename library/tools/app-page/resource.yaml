@@ -6,7 +6,7 @@ use_when:
   - '"set the budget to 60 in the balance app"'
   - reading what the person has selected in an open app
 do_not_use_when:
-  - "changing shared data with no app open: summer_app_data"
+  - "changing shared data with no app open: apps.write_data"
 facets:
   lifecycle:
     - build

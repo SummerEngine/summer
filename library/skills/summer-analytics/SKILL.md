@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
 user-invocable: true
-allowed-tools: Read Grep Edit Write summer_get_script_errors summer_play summer_stop summer_get_diagnostics summer_open
+allowed-tools: Read Grep Edit Write summer_get_script_errors summer_play summer_stop summer_get_diagnostics summer_call
 paths: ["**/*.gd"]
 ---
 
@@ -105,10 +105,10 @@ On the client, after a menu choice:
 
 ### 4. Read the results
 
-`summer_grow_analytics` (hosted MCP, after `summer login`) returns the
+`analytics.summary` (hosted, after `summer login`) returns the
 game's top custom events next to its store page views, launches and play
 time; the `grow-analytics` skill says how to read them. In Studio:
-`summer_open` with target `game`, params `gameId` (your game's id) and
+`studio.open` with target `game`, params `gameId` (your game's id) and
 `section: "analytics"`. Events show up after a short delay.
 
 ## Result codes

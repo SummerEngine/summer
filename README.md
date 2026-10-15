@@ -92,7 +92,7 @@ Sound effects, music, voices, images, 3D models, motion and video are made on Su
 
 > Connect Summer to this agent so I can make game assets. Read github.com/summerengine/summer, connect yourself to Summer and log me in. Skip the Summer Engine app and the starter project, I only want assets.
 
-The agent installs the asset skills and the MCP config (summer-engine 3.9.1 or newer) and signs you in. It does not download the engine. Each asset lands in your Summer library as a normal file: GLB for 3D models, PNG, JPG or WebP for images, MP3 or WAV for audio, MP4 for video. The agent saves each file into your project (your engine's asset folder, or the folder you name), so any engine or web app can use it.
+The agent installs the asset skills and the MCP config (summer-engine 4.0.0 or newer) and signs you in. It does not download the engine. Each asset lands in your Summer library as a normal file: GLB for 3D models, PNG, JPG or WebP for images, MP3 or WAV for audio, MP4 for video. The agent saves each file into your project (your engine's asset folder, or the folder you name), so any engine or web app can use it.
 
 ---
 

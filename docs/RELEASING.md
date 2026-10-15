@@ -13,6 +13,7 @@ For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 6. Point the `next` dist-tag at the same version, so `next` is never older than `latest`.
 7. Create the `v<version>` tag and GitHub Release from that version's CHANGELOG section.
+8. Publish `server.json` to the official MCP Registry with `mcp-publisher` (GitHub sign-in by a SummerEngine org Owner).
 
 Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 

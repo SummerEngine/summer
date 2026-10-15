@@ -116,3 +116,17 @@ gh release create "v$PACKAGE_VERSION" --repo summerengine/summer --target "$(git
 ```
 
 `gh release create` makes the tag on GitHub, so nothing is pushed from this clone. For a release on `next`, add `--prerelease` and drop it when you promote (`gh release edit "v$PACKAGE_VERSION" --prerelease=false`).
+
+## 8. List the release in the official MCP Registry
+
+`server.json` (generated from `package.json`) lists the npm package and the hosted server under `io.github.SummerEngine/summer`. The registry checks that npm's `summer-engine@<version>` carries the same `mcpName`, so run this after step 5 passes. Sign in with a GitHub account that is an Owner of the SummerEngine org: the registry grants `io.github.SummerEngine/*` only to org Owners, and matches the name's case exactly. Install the publisher once with `brew install mcp-publisher`.
+
+```bash
+test "$(node -p 'require("./server.json").version')" = "$PACKAGE_VERSION"
+mcp-publisher validate
+mcp-publisher login github
+mcp-publisher publish
+curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=SummerEngine/summer"
+```
+
+The last command's answer must list `"version":"<version>"` for `io.github.SummerEngine/summer`.

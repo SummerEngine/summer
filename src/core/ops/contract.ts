@@ -162,13 +162,24 @@ const AREA_TOOL = /^summer_([a-z]+)_([a-z][a-z0-9_]*)$/;
  */
 export function opForToolCall(tool: string, args: unknown): string | null {
   if (tool === "summer_call") {
-    const op = args && typeof args === "object" ? (args as { op?: unknown }).op : undefined;
-    if (typeof op !== "string") return null;
-    const resolved = resolveOpName(op);
+    const call = args && typeof args === "object" ? (args as { op?: unknown; input?: unknown }) : {};
+    if (typeof call.op !== "string") return null;
+    const name = call.op.trim();
+    // A mixed 3.x tool: the action in its input picks the operation; an engine operation's own tool name is the operation.
+    const input = call.input && typeof call.input === "object" ? (call.input as Record<string, unknown>) : {};
+    const action = typeof input.action === "string" ? input.action : typeof input.mode === "string" ? input.mode : null;
+    const resolved =
+      (action ? legacyNames()[`${name}#${action}`]?.op : undefined) ??
+      (name.startsWith("summer_engine_") ? `engine.${name.slice("summer_engine_".length)}` : resolveOpName(name));
     return OP_NAME.test(resolved) ? resolved : null;
   }
   if (tool === "summer_search") return "ops.search";
   if (tool === "summer_whoami") return "whoami";
+  // A split 3.x tool: its action (or mode) argument picks the operation.
+  const record = args && typeof args === "object" ? (args as Record<string, unknown>) : {};
+  const action = typeof record.action === "string" ? record.action : typeof record.mode === "string" ? record.mode : null;
+  const split = action ? legacyNames()[`${tool}#${action}`]?.op : undefined;
+  if (split) return split;
   const legacy = legacyNames()[tool]?.op;
   if (legacy) return legacy;
   const match = tool.match(AREA_TOOL);

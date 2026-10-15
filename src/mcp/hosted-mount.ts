@@ -85,6 +85,10 @@ export interface HostedMountOptions {
   includeTool?: (name: string) => boolean;
   /** Mount no tool once the server has this many. Default: no limit. */
   maxTools?: number;
+  /** The description a mounted tool gets here. Default: the hosted one. */
+  describe?: (tool: Tool) => string;
+  /** Runs after each successful mount (another mount can follow it). */
+  onMounted?: () => void;
 }
 
 export function prepareHostedMount(
@@ -137,6 +141,8 @@ export function prepareHostedMount(
   let statusTool: { remove(): void } | null = null;
   let running: Promise<HostedMountState> | null = null;
   let connected: HostedClient | null = null;
+
+  const listedToolCount = () => Object.values(registries._registeredTools).filter((tool) => (tool as { enabled?: boolean }).enabled !== false).length;
 
   /** Wait for a mount in progress, at most ms; returns at once when none runs. */
   async function waitForMount(ms: number): Promise<void> {
@@ -199,14 +205,15 @@ export function prepareHostedMount(
       }
       if (schemas.has(tool.name)) continue;
       if (options.includeTool && !options.includeTool(tool.name)) continue;
-      if (options.maxTools !== undefined && Object.keys(registries._registeredTools).length >= options.maxTools) {
+      // The limit is on what a client lists: tools a surface keeps unlisted (v4) do not count.
+      if (options.maxTools !== undefined && listedToolCount() >= options.maxTools) {
         if (!state.overLimit.includes(tool.name)) state.overLimit.push(tool.name);
         continue;
       }
       schemas.set(tool.name, tool);
       server.registerTool(
         tool.name,
-        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
+        { description: options.describe ? options.describe(tool) : (tool.description ?? ""), inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
         async (args: Record<string, unknown>) => {
           try {
             return (await client.callTool({ name: tool.name, arguments: args })) as never;
@@ -256,6 +263,7 @@ export function prepareHostedMount(
     connected = client;
     state.status = "mounted";
     delete state.error;
+    options.onMounted?.();
     appendMcpLogEvent("mcp:hosted_mounted", {
       tools: state.tools.length,
       prompts: state.prompts.length,

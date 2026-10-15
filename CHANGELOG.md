@@ -2,6 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Setup never pins an older release.** When the CLI that runs `summer setup` was newer than npm `latest`, setup wrote `summer-engine@next` into the agent's MCP entry. `next` had stayed on 3.1.0, so the agent ran a release from September and silently lost `--assets-only`, `--profile` and every newer option. Setup now writes `next` only when `next` is this exact version; otherwise it pins this exact version (`summer-engine@3.9.1`), and a build that is not on npm keeps `latest` and says to use `--local-dev`. `--channel` (and `SUMMER_CHANNEL`) accepts an exact version, and the refresh command `summer doctor` prints follows the same rule.
+- The release steps (`docs/NPM_PUBLISH_QUICK_COMMANDS.md`) now point `next` at every new `latest` release and create the `v<version>` tag and GitHub Release from the CHANGELOG.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

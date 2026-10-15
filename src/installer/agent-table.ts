@@ -273,7 +273,8 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Codex, run /mcp login ${name} (or \`codex mcp login ${name}\` in a terminal) and sign in.`,
     },
     mcp: {
-      user: home(".codex", "config.toml"),
+      // Codex reads its config from $CODEX_HOME (default ~/.codex).
+      user: (ctx) => join(ctx.env.CODEX_HOME || join(ctx.home, ".codex"), "config.toml"),
       project: project(".codex", "config.toml"),
       projectNote: "Codex only loads project .codex/config.toml from trusted projects.",
     },

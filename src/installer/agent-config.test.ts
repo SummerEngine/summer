@@ -11,6 +11,7 @@ import {
   createSummerMcpServerConfig,
   normalizeChannel,
   parseAgent,
+  resolveAgentSelection,
   resolvePackageRoot,
   topLevelKey,
 } from "./agent-config.js";
@@ -79,11 +80,14 @@ describe("createSummerMcpServerConfig", () => {
     expect(createSummerMcpServerConfig(false, "win32", "next").args).toEqual(["/c", "npx", "-y", "summer-engine@next", "mcp"]);
   });
 
-  it("blank channel means latest; versions, paths and shouting are refused", () => {
+  it("blank channel means latest; exact versions pin; partial versions, paths and shouting are refused", () => {
     expect(normalizeChannel(undefined)).toBe("latest");
     expect(normalizeChannel("  ")).toBe("latest");
     expect(normalizeChannel("beta")).toBe("beta");
-    for (const bad of ["3.0.0", "v3", "Next", "../x", "next mcp", "@next"]) {
+    expect(normalizeChannel("3.9.1")).toBe("3.9.1");
+    expect(normalizeChannel("3.9.1-rc.1")).toBe("3.9.1-rc.1");
+    expect(createSummerMcpServerConfig(false, "darwin", "3.9.1").args).toEqual(["-y", "summer-engine@3.9.1", "mcp"]);
+    for (const bad of ["3.0", "v3", "v3.0.0", "Next", "../x", "next mcp", "@next", "3.0.0 mcp"]) {
       expect(() => normalizeChannel(bad)).toThrow(/Invalid channel/);
     }
   });
@@ -621,5 +625,13 @@ describe("configureSummerGamesMcp", () => {
     });
     expect(result).toBeNull();
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe("resolveAgentSelection", () => {
+  it("names an unknown agent instead of only asking for one", () => {
+    expect(() => resolveAgentSelection("notanagent", undefined)).toThrow(/^Unknown agent "notanagent"\. Supported: .*claude-code/);
+    expect(() => resolveAgentSelection(undefined, undefined)).toThrow(/^Specify an agent: /);
+    expect(resolveAgentSelection("claude", undefined)).toBe("claude-code");
   });
 });

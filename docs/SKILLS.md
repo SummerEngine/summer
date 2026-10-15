@@ -66,7 +66,7 @@ the plugin manifests), `version`.
 - **The SKILL.md `description` is the resource `summary`, verbatim** (≤160 chars).
   Hosts inject every installed skill's name and description into every
   session; Codex truncates past its budget and Claude Code's budget is about
-  15k characters for all skills together. Ninety-plus skills only fit when
+  15k characters for all skills together. The whole library only fits when
   each description is one short line. Put trigger phrases and examples in the
   skill body, not the description. `npm run validate:library` enforces the match.
 - **The descriptions of every installed skill share one budget**

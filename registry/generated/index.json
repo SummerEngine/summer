@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.4.1",
-      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
+      "version": "1.4.2",
+      "content_hash": "27741876bf4312e28ff5ee4fdad1c9274dbc25c0a2a50f6194d6754c6fa4280e",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1233,6 +1233,55 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/concept-to-level",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2720ecf08ad885c42682f3e947ffd2dff13faafde9bcd13382b4ce2185ffc583",
+      "summary": "Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step.",
+      "use_when": [
+        "polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects",
+        "reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map",
+        "deciding which questions to ask the user before building or polishing a level"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "level-design",
+          "3d",
+          "world-building",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scenes",
+          "assets",
+          "shaders",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/concept-art",
+          "skill/art-direction",
+          "skill/design-level",
+          "skill/scene-to-level",
+          "skill/environment-kit",
+          "skill/fabricating-assets",
+          "skill/headless-scripting",
+          "skill/bounded-engine-runs",
+          "skill/verifying-scenes",
+          "skill/tune-performance",
+          "skill/dispatching-parallel-agents"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/create-asset-sheet",
@@ -2320,8 +2369,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "5dd4273a4a0838ba04031c35ca2dd9b5e44e91fd19eba6c8b51cd22524d0fe28",
+      "version": "1.0.1",
+      "content_hash": "1bbfe02233534e422153d1ee43482aa6a451d9baee82e61409ae43417cfa303e",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2352,7 +2401,7 @@
           "skill/release-readiness"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "recommended": false
     },
     {
@@ -3651,8 +3700,8 @@
     {
       "id": "skill/summer-analytics",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "175f19b54e39a94350342e5c72255c286a7e067ba215bbf7c3de54b03cfda2d0",
+      "version": "1.0.1",
+      "content_hash": "500aa4d40f80f778c0e3581a308e1e3dcd274908b98abc123d200d017d698328",
       "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "use_when": [
         "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
@@ -3683,7 +3732,7 @@
           "skill/grow-analytics"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "recommended": false
     },
     {
@@ -6326,8 +6375,8 @@
     {
       "id": "tool/capture-gameplay",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "7195fee358600665d2b1e0ec40eeb68a7c517e775f5cc4a366259bceba07cd03",
+      "version": "1.0.1",
+      "content_hash": "f40a9891d98ae4e05d45c422b1f551bcc19dac19985d39a0bdcca62adfb36ed0",
       "summary": "Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.",
       "use_when": [
         "\"take gameplay screenshots for my store page\"",
@@ -6349,7 +6398,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_capture_gameplay",
       "remote": true,
       "authority": {
@@ -6669,8 +6718,8 @@
     {
       "id": "tool/export-game",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "96efe498dc6c5976b482c00828c770975bb77e4c03a0df4e5f3208e8f0013e95",
+      "version": "1.0.1",
+      "content_hash": "a5248abcad904b37a361e45d7010516cbab3b82427f5896878b29afd5fed5703",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
@@ -6693,7 +6742,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_export_game",
       "remote": true,
       "authority": {
@@ -8424,7 +8473,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "c1087ddd07caf7bca466f5545aa8f15c3e28dd6d4cedd41eddb28f466025ff02",
+      "content_hash": "622d775be937ec0db3286a5d934ad9ff0b2097e62e53a64256e120b7b5758f60",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -8471,7 +8520,7 @@
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
-        "network": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }
@@ -8683,8 +8732,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "653ac78e87a1a84c674bfdf0bf9c03889812edd5566b2c611f327b7cf84335c5",
+      "version": "1.0.1",
+      "content_hash": "ea490bc612b2ab1332036803718f1e95a89abe04b1e4cb9f4731957f599bb310",
       "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -8707,7 +8756,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_publish_build",
       "remote": true,
       "authority": {

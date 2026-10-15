@@ -17,6 +17,9 @@ import { join, relative } from "node:path";
  *   guard.tools["open_gate"] = _open   # also tools.open_gate = _open
  *   guard.tools.merge({"open_gate": _open})
  *   const TOOLS := {"open_gate": _open} ... guard.tools = TOOLS
+ *   guard.tool("open_gate", _open)     # also tool(...) in a SummerRouterCharacter script
+ *   Summer.client.router.talk("guard", {"mode": "voice", "tools": {"open_gate": _open}})
+ *                                      # the "tools" key of talk() / reply() options
  *
  * The scan reads every .gd file under the project root (hidden folders and
  * node_modules skipped) and counts a name as handled when any script
@@ -161,7 +164,18 @@ export function handlersInSource(source: string): Array<{ name: string; line: nu
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+    // {"tools": {...}} or {"tools": HANDLERS}: the options of talk() and reply()
+    if (token.kind === "str" && token.value === "tools" && isP(tokens[i + 1], ":")) {
+      if (isP(tokens[i + 2], "{")) found.push(...dictKeys(tokens, i + 2));
+      else if (tokens[i + 2]?.kind === "id" && !isP(tokens[i + 3], "(") && !isP(tokens[i + 3], ".")) indirect.push(tokens[i + 2].value);
+      continue;
+    }
     if (token.kind !== "id") continue;
+    // x.tool("open_gate", f) or tool("open_gate", f)
+    if (token.value === "tool" && tokens[i - 1]?.value !== "func" && isP(tokens[i + 1], "(") && tokens[i + 2]?.kind === "str" && isP(tokens[i + 3], ",")) {
+      found.push({ name: tokens[i + 2].value, line: tokens[i + 2].line });
+      continue;
+    }
     const afterType = skipType(tokens, i + 1);
     if (isAssign(tokens[afterType]) && isP(tokens[afterType + 1], "{")) {
       dictsByName.set(token.value, [...(dictsByName.get(token.value) ?? []), afterType + 1]);

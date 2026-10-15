@@ -161,6 +161,27 @@ func _use_fallback() -> void:
 flow and talk button, and signals `npc_text`, `player_text`, `mode_changed(mode, reason)`, `access_changed`,
 `ended(reason)`.
 
+### Tools
+
+A client tool in the character file needs a handler in GDScript with the same name. Every one of these shapes
+registers one, on a session (`s`) or a `SummerRouterCharacter` (`$Guard`), and `summer router push` reads them all:
+
+```gdscript
+s.tools = {"open_gate": _on_open_gate}         # also {open_gate = _on_open_gate}
+tools = {"open_gate": _on_open_gate}           # in a script that extends SummerRouterCharacter
+s.tools["open_gate"] = _on_open_gate           # also s.tools.open_gate = _on_open_gate
+s.tools.merge({"open_gate": _on_open_gate})
+const TOOLS := {"open_gate": _on_open_gate}    # then s.tools = TOOLS
+s.tool("open_gate", _on_open_gate)             # also $Guard.tool("open_gate", _on_open_gate)
+Summer.client.router.talk("guard", {"mode": "voice", "tools": {"open_gate": _on_open_gate}})
+```
+
+- The handler gets the arguments as a Dictionary (a handler with no parameters also works) and may `await`.
+- It returns any JSON value; `null` sends `{"ok": true}`. A Dictionary with an `"error"` key sends a tool error, and
+  the character goes on.
+- A text-turn handler that does not answer in 30 s sends `{"error": "timeout"}`.
+- `runs_on: "authority"` tools do not run on the client.
+
 ### Your own session code
 
 ```gdscript
@@ -196,8 +217,8 @@ var img := await Summer.client.router.generate("image", {"prompt": "a mossy ston
 ```
 
 Every call returns a result with `ok`, `error` (stable tag), `fix` and `usage`. `speak` takes a character (its
-pinned voice), never a raw provider voice id. For tools, use a session or the node; `reply` is for lines without
-tools.
+pinned voice), never a raw provider voice id. `reply` runs tools for its turn when its options carry them:
+`Summer.client.router.reply("guard", "open up", {"tools": {"open_gate": _on_open_gate}})`.
 
 ## Errors: what the game does
 

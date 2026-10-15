@@ -16,6 +16,15 @@ describe("GDScript tool handler scan (summer router push refuses unhandled clien
     expect(names(`guard.tools.merge({"trade": _trade, 'haggle': _haggle})`)).toEqual(["haggle", "trade"]);
   });
 
+  it("reads the .tool() call and the tools key of talk() and reply() options (engine SDK shapes)", () => {
+    expect(names(`s.tool("open_gate", _open)\n$Guard.tool(&"give_key", func(args): return {"ok": true})`)).toEqual(["give_key", "open_gate"]);
+    expect(names(`extends SummerRouterCharacter\nfunc _ready():\n\ttool("wave", _wave)`)).toEqual(["wave"]);
+    expect(names(`var s := await Summer.client.router.talk("guard", {"mode": "voice", "tools": {"open_gate": _open, give_key = _give}})`)).toEqual(["give_key", "open_gate"]);
+    expect(names(`var r := await Summer.client.router.reply("guard", "hi", {\n\t"tools": HANDLERS,\n})\nconst HANDLERS := {"trade": _trade}`)).toEqual(["trade"]);
+    // Not registrations: a tool() definition, a call without a name, and a "tools" key holding a list.
+    expect(names(`func tool(name: String, f: Callable) -> void:\n\tpass\nx.tool(name, f)\nvar d = {"tools": ["a"]}`)).toEqual([]);
+  });
+
   it("follows a dictionary assigned to a name, and multi-line entries", () => {
     const source = `
 const HANDLERS := {

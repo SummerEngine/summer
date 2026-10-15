@@ -56,6 +56,8 @@ type SkillMeta = SkillRegistryEntry;
 interface InstallOptions {
   all?: boolean;
   recommended?: boolean;
+  /** The assets-only subset (isAssetSkill). */
+  assets?: boolean;
   stableOnly?: boolean;
   /** Hidden no-op alias kept for one release; preview skills install by default now. */
   includePreview?: boolean;
@@ -126,28 +128,29 @@ function selectSkills(
   name: string | undefined,
   opts: InstallOptions
 ): { skills: SkillMeta[]; previewIncluded: number; previewSkipped: number } {
-  if (opts.all && opts.recommended) {
-    die("Use only one bulk option: --all or --recommended.");
+  if ([opts.all, opts.recommended, opts.assets].filter(Boolean).length > 1) {
+    die("Use only one bulk option: --all, --recommended or --assets.");
   }
-  if (name && (opts.all || opts.recommended)) {
+  if (name && (opts.all || opts.recommended || opts.assets)) {
     die("Specify either a skill name or a bulk option, not both.");
   }
 
   const skills = getBuiltinSkills();
-  if (opts.all || opts.recommended) {
+  if (opts.all || opts.recommended || opts.assets) {
     // Bulk installs take stable and preview skills (preview is a label, not a
     // gate); --stable-only skips preview. An explicit name below installs
     // regardless of status.
     const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(skills, {
       recommended: Boolean(opts.recommended),
       stableOnly: Boolean(opts.stableOnly),
+      assetsOnly: Boolean(opts.assets),
     });
     return { skills: selected, previewIncluded, previewSkipped };
   }
 
   if (!name) {
     console.error(
-      "Specify a skill name, --recommended, or --all."
+      "Specify a skill name, --recommended, --assets, or --all."
     );
     printAvailableSkillNames();
     process.exit(1);
@@ -375,8 +378,12 @@ skillsCommand
     "Install only the recommended skill subset (summer setup installs all by default)"
   )
   .option(
+    "--assets",
+    "Install only the asset skills (sound, music, voice, images, 3D, animation, video) for agents that make assets without the engine"
+  )
+  .option(
     "--stable-only",
-    "With --all / --recommended, skip preview skills (installed by default; labelled preview in their guidance)"
+    "With --all / --recommended / --assets, skip preview skills (installed by default; labelled preview in their guidance)"
   )
   .option(
     "--agent <agent>",

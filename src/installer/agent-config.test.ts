@@ -346,6 +346,39 @@ describe("configureAgentMcp", () => {
     expect(written.servers["summer-engine"].type).toBe("stdio");
     expect(written.servers["summer-engine"].command).toBe("npx");
     expect(written.servers["summer-engine"].args).toEqual(NPX_ARGS);
+    // VS Code Copilot takes at most 128 tools per request: the engine profile fits.
+    expect(written.servers["summer-engine"].env).toEqual({ SUMMER_PROFILE: "engine" });
+    expect(result.profile).toBe("engine");
+  });
+
+  it("writes the profile into the entry's env, and nothing for the full profile", async () => {
+    const dir = tmp();
+    const vscode = join(dir, "mcp.json");
+    const full = await configureAgentMcp({
+      agent: "vscode-copilot",
+      scope: "user",
+      profile: "full",
+      env: { SUMMER_VSCODE_COPILOT_CONFIG_FILE: vscode } as NodeJS.ProcessEnv,
+    });
+    expect(full.profile).toBe("full");
+    expect(JSON.parse(readFileSync(vscode, "utf-8")).servers["summer-engine"]).not.toHaveProperty("env");
+
+    const claude = join(dir, ".claude.json");
+    await configureAgentMcp({
+      agent: "claude-code",
+      scope: "user",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: claude } as NodeJS.ProcessEnv,
+    });
+    expect(JSON.parse(readFileSync(claude, "utf-8")).mcpServers["summer-engine"]).not.toHaveProperty("env");
+
+    const assets = await configureAgentMcp({
+      agent: "claude-code",
+      scope: "user",
+      profile: "assets",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: claude } as NodeJS.ProcessEnv,
+    });
+    expect(assets.changed).toBe(true);
+    expect(JSON.parse(readFileSync(claude, "utf-8")).mcpServers["summer-engine"].env).toEqual({ SUMMER_PROFILE: "assets" });
   });
 
   it("writes a fresh opencode config with the array-shaped command", async () => {

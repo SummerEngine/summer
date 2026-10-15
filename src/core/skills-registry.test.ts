@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getSkillRegistry,
   parseSkillRegistry,
   selectSkillsForBulkInstall,
   type SkillRegistryEntry,
@@ -64,5 +65,17 @@ describe("parseSkillRegistry", () => {
       ["b", "stable", false],
       ["c", "stable", false],
     ]);
+  });
+});
+
+describe("assets-only skills", () => {
+  it("takes the asset-making skills and the session skill, not engine work", () => {
+    const { selected } = selectSkillsForBulkInstall(getSkillRegistry(), { assetsOnly: true });
+    const names = selected.map((skill) => skill.name);
+    expect(names).toEqual(expect.arrayContaining(["using-summer", "sound-effect", "music-track", "voice-line", "concept-art", "prop-model", "generate-motion", "store-art"]));
+    for (const engineSkill of ["make-game", "fps-controller", "instantiate-asset-pack", "fabricating-assets", "multiplayer", "debug"]) {
+      expect(names).not.toContain(engineSkill);
+    }
+    expect(names.length).toBeLessThan(getSkillRegistry().length / 3);
   });
 });

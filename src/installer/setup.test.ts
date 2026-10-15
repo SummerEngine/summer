@@ -60,4 +60,12 @@ describe("setupSkills: preview skills install by default", () => {
     expect(stableOnly.count).toBe(1);
     expect(stableOnly.previewSkipped).toBe(1);
   });
+
+  it("assetsOnly installs the asset skills through skills install --assets", () => {
+    const result = setupSkills("claude-code", { ...base, assetsOnly: true });
+    expect(result.command).toContain("--assets");
+    expect(result.command).not.toContain("--all");
+    // None of the four fixtures is an asset skill.
+    expect(result.count).toBe(0);
+  });
 });

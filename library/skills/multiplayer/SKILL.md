@@ -134,7 +134,7 @@ Each skill continues the same small game, so their code fits together:
 | "One player hosts", peer-to-peer | A headless authority per match, started by Summer or by Local Play |
 | Host migration | Not needed: no player is the authority |
 | Join by IP, invite code, server browser | Not available. Players join a queue; friends join as a party (`summer-parties`) |
-| A lobby | A queue with `minPlayers`/`maxPlayers` and an accept prompt (`summer-matchmaking`) |
+| A lobby | No lobby object. A queue starts a match once `minPlayers` are searching; its `fillWindow` waits up to 30 s for more, and friends join as a party (`summer-matchmaking`, `summer-parties`) |
 | "Sync the player's position" | An owner-written pose group (`multiplayer-movement`) |
 | "Tell everyone the door opened" | An authority-written State group (`multiplayer-state`) |
 | "The client asks the host to buy something" | A Command validated with the verified Session (`multiplayer-state`) |

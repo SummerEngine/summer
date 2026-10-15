@@ -2194,7 +2194,7 @@
       "id": "skill/multiplayer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "06771fb6465e2ed96bb03900d98e1b53bb79e36cda4f5540d8371fc4308274d5",
+      "content_hash": "1c393474dfedca19f40a14c8e67ae4d1aec624bce19111589f6ecb1e55e0ed27",
       "summary": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
@@ -3884,7 +3884,7 @@
       "id": "skill/summer-matchmaking",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "087d6f4ba517fa8edf94bc68bd4f415ce6cbdb9993643f42003e0b24803a34b9",
+      "content_hash": "7d689099f080b1e73d90fd1e27fef2b89c5a3d75b1086b338647e02e56f1265a",
       "summary": "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures.",
       "use_when": [
         "the user wants matchmaking, a lobby, a play button, quick play, ranked or casual modes in a multiplayer Summer game",

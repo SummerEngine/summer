@@ -22,6 +22,15 @@ The authority then reads each player's team from the verified Session.
 There is no lobby object, invite code or server browser. Friends who want to
 play together use a party (`summer-parties`), which enters a queue as one group.
 
+**When a match starts.** A match starts as soon as `minPlayers` players are
+searching. It takes everyone searching at that moment, up to `maxPlayers`, and
+does not wait for more. With `"minPlayers": 2, "maxPlayers": 8` that usually
+means a match of 2, and a third player who presses Play a moment later starts
+a new search. To let players who search around the same time play together,
+set `fillWindow`: once `minPlayers` are searching, Summer waits up to that long
+for more players before starting. A full match starts at once. Players never
+join a match that has already started.
+
 Where it works:
 
 | Piece | Local Play | Hosted |
@@ -44,7 +53,7 @@ WorldDefinition its matches run. A casual mode and a 1v1 rated duel:
 
 ```json
 "queues": [
-  { "name": "courtyard", "minPlayers": 2, "maxPlayers": 8, "worldDefinition": "courtyard", "policy": "fifo", "transport": "enet" },
+  { "name": "courtyard", "minPlayers": 2, "maxPlayers": 8, "fillWindow": "10s", "worldDefinition": "courtyard", "policy": "fifo", "transport": "enet" },
   {
     "name": "duel", "minPlayers": 2, "maxPlayers": 2, "worldDefinition": "courtyard",
     "policy": "rating", "ratingSystemRef": "elo_v1",
@@ -67,6 +76,7 @@ The fields Summer accepts, and their rules:
 | `ratingSystemRef` | `elo_v1` (Summer rates two sides) or `authority_v1` (your authority reports rating moves) | See `summer-leaderboards` |
 | `teams` | `{count, size}`: fixed sides, such as 2v2 = `{2, 2}` | `count` 2..64, `size` 1..16, `minPlayers` = `maxPlayers` = count × size; `elo_v1` needs exactly 2 teams |
 | `acceptance` | `{"mode": "all", "ttl": "20s"}` asks every player to accept; `{"mode": "none"}` skips it | `ttl` required with `all`, forbidden with `none` |
+| `fillWindow` | How long a match with `minPlayers` waits for more players before it starts, for example `"10s"`. Omit it to start at `minPlayers` straight away | Go duration from `0s` to `30s`, at most `searchTtl.min`; not with `teams` or when `minPlayers` = `maxPlayers` |
 | `searchTtl` | `{min, default, max}` search lifetime | Go durations (`30s`, `2m`); min ≤ default ≤ max |
 | `regions` | Regions this queue may use | Omit to allow all |
 | `transport` | `enet` (UDP, default) or `ws` (WebSocket) | |
@@ -274,6 +284,7 @@ Test the accept prompt and rating-based grouping on a hosted staging build.
 ## Checklist
 
 - [ ] Every queue names a WorldDefinition; teams queues have `minPlayers` = `maxPlayers` = count × size.
+- [ ] A queue whose matches should fill past `minPlayers` declares `fillWindow`.
 - [ ] The client shows search progress and a readable message for each failure code.
 - [ ] Queues with `acceptance` show Accept/Decline with the deadline; nothing auto-accepts unless the game means to.
 - [ ] Cancel and quit both await `Summer.client.leave()`.
@@ -287,6 +298,7 @@ Test the accept prompt and rating-based grouping on a hosted staging build.
 | Build a lobby, invite codes or join-by-IP | Queues, plus parties for friends | Summer has no lobby object; invite, follow, portal and resume joins return `unsupported_placement` |
 | Ignore `acceptance_required` on a queue with `acceptance` | Show Accept/Decline, or connect it to `proposal.accept()` | The engine never accepts for the player; the join waits until `proposal_expired` |
 | `teams` with `minPlayers` ≠ count × size | Equal sizes: 2v2 is 4 and 4 | Summer rejects the queue when you publish |
+| Raise `minPlayers` to get bigger matches | Keep `minPlayers` at the smallest match that is fun and set `fillWindow` | A higher `minPlayers` means fewer players can never start a match; `fillWindow` lets players who search together start together |
 | Read the team on the client from matchmaking | Publish it from the authority | Clients only learn teams through the game's own state |
 | Join `courtyard` while Local Play stands in for `duel` | Set `summer/local_play/queue` to the queue the client joins | Local Play hosts one queue per run; the other fails `unavailable` |
 | Quit right after "Cancel" | Await `Summer.client.leave()` first | The search may keep holding a ticket for the player |

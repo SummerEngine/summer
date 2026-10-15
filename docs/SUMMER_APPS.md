@@ -38,7 +38,7 @@ Engine MCP offers the same cloud tools under the same names.
 
 ## In the 4.0 operation catalog
 
-With the v4 surface (`summer mcp --surface v4`, `SUMMER_SURFACE=v4`), agents reach Summer Apps as the
+With the v4 surface (the default since 4.0; `summer mcp --surface v3` keeps the 3.x tools), agents reach Summer Apps as the
 `apps.*` operations of the hosted catalog, through `summer_call` (or `summer_apps_<action>` where a client
 lists it): `apps.guide`, `apps.list`, `apps.create`, `apps.publish`, `apps.get`, `apps.update` (also
 `pinned`), `apps.events`, `apps.page` (read) and `apps.use_page` (fill and press), `apps.read_data` and

@@ -1,6 +1,6 @@
 ---
 name: ui-graphics
-description: "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect."
+description: "Generate game UI art (icons, buttons, panels, frames, HUD widgets) flat, on a transparent background."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -120,25 +120,30 @@ Verify in the import dock: `Mipmaps: off` (UI shouldn't mipmap), `Filter: Linear
 
 ### 7. Wire into the scene
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to that scene's root (`./`) rather than absolute `/root/...` runtime paths, and the property argument is named `key`, not `property`.
+One `summer_run_script` call wires each graphic with its settings; `scenePath` is the exact scene to change.
 
 **Icon as TextureRect:**
 ```
-summer_add_node(scenePath="res://ui/hud.tscn", parent="./AbilityBar", type="TextureRect", name="FireSpellIcon")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="texture", value="res://ui/icons/fire_spell.png")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="expand_mode", value=1)  # EXPAND_IGNORE_SIZE
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="stretch_mode", value=5)  # STRETCH_KEEP_ASPECT_CENTERED
+summer_run_script(scenePath="res://ui/hud.tscn", source="""
+func run(ctx):
+    ctx.add_node("TextureRect", "FireSpellIcon", ctx.find("AbilityBar"), {
+        "texture": load("res://ui/icons/fire_spell.png"),
+        "expand_mode": TextureRect.EXPAND_IGNORE_SIZE,
+        "stretch_mode": TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+    })
+    ctx.save_scene()
+""")
 ```
 
 **Panel as NinePatchRect:**
 ```
-summer_add_node(scenePath="res://ui/hud.tscn", parent=".", type="NinePatchRect", name="InventoryPanel")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="texture", value="res://ui/panels/parchment.png")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_left", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_right", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_top", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_bottom", value=24)
-summer_save_scene(scenePath="res://ui/hud.tscn")
+summer_run_script(scenePath="res://ui/hud.tscn", source="""
+func run(ctx):
+    var panel = ctx.add_node("NinePatchRect", "InventoryPanel", null, {"texture": load("res://ui/panels/parchment.png")})
+    for side in ["patch_margin_left", "patch_margin_right", "patch_margin_top", "patch_margin_bottom"]:
+        panel.set(side, 24)
+    ctx.save_scene()
+""")
 ```
 
 Tune patch margins to match the actual border width in the generated texture. Open the texture in the editor's NinePatch preview to verify.
@@ -190,6 +195,10 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 - **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `removeBackground: true` to cut the alpha server-side.
 - **Icons need to read at very small size (16-24px in a packed bar).** Bias prompts toward bold silhouette + minimal interior detail. Ornate detail is invisible at 16px and adds noise.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Pass `out` to `summer_generate_image` so each PNG lands in the person's folder; keep `removeBackground: true` for icons and buttons that need transparency.
+
 ## Fallback (no MCP)
 
 Print the call:
@@ -221,4 +230,4 @@ After the UI graphic is wired:
 - `character-portrait` — for in-UI character images.
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

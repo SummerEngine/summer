@@ -1,6 +1,6 @@
 ---
 name: multiplayer-publish
-description: "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build."
+description: "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

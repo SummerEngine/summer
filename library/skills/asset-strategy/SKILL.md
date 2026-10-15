@@ -1,6 +1,6 @@
 ---
 name: asset-strategy
-description: "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines."
+description: "Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: asset-pipeline
@@ -129,6 +129,10 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 - **Routing concept-art to character-portrait** (or the reverse). Different goals: concept-art produces 4 divergent variants for art direction; character-portrait produces 1 polished bust for dialogue UI.
 - **Inventing skill names.** Only dispatch to skills listed above. If nothing fits, ask the user to clarify.
 - **Routing rigged-humanoid requests to `prop-model`.** Anything that needs animation always goes to `character-model`.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the routing tables still pick the skill. Leave out every step that imports (`summer_import_asset_by_id`, `summer_import_from_url`): deliver the file with `summer_get_asset_download_url` instead.
 
 ## Fallback (no MCP)
 

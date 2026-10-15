@@ -1,0 +1,9 @@
+# summer_ui_screenshot
+
+PNG of the editor window (or one dock / dialog / control's rect) returned as an image you can look at — the PIXELS-LAST fallback of the UI ladder: use it to see layout, an unfamiliar panel, or to sanity-check what the tree described, never to pick click coordinates (there is no coordinate click; summer_ui_activate takes paths). For the 3D/2D viewport, a scene render, or the running game use summer_screenshot instead — that is the visual-verification tool for scene work, and scene work itself goes through summer_run_script and the scene tools, never through the editor UI. (preview — needs an engine build with UiScreenshot)
+
+Order of preference: a dedicated tool -> summer_ui_actions mode:'invoke' by name -> summer_ui_tree + summer_ui_activate by control path -> summer_ui_screenshot (pixels, last, and only to LOOK — never to pick coordinates). Prefer summer_ui_tree for state: a control's checked/current_tab/text is exact there and costs a fraction of an image.
+
+root: 'window' (default; the whole editor window incl. embedded dialogs) | 'main' | 'dock:<title|id>' | 'dialog:<title>' | 'path:<node path>' — a Control or embedded dialog is cropped out of the root viewport texture; a native OS sub-window is not in it (native_subwindow). max_size caps the longest edge (default 1024, 16-4096). Captured from the editor's own root viewport texture, never the OS screen (safety_boundary:'no_os_screen_capture').
+
+Headless is honest: under a headless editor (dummy rendering driver) the result is failure_reason no_renderer — nothing was drawn, so there are no pixels; summer_ui_tree is the structured view of the same UI and a display (Linux: --xvfb) is needed for pixels. Other failures: texture_unavailable | zero_size | native_subwindow | unknown_root | not_found | encode_failed. Engine builds without the op return a structured engine_lacks_op failure (nothing is sent).

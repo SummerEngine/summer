@@ -1,6 +1,6 @@
 id: tool/publish-build
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.
 use_when:
   - '"upload my game to summer.games"'
@@ -26,7 +26,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: preview
+status: stable
 aliases:
   - summer_publish_build
 implementation:

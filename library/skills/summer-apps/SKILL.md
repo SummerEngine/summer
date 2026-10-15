@@ -1,6 +1,6 @@
 ---
 name: summer-apps
-description: "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools."
+description: "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker), data and tools."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: tools

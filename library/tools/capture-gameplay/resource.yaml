@@ -1,6 +1,6 @@
 id: tool/capture-gameplay
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.
 use_when:
   - '"take gameplay screenshots for my store page"'
@@ -23,7 +23,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: preview
+status: stable
 aliases:
   - summer_capture_gameplay
 implementation:

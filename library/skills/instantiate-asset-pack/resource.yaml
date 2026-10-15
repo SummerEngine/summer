@@ -1,7 +1,7 @@
 id: skill/instantiate-asset-pack
 kind: skill
 version: 1.0.3
-summary: "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out."
+summary: "Lay out a whole create-asset-sheet pack in the scene: composites, paint order, Sprite2D and NinePatch."
 use_when:
   - importing or spawning an entire asset pack (multi-slice ArtAsset from create-asset-sheet) into the current scene
   - laying out a generated tile sheet, UI kit, or biome pack as placed Sprite2D and NinePatchRect nodes in one pass

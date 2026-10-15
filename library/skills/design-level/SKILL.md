@@ -1,11 +1,11 @@
 ---
 name: design-level
-description: "Design a single level — layout, pacing, encounters, secrets, reward gating — outputs a level design doc and a node-tree skeleton for summer_create_scene."
+description: "Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_scene_tree summer_create_scene summer_open_scene summer_add_node summer_set_prop summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep Glob Write Edit summer_get_scene_tree summer_create_scene summer_open_scene summer_run_script summer_add_node summer_set_prop summer_save_scene summer_get_script_errors
 paths: ["**/*.tscn", "**/*.gd", ".summer/**", "levels/**"]
 ---
 
@@ -148,44 +148,32 @@ Show the skeleton. Ask:
 
 ### 8. Scaffold via MCP
 
-**Preferred (Summer MCP):**
+**Preferred (Summer MCP):** create the scene, then build the whole skeleton in one script.
 
-`summer_create_scene` takes `path`, `rootName`, and a mandatory safety gate.
-There is no `root_type` or `root_name` argument. The tool refuses to run unless
-`allow_temporary_scene_mutation` is explicitly true, because of how it works: it
-opens the currently-open scene (or the project's main scene) as a template,
-removes every child, renames the root, saves-as to the new path, then reopens
-the original. Ask the user before setting the flag.
-
-The consequence to plan around: **the new scene's root node type is copied from
-the template's root**, not chosen by you. Create levels from a scene whose root
-is already `Node3D`, or fix the root afterwards in the editor.
+`summer_create_scene` takes `path`, `rootName` and `rootType` (default `Node3D`) and writes the new scene to disk without opening it. `summer_run_script` with that `scenePath` opens it, runs, and gives the user their tab back; the run is one undo step, so one Ctrl+Z removes the skeleton.
 
 ```
-summer_create_scene(path="res://levels/level_01.tscn", rootName="World", allow_temporary_scene_mutation=true)
-summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Geometry")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="IntroAtrium")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="Corridor")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="PeakArena")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="BossChamber")
-summer_add_node(parent="./World", type="Node3D", name="Spawns")
-summer_add_node(parent="./World/Spawns", type="Node3D", name="PlayerSpawn")
-summer_add_node(parent="./World/Spawns", type="Node3D", name="E1_Spawn")
-# ... and so on
-summer_add_node(parent="./World", type="Node3D", name="Triggers")
-summer_add_node(parent="./World/Triggers", type="Area3D", name="E2_GateTrigger")
-# ... etc.
-summer_add_node(parent="./World", type="Node3D", name="Lighting")
-summer_add_node(parent="./World/Lighting", type="WorldEnvironment", name="WorldEnvironment")
-summer_add_node(parent="./World/Lighting", type="DirectionalLight3D", name="Sun")
-summer_save_scene(scenePath="res://levels/level_01.tscn")
+summer_create_scene(path="res://levels/level_01.tscn", rootName="World", rootType="Node3D")
+summer_run_script(scenePath="res://levels/level_01.tscn", source="""
+func run(ctx):
+    var skeleton = {
+        "Geometry": [["Node3D", "IntroAtrium"], ["Node3D", "Corridor"], ["Node3D", "PeakArena"], ["Node3D", "BossChamber"]],
+        "Spawns": [["Node3D", "PlayerSpawn"], ["Node3D", "E1_Spawn"], ["Node3D", "E2_Spawn"], ["Node3D", "E3_Wave_Spawns"], ["Node3D", "MiniBoss_Spawn"]],
+        "Triggers": [["Area3D", "E2_GateTrigger"], ["Area3D", "PeakWaveTrigger"], ["Area3D", "BossDoorTrigger"]],
+        "Pickups": [["Node3D", "HealAfterE2"], ["Node3D", "CurrencyS1"]],
+        "Secrets": [["StaticBody3D", "S1_BreakableWall"], ["StaticBody3D", "S2_ParryLedge"], ["StaticBody3D", "S3_LockedDoor"]],
+        "Lighting": [["WorldEnvironment", "WorldEnvironment"], ["DirectionalLight3D", "Sun"]],
+    }
+    for group in skeleton:
+        var parent = ctx.add_node("Node3D", group)
+        for child in skeleton[group]:
+            ctx.add_node(child[0], child[1], parent)
+    ctx.report("skeleton", ctx.summary())
+    ctx.save_scene()
+""")
 ```
 
-Every `summer_add_node` above takes the same required
-`scenePath="res://levels/level_01.tscn"`; it is elided after the first line only
-to keep the tree readable. A call without `scenePath` is rejected by the tool
-schema. Better still, send the whole block as one `summer_batch(scenePath=...,
-ops=[...])` so the user can undo the skeleton with a single Ctrl+Z.
+Compare the `skeleton` report (node counts by class) with the tree you showed the user, then `summer_get_scene_tree` on the new scene.
 
 This is a **skeleton, not playable geometry**. Markers and Area3Ds, no meshes, no enemy scripts. Implementation in subsequent sessions / templates.
 

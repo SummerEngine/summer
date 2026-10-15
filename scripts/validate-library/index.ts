@@ -23,8 +23,20 @@ import {
   type AllowedHost,
   type LintFinding,
 } from "./capability-lint.ts";
+import { checkCallExamples, type ToolSignature } from "./call-examples.ts";
+import { escapingSkillPaths } from "./skill-links.ts";
+import { checkSceneEditExamples, SINGLE_EDIT_CHAIN_LIMIT } from "./scene-edits.ts";
 
 export const MEDIA_SIZE_LIMIT_BYTES = 200 * 1024;
+
+/**
+ * Total characters of SKILL.md descriptions across the skills a bulk install
+ * puts in a host (not `bundled: false`, not deprecated). Hosts inject every
+ * installed skill's description into every session and cut past their own
+ * budget (Claude Code's is about 15k characters for all skills; Codex
+ * truncates earlier), so the sum is capped, not just each line.
+ */
+export const SKILL_DESCRIPTION_BUDGET = 12_000;
 
 const KIND_DIRS: Record<string, string> = {
   tool: "tools",
@@ -66,6 +78,12 @@ export interface ValidationResult {
   warnings: string[];
   resourceCount: number;
   note?: string;
+  /** Skill call examples checked against their tool's input_schema, and the elided ones skipped. */
+  callExamples?: { checked: number; skipped: number };
+  /** Description characters of the skills a bulk install takes, against SKILL_DESCRIPTION_BUDGET. */
+  skillDescriptionChars?: number;
+  /** Fenced code blocks in skills and references checked for chains of single scene edits. */
+  sceneEditBlocks?: number;
 }
 
 interface LoadedResource {
@@ -552,6 +570,91 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
   }
 
+  // (g) The descriptions a bulk install puts in a host fit the hosts' budget.
+  let skillDescriptionChars = 0;
+  const bundledDescriptions: Array<{ slug: string; length: number }> = [];
+  for (const res of resources) {
+    if (res.data.kind !== "skill" || res.data.bundled === false || res.data.status === "deprecated") continue;
+    const length = typeof res.data.summary === "string" ? res.data.summary.trim().length : 0;
+    skillDescriptionChars += length;
+    bundledDescriptions.push({ slug: res.slug, length });
+  }
+  if (skillDescriptionChars > SKILL_DESCRIPTION_BUDGET) {
+    const longest = bundledDescriptions
+      .sort((a, b) => b.length - a.length || (a.slug < b.slug ? -1 : 1))
+      .slice(0, 5)
+      .map((d) => `${d.slug} (${d.length})`);
+    errors.push(
+      `skill descriptions total ${skillDescriptionChars} characters across the installed skills, over the ${SKILL_DESCRIPTION_BUDGET}-character budget (hosts inject every description into every session and truncate past their budget). Shorten summaries (and the matching SKILL.md descriptions) or mark library-only skills bundled: false. Longest: ${longest.join(", ")}`,
+    );
+  }
+
+  // (h) Skill markdown never climbs out of the skill folder: `summer setup`
+  //     copies each folder alone, so a `../` path is dead after install.
+  for (const res of resources) {
+    if (res.data.kind !== "skill") continue;
+    for (const mdAbs of walkMarkdownFiles(res.absDir)) {
+      const mdRel = path.relative(res.absDir, mdAbs);
+      for (const target of escapingSkillPaths(fs.readFileSync(mdAbs, "utf8"), mdRel)) {
+        errors.push(
+          `library/${res.relDir}/${mdRel}: "${target}" leaves the skill folder, so it breaks once summer setup copies the folder alone. Name a reference as \`summer_read_library\` id \`reference/<slug>\`, another skill by its bare slug, a file of another entry as \`<entry id>/<path>\``,
+        );
+      }
+    }
+  }
+
+  // (i) Call examples in skills pass every required argument and only real ones.
+  const signatures = new Map<string, ToolSignature>();
+  for (const res of toolResources) {
+    const surfaces = res.data.surfaces;
+    const mcp = isPlainObject(surfaces) ? surfaces.mcp : undefined;
+    const name = isPlainObject(mcp) ? mcp.tool_name : undefined;
+    const schema = res.data.input_schema;
+    if (typeof name !== "string" || !isPlainObject(schema)) continue;
+    signatures.set(name, {
+      required: Array.isArray(schema.required) ? schema.required.filter((r): r is string => typeof r === "string") : [],
+      properties: isPlainObject(schema.properties) ? Object.keys(schema.properties) : [],
+    });
+  }
+  const callExamples = { checked: 0, skipped: 0 };
+  for (const res of resources) {
+    if (res.data.kind !== "skill") continue;
+    for (const mdAbs of walkMarkdownFiles(res.absDir)) {
+      const mdRel = path.relative(res.absDir, mdAbs);
+      const result = checkCallExamples(fs.readFileSync(mdAbs, "utf8"), signatures);
+      callExamples.checked += result.checked;
+      callExamples.skipped += result.skipped;
+      for (const problem of result.problems) {
+        const parts = [
+          problem.missing.length > 0 ? `leaves out required ${problem.missing.join(", ")}` : "",
+          problem.unknown.length > 0 ? `passes ${problem.unknown.join(", ")}, which the tool does not take` : "",
+        ].filter(Boolean);
+        errors.push(
+          `library/${res.relDir}/${mdRel}:${problem.line}: ${problem.tool} example ${parts.join(" and ")} (input_schema in its library/tools descriptor). Agents copy examples; write the full call, or elide on purpose with "..."`,
+        );
+      }
+    }
+  }
+
+  // (j) Code blocks teach one summer_run_script, not chains of single scene
+  //     edits, and never `var x := ctx.…` (an untyped ctx cannot infer a type).
+  let sceneEditBlocks = 0;
+  for (const res of resources) {
+    if (res.data.kind !== "skill" && res.data.kind !== "reference") continue;
+    for (const mdAbs of walkMarkdownFiles(res.absDir)) {
+      const mdRel = path.relative(res.absDir, mdAbs);
+      const result = checkSceneEditExamples(fs.readFileSync(mdAbs, "utf8"));
+      sceneEditBlocks += result.blocks;
+      for (const problem of result.problems) {
+        errors.push(
+          problem.kind === "chain"
+            ? `library/${res.relDir}/${mdRel}:${problem.line}: code block chains ${problem.calls} single scene edits (${SINGLE_EDIT_CHAIN_LIMIT} or more). Agents copy examples: write one summer_run_script with scenePath, or put <!-- single-edits-ok: <reason> --> on the line before the fence`
+            : `library/${res.relDir}/${mdRel}:${problem.line}: \`var x := ctx.…\` does not compile: the run script's ctx is untyped, so the type cannot be inferred. Write \`var x = ctx.…\``,
+        );
+      }
+    }
+  }
+
   // --- Evidence media: in-repo files must exist, stay inside the resource dir, and be <=200KB ---
   for (const res of resources) {
     const evidence = res.data.evidence;
@@ -628,5 +731,14 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
   }
 
-  return { ok: errors.length === 0, errors, exceptions, warnings, resourceCount: resources.length };
+  return {
+    ok: errors.length === 0,
+    errors,
+    exceptions,
+    warnings,
+    resourceCount: resources.length,
+    callExamples,
+    skillDescriptionChars,
+    sceneEditBlocks,
+  };
 }

@@ -1,7 +1,7 @@
 id: skill/store-listing
 kind: skill
 version: 1.0.0
-summary: "Write a Summer Games store page per flow (desktop, mobile): targets, title, tagline, descriptions, tags, and what never to write."
+summary: "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write."
 use_when:
   - "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags"
   - "store.update_listing or store.get_listing says a text field is missing or wrong"

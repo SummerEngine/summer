@@ -1,6 +1,6 @@
 ---
 name: export-and-ship
-description: "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval."
+description: "Prepare a game export: check templates and targets, validate release assets, build after approval."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment
@@ -358,7 +358,7 @@ Use this as a one-shot grep before any export:
 
 ## Collaborative protocol
 
-This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `summer_read_library` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -366,9 +366,9 @@ No template — this is a workflow. Each project's export config and store asset
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list
-- `../../references/godot-version/godot-version.md` — Summer compatibility and
+- `summer_read_library` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_read_library` id `reference/godot-version` — Summer compatibility and
   export-template versioning
-- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
+- `summer_read_library` id `reference/collaborative-protocol` — "May I write" pattern
 - `headless-scripting` — the headless CLI pattern the export command follows
 - `tune-performance` — pre-ship performance pass

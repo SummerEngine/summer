@@ -1,6 +1,6 @@
 ---
 name: character-animation-wiring
-description: "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion."
+description: "Wire a rigged character end to end: real clips and bones, locomotion states, method tracks, root motion."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -85,7 +85,7 @@ Read the reports. Every later step quotes these exact strings. If the clip list 
 ```gdscript
 func run(ctx):
     var character = ctx.find("Goblin")
-    var tree := ctx.anim_state_machine(character, {
+    var tree = ctx.anim_state_machine(character, {
         "states": {"idle": "idle", "walk": "walk", "run": "run"},
         "transitions": [
             ["idle", "walk", {"blend_s": 0.2}],
@@ -150,7 +150,7 @@ func run(ctx):
 Head tracking — one call creates the owned `LookAtModifier3D` under the skeleton:
 
 ```gdscript
-    var mod := ctx.look_at_modifier(skel, ctx.find("Player"), {"bone_name": "Head"})
+    var mod = ctx.look_at_modifier(skel, ctx.find("Player"), {"bone_name": "Head"})
 ```
 
 Unknown props land in `prop_warnings` — read them. Angle limits, influence fade-out by distance, and spine-chain distribution are the difference between alive and possessed: tune per `procedural-animation` (A1/A2).

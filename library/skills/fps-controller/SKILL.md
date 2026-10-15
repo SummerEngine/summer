@@ -1,12 +1,12 @@
 ---
 name: fps-controller
-description: "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling."
+description: "First-person controller: WASD, mouse look, jump, coyote time, jump buffering, air control."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: character-controllers
 user-invocable: false
 template-id: template-3d-fps-old-school
-allowed-tools: Read Grep summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_input_map_bind summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep summer_get_scene_tree summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_input_map_bind summer_save_scene summer_get_script_errors
 paths: ["**/*.gd", "**/*.tscn"]
 ---
 
@@ -32,52 +32,44 @@ The Head/Camera split is the standard: yaw rotates the body, pitch rotates only 
 
 Always call `summer_get_scene_tree` before mutating. If `World/Player`, `World/PlayerOld`, or any existing CharacterBody3D is present, ASK the user how to proceed before adding nodes.
 
-### 2. Add the Player root
+### 2. Build the Player rig in one script
+
+The body, its capsule, the head pivot and the camera are one `summer_run_script`
+call (one undo step):
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="CharacterBody3D", name="Player")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Player", key="position", value="Vector3(0, 1, 0)")
-```
-
-### 3. Add the collision shape and size it
-
-```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="CollisionShape3D", name="Collision")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Player/Collision", key="shape", value="CapsuleShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="radius", value="0.4")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="height", value="1.8")
-```
-
-Two rules for these calls:
-
-- **`scenePath` is required** on `summer_add_node`, `summer_set_prop`,
-  `summer_set_resource_property` and `summer_save_scene`. Omit it and the call
-  never reaches the engine. (`summer_input_map_bind` is the exception — it edits
-  `project.godot`, not a scene, and takes only `name` + `events`.)
-- **This inline-resource sequence is the supported pattern, not a trap.**
-  `summer_set_prop` with a class-name string instantiates a scene-embedded
-  (`[sub_resource]`) resource, and `summer_set_resource_property` then reads that
-  property off the node and writes the sub-property straight onto it. Embedded
-  and external `.tres` resources take the same path. Structural failures are
-  explicit — `node not found`, `property is not a resource`, or `resource is
-  null` when the property was never assigned — but a bad value shape is silent
-  on current engines: a JSON object instead of an engine variant string, a
-  misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet
-  no-ops or coerces destructively. Assign the resource first, pass class names
-  and `Vector3(...)`/`Color(...)` strings, and confirm in the saved `.tscn`,
-  never from `ok` alone.
-
-### 4. Add the Head pivot + Camera
-
-```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="Node3D", name="Head")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Player/Head", key="position", value="Vector3(0, 1.6, 0)")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Player/Head", type="Camera3D", name="Camera")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var player = ctx.add_node("CharacterBody3D", "Player", ctx.find("World"), {"position": Vector3(0, 1, 0)})
+    var capsule = CapsuleShape3D.new()
+    capsule.radius = 0.4
+    capsule.height = 1.8
+    ctx.add_node("CollisionShape3D", "Collision", player, {"shape": capsule, "position": Vector3(0, 0.9, 0)})
+    var head = ctx.add_node("Node3D", "Head", player, {"position": Vector3(0, 1.6, 0)})
+    ctx.add_node("Camera3D", "Camera", head)
+    ctx.save_scene()
+""")
 ```
 
 Eye height of 1.6 sits the camera right at the top of a 1.8-tall capsule (capsule center 0.9, plus 0.7 to the eye). Tweak per art style.
 
-### 5. InputMap actions
+Two rules:
+
+- **`scenePath` is required** on `summer_run_script` and on every scene tool
+  (`summer_set_prop`, `summer_set_resource_property`, `summer_save_scene`).
+  Omit it and the call never reaches the engine. (`summer_input_map_bind` is
+  the exception — it edits `project.godot`, not a scene, and takes only
+  `name` + `events`.)
+- **Build and size a shape before you assign it.** Tuning one value later is
+  one `summer_set_resource_property` call on the assigned resource. Structural
+  failures there are explicit — `node not found`, `property is not a resource`,
+  or `resource is null` when the property was never assigned — but a bad value
+  shape is silent on current engines: a JSON object instead of an engine
+  variant string, a misspelled `subProperty`, or a wrong-typed value returns
+  `ok:true` yet no-ops or coerces destructively. Pass `Vector3(...)`/`Color(...)`
+  strings and confirm in the saved `.tscn`, never from `ok` alone.
+
+### 3. InputMap actions
 
 ```
 summer_input_map_bind(name="move_forward", events=[{type:"key", key:"W"}])
@@ -88,7 +80,7 @@ summer_input_map_bind(name="jump",         events=[{type:"key", key:"Space"}])
 summer_input_map_bind(name="sprint",       events=[{type:"key", key:"Shift"}])
 ```
 
-### 6. Attach the controller script
+### 4. Attach the controller script
 
 Ask before writing: "May I create `scripts/player_controller.gd` and attach it to `./World/Player`?" Then `Write` the file with the skeleton in the next section, attach via inspector, and finish with `summer_save_scene(scenePath="res://main.tscn")` + `summer_get_script_errors(path="res://scripts/player_controller.gd")` (that tool checks one file and requires `path`).
 

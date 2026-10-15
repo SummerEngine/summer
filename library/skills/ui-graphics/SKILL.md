@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_call
 paths: ["assets/**", "ui/**", "art/ui/**"]
 ---
 
@@ -54,7 +54,7 @@ Every icon / button / panel re-uses this anchor verbatim. Skipping this step pro
 ### 2. Search before generating
 
 ```
-summer_search_assets(query="<subject> icon", assetType="2d_image", source="all")
+assets.search({ query: "<subject> icon", assetType: "2d_image", scope: "all" })
 ```
 
 ### 3. Pick the right pattern (icon vs button vs panel)

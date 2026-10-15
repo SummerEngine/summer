@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_assets_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_assets_generate_audio summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_call
 paths: ["assets/video/**", "cinematics/**", "trailers/**"]
 ---
 
@@ -38,10 +38,10 @@ If the user wants 5 seconds of marketing footage, that's `trailer-shot`. If they
 
 ```
 Read .summer/GameSoul.md
-summer_search_assets(query="<character name> reference", assetType="2d_image", source="all")
+assets.search({ query: "<character name> reference", assetType: "2d_image", scope: "all" })
 ```
 
-`summer_search_assets` has no video filter — `assetType` is one of `2d_image`, `animation`, `3d_model`, `audio`, `music`, `all`, and there is no video member. To find prior cutscene clips, list your own assets with `summer_list_my_assets(query="cutscene")` and read the titles.
+`assets.search` has no video filter — `assetType` is one of `2d_image`, `animation`, `3d_model`, `audio`, `music`, `all`, and there is no video member. To find prior cutscene clips, search your own assets with `assets.search({ query: "cutscene", scope: "mine" })` and read the titles.
 
 If a reference image of the character already exists from a prior `concept-art` or `character-portrait` run, **reuse it** as the `imageUrl` — that single decision is the difference between the character looking like themselves and looking like a stranger.
 

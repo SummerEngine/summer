@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_assets_generate_image summer_assets_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_jobs_wait summer_assets_generate_motion summer_call
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_image summer_assets_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_jobs_wait summer_assets_generate_motion summer_call
 paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -101,7 +101,7 @@ The finished job's `result` has `assetId` and `fileUrl` — an un-rigged static 
 Use the asset ID as the stable handle. Import it for preview only:
 
 ```
-summer_get_asset(assetId="<assetId>")
+assets.get({ assetId: "<assetId>" })
 summer_import_asset_by_id(
   assetId="<assetId>",
   path="res://assets/characters/knight_unrigged.glb"
@@ -141,7 +141,7 @@ Resolve it before import so the agent has the viewer/download metadata:
 Import the rigged version, replacing the un-rigged file:
 
 ```
-summer_get_asset(assetId="<rigAssetId>")
+assets.get({ assetId: "<rigAssetId>" })
 summer_import_asset_by_id(
   assetId="<rigAssetId>",
   path="res://assets/characters/knight.glb"

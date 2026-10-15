@@ -163,7 +163,7 @@ and set `loop_mode = Animation.LOOP_LINEAR` on those at runtime.
 
 ## Level assembly
 
-Check for real assets first (`asset-strategy`: `summer_search_assets`, then
+Check for real assets first (`asset-strategy`: `assets.search`, then
 `summer_import_asset`): a ready location or kit beats CSG. Keep CSG for the
 first-motion blockout, invisible glue (death planes, triggers) and pieces no
 asset covers — do not ship a grey-box level when a real one is available.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep Edit Write summer_search_assets summer_inspect_resource summer_inspect_node summer_assets_generate_audio summer_assets_generate_motion summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors summer_jobs_wait summer_call
+allowed-tools: Read Grep Edit Write summer_assets_search summer_inspect_resource summer_inspect_node summer_assets_generate_audio summer_assets_generate_motion summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors summer_jobs_wait summer_call
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_sfx_choices summer_assets_choices summer_assets_generate_audio summer_search_assets summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_sfx_choices summer_assets_choices summer_assets_generate_audio summer_assets_search summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree summer_call
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -38,7 +38,7 @@ Read `.summer/audio-bible.md` if it exists and map the request to one of its SFX
 
 ### 2. Reuse before you generate
 
-Generation costs credits (`dryRun: true` on the generate call shows how many). `summer_search_assets(query="<subject>", assetType="audio", source="all")`; if a clip fits, ask whether to use it.
+Generation costs credits (`dryRun: true` on the generate call shows how many). `assets.search({ query: "<subject>", assetType: "audio", scope: "all" })`; if a clip fits, ask whether to use it.
 
 ### 3. Write the prompt
 

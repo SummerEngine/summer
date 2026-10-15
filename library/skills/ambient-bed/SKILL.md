@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 ---
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep summer_search_assets summer_inspect_resource summer_assets_generate_motion summer_get_scene_tree summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
+allowed-tools: Read Grep summer_assets_search summer_inspect_resource summer_assets_generate_motion summer_get_scene_tree summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
 paths: ["**/*.tscn", "**/*.tres"]
 ---
 
@@ -50,7 +50,7 @@ This is the path for the common case: several characters that all came out of
 ### 1. Find the source clip names
 
 ```
-summer_search_assets(query: "<source character>", assetType: "animation", source: "my_assets")
+assets.search({ query: "<source character>", assetType: "animation", scope: "mine" })
 ```
 
 You want the *names* (`idle`, `walk`, `run`, ...), not the asset IDs — the IDs
@@ -59,10 +59,12 @@ belong to the source rig and cannot be transplanted.
 ### 2. Find the target rig
 
 ```
-summer_search_assets(query: "<target character>", assetType: "3d_model", source: "my_assets")
+assets.search({ query: "<target character>", assetType: "3d_model", scope: "mine" })
 ```
 
-Confirm a `rigAssetId` is present. If it is null the model was never rigged —
+The rigged model's `assetId` is its `rigAssetId`. Search results do not say whether
+a model is rigged: run step 4's call with `dryRun: true`, which refuses a model that
+is not rigged (`invalid_input` on `rigAssetId`). Then the model was never rigged —
 stop and propose `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })`
 first, or route to `asset-strategy`.
 
@@ -177,7 +179,7 @@ same rigged `.glb`, nothing needs retargeting — instance the scene.
 - Calling a `summer_retarget_motion` / `summer_retarget_*` tool. None exists.
 - Passing an asset ID to `summer_inspect_resource`. That tool takes a `res://`
   **path** to a resource in the project, not a cloud asset ID. Use
-  `summer_get_asset(assetId: ...)` for asset metadata.
+  `assets.get({ assetId: ... })` for asset metadata.
 - Generating motion on each enemy separately when they are instances of the same
   rig. Instance the scene; the library comes with it.
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_call
 paths: ["assets/**", "art/**", "concepts/**"]
 ---
 
@@ -44,7 +44,7 @@ If "final" → hand off to `character-portrait`. If "explore" → continue.
 ### 2. Search for prior concepts
 
 ```
-summer_search_assets(query="<subject> concept", assetType="2d_image", source="all")
+assets.search({ query: "<subject> concept", assetType: "2d_image", scope: "all" })
 ```
 
 If something already exists, ask if the user wants to riff on it (img2img via `referenceImageUrl`) or start fresh.

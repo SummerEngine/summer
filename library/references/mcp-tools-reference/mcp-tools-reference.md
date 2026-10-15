@@ -200,14 +200,12 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_debugger_warnings` | Runtime warnings from the debugger panel. |
 | `summer_get_script_errors` | Script compilation errors. |
 
-### Asset library (8)
+### Asset library (6)
 
-| Tool | Use |
+| Tool or operation | Use |
 |---|---|
-| `summer_search_assets` | Free public asset search (community library + user's own). Sources: `library`, `community`, `my_assets`, `all`. `style` keeps one art direction (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel); `preview` returns a numbered picture of the first 9 results; curated packs first unless `includeCommunity`. |
-| `summer_list_my_assets` | List/search the signed-in user's generated and uploaded assets. Empty query lists recent assets. |
-| `summer_get_asset` | Fetch one exact asset by ID with file URL, download URL, viewer URL, metadata, license, and visibility. |
-| `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |
+| `assets.search` | Free asset search: `query`, `scope` (`library` = the public Summer library, the default; `mine` = the person's own generated and uploaded assets, where an empty query lists the newest; `all`), `assetType` (`2d_image`, `animation`, `3d_model`, `audio`, `music`, `all`), `style` (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel: keeps one art direction), `limit` (at most 20), `cursor`. Answers `items` (`assetId`, `title`, `type`, `source`, `fileUrl`, `thumbnailUrl`, `format`, `license`) and `nextCursor`. There is no picture preview of the results and no community toggle. |
+| `assets.get` | One exact asset by `assetId`: `fileUrl`, `downloadUrl`, `viewerUrl`, `status` (`expired`: regenerate it), file name, type and size, visibility, license, tags and `parentAssetId`. |
 | `summer_import_asset` | Search, choose the top match, download, run the engine import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
 | `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. |
@@ -320,12 +318,14 @@ Read big things in parts, never whole:
 
 Every asset-generation skill should follow this loop:
 
-1. `summer_search_assets` or `summer_list_my_assets` — reuse before generating when reasonable.
+1. `assets.search` (`scope: "all"`, or `"mine"` for the person's own) — reuse before generating when reasonable.
 2. `assets.generate_image` / `assets.generate_3d` / `assets.generate_audio` — metered creation (`dryRun: true` first when the person should see the credits).
 3. `jobs.wait` when the answer was `running` (3D, video, animation), until the job is finished.
-4. `summer_get_asset` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
+4. `assets.get` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
 5. `summer_import_asset_by_id` — import the exact result through the engine's import pipeline.
-6. `summer_get_asset_download_url` — only when the user explicitly wants a downloadable file/link.
+6. The `downloadUrl` from `assets.get` — only when the user explicitly wants a downloadable file/link.
+
+`whoami()` shows the signed-in account: plan, `credits` (their balance) and whether generation is unlocked.
 
 ## summer_set_resource_property — nested properties
 

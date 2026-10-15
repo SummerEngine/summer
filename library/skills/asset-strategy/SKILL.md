@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: asset-pipeline
 user-invocable: false
-allowed-tools: Read Grep Skill summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id
+allowed-tools: Read Grep Skill summer_assets_search summer_assets_get summer_import_asset_by_id summer_call
 ---
 
 # Asset Strategy — Meta-Router for Asset Creation
@@ -118,6 +118,7 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 
 The specialists name Summer's asset work by operation. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input.
 
+- **Find and read:** `assets.search({ query, scope })` (`scope`: `library` (default), `mine` for their own, `all`), then `assets.get({ assetId })` for the file, `downloadUrl` and `viewerUrl`. Reuse before generating.
 - **Generate:** `assets.generate_image`, `assets.generate_3d`, `assets.generate_audio`, `assets.generate_video`, `assets.generate_motion`, `assets.generate_sfx_choices` (then `assets.choices` for the person's picks). They spend the person's credits; `dryRun: true` returns the estimate (`credits`, `balance`, `enough`) and makes nothing.
 - **Wait:** 3D, video and animation answer at once with a job; `jobs.wait({ jobId, timeoutSeconds: 50 })` until `finished`, and the finished job's `result` holds the asset ids.
 - **Edit their assets:** `assets.remove_background`, `assets.slice_sheet`, `assets.update` (title, description, tags, private or team), `assets.delete` (answers with a link; nothing is deleted until the person confirms). Making an asset public is the person's own click in Studio.
@@ -128,7 +129,7 @@ The specialists name Summer's asset work by operation. A call written `area.acti
 
 - The user already named the specific skill — go straight there.
 - The user is debugging or running the game — route to `debug` or `play`.
-- The asset is an existing Summer asset ID — call `summer_get_asset`, then `summer_import_asset_by_id`.
+- The asset is an existing Summer asset ID — call `assets.get({ assetId })`, then `summer_import_asset_by_id`.
 - The asset is being imported from a non-Summer URL (`.glb` / `.wav` from Sketchfab, Quaternius, AmbientCG) — call `summer_import_from_url` directly.
 - The user wants to plan the whole game's asset list — `brainstorm-game` first, then this router on each item.
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_inspect_node summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_inspect_node summer_call
 paths: ["assets/**", "art/sky/**", "environments/**"]
 ---
 
@@ -38,7 +38,7 @@ The most common failure is **non-equirectangular output**. Image models default 
 ### 1. Search for an existing sky
 
 ```
-summer_search_assets(query="<vibe> sky panorama", assetType="2d_image", source="all")
+assets.search({ query: "<vibe> sky panorama", assetType: "2d_image", scope: "all" })
 ```
 
 Polyhaven (`polyhaven.com/hdris`) hosts hundreds of free CC0 HDRIs. They look more realistic than generated skies and carry real HDR lighting data. Prefer Polyhaven for realistic exteriors; generate for stylized, fantasy or sci-fi skies.

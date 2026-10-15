@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read summer_list_my_assets summer_assets_generate_motion summer_jobs_wait summer_get_asset summer_import_asset_by_id summer_call
+allowed-tools: Read summer_assets_search summer_assets_generate_motion summer_jobs_wait summer_assets_get summer_import_asset_by_id summer_call
 ---
 
 # Text to Motion
@@ -37,7 +37,7 @@ doesn't have that move", any animation request for a non-humanoid rig.
 ## The order
 
 1. **Confirm the rig.** The asset must be the user's own `3d_model` GLB/FBX with one
-   skinned armature and 5-70 bones (`summer_list_my_assets` / `summer_get_asset`). If it
+   skinned armature and 5-70 bones (`assets.search({ scope: "mine", assetType: "3d_model" })` / `assets.get`). If it
    is unrigged or has odd bone names, read `rigging-for-text-motion.md` in this directory.
 2. **Agree the clip list and cost.** Each prompt x take is one billed clip. Run the call
    below with `dryRun: true` first: it checks the rig and returns `estimate.credits`. Show

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_call
 paths: ["assets/**", "art/pixel/**", "sprites/**"]
 ---
 
@@ -62,7 +62,7 @@ shading: 3-tone (light, mid, shadow), no gradients, no AA
 ### 2. Search for existing assets
 
 ```
-summer_search_assets(query="<subject> pixel", assetType="2d_image", source="all")
+assets.search({ query: "<subject> pixel", assetType: "2d_image", scope: "all" })
 ```
 
 ### 3. Build the prompt

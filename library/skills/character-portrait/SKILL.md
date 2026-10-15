@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_set_prop summer_set_resource_property summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_prop summer_set_resource_property summer_call
 paths: ["assets/**", "art/portraits/**", "ui/portraits/**"]
 ---
 
@@ -69,7 +69,7 @@ Every subsequent portrait in this cast appends the anchor to the prompt verbatim
 ### 2. Search for an existing portrait
 
 ```
-summer_search_assets(query="<character name> portrait", assetType="2d_image", source="all")
+assets.search({ query: "<character name> portrait", assetType: "2d_image", scope: "all" })
 ```
 
 Reuse beats regenerate. If the user wants to iterate on an existing one, pull its URL and pass it as `referenceImageUrl` for img2img.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_call
 paths: ["assets/video/**", "menus/**", "ui/**"]
 ---
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -37,7 +37,7 @@ The backing operation is `assets.generate_3d`; it answers with a job that `jobs.
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<prop name>", assetType="3d_model", source="all")
+assets.search({ query: "<prop name>", assetType: "3d_model", scope: "all" })
 ```
 
 If a fitting model exists, propose reuse:
@@ -91,7 +91,7 @@ stable handle and `fileUrl` as a fallback preview/import URL.
 ### 5. Import and wire
 
 ```
-summer_get_asset(assetId="<assetId>")
+assets.get({ assetId: "<assetId>" })
 summer_import_asset_by_id(
   assetId="<assetId>",
   path="res://assets/models/viking_axe.glb",

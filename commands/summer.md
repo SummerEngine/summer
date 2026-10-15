@@ -1,7 +1,7 @@
 ---
 description: Summer Engine game-dev persona and command router. Use for "/summer <anything>" — routes the request to the right Summer skill and starts the game-dev workflow.
 argument-hint: <what you want to build, fix, or ship>
-allowed-tools: Read Glob Grep Edit Write Skill Bash summer_get_project_context summer_get_scene_tree summer_get_diagnostics summer_search_assets summer_create_debug_report
+allowed-tools: Read Glob Grep Edit Write Skill Bash summer_get_project_context summer_get_scene_tree summer_get_diagnostics summer_assets_search summer_create_debug_report summer_call
 ---
 
 # /summer — Summer Engine persona

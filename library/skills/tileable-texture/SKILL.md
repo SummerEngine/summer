@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["assets/**", "art/textures/**", "materials/**"]
 ---
 
@@ -35,7 +35,7 @@ The hard part is "seamless." Most diffusion models violate edge continuity by de
 ### 1. Search for an existing texture
 
 ```
-summer_search_assets(query="<material> tileable", assetType="2d_image", source="all")
+assets.search({ query: "<material> tileable", assetType: "2d_image", scope: "all" })
 ```
 
 Texture libraries (AmbientCG, Polyhaven) often have free PBR sets that beat AI generation for realism. If the user wants photorealistic tiling, pause and suggest those.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_get_asset_download_url summer_assets_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_assets_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
 paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 ---
 
@@ -41,10 +41,10 @@ The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `
 ### 1. Verify the target is a rigged humanoid
 
 ```
-summer_search_assets(query="<character name>", assetType="3d_model", source="my_assets")
+assets.search({ query: "<character name>", assetType: "3d_model", scope: "mine" })
 ```
 
-The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })` first (the finished job's result includes `rigAssetId`), or route to `asset-strategy`.
+The rigged model's `assetId` is its `rigAssetId` (the id the rig job's result named `rigAssetId`). Search results do not say whether a model is rigged: the dry run in step 2 checks it, and a model that is not rigged is refused there with `invalid_input` on `rigAssetId`. Then stop, propose `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })` first (the finished job's result includes `rigAssetId`), or route to `asset-strategy`.
 
 ### 2. Confirm with the user before spending
 
@@ -70,7 +70,7 @@ When the rig already has every clip asked for, the answer is `done` at once with
 present — resolve the asset to get stable file/download metadata:
 
 ```
-summer_get_asset(assetId="<animationAssetId>")
+assets.get({ assetId: "<animationAssetId>" })
 ```
 
 ### 4. Attach to the character's AnimationPlayer
@@ -135,7 +135,7 @@ have actually seen, or route to the manual-authoring fallback.
 ## Anti-patterns
 
 - Calling `assets.generate_motion` on a `.glb` that wasn't rigged — the call is refused; a dry run says so first.
-- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `summer_search_assets(query: "goblin run", assetType: "animation", source: "my_assets")`.
+- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `assets.search({ query: "goblin run", assetType: "animation", scope: "mine" })`.
 - Wiring clips into an AnimationTree inside this skill. That's the next skill's job. Generate, attach, hand off.
 - Asking the model to invent a motion name that isn't on the list. Quote from the list verbatim, or fall back to manual authoring.
 

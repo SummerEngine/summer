@@ -8,10 +8,10 @@ use_when:
   - VFX meshes — shatter fragments, curve sweeps, trails, LOD chains — or decimating, UV-unwrapping, and baking a generated model before it goes into the scene
   - a fabrication failed (blender_not_found, script_error, export_empty, import_failed, busy, timeout) and the result needs to be read correctly
 do_not_use_when:
-  - a generic prop — search the free library first (summer_search_assets, prop-model), then generate (assets.generate_3d)
+  - a generic prop — search the free library first (assets.search, prop-model), then generate (assets.generate_3d)
   - a character or any organic shape — character-model / organic-model; scripted organic modelling is the documented failure mode
   - a blockout or placeholder — scene-scripting primitives/CSG are instant and in-scene
-  - "the engine build lacks FabricateMesh (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op — route to assets.generate_3d / summer_search_assets / summer_run_script instead"
+  - "the engine build lacks FabricateMesh (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op — route to assets.generate_3d / assets.search / summer_run_script instead"
 facets:
   lifecycle:
     - build

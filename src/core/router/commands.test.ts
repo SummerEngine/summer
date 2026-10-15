@@ -149,7 +149,7 @@ describe("summer router push", () => {
     writeFileSync(join(root, "summer.build.json"), "{}");
     const noGame = await push(context(api), {});
     expect(noGame.exitCode).toBe(2);
-    expect(noGame.result.error).toMatchObject({ code: "game_id_missing", studio_url: "https://www.summerengine.com/studio?tab=store" });
+    expect(noGame.result.error).toMatchObject({ code: "game_id_missing", studio_url: "https://www.summerengine.com/studio/store" });
   });
 
   it("says not signed in with the next step", async () => {

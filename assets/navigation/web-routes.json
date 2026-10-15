@@ -401,6 +401,34 @@
       ]
     },
     {
+      "id": "summer-router",
+      "path": "/studio/store/{gameId}?view=all&tab=router",
+      "title": "Summer Router for a game",
+      "description": "A game's Summer Router tab in Studio: its AI characters, the on/off switch, spend caps and usage. Owners approve cap and switch changes here.",
+      "intents": [
+        "summer router",
+        "ai characters for my game",
+        "router settings",
+        "router caps",
+        "ai spend caps for my game",
+        "turn off ai for my game",
+        "voice npc settings",
+        "ai usage for my game"
+      ],
+      "auth": "signed-in",
+      "aliases": [
+        "router",
+        "ai-characters"
+      ],
+      "params": [
+        {
+          "name": "gameId",
+          "description": "The game's id (from the Your games list, or gameId in summer.build.json).",
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "billing",
       "path": "/studio?tab=billing",
       "title": "Billing & plan",

@@ -46,5 +46,6 @@ export type SurfaceVersion = "v3" | "v4";
 
 /** `--surface` / SUMMER_SURFACE: v4 is the default since 4.0; v3 keeps the 3.x tools. */
 export function resolveSurface(value: string | undefined, env: NodeJS.ProcessEnv = process.env): SurfaceVersion {
-  return (value ?? env.SUMMER_SURFACE ?? "").trim().toLowerCase() === "v3" ? "v3" : "v4";
+  const asked = (value ?? env.SUMMER_SURFACE ?? "").trim().toLowerCase();
+  return asked === "v3" || asked === "3" ? "v3" : "v4";
 }

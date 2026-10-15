@@ -27,12 +27,14 @@ const serverModule = (await import(pathToFileURL(serverModulePath).href)) as {
   startMcpServer?: (options: {
     projectPath: string;
     cwd: string;
+    surface?: string;
   }) => Promise<void>;
 };
 if (typeof serverModule.startMcpServer !== "function") {
   throw new Error(`Built Summer server module has no startMcpServer(): ${serverModulePath}`);
 }
-await serverModule.startMcpServer({ projectPath, cwd: projectPath });
+// The canary gateway hides tools by name; v4's summer_call could run any of them.
+await serverModule.startMcpServer({ projectPath, cwd: projectPath, surface: "v3" });
 const release = (): void => clearInterval(keepAlive);
 process.stdin.once("end", release);
 process.stdin.once("close", release);

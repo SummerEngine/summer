@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_slice_asset_sheet summer_get_studio_workflow summer_search_assets summer_import_from_url summer_import_asset_by_id summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_slice_sheet summer_get_studio_workflow summer_assets_search summer_import_from_url summer_import_from_url_batch summer_import_asset_by_id summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_call
 paths: ["assets/**", "sprites/**", "art/sprites/**"]
 ---
 
@@ -18,10 +18,10 @@ Sprite-sheet generation from a single text-to-image call is **unreliable**. Mode
 This skill therefore offers **three paths**, ranked by reliability:
 
 1. **Per-frame img2img** (most reliable) — generate the base pose, then generate each subsequent frame via `referenceImageUrl` with a small pose delta. Composite the frames into a sheet externally or wire each as a separate `SpriteFrames` entry.
-2. **Single-call sheet + auto-slice** (fast; sheet coherence is the gamble, not the cutting) — one prompt asks for the grid, then `summer_slice_asset_sheet` cuts it into individual frame assets server-side. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
+2. **Single-call sheet + auto-slice** (fast; sheet coherence is the gamble, not the cutting) — one prompt asks for the grid, then `assets.slice_sheet` cuts it into individual frames server-side. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
 3. **Manual authoring** (most reliable, slowest) — hand-author in **Aseprite** or **Piskel**. For pixel art at 32×32, this is often faster than fixing AI generations.
 
-There is no single "generate a sprite sheet" tool, but there **is** a shared two-tool sheet pipeline, and it is the same one Studio's Guided "sprite-sheet" workflow runs: `summer_generate_image` produces one sheet, then `summer_slice_asset_sheet({ assetId })` runs the server-side vision slicer that removes the background, detects each frame's bounding box, crops, and uploads every frame as its own asset. Call `summer_get_studio_workflow({ workflowId: "sprite-sheet" })` for the current ordered recipe and its stated limitations. Only Studio's frame-preview and visual timing-review UI is unreachable from MCP — the generation and the slicing both are reachable.
+There is no single "generate a sprite sheet" operation, but there **is** a shared two-step sheet pipeline, and it is the same one Studio's Guided "sprite-sheet" workflow runs: `assets.generate_image` produces one sheet, then `assets.slice_sheet({ assetId })` runs the server-side vision slicer that removes the background, detects each frame's bounding box, crops, and uploads every frame as its own image (one URL per slice). Call `summer_get_studio_workflow({ workflowId: "sprite-sheet" })` for the current ordered recipe and its stated limitations. Only Studio's frame-preview and visual timing-review UI is unreachable from MCP — the generation and the slicing both are reachable.
 
 So do not tell the user to cut a generated sheet by hand or in ImageMagick. The cutting is automated; what is unreliable is inter-frame *consistency* inside the generated sheet.
 
@@ -38,7 +38,7 @@ So do not tell the user to cut a generated sheet by hand or in ImageMagick. The 
 - The character is 3D — use `generate-motion` for skeletal animation.
 - The user wants a single static sprite → `pixel-art` or `character-portrait`.
 - The user wants UI animation (loading spinner, button hover) — animate via `AnimationPlayer` rotating/tweening a static texture instead. Don't sprite-sheet UI.
-- The user has 12+ frames per animation and 4+ animations. That is dozens to hundreds of generations, each using credits. Pause and agree on scope first.
+- The user has 12+ frames per animation and 4+ animations. That is dozens to hundreds of generations, each using credits. Pause and agree on scope first; `dryRun: true` on one frame's call shows its credits.
 
 ## Steps
 
@@ -69,16 +69,16 @@ State the path before starting: "I'll do per-frame img2img: 6 generations. The f
 Generate frame 1 (or use existing base). For each subsequent frame, prompt the pose delta and pass the previous frame as `referenceImageUrl`:
 
 ```
-summer_generate_image(
-  prompt="goblin warrior, walk cycle frame 2 of 6, right leg forward, slight bob upward, identical character, same costume, same palette. Not a different character, not a different costume, no scene background.",
-  referenceImageUrl="<frame 1 fileUrl>",
-  model="nano-banana-2",
-  style="<same as base>",
-  removeBackground=true
-)
+assets.generate_image({
+  prompt: "goblin warrior, walk cycle frame 2 of 6, right leg forward, slight bob upward, identical character, same costume, same palette. Not a different character, not a different costume, no scene background.",
+  referenceImageUrl: "<frame 1 fileUrl>",
+  model: "nano-banana-2",
+  style: "<same as base>",
+  removeBackground: true
+})
 ```
 
-`summer_generate_image` has no size argument; put negations in the prompt text. `removeBackground: true` gives you real alpha instead of a prompted "transparent background" that the model may paint as a literal checkerboard. `referenceImageUrl` only works on edit-capable models (`nano-banana-2`, `seedream-5-pro`, `nano-banana-lite`, `gpt-image-2`, `gemini-flash`, `flux-2`); `grok-imagine` has no edit endpoint and returns `edit_not_supported`.
+Keep `aspectRatio` (and `width` / `height`, if you set them) the same for every frame; put negations in the prompt text. `removeBackground: true` gives you real alpha instead of a prompted "transparent background" that the model may paint as a literal checkerboard. `referenceImageUrl` only works on edit-capable models (`nano-banana-2`, `seedream-5-pro`, `nano-banana-lite`, `gpt-image-2`, `gemini-flash`, `flux-2`); `grok-imagine` has no edit endpoint and returns `edit_not_supported`.
 
 Repeat for each frame. Save each as `goblin_walk_01.png`, `goblin_walk_02.png`, etc.
 
@@ -89,23 +89,24 @@ composite them into one sheet image.
 ### 3b. Path 2 — Single-call sheet, then auto-slice
 
 ```
-summer_generate_image(
-  prompt="goblin warrior walk cycle, sprite sheet, 6 frames in a horizontal row, identical character across frames, side view, frames clearly separated with empty space between them, consistent lighting, consistent palette. No scene background, no varying lighting, not a different character per frame.",
-  model="nano-banana-2",
-  style="none",
-  removeBackground=true
-)
+assets.generate_image({
+  prompt: "goblin warrior walk cycle, sprite sheet, 6 frames in a horizontal row, identical character across frames, side view, frames clearly separated with empty space between them, consistent lighting, consistent palette. No scene background, no varying lighting, not a different character per frame.",
+  model: "nano-banana-2",
+  style: "none",
+  aspectRatio: "21:9",
+  removeBackground: true
+})
 ```
 
-There is no `"pixel"` style preset (`style` is `realistic | cartoon | anime | none`; anything else is coerced to `none`) and no size argument; the layout and the negations have to be in the prompt.
+There is no `"pixel"` style preset (`style` is `realistic | cartoon | anime | none`). A wide `aspectRatio` gives a row of frames room; the layout and the negations have to be in the prompt.
 
 Then cut it with the same server-side slicer Studio uses, passing the asset id the generation returned:
 
 ```
-summer_slice_asset_sheet(assetId="<generated sheet assetId>")
+assets.slice_sheet({ assetId: "<generated sheet assetId>" })
 ```
 
-It returns the source dimensions plus per-slice URLs, names, categories, and bounding boxes. Import the frames you want by id with `summer_import_asset_by_id`.
+It returns `source` (the sheet's width and height) and `slices`: each slice's `url`, `name`, `category` and `bbox`. The slices are image URLs, not assets: import the frames you want with `summer_import_from_url_batch`.
 
 Inspect the result. If the frames are coherent and the count matches, proceed. If anatomy morphs across the row, or the slicer returns one giant box (items touching / no gaps), fall back to Path 1 or Path 3 — re-prompting with more separation between frames is the first thing to try.
 
@@ -202,7 +203,7 @@ func _physics_process(delta):
 - **Wiring an inconsistent sheet anyway** because you don't want to regenerate. Ship the inconsistency and the player notices the morphing limbs immediately. Cut the frame count or hand-author instead.
 - **Sprite-sheeting things that don't need to be sprite-sheeted.** UI animation, simple bobs, fades — use `AnimationPlayer` to tween a static texture instead. Sprite sheets are for character animation specifically.
 - **Pretending Aseprite is a failure.** Hand-authoring 4 pixel-art frames takes 10 minutes and looks better than 8 AI generations. Don't oversell AI here.
-- **Sending the user to ImageMagick or Aseprite to *cut* a generated sheet.** `summer_slice_asset_sheet` does that server-side. Hand off the creative work, not the mechanical work.
+- **Sending the user to ImageMagick or Aseprite to *cut* a generated sheet.** `assets.slice_sheet` does that server-side. Hand off the creative work, not the mechanical work.
 
 ## Edge cases
 
@@ -214,16 +215,16 @@ func _physics_process(delta):
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-6 (import, `AnimatedSprite2D`, trigger code). Pass `out` to `summer_generate_image` for each frame, or slice a sheet with `summer_slice_asset_sheet` and get each piece with `summer_get_asset_download_url`. Tell the person the frame order and the frame rate you planned.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-6 (import, `AnimatedSprite2D`, trigger code). Get each frame with `assets.get` on the returned asset ids (its `downloadUrl`), or slice a sheet with `assets.slice_sheet` and get each piece the same way. Tell the person the frame order and the frame rate you planned.
 
 ## Fallback (no MCP)
 
 Print the per-frame call sequence:
 
 ```
-Frame 1: summer_generate_image(prompt="<base>", model="nano-banana-2", style="none", ...)
-Frame 2: summer_generate_image(prompt="<base + delta>", referenceImageUrl="<frame 1>", ...)
-Frame 3: summer_generate_image(prompt="<base + delta>", referenceImageUrl="<frame 2>", ...)
+Frame 1: assets.generate_image({ prompt: "<base>", model: "nano-banana-2", style: "none", ... })
+Frame 2: assets.generate_image({ prompt: "<base + delta>", referenceImageUrl: "<frame 1>", ... })
+Frame 3: assets.generate_image({ prompt: "<base + delta>", referenceImageUrl: "<frame 2>", ... })
 ...
 ```
 
@@ -245,4 +246,4 @@ After the animation is wired:
 - `character-portrait` — base portrait for higher-res characters.
 - `generate-motion` — 3D-skeletal counterpart.
 - `sound-effect` — frame-synced SFX.
-- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

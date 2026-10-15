@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_get_asset_download_url summer_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_assets_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
 paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 
 Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-rigged humanoid. Fast (~30s), and it looks good because it is real mocap. The five short aliases that always work are `idle`, `walk`, `run`, `jump`, `attack`; anything else must be an exact library name — see the Reference card before you invent one.
 
-The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
+The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })` call. The finished job's `result` includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `asset-strategy` (or directly call `assets.generate_3d` with `rig: true`) before generating motion.
 
 > **Custom or non-humanoid motion** (e.g. "drops to one knee, draws bow", a
 > nodding flower, a creature) goes to the `text-to-motion` skill
@@ -32,7 +32,7 @@ The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `
 - The user wants to apply an *existing* animation to a *new* model — use `retarget` instead. Don't regenerate.
 - The user wants state-machine wiring (idle → walk → run blend) — generate the clips here, then hand off to `animation-tree`.
 - The user wants facial / lipsync animation — that's `facial-and-lipsync`.
-- The mesh isn't rigged. Rig first; never call `summer_generate_motion` on a static `.glb`.
+- The mesh isn't rigged. Rig first; never call `assets.generate_motion` on a static `.glb`.
 - The user wants procedural look-at, IK, foot placement — that's `procedural-animation`.
 - The user described a **custom signature move** that isn't on the curated list — use `text-to-motion`; if the server answers `backend_unavailable`, use the manual-authoring fallback below.
 
@@ -41,31 +41,36 @@ The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `
 ### 1. Verify the target is a rigged humanoid
 
 ```
-summer_search_assets(query="<character name>", assetType="3d_model", source="my_assets")
+assets.search({ query: "<character name>", assetType: "3d_model", scope: "mine" })
 ```
 
-The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` first (the result includes `rigAssetId`), or route to `asset-strategy`.
+The rigged model's `assetId` is its `rigAssetId` (the id the rig job's result named `rigAssetId`). Search results do not say whether a model is rigged: the dry run in step 2 checks it, and a model that is not rigged is refused there with `invalid_input` on `rigAssetId`. Then stop, propose `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })` first (the finished job's result includes `rigAssetId`), or route to `asset-strategy`.
 
 ### 2. Confirm with the user before spending
 
 > I'm about to generate a "run" animation on `goblin_rigged` via meshy-library — about 30s, and it uses credits. OK?
 
-### 3. Call the tool
+`dryRun: true` on the call below returns the credits (`estimate`) and checks the rig is the person's and rigged; clips the rig already has cost nothing, so the estimate is the most it can cost.
+
+### 3. Call the operation
 
 ```
-summer_generate_motion(
+assets.generate_motion({
   rigAssetId: "<id>",
   backend: "meshy-library",   // curated library (default)
-  motionName: "run"           // exact name from the curated list — see Reference card
-)
+  motionNames: ["run"]        // exact names from the curated list — see Reference card
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished
 ```
 
-The tool returns a `jobId`: poll `summer_check_job` until it is terminal (or pass
-`wait: true` to make the tool poll for you). The job result has `animationAssetId` in it. Don't assume any other field is present —
-resolve the asset to get stable file/download metadata:
+`assets.generate_motion` answers at once with a job; `jobs.wait` follows it until
+`finished` is true, and the finished job's `result` has `animationAssetId` in it.
+When the rig already has every clip asked for, the answer is `done` at once with
+`reused` (nothing new was made or charged). Don't assume any other field is
+present — resolve the asset to get stable file/download metadata:
 
 ```
-summer_get_asset(assetId="<animationAssetId>")
+assets.get({ assetId: "<animationAssetId>" })
 ```
 
 ### 4. Attach to the character's AnimationPlayer
@@ -97,7 +102,7 @@ If the character will use multiple clips, leave the AnimationPlayer in place —
 
 ## Reference card
 
-### Curated motion library — what `motionName` actually accepts
+### Curated motion library — what `motionNames` actually accepts
 
 There are **five** short canonical aliases, and only five:
 
@@ -113,7 +118,7 @@ nothing like a tidy snake_case scheme — real names look like `Walking_Woman`,
 Plausible-looking names that do **not** resolve, verified against the resolver:
 `attack_sword`, `hit_react`, `death`, `sprint`, `block`, `dodge_left`,
 `crouch_idle`, `walk_back`, `run_strafe_left`, `jump_land`, `idle_combat`,
-`wave`, `dance`, `sit_idle`. They return `null` and the call errors. For a sword
+`wave`, `dance`, `sit_idle`. They resolve to nothing and the call errors. For a sword
 attack, use `attack`.
 
 So: if the user asks for something outside the five aliases, do not guess a
@@ -122,17 +127,17 @@ have actually seen, or route to the manual-authoring fallback.
 
 ### Pitfalls
 
-- **Invented `motionName` strings fail.** `"run_fast"`, `"attack_sword"`, `"death"` all resolve to nothing and the call errors. Name resolution is exact — five aliases, or a real library name / display name / numeric id. Do not extrapolate a naming scheme.
+- **Invented `motionNames` entries fail.** `"run_fast"`, `"attack_sword"`, `"death"` all resolve to nothing and the call errors. Name resolution is exact — five aliases, or a real library name / display name / numeric id. Do not extrapolate a naming scheme.
 - **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. Either the code drives movement (then the baked root translation causes a lunge-and-snap every loop — strip it) or the clip does via `root_motion_track` + `get_root_motion_position()` — never both. The full root-motion setup and its playtest verification live in `character-animation-wiring`.
 - **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `asset-strategy`) before re-generating.
-- **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. The MCP route returns 425 "animations_preparing" if you call too early. Wait and retry.
+- **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. Called too early, `assets.generate_motion` answers `in_progress` with `retry: "after"` and `details.retryAfterSeconds` (about 180). Wait and retry.
 
 ## Anti-patterns
 
-- Calling `summer_generate_motion` on a `.glb` that wasn't rigged — wastes a generation; the API errors but only after 30s.
-- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `summer_search_assets(query: "goblin run", assetType: "animation", source: "my_assets")`.
+- Calling `assets.generate_motion` on a `.glb` that wasn't rigged — the call is refused; a dry run says so first.
+- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `assets.search({ query: "goblin run", assetType: "animation", scope: "mine" })`.
 - Wiring clips into an AnimationTree inside this skill. That's the next skill's job. Generate, attach, hand off.
-- Asking the model to invent a `motionName` that isn't on the list. Quote from the list verbatim, or fall back to manual authoring.
+- Asking the model to invent a motion name that isn't on the list. Quote from the list verbatim, or fall back to manual authoring.
 
 ## Edge cases
 
@@ -147,7 +152,7 @@ have actually seen, or route to the manual-authoring fallback.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Get the file with `summer_get_asset_download_url` on `animationAssetId`, save it where the person asked, and tell them the path and format.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Get the file with `assets.get` on `animationAssetId` (its `downloadUrl`), save it where the person asked, and tell them the path and format.
 
 ## Fallback (no MCP)
 

@@ -37,7 +37,7 @@ Compare `tiles_painted` with the cell areas you asked for (256 + 6 + 3 here) —
 
 ## Animated sprite (game-completeness tier)
 
-`add_animated_sprite` builds the `SpriteFrames` resource from per-frame texture paths — one entry per animation, `fps` and `loop` per clip — and optionally autoplays one. Cut a sheet into frames first (`summer_slice_asset_sheet`, or the `sprite-sheet` skill when generating them).
+`add_animated_sprite` builds the `SpriteFrames` resource from per-frame texture paths — one entry per animation, `fps` and `loop` per clip — and optionally autoplays one. Cut a sheet into frames first (`assets.slice_sheet`, or the `sprite-sheet` skill when generating them).
 
 ```gdscript
 func run(ctx):

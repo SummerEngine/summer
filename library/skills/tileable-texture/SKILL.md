@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["assets/**", "art/textures/**", "materials/**"]
 ---
 
@@ -35,7 +35,7 @@ The hard part is "seamless." Most diffusion models violate edge continuity by de
 ### 1. Search for an existing texture
 
 ```
-summer_search_assets(query="<material> tileable", assetType="2d_image", source="all")
+assets.search({ query: "<material> tileable", assetType: "2d_image", scope: "all" })
 ```
 
 Texture libraries (AmbientCG, Polyhaven) often have free PBR sets that beat AI generation for realism. If the user wants photorealistic tiling, pause and suggest those.
@@ -59,16 +59,16 @@ The load-bearing phrases are:
 ### 3. Generate
 
 ```
-summer_generate_image(
-  prompt="weathered red brick wall, seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square format, photographic detail. No vanishing point, no directional shadow, no vignette, no single standout feature, no scene context, no sky, no sun.",
-  model="nano-banana-2",
-  style="realistic"
-)
+assets.generate_image({
+  prompt: "weathered red brick wall, seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square format, photographic detail. No vanishing point, no directional shadow, no vignette, no single standout feature, no scene context, no sky, no sun.",
+  model: "nano-banana-2",
+  style: "realistic"
+})
 ```
 
 Two things about the arguments:
 
-- **There is no `image_size` and no `negative_prompt`.** `summer_generate_image` takes only `prompt`, `model`, `style`, `referenceImageUrl`, `removeBackground` and `options`, and `options` only recognizes Nano Banana provider keys (`seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`). Anything else is dropped without an error, so the call looks like it worked. Put the negations in the prompt text. Square is what you get regardless — MCP images come back at the server's 1:1 default, which is exactly what a tileable texture wants.
+- **There is no `image_size` and no `negative_prompt`.** `assets.generate_image` takes `prompt`, `model`, `style`, `aspectRatio`, `width`, `height`, `numImages`, `referenceImageUrl`, `removeBackground`, `seed` and `title`; a field it does not list does nothing, so the call looks like it worked. Put the negations in the prompt text. Leave `aspectRatio` at its `1:1` default, which is exactly what a tileable texture wants; for a larger tile, leave `model` out and pass `width` and `height`: a model that reaches the size is picked, or the answer names the models that can.
 - **`style: "realistic"` is a no-op.** Only `cartoon` and `anime` append anything to the prompt; `realistic` and `none` append nothing, and any other value is coerced to `none`. The photographic look has to come from the prompt (`photographic detail`). Switching to `"none"` for stylized work likewise changes nothing on its own — change the prompt.
 
 ### 4. Import to project
@@ -180,18 +180,18 @@ Then attach the same material with `uv1_scale` tuned to wall dimensions.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and the seam check in step 5 by eye on the image (tile it 2x2 in an image viewer); skip step 4 and step 6 (import, wiring onto geometry). Pass `out` to `summer_generate_image` so the PNG lands in the person's folder, and tell them to set the texture to repeat.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and the seam check in step 5 by eye on the image (tile it 2x2 in an image viewer); skip step 4 and step 6 (import, wiring onto geometry). Get the PNG with `assets.get` on the returned asset id (its `downloadUrl`), save it in the person's folder, and tell them to set the texture to repeat.
 
 ## Fallback (no MCP)
 
 Print the call:
 
 ```
-summer_generate_image(
-  prompt="<material> seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square. No directional shadow, no single standout feature, no scene context.",
-  model="nano-banana-2",
-  style="realistic"
-)
+assets.generate_image({
+  prompt: "<material> seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square. No directional shadow, no single standout feature, no scene context.",
+  model: "nano-banana-2",
+  style: "realistic"
+})
 ```
 
 Tell the user to run via the Summer dashboard, then `summer_import_from_url` to `res://art/textures/<name>.png`, set `Repeat: Enabled`, and tune `uv1_scale` to physical size.
@@ -212,4 +212,4 @@ After the texture is wired:
 - `asset-strategy` — meta-router and 3D pipeline.
 - `skybox-panorama` — sky/environment counterpart.
 - `scene-composition` — applying textures to CSG and MeshInstance3D.
-- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

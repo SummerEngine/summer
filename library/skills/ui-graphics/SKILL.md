@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_call
 paths: ["assets/**", "ui/**", "art/ui/**"]
 ---
 
@@ -54,19 +54,19 @@ Every icon / button / panel re-uses this anchor verbatim. Skipping this step pro
 ### 2. Search before generating
 
 ```
-summer_search_assets(query="<subject> icon", assetType="2d_image", source="all")
+assets.search({ query: "<subject> icon", assetType: "2d_image", scope: "all" })
 ```
 
 ### 3. Pick the right pattern (icon vs button vs panel)
 
-`summer_generate_image` has no size or aspect argument — every MCP image comes back at the server's 1:1 default. Square suits icons, panels, and badges; for wide assets (buttons, HUD bar frames) describe the proportions in the prompt and crop after, or generate in the Summer dashboard where aspect ratio is exposed.
+`assets.generate_image` takes `aspectRatio` (`1:1` default, `16:9`, `21:9`, `3:2`, `4:3`, ...) and, for a minimum size, `width` and `height`. Square suits icons, panels, and badges; wide assets (buttons, HUD bar frames) get a wide `aspectRatio`.
 
 | Asset class | Framing | Wiring node | Notes |
 |---|---|---|---|
 | Icon (ability, item, status) | square (default) | `TextureRect` (or `AtlasTexture` if part of an icon sheet) | Centered subject, generous padding |
-| Button (idle / hover / pressed) | wide — prompt for it, crop after | `Button` with custom theme OR `TextureButton` | Generate 3 variants of the same shape |
+| Button (idle / hover / pressed) | wide — `aspectRatio: "3:2"` or `"21:9"` | `Button` with custom theme OR `TextureButton` | Generate 3 variants of the same shape |
 | Panel / frame (NinePatch-friendly) | square (default) | `NinePatchRect` | Border + center MUST be visually separable for 9-slicing |
-| HUD bar frame | wide — prompt for it, crop after | `NinePatchRect` over `ProgressBar` | Frame only — bar fill is a separate gradient texture |
+| HUD bar frame | wide — `aspectRatio: "21:9"` | `NinePatchRect` over `ProgressBar` | Frame only — bar fill is a separate gradient texture |
 | Badge / emblem | square (default) | `TextureRect` | Symmetric, centered, no text |
 
 ### 4. Build the prompt — subject + anchor + transparent
@@ -83,29 +83,29 @@ Pattern:
 
 **Icon example:**
 ```
-summer_generate_image(
-  prompt="ability icon for a fire spell, glowing flame in cupped hand, game UI, flat design with subtle gradient and soft inner shadow, 2px deep navy outline, gold and parchment palette, rounded square frame, centered, isolated on a plain background. Not photorealistic, no 3D render, no scene background, not busy, no multiple objects.",
-  model="nano-banana-2",
-  style="none",
-  removeBackground=true
-)
+assets.generate_image({
+  prompt: "ability icon for a fire spell, glowing flame in cupped hand, game UI, flat design with subtle gradient and soft inner shadow, 2px deep navy outline, gold and parchment palette, rounded square frame, centered, isolated on a plain background. Not photorealistic, no 3D render, no scene background, not busy, no multiple objects.",
+  model: "nano-banana-2",
+  style: "none",
+  removeBackground: true
+})
 ```
 
-`image_size` and `negative_prompt` do not exist on this tool and are dropped without an error — the negations have to live in the prompt text, and the size is fixed.
+There is no `negative_prompt`: the negations have to live in the prompt text.
 
 **Button (3 states in 3 calls):**
 ```
-summer_generate_image(prompt="<subject>, idle state, ...")
-summer_generate_image(prompt="<subject>, hover state, slightly brighter glow, ...")
-summer_generate_image(prompt="<subject>, pressed state, darker, slight inset shadow, ...")
+assets.generate_image({ prompt: "<subject>, idle state, ...", aspectRatio: "3:2" })
+assets.generate_image({ prompt: "<subject>, hover state, slightly brighter glow, ...", aspectRatio: "3:2" })
+assets.generate_image({ prompt: "<subject>, pressed state, darker, slight inset shadow, ...", aspectRatio: "3:2" })
 ```
 
 **Panel for NinePatch:**
 ```
-summer_generate_image(
-  prompt="parchment scroll panel frame, ornate gold border, weathered tan center, clear distinction between border and center area, game UI, fantasy, transparent background, square format, centered",
+assets.generate_image({
+  prompt: "parchment scroll panel frame, ornate gold border, weathered tan center, clear distinction between border and center area, game UI, fantasy, transparent background, square format, centered",
   ...
-)
+})
 ```
 
 The "clear distinction between border and center" is the NinePatch hint — without it, the border bleeds into the center and 9-slicing produces artifacts.
@@ -197,19 +197,19 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Pass `out` to `summer_generate_image` so each PNG lands in the person's folder; keep `removeBackground: true` for icons and buttons that need transparency.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Get each PNG with `assets.get` on the returned asset ids (its `downloadUrl`) and save it in the person's folder; keep `removeBackground: true` for icons and buttons that need transparency.
 
 ## Fallback (no MCP)
 
 Print the call:
 
 ```
-summer_generate_image(
-  prompt="<asset + anchor>, isolated on a plain background. No scene background, not photorealistic, no 3D, not busy.",
-  model="nano-banana-2",
-  style="none",
-  removeBackground=true
-)
+assets.generate_image({
+  prompt: "<asset + anchor>, isolated on a plain background. No scene background, not photorealistic, no 3D, not busy.",
+  model: "nano-banana-2",
+  style: "none",
+  removeBackground: true
+})
 ```
 
 User runs via the Summer dashboard, then `summer_import_from_url` to `res://ui/icons/<name>.png` and wires manually.
@@ -230,4 +230,4 @@ After the UI graphic is wired:
 - `character-portrait` — for in-UI character images.
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
-- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

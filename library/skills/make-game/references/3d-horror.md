@@ -116,7 +116,7 @@ resist cranking them.
 ## Level building (library first, primitives last)
 
 The level comes from real assets: route it through the `asset-strategy` skill
-(`summer_search_assets`, then `summer_import_asset` / `summer_import_asset_by_id`)
+(`assets.search`, then `summer_import_asset` / `summer_import_asset_by_id`)
 and look for a ready horror location (an abandoned house, a haunted forest, a
 modular horror-house kit) plus period props, keeping one coherent style. Import
 the location that fits and build gameplay inside it. Do NOT grey-box a level a

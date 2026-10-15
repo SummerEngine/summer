@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_create_scene summer_open_scene summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_scene_tree summer_inspect_node summer_search_assets summer_import_from_url
+allowed-tools: Read Grep Glob Write Edit summer_create_scene summer_open_scene summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_scene_tree summer_inspect_node summer_assets_search summer_import_from_url summer_call
 paths: ["**/*.tscn", "**/*.gd", "assets/**", ".summer/**", "levels/**"]
 ---
 

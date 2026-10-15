@@ -221,6 +221,10 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 - **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `fps-controller` for first-person wiring.
 - **Stylized non-human (goblin, orc, halfling).** Works fine as long as the silhouette is bipedal with two arms, two legs, one head. Quadrupeds and centaurs do not.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4, including the review gate, and stop when the rig pass finishes. Skip steps 5-6 (editor restart, scene wiring). Get the rigged GLB with `summer_get_asset_download_url` on `rigAssetId` (the unrigged mesh is `assetId`), save it where the person asked, and tell them the path. Step 7 still applies: `generate-motion` runs without the engine.
+
 ## Fallback (no MCP)
 
 1. Generate the T-pose reference in the Summer dashboard.

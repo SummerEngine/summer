@@ -743,7 +743,7 @@
       "description": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "clients": "all",
       "recommended": false,
-      "status": "preview",
+      "status": "stable",
       "path": "library/skills/multiplayer-publish/",
       "domains": [
         "multiplayer",
@@ -1204,7 +1204,7 @@
       "description": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "clients": "all",
       "recommended": false,
-      "status": "preview",
+      "status": "stable",
       "path": "library/skills/summer-analytics/",
       "domains": [
         "multiplayer",
@@ -1236,6 +1236,19 @@
       "domains": [
         "ui",
         "tools"
+      ]
+    },
+    {
+      "id": "skill/summer-assets",
+      "name": "summer-assets",
+      "description": "Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-assets/",
+      "domains": [
+        "assets",
+        "agent-workflow"
       ]
     },
     {

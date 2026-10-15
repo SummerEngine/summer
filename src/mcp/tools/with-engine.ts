@@ -1,6 +1,7 @@
 import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../core/telemetry.js";
 import { thrownErrorClass } from "../../core/tool-errors.js";
+import { codedFailure, ENGINE_FREE_NOTE, EngineNotRunningError } from "../../core/error-codes.js";
 import {
   extractOpError,
   getFailureReason,
@@ -201,11 +202,30 @@ export async function withEngine<T>(
     }
   }
 
+  if (lastError instanceof EngineNotRunningError) {
+    return attachMeta(engineNotRunningResult(lastError), {
+      errorClass: "transport",
+      failureReason: "engine_not_running",
+      retried,
+      boundProjectIdHash,
+    });
+  }
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
   return attachMeta(
     { content: [{ type: "text", text: withTransportRecovery(msg) }], isError: true },
     { errorClass: "transport", retried, boundProjectIdHash }
   );
+}
+
+/** No editor reachable: `{ok:false, code:"engine_not_running", error,
+ *  recovery, hint}` as JSON, so agents branch on the code instead of
+ *  scraping the sentence. Exported for the tools that call getClient()
+ *  outside withEngine. */
+export function engineNotRunningResult(error: EngineNotRunningError): ToolResult {
+  return {
+    isError: true,
+    content: [{ type: "text", text: JSON.stringify(codedFailure(error.code, error.message, { hint: ENGINE_FREE_NOTE }), null, 2) }],
+  };
 }
 
 const PRE_APPLY_FAILURE_REASON = {

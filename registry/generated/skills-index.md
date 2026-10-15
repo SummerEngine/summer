@@ -1,6 +1,6 @@
 # Summer skills
 
-> 126 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 127 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -13,7 +13,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [agent-workflow](#agent-workflow) (18)
 - [ai](#ai) (2)
 - [animation](#animation) (7)
-- [assets](#assets) (3)
+- [assets](#assets) (4)
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (2)
 - [creator](#creator) (4)
@@ -109,6 +109,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation. | pipeline |
 | [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) (library only) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
 | [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) (library only) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
+| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app. | agent-workflow |
 
 ## audio
 
@@ -183,10 +184,10 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [multiplayer](./multiplayer/SKILL.md) ★ | Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next. | project |
 | [multiplayer-movement](./multiplayer-movement/SKILL.md) | Movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose. | character-controller, scripting |
 | [multiplayer-project](./multiplayer-project/SKILL.md) | Set up a Summer multiplayer project: entry scenes, World and queue files, joining, a first Local Play. | project, scripting |
-| [*multiplayer-publish*](./multiplayer-publish/SKILL.md) (preview) | Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build. | deployment |
+| [multiplayer-publish](./multiplayer-publish/SKILL.md) | Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build. | deployment |
 | [multiplayer-state](./multiplayer-state/SKILL.md) | Authority-owned state in Summer multiplayer: shared and private State groups, Commands, Events. | game-design, scripting |
 | [multiplayer-testing](./multiplayer-testing/SKILL.md) | Test a Summer multiplayer game with Local Play: several players, bad network, bots, a passing run. | playtest, verification |
-| [*summer-analytics*](./summer-analytics/SKILL.md) (preview) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
+| [summer-analytics](./summer-analytics/SKILL.md) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
 | [*summer-friends*](./summer-friends/SKILL.md) (preview) | Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only. | ui |
 | [*summer-leaderboards*](./summer-leaderboards/SKILL.md) (preview) | Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores. | ui |
 | [summer-match-results](./summer-match-results/SKILL.md) | End a Summer match: report each player's win, loss or draw, show results on clients, then close the World. | gameplay |

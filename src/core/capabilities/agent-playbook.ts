@@ -15,11 +15,15 @@
 export interface AgentPlaybookOptions {
   /** The MCP layer's cached "Summer update available" notice, if any. */
   summerUpdateNotice?: string | null;
+  /** False for a session without engine tools (the assets profile): the
+   *  playbook then covers finding, generating and handing over files. */
+  engine?: boolean;
 }
 
 export function buildAgentPlaybook(
   options: AgentPlaybookOptions = {}
 ): Record<string, unknown> {
+  if (options.engine === false) return buildAssetsPlaybook(options);
   return {
     summerUpdateNotice: options.summerUpdateNotice ?? null,
     // ------------------------------------------------------------------
@@ -277,6 +281,57 @@ export function buildAgentPlaybook(
       "2. summer_screenshot AFTER completing the task (framing:'camera' when lighting/mood was touched) — and LOOK at it.",
       "3. summer_get_diagnostics — no new errors/warnings.",
       "4. Claim only what steps 1-3 proved, citing them. A claim without its diff/frame/diagnostics is not a verification, it is a hope.",
+    ],
+  };
+}
+
+/**
+ * The playbook for the assets profile: the same habits (search the library
+ * first, reuse before generating, confirm spend, never describe an image you
+ * did not receive) without any engine tool, ending at a file the person can
+ * use in any engine or web app.
+ */
+function buildAssetsPlaybook(options: AgentPlaybookOptions): Record<string, unknown> {
+  return {
+    summerUpdateNotice: options.summerUpdateNotice ?? null,
+    profile: "assets",
+    scope: [
+      "This session has generation, the Summer asset library, account and library search, and no Summer Engine tools: no project context, scenes, play, screenshots or imports. You deliver files, not scenes.",
+      "Load the summer-assets skill (summer_read_library skill/summer-assets) for the whole loop.",
+      "If the person wants a game built in Summer Engine, say that needs the full setup: npx -y summer-engine@latest setup <agent> --yes, then open the project in Summer Engine.",
+    ],
+    step0_askFirst: [
+      "Ask once, in one message, what the asset is for: the engine or app, the file format, the size or scale, the style, how many.",
+      "Then summer_search_library for the asset's skill and summer_read_library it before you generate.",
+      "Asset skills are written for Summer Engine too. Follow each one until the asset exists, then read its 'Without Summer Engine' section: skip every step that imports into a project (summer_import_asset_by_id, summer_import_from_url) or adds nodes to a scene (summer_add_node, summer_set_prop). Those tools are not in this session.",
+    ],
+    contentRouting: {
+      priorityOrder: ["1_reuseMyAssets", "2_assetLibrary", "3_generation"],
+      "1_reuseMyAssets": "summer_list_my_assets: the person's own uploads and earlier generations. Never generate an asset they already have.",
+      "2_assetLibrary": "summer_search_assets (source: library | my_assets | all), then summer_get_asset for the hit.",
+      "3_generation": "summer_generate_image / summer_generate_3d / summer_generate_audio / summer_generate_sfx_choices / summer_generate_video / summer_generate_motion, then summer_check_job until the state is terminal (never continue on a pending job), then summer_get_asset with the asset id the job returned (never search by name right after a generation). The summer_tool_* generators load after summer login; when they are missing, summer_store_tools says why.",
+    },
+    handOff: [
+      "summer_generate_image saves the file itself when you pass out (a folder or a file path in the person's project).",
+      "For every other asset, summer_get_asset_download_url (role primary, or thumbnail for a preview) returns a link: download it with your own shell into the folder the person named, and keep a clear file name.",
+      "Formats: GLB for 3D models, PNG, JPG or WebP for images, MP3 or WAV for audio, MP4 for video. Generated models are not at real-world size: give the person the target size.",
+      "Tell the person the path, the format and anything their engine must set (looping, texture filtering, scale).",
+    ],
+    costRules: [
+      "Generation uses the person's Summer credits: say what you will make and how many versions, and wait for a yes. Search and download are free.",
+      "Never run a paid generation again for the same item: download the asset you already have.",
+    ],
+    honestyRules: [
+      "Never describe an image you did not receive. Look at the preview (the localPath of a generated image, or the thumbnail) before you say it looks right; for audio, the person listens.",
+      "A failed or pending job is a result: report its state and error as returned, do not claim the asset exists.",
+    ],
+    doneMeans: [
+      "The job finished without an error.",
+      "You saw the preview, or the person heard the sound.",
+      "The file is where the person asked, and you told them the path and format.",
+    ],
+    libraryFeedback: [
+      "At a natural checkpoint, call summer_library_feedback once with every skill you loaded: 'worked' only after the asset was checked as above, 'worked_with_fixes' with the deviation, 'wrong'/'outdated'/'incomplete' when the entry misled you.",
     ],
   };
 }

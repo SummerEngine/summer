@@ -198,6 +198,10 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 - **Loop is behind translucent UI.** Generate with extra contrast headroom — the model tends toward mid-grey, and translucent UI on mid-grey reads muddy. Push for `high contrast cinematic` in the prompt.
 - **Loop seam still visible after 3 regens.** Set up two `VideoStreamPlayer` siblings and crossfade between them with a `Tween` on a 0.5s overlap. Costs an extra GPU decode but hides the seam.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
+
 ## Fallback (no MCP)
 
 If the MCP server isn't running, route the user to the Summer dashboard:

@@ -161,6 +161,10 @@ Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).ins
 
 `summer_inspect_node(path="Player/SwingSFX")`: verify `stream`, `bus`, `volume_db`. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (import, wiring, scene check). With `summer_generate_sfx_choices`, the person picks in the page; then get each approved clip from its `audioUrl` or with `summer_get_asset_download_url`, save it where the person asked, and tell them the path and format.
+
 ## Fallback (no MCP)
 
 Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`), and tell the person to make it in Summer Studio, then import it.

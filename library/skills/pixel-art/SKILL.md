@@ -160,6 +160,10 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 - **User specifies a palette like "Sweetie-16" or "Endesga-32" and the model ignores it.** Name the hex codes explicitly. Palette names alone are unreliable below the top 5-10 famous ones.
 - **Tilesets need to tile cleanly.** Pixel-art tile-edge cleanliness from raw generation is poor. Generate the tile grid, then fix edge seams by hand in Aseprite.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip step 6 (import and wiring). In step 5, downscale with nearest-neighbour in an image editor; the engine settings there do not apply. Pass `out` to `summer_generate_image` so the PNG lands in the person's folder, and tell them to turn texture filtering off in their engine.
+
 ## Fallback (no MCP)
 
 Print the call:

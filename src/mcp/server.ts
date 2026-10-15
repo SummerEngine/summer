@@ -65,6 +65,7 @@ import {
 } from "../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
+import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
 
 let processDiagnosticsInstalled = false;
 
@@ -95,9 +96,9 @@ export const SUMMER_MCP_INSTRUCTIONS =
 /** The same first-turn habits for a profile without engine tools (`--profile assets`). */
 export const SUMMER_MCP_ASSETS_INSTRUCTIONS =
   "Summer MCP, assets profile: generation and the Summer asset library, no engine tools. " +
-  "Before making an asset, summer_search_library then summer_read_library its skill (sound-effect, music-track, concept-art, prop-model). " +
-  "Generation costs credits: confirm with the person first. A long job returns a jobId: summer_check_job. " +
-  "Every asset lands in the person's Summer library: summer_list_my_assets, summer_get_asset_download_url. " +
+  "Read skill/summer-assets, then the asset's skill (sound-effect, prop-model, ...): stop at the file, skip its engine steps. " +
+  "Generation costs credits: confirm first. A job returns a jobId: summer_check_job. " +
+  "Hand over files with summer_get_asset_download_url. " +
   "Report verified entries via summer_library_feedback.";
 
 /**
@@ -160,12 +161,15 @@ export async function getClient(): Promise<EngineApiClient> {
       error instanceof Error
         ? error.message
         : "Summer Engine is not running.";
+    // Nothing reachable: a coded error withEngine renders as JSON
+    // (engine_not_running). Anything else (several editors open, …) already
+    // says how to pick one.
+    const notRunning = engineNotRunningFromConnectError(reason);
+    if (notRunning) throw notRunning;
     throw new Error(
       reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run\n" +
-        "Note: only tools that touch the local project need the engine. Cloud tools " +
-        "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx -y summer-engine@latest login'."
+        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>\n" +
+        "Note: " + ENGINE_FREE_NOTE
     );
   }
 }
@@ -436,7 +440,9 @@ export function createMcpServer(
   getRegisteredToolCount: () => number;
 } {
   const surface = options.surface ?? "v3";
-  const engine = selection.toolsets === null || selection.toolsets.has("engine");
+  // A profile without engine tools (assets) gets the no-engine instructions,
+  // playbook and task plan, so nothing points the agent at a tool it lacks.
+  const engine = !selection.toolsets || selection.toolsets.has("engine");
   const server = new McpServer(
     {
       name: "summer-engine",
@@ -456,7 +462,7 @@ export function createMcpServer(
   registerVisualTools(server);
   registerSeeingTools(server);
   registerAuditTools(server);
-  registerProjectTools(server);
+  registerProjectTools(server, { engine });
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
@@ -475,7 +481,7 @@ export function createMcpServer(
   registerAppTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
-  registerPlaybookPrompt(server);
+  registerPlaybookPrompt(server, { engine });
   // Strict providers (Kimi, OpenAI strict) reject tuple and $ref schemas.
   serveProviderSafeToolSchemas(server);
 
@@ -497,6 +503,13 @@ export function createMcpServer(
   if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true });
 
   return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed };
+}
+
+/** What the hosted tools a profile mounts are, for summer_store_tools. */
+function hostedToolsLabel(toolsets: ReadonlySet<string>): string | undefined {
+  if (toolsets.has("ship")) return "Summer store and publishing tools";
+  if (toolsets.has("tools")) return "Tool Factory tools (summer_tool_*) and asset editing tools";
+  return undefined;
 }
 
 export interface StartMcpServerOptions {
@@ -573,7 +586,11 @@ export async function startMcpServer(
       ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT }
       : selection.toolsets === null
         ? {}
-        : { includeTool: (name: string) => selectionIncludes(selection, name, false), maxTools: PROFILE_TOOL_LIMIT }),
+        : {
+            includeTool: (name: string) => selectionIncludes(selection, name, false),
+            maxTools: PROFILE_TOOL_LIMIT,
+            hostedToolsLabel: hostedToolsLabel(selection.toolsets),
+          }),
   });
   hostedCall = hosted.call;
   // The legacy toolset also lists the hosted 3.x names this profile listed in

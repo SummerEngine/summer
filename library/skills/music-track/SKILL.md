@@ -262,6 +262,10 @@ Cutscene (cinematic):   varies tempo, D minor, 4/4, solo piano opens,
 - **Track sounds nothing like the references.** Re-read the bible; the prompt may be missing the anchor instrument. Add it explicitly.
 - **Track has unexpected vocals.** Add `no vocals, instrumental only` to the prompt.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (loop point, `AudioStreamPlayer`, crossfade script). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. For a loop track, tell them it is made to loop.
+
 ## Fallback (no MCP)
 
 Print the prompt and instruct the user to run via the Summer dashboard, then `summer_import_from_url` the rendered MP3.

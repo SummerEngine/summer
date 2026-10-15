@@ -1,6 +1,6 @@
 id: tool/export-game
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.
 use_when:
   - '"export my game for summer.games"'
@@ -23,7 +23,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: preview
+status: stable
 aliases:
   - summer_export_game
 implementation:

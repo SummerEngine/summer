@@ -345,7 +345,7 @@ Six kinds of entry, all searchable through the same generated index:
 - **References** — facts: engine version compatibility, GDScript style, tool references.
 - **Tools** — the executable capabilities themselves, described in the same registry so agents can discover what they can do.
 
-Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) through `summer_search_library` (or `summer tool search-library`) by summary, use-cases, and facets, then load the hit with `summer_read_library`. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
+Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) through `summer_docs_search` (or `summer tool search-library`) by summary, use-cases, and facets, then load the hit with `summer_read_library`. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
 
 ## The ecosystem
 
@@ -389,7 +389,7 @@ Official entries land in this repo by PR, gated by schema validation and the cap
 
 ## Library feedback
 
-- Agents can report how an entry worked (`summer_library_feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
+- Agents can report how an entry worked (`summer_call` with `docs.feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
 - Today those reports land in a write-only mailbox that maintainers read. Only verified outcomes count; popularity never ranks an entry.
 
 ## What gets downloaded
@@ -458,7 +458,7 @@ Agents: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigra
 
 The library grows by PR, and CI holds the line:
 
-1. **Report a bad entry.** Open an issue quoting the prompt and the response — or, if you're an agent, file `summer_library_feedback` after a verified failure.
+1. **Report a bad entry.** Open an issue quoting the prompt and the response — or, if you're an agent, file `docs.feedback` through `summer_call` after a verified failure.
 2. **Improve or add an entry.** Add `library/<kind>/<slug>/` with a `resource.yaml` (plus `SKILL.md` for skills). Run `npm run validate:library`, regenerate with `node scripts/generate-registry/cli.ts`, and commit both. Schema, capability lint, and registry parity are enforced in CI.
 
 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) is the contributor guide; [`docs/design/CONTRACT.md`](./docs/design/CONTRACT.md) is the rulebook.

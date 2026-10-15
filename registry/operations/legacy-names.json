@@ -993,13 +993,28 @@
     },
     "summer_team": {
       "kind": "split",
-      "note": "list teams; invites move to team.invite (confirm)",
+      "note": "list teams; create and rename move to team.create and team.rename, invites to team.invite (confirm)",
       "op": "team.list"
+    },
+    "summer_team#create": {
+      "kind": "split",
+      "note": "a shared workspace; nobody else is in it yet",
+      "op": "team.create"
     },
     "summer_team#invite": {
       "kind": "split",
       "note": "confirm in Studio",
       "op": "team.invite"
+    },
+    "summer_team#rename": {
+      "kind": "split",
+      "note": "",
+      "op": "team.rename"
+    },
+    "summer_team#revoke": {
+      "kind": "split",
+      "note": "withdraw a pending invite; confirm in Studio",
+      "op": "team.withdraw_invite"
     },
     "summer_test_placement": {
       "kind": "keep",

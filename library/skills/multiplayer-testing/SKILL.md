@@ -1,6 +1,6 @@
 ---
 name: multiplayer-testing
-description: "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows."
+description: "Test a Summer multiplayer game with Local Play: several players, bad network, bots, a passing run."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

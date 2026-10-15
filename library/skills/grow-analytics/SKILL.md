@@ -1,6 +1,6 @@
 ---
 name: grow-analytics
-description: "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops."
+description: "Read a creator's Summer Grow numbers (page views, launches, sessions, play time), compare windows."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

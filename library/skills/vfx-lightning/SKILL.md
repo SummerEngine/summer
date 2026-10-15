@@ -1,6 +1,6 @@
 ---
 name: vfx-lightning
-description: "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake."
+description: "Lightning bolt effect: a jagged procedural path with a glow shader, end sparks and screen shake."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

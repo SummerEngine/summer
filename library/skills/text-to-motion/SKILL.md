@@ -1,6 +1,6 @@
 ---
 name: text-to-motion
-description: "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props."
+description: "Make custom 2-second animation clips from text on the user's own rigged models: people, animals, props."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

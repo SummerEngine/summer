@@ -1,6 +1,6 @@
 ---
 name: scene-to-level
-description: "Go from a scene reference image or concept art to a playable scene — orchestrates concept, asset pack, terrain, composition, and scene assembly."
+description: "Turn a reference image or concept art into a playable scene: concept, asset pack, terrain, assembly."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design

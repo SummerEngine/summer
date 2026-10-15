@@ -1,7 +1,7 @@
 id: skill/store-art
 kind: skill
 version: 1.0.0
-summary: "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks."
+summary: "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules."
 use_when:
   - "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer"
   - "summer_store_set_art rejects an image for its shape or size, or summer_store_get_listing says an art slot is missing"

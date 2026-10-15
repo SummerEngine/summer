@@ -12,7 +12,8 @@ const ANSI = {
   brand: "\x1b[38;2;255;143;23m",
 } as const;
 
-function useColor(): boolean {
+/** ANSI colour only for a terminal: NO_COLOR turns it off, FORCE_COLOR on. */
+export function useColor(): boolean {
   if (process.env.NO_COLOR) return false;
   if (process.env.FORCE_COLOR) return true;
   return Boolean(process.stdout.isTTY);

@@ -1,6 +1,6 @@
 ---
 name: design-npc
-description: "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree."
+description: "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs
@@ -180,19 +180,18 @@ Identify where the NPC will live (an `Enemies` parent, or directly under World).
 **Preferred (Summer MCP):**
 
 Every tool below takes a required `scenePath` naming the exact `res://` scene;
-it is written out on the first line and elided after for readability. Better
-still, send the whole block as one `summer_batch(scenePath=..., ops=[...])` so
+a call without it is rejected by the tool schema. Better still, send the whole block as one `summer_batch(scenePath=..., ops=[...])` so
 the user can undo the enemy with a single Ctrl+Z.
 
 ```
 summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies", type="CharacterBody3D", name="Enemy")
-summer_add_node(parent="./World/Enemies/Enemy", type="CollisionShape3D", name="Body")
-summer_add_node(parent="./World/Enemies/Enemy", type="MeshInstance3D", name="Mesh")
-summer_add_node(parent="./World/Enemies/Enemy", type="Area3D", name="Vision")
-summer_add_node(parent="./World/Enemies/Enemy/Vision", type="CollisionShape3D", name="VisionShape")
-summer_add_node(parent="./World/Enemies/Enemy", type="RayCast3D", name="Sight")
-summer_set_prop(path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
-summer_set_prop(path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="CollisionShape3D", name="Body")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="MeshInstance3D", name="Mesh")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="Area3D", name="Vision")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy/Vision", type="CollisionShape3D", name="VisionShape")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies/Enemy", type="RayCast3D", name="Sight")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
 ```
 
 Give the Vision area its sphere. Either form works — a class-name string embeds

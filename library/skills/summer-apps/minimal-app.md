@@ -145,7 +145,7 @@ form.addEventListener("submit", async (event) => {
 // Live: every change by a teammate or an agent arrives as { revision, actor, ops } (or { reset: true }).
 notes.subscribe(() => load());
 
-// Agent tool: summer_app_call { tool: "add_note", input: { text, level } } runs this while the app is open.
+// Agent tool: summer_app_call { appId, tool: "add_note", input: { text, level } } runs this while the app is open.
 // Its writes are recorded as the calling agent's (actor.kind "agent", via "agent-tool").
 summer.agent.tool("add_note", async ({ text, level }, { agent }) => {
   const id = crypto.randomUUID();

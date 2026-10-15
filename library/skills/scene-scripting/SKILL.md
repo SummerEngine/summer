@@ -1,6 +1,6 @@
 ---
 name: scene-scripting
-description: "One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot."
+description: "Build scenes, levels, HUDs and wiring with one editor GDScript (summer_run_script) instead of call chains."
 ---
 
 # Scene Scripting

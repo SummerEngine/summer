@@ -1,6 +1,6 @@
 ---
 name: combat-basics
-description: "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles."
+description: "Damage: hitbox and hurtbox Areas, a reusable Health component, damage signals, knockback, projectiles."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: gameplay-mechanics

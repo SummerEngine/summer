@@ -1,10 +1,12 @@
+import { readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAuthToken, saveUserInfo } from "../auth.js";
+import { PACKAGE_ROOT } from "../package-root.js";
 import { setSummerDirForTests } from "../store.js";
-import { checkEngineInstall, checkLogin, describeProjectMemory } from "./doctor.js";
+import { checkEngineInstall, checkLogin, checkNodeVersion, describeProjectMemory, MIN_NODE_MAJOR } from "./doctor.js";
 import type { DoctorCheck } from "./doctor.js";
 import type { ProjectMemorySummary } from "../../project-memory/project-memory.js";
 
@@ -46,6 +48,19 @@ describe("doctor summarization", () => {
 
   it("counts an empty check list", () => {
     expect(summarize([])).toEqual({ ok: 0, warnings: 0, failures: 0 });
+  });
+});
+
+describe("doctor node check", () => {
+  it("matches engines.node in package.json", () => {
+    const pkg = JSON.parse(readFileSync(join(PACKAGE_ROOT, "package.json"), "utf8")) as { engines: { node: string } };
+    expect(pkg.engines.node).toBe(`>=${MIN_NODE_MAJOR}`);
+  });
+
+  it("fails below Node 20 and passes from 20 up", () => {
+    expect(checkNodeVersion("18.20.4")).toMatchObject({ status: "fail", message: "v18.20.4 (need 20+)" });
+    expect(checkNodeVersion("20.0.0")).toMatchObject({ status: "ok", message: "v20.0.0" });
+    expect(checkNodeVersion("22.18.0").status).toBe("ok");
   });
 });
 

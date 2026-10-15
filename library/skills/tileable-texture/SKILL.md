@@ -180,7 +180,7 @@ Then attach the same material with `uv1_scale` tuned to wall dimensions.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and the seam check in step 5 by eye on the image (tile it 2x2 in an image viewer); skip step 4 and step 6 (import, wiring onto geometry). Get the PNG with `assets.get` on the returned asset id (its `downloadUrl`), save it in the person's folder, and tell them to set the texture to repeat.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and the seam check in step 5 by eye on the image (tile it 2x2 in an image viewer); skip step 4 and step 6 (import, wiring onto geometry). Pass `out` with the person's folder so the PNG lands there (the `summer-assets` skill says how), and tell them to set the texture to repeat.
 
 ## Fallback (no MCP)
 

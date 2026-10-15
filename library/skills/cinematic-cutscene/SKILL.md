@@ -218,7 +218,7 @@ Pattern: `<subject> + <action> + <camera move> + <lighting> + <stylistic anchor>
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (`VideoStreamPlayer`). Skip the soul-file read in step 1 when the project has no `.summer/` folder. Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. Each shot is an MP4 and each dialogue line an audio file; the person cuts them together in their own editor.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (`VideoStreamPlayer`). Skip the soul-file read in step 1 when the project has no `.summer/` folder. Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. Each shot is an MP4 and each dialogue line an audio file; the person cuts them together in their own editor.
 
 ## Fallback (no MCP)
 

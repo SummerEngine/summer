@@ -200,7 +200,7 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
 
 ## Fallback (no MCP)
 

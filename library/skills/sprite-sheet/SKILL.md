@@ -215,7 +215,7 @@ func _physics_process(delta):
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-6 (import, `AnimatedSprite2D`, trigger code). Get each frame with `assets.get` on the returned asset ids (its `downloadUrl`), or slice a sheet with `assets.slice_sheet` and get each piece the same way. Tell the person the frame order and the frame rate you planned.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-6 (import, `AnimatedSprite2D`, trigger code). Pass `out` with the person's folder for each frame, or slice a sheet with `assets.slice_sheet` and save each piece with `assets.get` and `out` (the `summer-assets` skill says how). Tell the person the frame order and the frame rate you planned.
 
 ## Fallback (no MCP)
 

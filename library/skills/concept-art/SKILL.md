@@ -126,7 +126,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), every step works. Get each image with `assets.get` on the returned asset ids (its `downloadUrl`), save the batch in the person's folder, and skip `summer_import_from_url`.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), every step works. Pass `out` with the person's folder so the batch lands there (the `summer-assets` skill says how), and skip `summer_import_from_url`.
 
 ## Fallback (no MCP)
 

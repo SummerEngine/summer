@@ -183,7 +183,7 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and 7 and skip step 6 (import for archive). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The MP4 goes straight into the person's video editor.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and 7 and skip step 6 (import for archive). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The MP4 goes straight into the person's video editor.
 
 ## Fallback (no MCP)
 

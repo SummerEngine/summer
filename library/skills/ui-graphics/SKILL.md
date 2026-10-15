@@ -197,7 +197,7 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Get each PNG with `assets.get` on the returned asset ids (its `downloadUrl`) and save it in the person's folder; keep `removeBackground: true` for icons and buttons that need transparency.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Pass `out` with the person's folder so each PNG lands there (the `summer-assets` skill says how); keep `removeBackground: true` for icons and buttons that need transparency.
 
 ## Fallback (no MCP)
 

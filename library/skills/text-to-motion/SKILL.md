@@ -97,7 +97,7 @@ Refusals answer the one error shape: `error.code` with one `next` step, and
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), follow the order up to the review in step 5 and skip the import. Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. Keep the good takes and name each file after its prompt.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), follow the order up to the review in step 5 and skip the import. Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. Keep the good takes and name each file after its prompt.
 
 ## Do not stop early
 

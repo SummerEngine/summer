@@ -162,7 +162,7 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip step 6 (import and wiring). In step 5, downscale with nearest-neighbour in an image editor; the engine settings there do not apply. Get the PNG with `assets.get` on the returned asset id (its `downloadUrl`), save it in the person's folder, and tell them to turn texture filtering off in their engine.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip step 6 (import and wiring). In step 5, downscale with nearest-neighbour in an image editor; the engine settings there do not apply. Pass `out` with the person's folder so the PNG lands there (the `summer-assets` skill says how), and tell them to turn texture filtering off in their engine.
 
 ## Fallback (no MCP)
 

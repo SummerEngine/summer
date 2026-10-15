@@ -127,7 +127,7 @@ the parent-shape pattern.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip step 5 (import and wiring). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB. Generated models are not at real-world size, so give the person the target size (a chair about 1 m, a door about 2 m) to scale it to.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip step 5 (import and wiring). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The file is GLB. Generated models are not at real-world size, so give the person the target size (a chair about 1 m, a door about 2 m) to scale it to.
 
 ## Fallback (no MCP)
 

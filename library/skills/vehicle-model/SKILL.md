@@ -196,7 +196,7 @@ summer_save_scene(scenePath="res://main.tscn")
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (scene wiring, `VehicleWheel3D`). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB and not at real-world size: give the person the target length (a car about 4.5 m) and tell them where the wheels are, so they can set up their engine's vehicle physics.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (scene wiring, `VehicleWheel3D`). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The file is GLB and not at real-world size: give the person the target length (a car about 4.5 m) and tell them where the wheels are, so they can set up their engine's vehicle physics.
 
 ## Fallback (no MCP)
 

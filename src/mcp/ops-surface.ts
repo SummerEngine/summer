@@ -63,6 +63,10 @@ const DOCS_ALIASES: ReadonlyArray<[string, string]> = [
 /** Listed with the engine tools although its operation is docs.engine_api: the offline engine class reference. */
 const ENGINE_REFERENCE = "summer_api_docs";
 
+/** Its v4 description, within the 300-character summary rule; the full text stays on the 3.x surface. */
+export const ENGINE_REFERENCE_SUMMARY =
+  "Look up an engine class offline before writing script code: inherits, properties, methods, signals and constants, or one member. Lists only members declared on that class (walk inherits). No engine needed. Next: summer_run_script.";
+
 /** The read footer in this surface's words: feedback goes through summer_call (docs.feedback is not listed). */
 export const V4_FOOTER_SUFFIX = 'If this entry is wrong, stale, or you deviate from it, report via summer_call {"op":"docs.feedback"}.';
 
@@ -211,7 +215,10 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       engineTools.add(mcpNameOf(op));
       listed.add(mcpNameOf(op));
     }
-    if (tools[ENGINE_REFERENCE]) listed.add(ENGINE_REFERENCE);
+    if (tools[ENGINE_REFERENCE]) {
+      listed.add(ENGINE_REFERENCE);
+      tools[ENGINE_REFERENCE].update({ title: "Look up an engine class", description: ENGINE_REFERENCE_SUMMARY });
+    }
   }
 
   /** The tool that runs an operation in this session, for summaries that name it. */

@@ -4,8 +4,11 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- **Upgrades refresh the installed skills.** The first `summer mcp` start after an upgrade brings the Summer skills already installed on the computer to the new version, then says so once: in the session's instructions, so the agent can tell the person, and on stderr. Before, skills from 3.x stayed until someone ran `summer setup --force`. While they stayed, the local server kept the legacy toolset on, and agents kept calling 3.x tools; that undid about half of 4.0's smaller tool list. Only Summer's own skill folders, in folders that carry Summer's version marker, are replaced. Nothing is added or removed, so an assets-only install stays assets-only. `--toolsets legacy` and `SUMMER_LEGACY_TOOLS=on` still keep the 3.x names listed.
-- **`summer_call` takes `name` as well as `op`.** Agents copied the `name` field that `summer_search` answers with and got an input error.
+- **Upgrades refresh the installed skills.** The first `summer mcp` start (v4 surface) after an upgrade brings the Summer skills already installed on the computer to the new version, then says so once: in the session's instructions, so the agent can tell the person, and on stderr. Before, skills from 3.x stayed until someone ran `summer setup --force`. While they stayed, the local server kept the legacy toolset on, and agents kept calling 3.x tools; that undid about half of 4.0's smaller tool list. Now the legacy toolset is off from that first start; 3.x tool names still run through `summer_call`, and `--toolsets legacy` or `SUMMER_LEGACY_TOOLS=on` lists them again.
+  - Only Summer's own copies are replaced: real folders (not links) whose `resource.yaml` names that skill, in a skills folder with Summer's version marker. A skill from another pack with the same name, and a Summer skill someone changed after install, stay as they are; the notice names the changed ones. Nothing is removed. New library skills are added only to a folder that holds nearly the whole library, so an assets-only install stays one.
+  - Each skill is copied beside the old one and swapped in with renames, under a lock per folder, and the version marker is written last. A killed start or a copy error leaves the old skill, and the next start finishes. A refresh error never stops `summer mcp`; it goes to the MCP log.
+  - Rule-file installs (Cline, Roo Code, old Cursor rules) are not refreshed; `summer doctor` still prints the command for them.
+- **`summer_call` on the local server takes `name` as well as `op`.** Agents copied the `name` field that `summer_search` answers with and got an input error. When both are given and differ, it answers `invalid_input`.
 
 ## [4.1.0] - 2026-10-16
 

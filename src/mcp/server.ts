@@ -521,6 +521,30 @@ function hostedToolsLabel(toolsets: ReadonlySet<string>): string | undefined {
   return undefined;
 }
 
+/**
+ * First v4 start after an upgrade: bring the installed Summer skills to this
+ * version before the legacy decision, which stays on while they are 3.x (and
+ * whenever the config asks for it). Not on the v3 surface, whose people chose
+ * the 3.x tools, and not under summer doctor's boot probe, whose session would
+ * swallow the one notice. A fault here never stops the server.
+ */
+export function refreshSkillsAfterUpgrade(surface: SurfaceVersion): string | null {
+  if (surface !== "v4" || process.env.SUMMER_MCP_DOCTOR === "1") return null;
+  try {
+    const { refreshed, failures } = refreshInstalledSkills(version);
+    if (failures.length > 0) appendMcpLogEvent("mcp:skills_refresh_failed", { version, failures });
+    const notice = refreshNotice(refreshed);
+    if (notice) {
+      appendMcpLogEvent("mcp:skills_refreshed", { version, notice });
+      process.stderr.write(`[summer-mcp] ${notice}\n`);
+    }
+    return notice;
+  } catch (error) {
+    appendMcpLogEvent("mcp:skills_refresh_failed", { version, ...errorDetails(error) });
+    return null;
+  }
+}
+
 export interface StartMcpServerOptions {
   projectPath?: string;
   instanceId?: string;
@@ -557,15 +581,7 @@ export async function startMcpServer(
   });
 
   const surface = resolveSurface(options.surface);
-  // First start after an upgrade: bring the installed Summer skills to this
-  // version before the legacy decision below, which stays on while they are
-  // 3.x (and stays on whenever the config asks for it). Not under summer
-  // doctor's boot probe, whose session would swallow the one notice.
-  const skillsNotice = process.env.SUMMER_MCP_DOCTOR === "1" ? null : refreshNotice(refreshInstalledSkills(version));
-  if (skillsNotice) {
-    appendMcpLogEvent("mcp:skills_refreshed", { version, notice: skillsNotice });
-    process.stderr.write(`[summer-mcp] ${skillsNotice}\n`);
-  }
+  const skillsNotice = refreshSkillsAfterUpgrade(surface);
   // `legacy` is not a toolset of its own: it lists the 3.x names on the v4 surface.
   const toolsetList = takeLegacyToolset(options.toolsets ?? process.env.SUMMER_TOOLSETS);
   const legacy = surface === "v4" ? resolveLegacy(toolsetList.requested) : { on: false, reason: "off" as const };

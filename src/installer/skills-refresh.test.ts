@@ -1,55 +1,158 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { getSkillRegistry, resolveSkillDir } from "../core/skills-registry.js";
-import { refreshInstalledSkills, refreshNotice } from "./skills-refresh.js";
-import { readSkillMarker, writeSkillMarker } from "./version-check.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { getSkillRegistry, resolveSkillDir, type SkillRegistryEntry } from "../core/skills-registry.js";
+import { refreshInstalledSkills, refreshNotice, type RefreshedFolder } from "./skills-refresh.js";
+import { readSkillMarker, SKILL_VERSION_MARKER_FILENAME } from "./version-check.js";
 
-const registry = getSkillRegistry();
-const [first, second] = registry;
+const bundled = getSkillRegistry().filter((entry) => entry.bundled !== false && entry.status !== "deprecated");
+const [first, second, third] = bundled;
+const HOUR = 3_600_000;
 
-/** A skills folder as 3.x left it: two Summer skills with old text, a person's own skill, a 3.x marker. */
-function oldInstall(markerVersion = "3.9.1"): string {
-  const dir = mkdtempSync(join(tmpdir(), "summer-skills-refresh-"));
-  for (const entry of [first, second]) {
-    mkdirSync(join(dir, entry.name), { recursive: true });
-    writeFileSync(join(dir, entry.name, "SKILL.md"), "old 3.x text naming summer_add_node\n");
+const dirs: string[] = [];
+afterEach(() => {
+  for (const dir of dirs.splice(0)) {
+    chmodSync(dir, 0o755);
+    rmSync(dir, { recursive: true, force: true });
   }
-  mkdirSync(join(dir, "my-own-skill"), { recursive: true });
-  writeFileSync(join(dir, "my-own-skill", "SKILL.md"), "mine\n");
-  writeSkillMarker(dir, markerVersion);
+});
+
+function scratch(): string {
+  const dir = mkdtempSync(join(tmpdir(), "summer-skills-refresh-"));
+  dirs.push(dir);
   return dir;
 }
 
+/** Summer's copy of a skill as an older release installed it, last written `ageMs` ago. */
+function summerSkill(dir: string, name: string, ageMs = 2 * HOUR): void {
+  mkdirSync(join(dir, name), { recursive: true });
+  writeFileSync(join(dir, name, "SKILL.md"), "old 3.x text naming summer_add_node\n");
+  writeFileSync(join(dir, name, "resource.yaml"), `id: skill/${name}\nkind: skill\n`);
+  const at = new Date(Date.now() - ageMs);
+  for (const file of ["SKILL.md", "resource.yaml", ""]) utimesSync(join(dir, name, file), at, at);
+}
+
+/** The marker an older setup wrote an hour ago. */
+function marker(dir: string, version = "3.9.1", installedAt = new Date(Date.now() - HOUR)): void {
+  writeFileSync(join(dir, SKILL_VERSION_MARKER_FILENAME), JSON.stringify({ version, installedAt: installedAt.toISOString() }));
+}
+
+function oldInstall(version = "3.9.1"): string {
+  const dir = scratch();
+  summerSkill(dir, first.name);
+  summerSkill(dir, second.name);
+  marker(dir, version);
+  return dir;
+}
+
+const libraryText = (entry: SkillRegistryEntry) => readFileSync(join(resolveSkillDir(entry), "SKILL.md"), "utf-8");
+const installedText = (dir: string, name: string) => readFileSync(join(dir, name, "SKILL.md"), "utf-8");
+
 describe("refreshInstalledSkills", () => {
-  it("brings the Summer skills a 3.x install left to this version, and nothing else", () => {
+  it("brings Summer's skills from an older release to this version, adds nothing to a partial install, and writes the marker", () => {
     const dir = oldInstall();
-    const refreshed = refreshInstalledSkills("4.1.1", { dirs: [dir], registry });
-    expect(refreshed).toEqual([{ dir, from: "3.9.1", to: "4.1.1", skills: 2 }]);
-    expect(readFileSync(join(dir, first.name, "SKILL.md"), "utf-8")).toBe(readFileSync(join(resolveSkillDir(first), "SKILL.md"), "utf-8"));
-    expect(readFileSync(join(dir, "my-own-skill", "SKILL.md"), "utf-8")).toBe("mine\n");
-    // Nothing is added: the third library skill was not installed and stays out.
-    expect(existsSync(join(dir, registry[2].name))).toBe(false);
+    const { refreshed, failures } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled });
+    expect(failures).toEqual([]);
+    expect(refreshed).toEqual([{ dir, from: "3.9.1", to: "4.1.1", updated: [first.name, second.name], added: [], kept: [] }]);
+    expect(installedText(dir, first.name)).toBe(libraryText(first));
+    expect(existsSync(join(dir, third.name))).toBe(false);
     expect(readSkillMarker(dir)?.version).toBe("4.1.1");
+    // Once per version.
+    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled }).refreshed).toEqual([]);
   });
 
-  it("runs once per version, and leaves a newer or an unmarked folder alone", () => {
+  it("leaves a same-name skill from another pack, a changed Summer skill and a linked folder as they are", () => {
+    const dir = scratch();
+    // Another pack's skill with a library name: no resource.yaml naming it.
+    mkdirSync(join(dir, first.name));
+    writeFileSync(join(dir, first.name, "SKILL.md"), "another pack\n");
+    writeFileSync(join(dir, first.name, "extra.md"), "theirs\n");
+    // Summer's skill, changed by the person after install.
+    summerSkill(dir, second.name);
+    writeFileSync(join(dir, second.name, "my-notes.md"), "mine\n");
+    // A linked skill folder.
+    const elsewhere = scratch();
+    summerSkill(elsewhere, third.name);
+    symlinkSync(join(elsewhere, third.name), join(dir, third.name));
+    marker(dir);
+
+    const { refreshed } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled });
+    expect(refreshed[0]).toMatchObject({ updated: [], kept: [second.name] });
+    expect(installedText(dir, first.name)).toBe("another pack\n");
+    expect(readFileSync(join(dir, first.name, "extra.md"), "utf-8")).toBe("theirs\n");
+    expect(readFileSync(join(dir, second.name, "my-notes.md"), "utf-8")).toBe("mine\n");
+    expect(lstatSync(join(dir, third.name)).isSymbolicLink()).toBe(true);
+    expect(installedText(elsewhere, third.name)).toMatch(/old 3\.x/);
+    expect(refreshNotice(refreshed)).toContain(`left 1 Summer skills you changed as they are (${second.name})`);
+  });
+
+  it("keeps the old skill when the copy fails, and records why", () => {
     const dir = oldInstall();
-    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry })).toHaveLength(1);
-    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry })).toEqual([]);
-    expect(refreshInstalledSkills("4.1.1", { dirs: [oldInstall("4.2.0")], registry })).toEqual([]);
-    const unmarked = mkdtempSync(join(tmpdir(), "summer-skills-unmarked-"));
-    mkdirSync(join(unmarked, first.name));
-    writeFileSync(join(unmarked, first.name, "SKILL.md"), "someone else's\n");
-    expect(refreshInstalledSkills("4.1.1", { dirs: [unmarked], registry })).toEqual([]);
-    expect(readFileSync(join(unmarked, first.name, "SKILL.md"), "utf-8")).toBe("someone else's\n");
+    const broken = { ...first, path: "library/skills/no-such-skill/" };
+    const { refreshed, failures } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: [broken, second] });
+    expect(failures).toEqual([{ dir, skill: first.name, code: "ENOENT" }]);
+    expect(installedText(dir, first.name)).toMatch(/old 3\.x/);
+    expect(refreshed[0].updated).toEqual([second.name]);
   });
 
-  it("says what changed in one line", () => {
+  it("finishes what a killed refresh left: a skill renamed aside comes back, a half copy goes", () => {
+    const dir = oldInstall();
+    summerSkill(dir, `.summer-old-${third.name}-4242`);
+    mkdirSync(join(dir, `.summer-refresh-${first.name}-4242`));
+    refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled });
+    expect(existsSync(join(dir, `.summer-old-${third.name}-4242`))).toBe(false);
+    expect(existsSync(join(dir, `.summer-refresh-${first.name}-4242`))).toBe(false);
+    expect(existsSync(join(dir, third.name, "SKILL.md"))).toBe(true);
+  });
+
+  it("skips a folder another process is refreshing, and takes over a stale lock", () => {
+    const dir = oldInstall();
+    writeFileSync(join(dir, ".summer-refresh.lock"), "");
+    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled }).refreshed).toEqual([]);
+    expect(readSkillMarker(dir)?.version).toBe("3.9.1");
+    const stale = new Date(Date.now() - 2 * 60_000);
+    utimesSync(join(dir, ".summer-refresh.lock"), stale, stale);
+    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled }).refreshed).toHaveLength(1);
+    expect(existsSync(join(dir, ".summer-refresh.lock"))).toBe(false);
+  });
+
+  it("copies nothing into a folder it cannot write, and says why", () => {
+    const dir = oldInstall();
+    chmodSync(dir, 0o555);
+    const { refreshed, failures } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled });
+    expect(refreshed).toEqual([]);
+    expect(failures).toEqual([{ dir, code: "EACCES" }]);
+    expect(installedText(dir, first.name)).toMatch(/old 3\.x/);
+  });
+
+  it("refreshes a pre-release marker for its release, and leaves newer and unmarked folders alone", () => {
+    expect(refreshInstalledSkills("4.1.1", { dirs: [oldInstall("4.1.1-next.1")], registry: bundled }).refreshed).toHaveLength(1);
+    expect(refreshInstalledSkills("4.1.1", { dirs: [oldInstall("4.2.0")], registry: bundled }).refreshed).toEqual([]);
+    const unmarked = scratch();
+    summerSkill(unmarked, first.name);
+    expect(refreshInstalledSkills("4.1.1", { dirs: [unmarked], registry: bundled }).refreshed).toEqual([]);
+  });
+
+  it("adds new library skills only to a folder that holds nearly the whole library", () => {
+    const library = bundled.slice(0, 10);
+    const dir = scratch();
+    for (const entry of library.slice(0, 9)) summerSkill(dir, entry.name);
+    marker(dir);
+    const { refreshed } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: library });
+    expect(refreshed[0].added).toEqual([library[9].name]);
+    expect(installedText(dir, library[9].name)).toBe(libraryText(library[9]));
+  });
+});
+
+describe("refreshNotice", () => {
+  const folder = (dir: string, updated: string[], kept: string[] = []): RefreshedFolder => ({ dir, from: "3.9.1", to: "4.1.1", updated, added: [], kept });
+
+  it("counts skills once across folders, and says how to list the 3.x names again", () => {
     expect(refreshNotice([])).toBeNull();
-    expect(refreshNotice([{ dir: "a", from: "3.9.1", to: "4.1.1", skills: 115 }])).toBe(
-      "Summer updated 115 installed skills from 3.9.1 to 4.1.1; the agent loads them in its next session."
+    expect(refreshNotice([folder("a", [])])).toBeNull();
+    expect(refreshNotice([folder("a", ["play", "debug"]), folder("b", ["play", "debug"])])).toBe(
+      "Summer updated its 2 installed skills (2 folders) from 3.9.1 to 4.1.1. 3.x tool names still run through summer_call; summer mcp --toolsets legacy lists them again."
     );
   });
 });

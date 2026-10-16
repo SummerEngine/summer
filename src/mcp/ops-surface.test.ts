@@ -97,6 +97,8 @@ describe("v4, engine profile", () => {
       expect(byName).toMatchObject({ ok: true, status: "done" });
       const neither = answerOf(await client.callTool({ name: "summer_call", arguments: { input: { query: "multiplayer lobby" } } }));
       expect(neither).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+      const both = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.search", name: "docs.read", input: { query: "multiplayer lobby" } } }));
+      expect(both).toMatchObject({ ok: false, error: { code: "invalid_input" } });
     } finally {
       await close();
     }

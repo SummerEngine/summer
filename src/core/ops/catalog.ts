@@ -5,6 +5,7 @@ import { loadLibraryIndex } from "../library-search.js";
 import { PACKAGE_ROOT } from "../package-root.js";
 import { CONTRACT_VERSION, isLocalOp, legacyNames, LOCAL_RUNNERS, mcpNameOf, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, splitInputSchema } from "./engine.js";
+import { shippedTitle } from "./public-catalog.js";
 
 /**
  * One searchable row per operation, the same shape the hosted server's
@@ -25,6 +26,10 @@ export interface CatalogEntry {
   legacy?: string[];
   /** The exact input JSON Schema (search results and describe carry it). */
   input?: Record<string, unknown>;
+  /** A cloud operation listed from the shipped catalog while no one is signed in: it runs after `summer login`. */
+  needsSignIn?: true;
+  /** Search words only, never printed: the library's topics for docs.search ("add multiplayer" is a how-to). */
+  topics?: string[];
 }
 
 type Authority = Partial<Record<"filesystem" | "editor_mutation" | "network" | "credentials" | "publish", boolean>>;
@@ -53,7 +58,8 @@ function entryFor(op: string, toolName: string, tool: IndexedTool, legacy: strin
   const summary = def?.summary ?? (tool.summary ?? "").slice(0, 300);
   return {
     name: op,
-    title: def?.title ?? titleOf(summary, op),
+    // The hosted catalog's title when it has the op too (docs.search: "Search Summer docs", not "Search").
+    title: def?.title ?? shippedTitle(op) ?? titleOf(summary, op),
     summary,
     effect,
     approval: MIN_APPROVAL[effect],
@@ -91,8 +97,18 @@ export function localEntries(): CatalogEntry[] {
     if (name.includes("#") && !isSplitOp(row.op)) continue;
     out.set(row.op, entryFor(row.op, toolName, tool, name));
   }
+  const docsSearch = out.get("docs.search");
+  if (docsSearch) out.set("docs.search", { ...docsSearch, topics: libraryTopics() });
   entriesCache = [...out.values()];
   return entriesCache;
+}
+
+/** The words of every skill, template and example slug (multiplayer, fps, lighting...): what the library teaches. */
+function libraryTopics(): string[] {
+  const slugs = loadLibraryIndex()
+    .filter((entry) => entry.kind !== "tool" && entry.kind !== "reference")
+    .flatMap((entry) => entry.id.replace(/^[a-z]+\//, "").split("-"));
+  return [...new Set(slugs)].filter((word) => word.length > 2 && !/^\d/.test(word));
 }
 
 function descriptorSchema(toolName: string): Record<string, unknown> | null {

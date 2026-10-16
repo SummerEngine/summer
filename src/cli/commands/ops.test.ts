@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
-import { formatAnswer, parseCallFlags, runOpFromCli, type OpsCliDeps } from "./ops.js";
+import { describeFromCli, formatAnswer, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
 import { callHostedV4 } from "../../core/ops/cloud.js";
 import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
@@ -238,5 +238,45 @@ describe("generated files", () => {
     expect(formatAnswer(running, "Assets/My Art")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out 'Assets/My Art'");
     expect(formatAnswer(running, "it's $HOME")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out 'it'\\''s $HOME'");
     expect(formatAnswer(running, "models")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out models");
+  });
+});
+
+describe("summer ops search and describe signed out", () => {
+  const signedOut = () =>
+    deps(vi.fn(async () => {
+      throw new OAuthError("store_login_required", "This machine is not signed in to the Summer store.", 'Recovery: run "summer login".');
+    }));
+
+  it("lists cloud operations from the shipped catalog, marked needs sign-in", async () => {
+    const d = signedOut();
+    await searchFromCli("publish my game", { limit: 3, json: false }, d);
+    expect(d.out[0]).toMatch(/^store\.publish\s+publish\s+Ask the owner to publish {2}\(needs sign-in\)$/);
+    expect(d.err[0]).toMatch(/^Not signed in/);
+  });
+
+  it("points a how-to at the library", async () => {
+    const d = signedOut();
+    await searchFromCli("add multiplayer", { limit: 3, json: false }, d);
+    expect(d.out[0]).toMatch(/^docs\.search /);
+    expect(d.out).toContain("How-to guides for this: summer docs search --query 'add multiplayer'");
+  });
+
+  it("describes a cloud operation from the shipped catalog, by its name or its 3.x name", async () => {
+    for (const name of ["store.publish", "summer_store_submit"]) {
+      const d = signedOut();
+      expect(await describeFromCli(name, d)).toBe(0);
+      expect(JSON.parse(d.out[0])).toMatchObject({ operation: { name: "store.publish", needsSignIn: true, input: { type: "object" } } });
+      expect(d.err[0]).toMatch(/^Warning: Not signed in/);
+    }
+  });
+
+  it("describes a local operation without asking the server, and fails on an unknown one", async () => {
+    const local = signedOut();
+    expect(await describeFromCli("summer_set_prop", local)).toBe(0);
+    expect(JSON.parse(local.out[0])).toMatchObject({ name: "engine.set_prop", provider: "engine" });
+    expect(local.hosted).not.toHaveBeenCalled();
+    const unknown = signedOut();
+    expect(await describeFromCli("store.no_such_op", unknown)).toBe(1);
+    expect(unknown.err[0]).toMatch(/^Error \(not_signed_in\)/);
   });
 });

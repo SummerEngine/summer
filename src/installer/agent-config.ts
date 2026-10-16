@@ -123,7 +123,7 @@ export async function configureAgentMcp(
   const server = withProfile(createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel), profile);
   const target = resolveConfigTarget(spec, options.scope, cwd, env);
   // An entry an earlier setup wrote where the agent no longer reads (Devin Desktop moved from ~/.codeium/windsurf).
-  const moved = options.scope === "user" && spec.mcp.movedFrom ? spec.mcp.movedFrom(defaultPathContext(env, cwd)) : null;
+  const moved = spec.mcp.movedFrom ? spec.mcp.movedFrom(defaultPathContext(env, cwd)) : null;
   if (moved && moved !== target.path && (await readTextFileIfExists(moved)).includes(`"${SUMMER_MCP_SERVER_NAME}"`)) {
     target.warnings.push(`${moved} still lists ${SUMMER_MCP_SERVER_NAME} from an earlier setup. ${spec.label} now reads ${target.path}, so setup writes it there; the old entry stays for older builds.`);
   }

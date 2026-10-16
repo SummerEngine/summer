@@ -16,7 +16,7 @@ import { brandLine, c, sym, tildeify } from "../../core/format.js";
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
 import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
-import { addAllowRules, allowRulesPath, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
+import { addAllowRules, allowRulesPath, removeAllowRules, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
@@ -47,8 +47,10 @@ interface SetupCommandOptions {
   cli?: boolean;
   /** false with --no-mcp, the same as --cli. */
   mcp?: boolean;
-  /** false with --no-allow-rules: --cli adds no allow rules for Claude Code or Codex. */
+  /** --allow-rules (with --cli): let Claude Code or Codex run read-only and dry-run summer commands without asking. */
   allowRules?: boolean;
+  /** --remove-allow-rules: take exactly those rules out again. */
+  removeAllowRules?: boolean;
 }
 
 /** The options that only shape the MCP entry, which --cli does not write. */
@@ -95,9 +97,10 @@ export const setupCommand = new Command("setup")
   )
   .option("--no-mcp", "Same as --cli")
   .option(
-    "--no-allow-rules",
-    "With --cli: do not let Claude Code or Codex run read-only and dry-run summer commands without asking (added by default with --yes)"
+    "--allow-rules",
+    "With --cli, for Claude Code and Codex: let the agent run read-only summer commands, and dry runs of spends, without asking. Prints every rule; written only with --yes"
   )
+  .option("--remove-allow-rules", "Remove the allow rules --allow-rules added (Claude Code, Codex), and nothing else")
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -116,6 +119,10 @@ export const setupCommand = new Command("setup")
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
+    if (opts.removeAllowRules) {
+      await removeCliAllowRules(agent, scope, opts);
+      return;
+    }
     if (opts.cli || opts.mcp === false) {
       await setupCliOnly(agent, scope, opts);
       return;
@@ -208,8 +215,11 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     commands: false,
   });
   // Read-only and dry-run summer commands run without asking, where the agent has clean allow rules.
+  // Opt-in: the flag is in the command the person approves.
   let allowRules: AllowRulesResult | null = null;
-  if (supportsAllowRules(agent) && opts.allowRules !== false) {
+  if (opts.allowRules && !supportsAllowRules(agent)) {
+    warnings.push(`--allow-rules is for Claude Code and Codex; ${agentLabel(agent)} manages command approvals in its own settings.`);
+  } else if (opts.allowRules) {
     try {
       allowRules = await addAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), Boolean(opts.yes) && !dryRun);
     } catch (error) {
@@ -230,6 +240,9 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     console.log(`     ${c.dim("The agent runs Summer in its shell: summer <area> <action>, or npx -y summer-engine@latest <area> <action>. The summer-cli skill teaches it.")}`);
     printSkillsLine(skills, dryRun);
     if (allowRules) printAllowRules(allowRules, label, Boolean(opts.yes) && !dryRun);
+    else if (supportsAllowRules(agent) && !opts.allowRules) {
+      console.log(`  ${sym.arrow()}  ${c.dim(`${label} asks before each summer command. To run read-only and dry-run ones without asking: summer setup ${agent} --cli --allow-rules --yes (it prints every rule).`)}`);
+    }
     for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
     console.log("");
     printDoctorResult(doctor);
@@ -242,15 +255,28 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
 function printAllowRules(result: AllowRulesResult, label: string, write: boolean): void {
   const where = c.dim(tildeify(result.path));
   if (!write) {
-    console.log(`  ${sym.arrow()}  ${label} would run read-only and dry-run summer commands without asking. Add the rules: run again with --yes. Skip: --no-allow-rules.  ${where}`);
-  } else if (result.added.length === 0) {
+    console.log(`  ${sym.arrow()}  ${label} would run these summer commands without asking. Add them: run the same command with --yes.  ${where}`);
+  } else if (result.changed.length === 0) {
     console.log(`  ${sym.ok()}  ${label} already runs read-only and dry-run summer commands without asking  ${where}`);
     return;
   } else {
-    console.log(`  ${sym.ok()}  ${label} runs read-only and dry-run summer commands without asking (${result.added.length} rules added)  ${where}`);
+    console.log(`  ${sym.ok()}  ${label} runs these summer commands without asking (${result.changed.length} rules added)  ${where}`);
   }
   for (const rule of result.rules) console.log(`     ${c.dim(rule)}`);
-  console.log(`     ${c.dim("Changes, publishing, prices, deletes and messages still ask. Put --dry-run right after the action: summer assets generate-image --dry-run --prompt ...")}`);
+  console.log(`     ${c.dim("Changes, publishing, prices, deletes and messages still ask. jobs wait and assets get save the files they name. Put --dry-run right after the action: summer assets generate-image --dry-run --prompt ... Undo: --remove-allow-rules")}`);
+}
+
+/** `summer setup <agent> --remove-allow-rules`: take out exactly the rules --allow-rules added. */
+async function removeCliAllowRules(agent: SupportedAgent, scope: ConfigScope, opts: SetupCommandOptions): Promise<void> {
+  if (!supportsAllowRules(agent)) throw new Error(`--remove-allow-rules is for Claude Code and Codex; Summer adds no allow rules for ${agentLabel(agent)}.`);
+  const result = await removeAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), !opts.dryRun);
+  if (opts.json) {
+    console.log(JSON.stringify({ ok: true, agent, scope, allowRules: result }, null, 2));
+    return;
+  }
+  const where = c.dim(tildeify(result.path));
+  if (result.changed.length === 0) console.log(`  ${sym.ok()}  No Summer allow rules for ${agentLabel(agent)}  ${where}`);
+  else console.log(`  ${opts.dryRun ? c.dim("(dry run)") : sym.ok()}  ${opts.dryRun ? "Would remove" : "Removed"} ${result.changed.length} Summer allow rules for ${agentLabel(agent)}  ${where}`);
 }
 
 /** The config file that already lists summer-engine for this agent and scope, or null. */

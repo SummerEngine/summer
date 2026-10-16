@@ -1,83 +1,109 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { addAllowRules, allowedCliCommands, allowRulesPath, claudeAllowRules, cliLauncher, codexRules, NPX_LAUNCHER, SUMMER_LAUNCHER } from "./cli-permissions.js";
+import { localEntries } from "../core/ops/catalog.js";
+import { shippedCloudEntries } from "../core/ops/public-catalog.js";
+import { addAllowRules, allowedCliCommands, allowRulesPath, AUTO_ALLOWED_READS, claudeAllowRules, codexRules, LAUNCHERS, removeAllowRules } from "./cli-permissions.js";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "summer-allow-rules-"));
-const rulesFor = (launcher = SUMMER_LAUNCHER) => claudeAllowRules(launcher);
+const catalog = () => [...localEntries(), ...shippedCloudEntries()];
+const words = (op: string) => (op.includes(".") ? `${op.split(".")[0]} ${op.split(".")[1].replace(/_/g, "-")}` : op);
 
-describe("the commands an agent runs without asking", () => {
-  it("are the read operations, and the spends only as dry runs", () => {
-    const rules = rulesFor();
-    for (const rule of ["Bash(summer ops search *)", "Bash(summer ops describe *)", "Bash(summer whoami *)", "Bash(summer status *)", "Bash(summer jobs wait *)", "Bash(summer engine screenshot *)", "Bash(summer docs search *)", "Bash(summer assets generate-image --dry-run *)", "Bash(summer assets generate-3d --dry-run *)"]) {
-      expect(rules).toContain(rule);
-    }
-    expect(allowedCliCommands().find((command) => command.words.join(" ") === "assets generate-image")).toEqual({ words: ["assets", "generate-image"], dryRun: true });
+describe("the commands an agent may run without asking", () => {
+  it("are a reviewed list: a change to it fails here until someone looks at it", () => {
+    expect(allowedCliCommands().map(({ words: parts, dryRun }) => `${parts.join(" ")}${dryRun ? " --dry-run" : ""}`)).toMatchSnapshot();
   });
 
-  it("never a change, a publish, a price, a delete or a message", () => {
-    const text = rulesFor().join("\n");
-    for (const command of ["store publish", "store release", "pricing set-base", "engine set-prop", "engine write-file", "assets delete", "team invite", "games invite-member", "docs feedback", "account set-permissions"]) {
-      expect(text).not.toContain(`summer ${command} `);
-    }
-    expect(rulesFor().filter((rule) => !rule.endsWith(" --dry-run *)")).every((rule) => !rule.includes("generate"))).toBe(true);
+  it("name only read operations of the catalog in the reviewed reads", () => {
+    const effects = new Map(catalog().map((entry) => [entry.name, entry.effect]));
+    for (const op of AUTO_ALLOWED_READS) expect(effects.get(op), op).toBe("read");
   });
 
-  it("use summer when it is on PATH outside an npx cache, else the npx form", () => {
-    const bin = scratch();
-    writeFileSync(join(bin, "summer"), "");
-    expect(cliLauncher({ PATH: [bin, "/usr/bin"].join(delimiter) }, "linux")).toEqual(SUMMER_LAUNCHER);
-    const npx = join(scratch(), "_npx", "abc", "node_modules", ".bin");
-    mkdirSync(npx, { recursive: true });
-    writeFileSync(join(npx, "summer"), "");
-    expect(cliLauncher({ PATH: npx }, "linux")).toEqual(NPX_LAUNCHER);
-    expect(rulesFor(NPX_LAUNCHER)).toContain("Bash(npx -y summer-engine@latest jobs wait *)");
+  it("give every catalog operation exactly its rule: a reviewed read as it is, a spend only as a dry run, anything else none", () => {
+    const rules = claudeAllowRules();
+    for (const entry of catalog()) {
+      for (const launcher of LAUNCHERS) {
+        const prefix = `Bash(${[...launcher, words(entry.name)].join(" ")} `;
+        const mine = rules.filter((rule) => rule.startsWith(prefix));
+        const want = entry.effect === "spend" ? [`${prefix}--dry-run *)`] : AUTO_ALLOWED_READS.includes(entry.name) ? [`${prefix}*)`] : [];
+        expect(mine, `${launcher.join(" ")} ${entry.name} (${entry.effect})`).toEqual(want);
+      }
+    }
+  });
+
+  it("never run engine capture-gameplay (it runs the project's own code) or studio open (it opens the browser)", () => {
+    const text = `${claudeAllowRules().join("\n")}\n${codexRules()}`;
+    expect(text).not.toContain("capture-gameplay");
+    expect(text).not.toMatch(/studio open|"studio", \[[^\]]*"open"/);
+  });
+
+  it("cover both launchers, so a Homebrew summer and the npx form both run without asking", () => {
+    const rules = claudeAllowRules();
+    expect(rules).toContain("Bash(summer jobs wait *)");
+    expect(rules).toContain("Bash(npx -y summer-engine@latest jobs wait *)");
+    expect(rules).toContain("Bash(summer assets generate-image --dry-run *)");
+    expect(codexRules()).toContain('pattern = ["npx", "-y", "summer-engine@latest", "jobs", ["get", "list", "wait"]],');
   });
 });
 
 describe("Claude Code settings", () => {
-  it("adds the rules to permissions.allow and keeps everything else", async () => {
+  it("adds the rules to permissions.allow, keeps everything else, and removes exactly them again", async () => {
     const path = join(scratch(), "settings.json");
-    writeFileSync(path, JSON.stringify({ model: "opus", permissions: { allow: ["Bash(git status *)"], deny: ["Bash(rm *)"] } }));
-    const env = { PATH: "" };
-    const first = await addAllowRules("claude-code", path, true, env);
-    expect(first.wrote).toBe(true);
+    writeFileSync(path, JSON.stringify({ model: "opus", permissions: { allow: ["Bash(git status *)", "Bash(summer engine set-prop *)"], deny: ["Bash(rm *)"] } }));
+    expect((await addAllowRules("claude-code", path, true)).wrote).toBe(true);
     const settings = JSON.parse(readFileSync(path, "utf8"));
     expect(settings).toMatchObject({ model: "opus", permissions: { deny: ["Bash(rm *)"] } });
-    expect(settings.permissions.allow[0]).toBe("Bash(git status *)");
-    expect(settings.permissions.allow).toContain("Bash(npx -y summer-engine@latest ops search *)");
-    const again = await addAllowRules("claude-code", path, true, env);
-    expect(again).toMatchObject({ added: [], wrote: false });
+    expect(settings.permissions.allow.slice(0, 2)).toEqual(["Bash(git status *)", "Bash(summer engine set-prop *)"]);
+    expect(settings.permissions.allow).toContain("Bash(summer ops search *)");
+    expect(await addAllowRules("claude-code", path, true)).toMatchObject({ changed: [], wrote: false });
+    const removed = await removeAllowRules("claude-code", path, true);
+    expect(removed.changed.length).toBe(claudeAllowRules().length);
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ model: "opus", permissions: { allow: ["Bash(git status *)", "Bash(summer engine set-prop *)"], deny: ["Bash(rm *)"] } });
+    expect(readdirSync(join(path, ".."))).toEqual(["settings.json"]);
   });
 
-  it("writes nothing without write, and refuses a file that is not JSON", async () => {
+  it("writes nothing without write, and leaves a file it cannot read safely alone", async () => {
     const dir = scratch();
     const missing = join(dir, "settings.json");
     expect((await addAllowRules("claude-code", missing, false)).wrote).toBe(false);
-    expect(() => readFileSync(missing)).toThrow();
-    const broken = join(dir, "broken.json");
-    writeFileSync(broken, "{ not json");
-    await expect(addAllowRules("claude-code", broken, true)).rejects.toThrow(/not valid JSON/);
+    expect(existsSync(missing)).toBe(false);
+    for (const [name, body, message] of [
+      ["broken.json", "{ not json", /not valid JSON/],
+      ["null.json", "null", /not a JSON object/],
+      ["list.json", "[]", /not a JSON object/],
+      ["allow.json", JSON.stringify({ permissions: { allow: "Bash(ls *)" } }), /permissions.allow is not a list/],
+    ] as const) {
+      const path = join(dir, name);
+      writeFileSync(path, body);
+      await expect(addAllowRules("claude-code", path, true), name).rejects.toThrow(message);
+      expect(readFileSync(path, "utf8"), name).toBe(body);
+    }
   });
 
-  it("go to the user settings, or the project's personal settings", () => {
+  it("go to the user settings, or the project's personal settings; Codex rules always to the user's folder", () => {
     const ctx = { home: "/h", os: "linux" as const, env: {}, cwd: "/p" };
     expect(allowRulesPath("claude-code", "user", ctx)).toBe(join("/h", ".claude", "settings.json"));
     expect(allowRulesPath("claude-code", "project", ctx)).toBe(join("/p", ".claude", "settings.local.json"));
+    expect(allowRulesPath("codex", "project", ctx)).toBe(join("/h", ".codex", "rules", "summer.rules"));
     expect(allowRulesPath("codex", "user", { ...ctx, env: { CODEX_HOME: "/c" } })).toBe(join("/c", "rules", "summer.rules"));
   });
 });
 
 describe("Codex rules", () => {
-  it("are Summer's own rules file, one prefix_rule per area and kind, for both launchers", async () => {
+  it("are Summer's own file, one prefix_rule per area and kind; --remove-allow-rules deletes it", async () => {
     const text = codexRules();
     expect(text).toMatch(/pattern = \["summer", "assets", \[[^\]]*"generate-image"[^\]]*\], "--dry-run"\],/);
-    expect(text).toContain('pattern = ["npx", "-y", "summer-engine@latest", "jobs", ["get", "list", "wait"]],');
     expect(text).not.toMatch(/"publish"|"set-base"|"set-prop"/);
     const path = join(scratch(), "rules", "summer.rules");
     expect((await addAllowRules("codex", path, true)).wrote).toBe(true);
     expect(readFileSync(path, "utf8")).toBe(text);
     expect((await addAllowRules("codex", path, true)).wrote).toBe(false);
+    expect((await removeAllowRules("codex", path, true)).wrote).toBe(true);
+    expect(existsSync(path)).toBe(false);
+    const theirs = join(scratch(), "default.rules");
+    writeFileSync(theirs, 'prefix_rule(pattern = ["ls"])\n');
+    expect((await removeAllowRules("codex", theirs, true)).wrote).toBe(false);
+    expect(existsSync(theirs)).toBe(true);
   });
 });

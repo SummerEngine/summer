@@ -46,7 +46,7 @@ summer store status --game-id <id> --json
 - Actions and fields are kebab-case: `aspectRatio` is `--aspect-ratio`, `look_at` is `--look-at`.
 - `--<field>` alone sets a boolean field to true; `--no-<field>` sets it to false. Repeat a flag to give a list.
 - Objects, and anything hard to quote, go in `--input '<json>'`. A flag wins over the same key in `--input`.
-- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Put it right after the action: Claude Code and Codex then run it without asking (so do reads), after `summer setup <agent> --cli --yes`. Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
+- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Put it right after the action: after `summer setup <agent> --cli --allow-rules --yes`, Claude Code and Codex run it without asking (and the reads). Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
 - `--idempotency-key <key>` makes a retry safe: Summer runs a change once per key.
 - `--json` prints only the answer: `{"ok":true,"status":"done","result":{...}}`. The exit code is 0 for every `ok` answer and 1 for an error.
 

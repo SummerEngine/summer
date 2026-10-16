@@ -175,7 +175,8 @@ function appData(ctx: PathContext): string {
 }
 
 function xdgConfig(ctx: PathContext): string {
-  return ctx.env.XDG_CONFIG_HOME ?? join(ctx.home, ".config");
+  // An empty XDG_CONFIG_HOME counts as unset (XDG Base Directory spec).
+  return ctx.env.XDG_CONFIG_HOME || join(ctx.home, ".config");
 }
 
 /** ~/.config on Linux, %APPDATA% on Windows, ~/Library/Application Support on macOS. */

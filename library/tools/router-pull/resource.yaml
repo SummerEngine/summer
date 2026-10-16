@@ -1,0 +1,56 @@
+id: tool/router-pull
+kind: tool
+version: 1.0.0
+summary: 'Write the Summer Router characters Summer has for the game into ai/characters/, keeping local edits that were never pushed.'
+use_when:
+- after a character was edited in Studio, or router.push answered studio_changed
+- starting on a machine that has no character files yet
+do_not_use_when:
+- reading one character without writing files — router.characters (cloud)
+facets:
+  lifecycle:
+  - build
+  domains:
+  - ai
+  - npc
+compatibility:
+  engine: '>=4.6'
+source: official
+license: MIT
+status: preview
+related:
+  skills:
+  - skill/summer-router
+implementation:
+  module: src/core/router/operations.ts
+  export: ROUTER_OPERATIONS
+surfaces:
+  mcp:
+    tool_name: summer_router_pull
+    remote: true
+input_schema:
+  type: object
+  properties:
+    characters:
+      type: array
+      items:
+        type: string
+      description: 'Character ids (file names in ai/characters/). Default: every character file.'
+    force:
+      type: boolean
+      description: Replace local edits that were never pushed.
+    gameId:
+      type: string
+      description: 'The game on Summer. Default: SUMMER_GAME_ID, then gameId in summer.build.json.'
+    project:
+      type: string
+      description: 'The folder with project.godot. Default: the MCP''s bound project, then the working directory.'
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+- none

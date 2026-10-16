@@ -36,6 +36,20 @@ Engine MCP offers the same cloud tools under the same names.
 - `summer_app_dock` is the one engine tool: it sends `OpenAppDock {appId, slot}`, `CloseAppDock {appId}` or
   `ListAppDocks` to the running editor and returns `engine_lacks_op` on engine builds without app docks.
 
+## In the 4.0 operation catalog
+
+With the v4 surface (the default since 4.0; `summer mcp --surface v3` keeps the 3.x tools), agents reach Summer Apps as the
+`apps.*` operations of the hosted catalog, through `summer_call` (or `summer_apps_<action>` where a client
+lists it): `apps.guide`, `apps.list`, `apps.create`, `apps.publish`, `apps.get`, `apps.update` (also
+`pinned`), `apps.events`, `apps.page` (read) and `apps.use_page` (fill and press), `apps.read_data` and
+`apps.write_data`, `apps.tools`, `apps.call`, `apps.report_gap`, `apps.screenshot`, and the Studio-button
+operations `apps.add_starter`, `apps.duplicate`, `apps.delete`, `apps.rollback`, `apps.update_starter` and
+`apps.feedback`. `apps.dock` stays local (the `summer_app_dock` tool above). The hosted `apps.publish`
+takes `files` or a `layout`; it has no `dir`, so read the folder and send its files. The hosted Studio
+tools (`summer_studio_*`) are `studio.map`, `studio.page`, `studio.read_form`, `studio.submit_form` and
+`studio.use_page`; a Studio button that is an operation answers `moved` from the last two, with the
+operation to call. `studio.open` called through the local `summer_call` runs `summer_open` here.
+
 ## Testing against a local or staging web server
 
 Two settings, two different servers:

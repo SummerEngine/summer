@@ -1,0 +1,82 @@
+{
+  "contract": 1,
+  "name": "pricing.set_base",
+  "title": "Set the base price",
+  "summary": "Ask the owner to change a game's base price on Summer Games. Returns an approval link; nothing changes until the owner approves. Next: jobs.wait.",
+  "effect": "player_facing",
+  "approval": "owner",
+  "provider": "cloud",
+  "auth": "account",
+  "input": {
+    "type": "object",
+    "properties": {
+      "gameId": {
+        "type": "string"
+      },
+      "price": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD"
+            ]
+          },
+          "amountMinor": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "amountMinor"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "gameId",
+      "price"
+    ],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "price": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "price"
+    ]
+  },
+  "hasPreview": true,
+  "legacy": [
+    "summer_grow_prices#set_base"
+  ],
+  "studio": [
+    {
+      "form": "store-price",
+      "action": "save"
+    }
+  ],
+  "status": "stable",
+  "since": "4.0",
+  "tags": [
+    "price",
+    "sale"
+  ],
+  "examples": [
+    {
+      "input": {
+        "gameId": "g_123",
+        "price": {
+          "currency": "USD",
+          "amountMinor": 799
+        }
+      },
+      "note": "Lower the price to $7.99."
+    }
+  ]
+}

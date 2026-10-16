@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
+import { connectHostedMcp, hostedConnectFailure, HostedUnreachableError, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
@@ -34,7 +34,7 @@ const passthroughArgs = z.object({}).passthrough();
 export type HostedMountDependencies = HostedConnectDependencies;
 
 export const defaultHostedMountDependencies: HostedMountDependencies = {
-  url: () => resolveMcpResourceUrl(),
+  url: () => withV3Surface(resolveMcpResourceUrl()),
   token: () => getStoreAccessToken(),
   connect: connectHostedMcp,
 };
@@ -79,12 +79,29 @@ function errorText(error: { code: string; message: string; recovery: string }) {
  * reports each mounted tool's own JSON Schema rather than the passthrough one.
  * Returns mount(), which callers run after connect without awaiting it.
  */
+/** Fields and handling this package adds around a hosted tool (the v4 surface saves generated files here). */
+export interface HostedLocalHook {
+  /** The input schema a client lists for the tool. */
+  inputSchema(tool: Tool): Tool["inputSchema"];
+  /** Runs the call; `forward` sends arguments on to the hosted tool, `tool` is its listing (annotations included). */
+  call(name: string, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>, tool: Tool): Promise<Record<string, unknown>>;
+}
+
 export interface HostedMountOptions {
   firstListWaitMs?: number;
   /** The profile's filter: false leaves a hosted tool out. Default: every tool. */
   includeTool?: (name: string) => boolean;
   /** Mount no tool once the server has this many. Default: no limit. */
   maxTools?: number;
+  /** The description a mounted tool gets here. Default: the hosted one. */
+  describe?: (tool: Tool) => string;
+  /** Runs after each successful mount (another mount can follow it). */
+  onMounted?: () => void;
+  /** What summer_store_tools calls the hosted tools this profile mounts.
+   *  Default: the full profile's store, publishing, board and Grow tools. */
+  hostedToolsLabel?: string;
+  /** Local fields and handling around each mounted tool. Default: none. */
+  local?: HostedLocalHook;
 }
 
 export function prepareHostedMount(
@@ -116,7 +133,7 @@ export function prepareHostedMount(
         ...result,
         tools: result.tools.map((tool) => {
           const hosted = schemas.get(tool.name);
-          return hosted ? { ...tool, inputSchema: providerSafeSchema(hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
+          return hosted ? { ...tool, inputSchema: providerSafeSchema(options.local ? options.local.inputSchema(hosted) : hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
         }),
       };
     });
@@ -136,6 +153,9 @@ export function prepareHostedMount(
 
   let statusTool: { remove(): void } | null = null;
   let running: Promise<HostedMountState> | null = null;
+  let connected: HostedClient | null = null;
+
+  const listedToolCount = () => Object.values(registries._registeredTools).filter((tool) => (tool as { enabled?: boolean }).enabled !== false).length;
 
   /** Wait for a mount in progress, at most ms; returns at once when none runs. */
   async function waitForMount(ms: number): Promise<void> {
@@ -150,9 +170,13 @@ export function prepareHostedMount(
     statusTool = server.registerTool(
       STORE_TOOLS_STATUS,
       {
+        title: "Load the hosted Summer tools",
         description:
-          "The Summer store, publishing, board and Grow tools come from the hosted Summer Engine MCP and are not loaded. Call this to see why and how to fix it (usually: run \"summer login --store\" in a terminal); it loads them when the sign-in works.",
+          `The ${options.hostedToolsLabel ?? "Summer store, publishing, board and Grow tools"} come from the hosted Summer Engine MCP and are not loaded. Call this to see why and how to fix it (usually: run "summer login --store" in a terminal); it loads them when the sign-in works.`,
         inputSchema: passthroughArgs,
+        // Registered after the server's annotation pass, so it carries its own:
+        // it asks Summer's servers which tools this sign-in may use and changes nothing.
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async () => {
         const after = await mount();
@@ -172,14 +196,12 @@ export function prepareHostedMount(
       client = await deps.connect(url, deps.token);
     } catch (error) {
       state.status = "unavailable";
-      state.error =
-        error instanceof OAuthError
-          ? { code: error.code, message: error.message.replace(` ${error.recovery}`, ""), recovery: error.recovery }
-          : {
-              code: "store_tools_unreachable",
-              message: `The hosted Summer Engine MCP did not answer: ${error instanceof Error ? error.message : String(error)}.`,
-              recovery: 'Recovery: check the network; if it says unauthorized, run "summer login --store --force". Then call summer_store_tools.',
-            };
+      const failure = hostedConnectFailure(error, 'Recovery: check the network; if it says unauthorized, run "summer login --store --force". Then call summer_store_tools.');
+      state.error = {
+        code: failure instanceof OAuthError ? failure.code : "store_tools_unreachable",
+        message: failure.message.replace(` ${failure.recovery}`, ""),
+        recovery: failure.recovery,
+      };
       appendMcpLogEvent("mcp:hosted_mount_failed", { code: state.error.code });
       showStatusTool();
       return state;
@@ -198,17 +220,19 @@ export function prepareHostedMount(
       }
       if (schemas.has(tool.name)) continue;
       if (options.includeTool && !options.includeTool(tool.name)) continue;
-      if (options.maxTools !== undefined && Object.keys(registries._registeredTools).length >= options.maxTools) {
+      // The limit is on what a client lists: tools a surface keeps unlisted (v4) do not count.
+      if (options.maxTools !== undefined && listedToolCount() >= options.maxTools) {
         if (!state.overLimit.includes(tool.name)) state.overLimit.push(tool.name);
         continue;
       }
       schemas.set(tool.name, tool);
       server.registerTool(
         tool.name,
-        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
+        { description: options.describe ? options.describe(tool) : (tool.description ?? ""), inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
         async (args: Record<string, unknown>) => {
           try {
-            return (await client.callTool({ name: tool.name, arguments: args })) as never;
+            const forward = (sent: Record<string, unknown>) => client.callTool({ name: tool.name, arguments: sent }) as Promise<Record<string, unknown>>;
+            return (options.local ? await options.local.call(tool.name, args, forward, tool) : await forward(args)) as never;
           } catch (error) {
             return errorText({
               code: "store_tool_failed",
@@ -252,8 +276,10 @@ export function prepareHostedMount(
 
     statusTool?.remove();
     statusTool = null;
+    connected = client;
     state.status = "mounted";
     delete state.error;
+    options.onMounted?.();
     appendMcpLogEvent("mcp:hosted_mounted", {
       tools: state.tools.length,
       prompts: state.prompts.length,
@@ -283,5 +309,20 @@ export function prepareHostedMount(
     return running;
   }
 
-  return { mount, state };
+  /**
+   * Call a hosted tool whether or not it is listed here (the v4 surface's
+   * summer_search and summer_call stay local and forward through this).
+   */
+  async function call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const after = await mount();
+    if (!connected) {
+      const error = after.error ?? { code: "store_tools_unavailable", message: "The hosted Summer server is not connected.", recovery: 'Recovery: run "summer login".' };
+      // Nothing was sent. A sign-in failure keeps its OAuth code; anything else is the server not answering.
+      if (error.code === "store_tools_unreachable" || error.code === "store_tools_unavailable") throw new HostedUnreachableError(error.message, error.recovery);
+      throw new OAuthError(error.code, error.message, error.recovery);
+    }
+    return connected.callTool({ name, arguments: args });
+  }
+
+  return { mount, state, call };
 }

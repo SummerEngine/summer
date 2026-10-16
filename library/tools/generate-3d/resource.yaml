@@ -1,7 +1,7 @@
 id: tool/generate-3d
 kind: tool
 version: 1.0.2
-summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.
+summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.
 use_when:
   - creating a 3D asset or character from a prompt or reference image
   - '"make me a low-poly tree / a sci-fi crate / a goblin for my game"'
@@ -95,8 +95,8 @@ input_schema:
       description: Character height used by auto-rigging
     wait:
       type: boolean
-      default: true
-      description: Wait for completion (default true, up to 10 min). Set false to get jobId immediately.
+      default: false
+      description: Block until the job finishes (up to 10 min) and return the result. Default false returns the jobId at once; poll summer_check_job.
     options:
       type: object
       additionalProperties: {}

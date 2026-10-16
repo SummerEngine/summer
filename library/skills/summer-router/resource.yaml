@@ -1,7 +1,7 @@
 id: skill/summer-router
 kind: skill
 version: 1.0.0
-summary: "Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build."
+summary: "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images."
 use_when:
   - "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)"
   - "a voice NPC that does things in the game through tool calls, for example opening a gate when the player says the password"

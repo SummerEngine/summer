@@ -1,11 +1,11 @@
 ---
 name: summer-router
-description: "Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build."
+description: "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs
 user-invocable: true
-allowed-tools: Bash Read Grep Edit Write summer_get_scene_tree summer_add_node summer_set_prop summer_connect_signal summer_save_scene summer_get_script_errors summer_get_diagnostics summer_play summer_game_input summer_stop
+allowed-tools: Bash Read Grep Edit Write summer_call summer_search summer_docs_read summer_get_scene_tree summer_add_node summer_set_prop summer_connect_signal summer_save_scene summer_get_script_errors summer_get_diagnostics summer_play summer_game_input summer_stop
 paths: ["**/*.gd", "**/*.tscn", "ai/characters/*.json", "summer.build.json"]
 ---
 
@@ -23,10 +23,11 @@ is unless the character file allows it.
 **Second principle:** AI is always optional. Every call can fail (no Summer host, a cap reached, a player under 18
 for voice, a provider outage). The game keeps running and uses its fallback.
 
-**Status: preview.** The CLI and the character files work today. The GDScript calls run when the Summer Engine
-release with `Summer.client.router` and the Summer Router platform are live. Until then `status()` returns
-`available: false` and the fallback runs, so a game written this way ships now. Names follow the Summer Router
-contract; if the engine reports a different signature, the engine's class reference wins.
+**Early access.** The operations and the character files work with summer-engine 4. The GDScript calls run when
+the Summer Engine release with `Summer.client.router` and the Summer Router platform are live. Until then `status()`
+returns `available: false` and the fallback runs, so a game written this way ships now. If the engine reports a
+different signature than this skill, the engine's class reference wins. Comments or problems: the Summer Discord or
+support (founders@summerengine.com).
 
 Usage is billed from your Summer account; spend is visible in Studio. Players never pay and never see a key.
 
@@ -39,32 +40,54 @@ Usage is billed from your Summer account; spend is visible in Studio. Players ne
 Not for scripted dialogue trees (`design-npc`) or pre-recorded voice lines (`voice-line`). For raw microphone use
 (voice commands, meters) also read `voice-and-mic-permissions`.
 
+## The operations
+
+A call written `area.action({...})` is the tool `summer_area_action` when your client lists it, else
+`summer_call({ op: "area.action", input: {...} })`; in a shell it is `summer <area> <action> --field value` (kebab-case,
+add `--json`). `summer_search` finds any operation and its exact input.
+
+Local (they read and write this project, so they run in the local summer-engine MCP or CLI):
+
+| Operation | Does |
+| --- | --- |
+| `router.setup({ yes: true })` | The summer-engine MCP entry and this skill for Claude Code / Codex. Idempotent. |
+| `router.add_character({ id, template?, voice?, voiceId?, tools?, name? })` | Writes `ai/characters/<id>.json` and returns the GDScript its tools need. |
+| `router.check({ characters? })` | The schema, and every client tool against the project's GDScript handlers. Offline, no sign-in. |
+| `router.push({ characters?, force?, gameId? })` | Check, then save the characters on Summer for the game. |
+| `router.pull({ characters?, force?, gameId? })` | Write Summer's characters into `ai/characters/` (after a Studio edit). |
+| `router.doctor({ gameId? })` | Every check (sign-in, characters, handlers, the game on Summer, skills), each with a fix. |
+
+Cloud (the hosted Summer server, with the person's sign-in): a scripted test turn with a pushed character, the
+game's settings and caps (the owner approves changes), usage, and the model and voice catalog. Find each one and its
+exact input with `summer_search` (for example "summer router test turn"); then run it with `summer_call`.
+
 ## The flow (agent, one shot)
 
-Run these from the project folder (the one with `project.godot`). Every command prints one JSON object when an
-agent runs it; exit 0 is success, 1 a failure with `error.code` and `error.fix`, 2 a usage error. If the `summer`
-command is not installed, use `npx -y summer-engine@latest` in its place.
-
 ```bash
-npx -y summer-engine@latest router setup --yes      # summer-engine MCP + this skill for Claude Code / Codex
-summer login                                        # agent: prints {browser_url, verification_code, next_step}
+npx -y summer-engine@latest router setup --yes   # in a shell; summer_call {"op":"router.setup","input":{"yes":true}} in MCP
+summer login                                     # agent: prints {browser_url, verification_code, next_step}
 #   show browser_url to the person, then:
-summer login --complete                             # waits for "Yes, Sign In", then one Allow click
-summer router character add guard --template voice-npc --voice "gruff old soldier" --tools open_gate
+summer login --complete                          # waits for "Yes, Sign In", then one Allow click
+summer router add-character --id guard --template voice-npc --voice "gruff old soldier" --tools open_gate
 #   edit ai/characters/guard.json, write the GDScript below
-summer router push --dry-run                        # schema + every client tool has a GDScript handler
-summer router push                                  # sends the characters to the game on Summer
-summer router test guard --say "the password is moonlight" --expect-tool open_gate
-summer router doctor                                # every check in one list
+summer router check                              # schema + every client tool has a GDScript handler
+summer router push                               # saves the characters on Summer for the game
+#   then a test turn (cloud): say "the password is moonlight" and check that open_gate is called
+summer router doctor                             # every check in one list
 ```
 
-- The game id comes from `gameId` in `summer.build.json`, `SUMMER_GAME_ID`, or `--game <id>`.
-- `push` fails, exit 1, code `tool_unhandled`, when a client tool has no handler in the project's GDScript. It
-  prints the GDScript to add.
-- `push` never overwrites a Studio edit it has not seen (`studio_changed`). Run `summer router pull`, or
-  `push --force` to keep yours.
-- A human step prints one URL: `browser_url` to sign in, or `studio_url` for the owner (caps, the on/off switch,
-  a live game). Show that URL to the person; do not ask them to find the page.
+If the `summer` command is not installed, use `npx -y summer-engine@latest` in its place.
+
+- Every answer is `{ok: true, status: "done", result}` or `{ok: false, error: {code, message, next?, details}}`. A
+  local Router failure keeps its Summer Router tag in `error.details.tool.reason` and the fix in
+  `error.details.tool.recovery`.
+- The game id comes from `gameId`, `SUMMER_GAME_ID`, or `gameId` in `summer.build.json`.
+- `router.check` and `router.push` fail with reason `tool_unhandled` when a client tool has no handler in the
+  project's GDScript, and give the GDScript to add (`details.tool.details.handler_snippet`).
+- `router.push` never overwrites a Studio edit it has not seen (reason `studio_changed`, code `conflict`): run
+  `router.pull`, or push with `force` to keep yours.
+- A step for a person is one URL: `browser_url` to sign in, or the Studio link in `error.next.url` (a live game's
+  characters, caps, the on/off switch). Show that URL; do not ask them to find the page.
 
 ## The character file
 
@@ -96,7 +119,7 @@ summer router doctor                                # every check in one list
 | Field | Use |
 | --- | --- |
 | `instructions`, `first_message`, `language`, `variables` | Who the character is. `{{name}}` placeholders must be declared in `variables`. The password stays on Summer, not in the build. |
-| `model`, `temperature`, `max_output_tokens`, `reasoning` | Optional. Omit `model` to use the game's default (`summer router limits get` shows it). |
+| `model`, `temperature`, `max_output_tokens`, `reasoning` | Optional. Omit `model` to use the game's default (the game's Router settings show it). |
 | `voice.design` or `voice.id` | A text description (Summer makes a pinned voice) or a Summer voice id. |
 | `turn.mode` | `push_to_talk` (default in the templates: no echo from speakers) or `server_vad` (open mic). |
 | `tools[]` | What the character can do in the game. `runs_on: "client"` tools need a GDScript handler. |
@@ -164,7 +187,7 @@ flow and talk button, and signals `npc_text`, `player_text`, `mode_changed(mode,
 ### Tools
 
 A client tool in the character file needs a handler in GDScript with the same name. Every one of these shapes
-registers one, on a session (`s`) or a `SummerRouterCharacter` (`$Guard`), and `summer router push` reads them all:
+registers one, on a session (`s`) or a `SummerRouterCharacter` (`$Guard`), and `router.check` reads them all:
 
 ```gdscript
 s.tools = {"open_gate": _on_open_gate}         # also {open_gate = _on_open_gate}
@@ -228,7 +251,7 @@ pinned voice), never a raw provider voice id. `reply` runs tools for its turn wh
 | `not_signed_in` | The player is not signed in to Summer | Fallback; Summer asks them to sign in |
 | `mic_denied` | The player said no to the mic | Text mode; never send them to Settings |
 | `age_restricted` | Realtime voice needs a confirmed adult | Text mode or fallback for this player |
-| `character_not_found` | The id is not pushed for this game | Bug: `summer router push` |
+| `character_not_found` | The id is not pushed for this game | Bug: `router.push` |
 | `tool_unhandled` | The character called a tool with no handler | Bug: add it to `tools` |
 | `limit_reached` | A cap is used up (`scope`, `resets_at`) | Fallback until `resets_at`; never retry in a loop |
 | `credits_required` | The owner's Summer account needs credits | Fallback; the owner fixes it in Studio |
@@ -258,23 +281,23 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 - Tool handlers validate. The model can be talked into calling any tool; the handler checks game state and clamps
   values. A tool that changes shared state in multiplayer runs on the authority (roadmap: `runs_on: "authority"`).
 - Label AI characters as AI in the UI.
-- Caps are on by default. The owner changes them in Studio (the Router tab of the game's store page) or with
-  `summer router limits set`.
+- Caps are on by default. The owner changes them in Studio (the Router tab of the game's store page); an agent's
+  change through the Router settings operation answers with the owner's approval link.
 
 ## Verify
 
-1. `summer router push --dry-run` exits 0.
+1. `router.check` answers `ok: true`.
 2. `summer_get_script_errors` on each script you changed.
 3. `grep -rn "request_permission\|getUserMedia\|api_key\|sk-" --include=*.gd .` finds nothing.
 4. `summer_play`, then `summer_get_diagnostics`: no mic prompt and no error at launch. Without a Summer host the
    fallback runs and the game keeps working.
-5. `summer router test <id> --say "..." --expect-tool <tool>` exits 0 after `push`.
+5. After `router.push`, a cloud test turn with a line that should trigger the tool shows that tool in its tool calls.
 6. With the platform live: talk to the character in a summer.games build; type with the mic denied.
 
 ## Common mistakes
 
-- Tool names in the file and in `tools` differ. `push` refuses it; fix the name, do not delete the tool.
+- Tool names in the file and in `tools` differ. `router.check` refuses it; fix the name, do not delete the tool.
 - Asking for the mic in `_ready()`. Summer refuses it and shows nothing.
 - Treating `limit_reached` as a bug and retrying. The cap is the product working.
 - Putting the password or the persona in GDScript. It ships in the build.
-- Pushing over a Studio edit with `--force` without a `pull` first.
+- Pushing over a Studio edit with `force` without a `router.pull` first.

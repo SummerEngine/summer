@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "operation.schema.json",
+  "title": "Summer operation, wire form (contract 1)",
+  "description": "One operation of the Summer catalog as every view (MCP, CLI, HTTP, Studio) sees it. Contract 1. The Summer cloud server vendors a byte copy of this file; change it here first.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 48,
+      "pattern": "^(whoami|[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*)$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 60
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 300
+    },
+    "effect": {
+      "enum": [
+        "read",
+        "write",
+        "spend",
+        "publish",
+        "player_facing",
+        "destructive"
+      ]
+    },
+    "approval": {
+      "enum": [
+        "none",
+        "confirm",
+        "owner"
+      ]
+    },
+    "provider": {
+      "enum": [
+        "engine",
+        "local",
+        "cloud"
+      ]
+    },
+    "auth": {
+      "enum": [
+        "none",
+        "account"
+      ]
+    },
+    "input": {
+      "$ref": "#/$defs/objectSchema"
+    },
+    "output": {
+      "$ref": "#/$defs/objectSchema"
+    },
+    "job": {
+      "type": "object",
+      "properties": {
+        "typicalSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "typicalSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "hasCostEstimate": {
+      "type": "boolean"
+    },
+    "hasPreview": {
+      "type": "boolean"
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "service"
+      ],
+      "additionalProperties": false
+    },
+    "legacy": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^summer_[a-z0-9_]+(#[a-z_]+)?$"
+      }
+    },
+    "mcpName": {
+      "type": "string",
+      "pattern": "^summer_[a-z0-9_]{1,58}$"
+    },
+    "studio": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "form": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "form",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "stores": {
+      "type": "object",
+      "properties": {
+        "chatgpt": {
+          "const": true
+        },
+        "directory": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "enum": [
+        "stable",
+        "preview",
+        "deprecated"
+      ]
+    },
+    "deprecated": {
+      "type": "object",
+      "properties": {
+        "replacedBy": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      },
+      "required": [
+        "replacedBy",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "since": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "examples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "object"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "input",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "contract",
+    "name",
+    "title",
+    "summary",
+    "effect",
+    "approval",
+    "provider",
+    "auth",
+    "input",
+    "output",
+    "status",
+    "since",
+    "examples"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "effect": {
+              "enum": [
+                "read",
+                "write"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "effect": {
+              "const": "spend"
+            },
+            "hasCostEstimate": {
+              "const": true
+            }
+          },
+          "required": [
+            "hasCostEstimate"
+          ]
+        },
+        {
+          "properties": {
+            "effect": {
+              "enum": [
+                "publish",
+                "player_facing"
+              ]
+            },
+            "approval": {
+              "const": "owner"
+            },
+            "hasPreview": {
+              "const": true
+            }
+          },
+          "required": [
+            "hasPreview"
+          ]
+        },
+        {
+          "properties": {
+            "effect": {
+              "const": "destructive"
+            },
+            "approval": {
+              "enum": [
+                "confirm",
+                "owner"
+              ]
+            },
+            "hasPreview": {
+              "const": true
+            }
+          },
+          "required": [
+            "hasPreview"
+          ]
+        }
+      ]
+    },
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "status": {
+              "enum": [
+                "stable",
+                "preview"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "deprecated"
+            }
+          },
+          "required": [
+            "deprecated"
+          ]
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "objectSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    }
+  }
+}

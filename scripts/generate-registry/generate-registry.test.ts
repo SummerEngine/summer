@@ -15,6 +15,7 @@ import { manifestBanner } from "./shared.ts";
 import { checkRegistry } from "./check.ts";
 import { checkCountClaims, collectCountClaimFiles, CLAIM_PATTERN } from "./count-claims.ts";
 import { MANIFEST_TARGETS, allTargets } from "./targets.ts";
+import { MCP_REGISTRY_NAME } from "./manifests.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -60,6 +61,7 @@ describe("generateRegistry: catalog outputs", () => {
       "plugin.codex.json",
       "plugin.cursor.json",
       "plugin.factory.json",
+      "server.json",
       "skills-index.md",
       "skills-registry.json",
       "templates-registry.json",
@@ -219,6 +221,25 @@ describe("generateRegistry: catalog outputs", () => {
     ]);
   });
 
+  it("a library-only skill (bundled: false) stays in the index but leaves bulk installs and every manifest", () => {
+    const root = copyBasicFixture();
+    const yamlPath = path.join(root, "library", "skills", "beta-skill", "resource.yaml");
+    fs.writeFileSync(yamlPath, `${fs.readFileSync(yamlPath, "utf8").trimEnd()}\nbundled: false\n`);
+    const result = gen(root);
+    const index = parse(result.files, "index.json").resources as Array<{ id: string }>;
+    expect(index.map((entry) => entry.id)).toContain("skill/beta-skill");
+    const skills = parse(result.files, "skills-registry.json").skills as Array<Record<string, unknown>>;
+    expect(skills.find((skill) => skill.name === "beta-skill")?.bundled).toBe(false);
+    expect(skills.find((skill) => skill.name === "alpha-skill")).not.toHaveProperty("bundled");
+    expect(result.files.get("skills-index.md")).toMatch(/\| \[\*beta-skill\*\]\(\.\/beta-skill\/SKILL\.md\) \(preview\) \(library only\) \|/);
+    for (const name of ["plugin.claude.json", "plugin.codex.json", "gemini-extension.json"]) {
+      const manifest = JSON.parse(result.files.get(name)!) as { skills?: string[] };
+      if (!manifest.skills) continue;
+      expect(manifest.skills, name).toContain("./library/skills/alpha-skill/");
+      expect(manifest.skills, name).not.toContain("./library/skills/beta-skill/");
+    }
+  });
+
   it("every generated file ends with exactly one trailing newline", () => {
     const result = gen(basicRoot);
     for (const [, content] of result.files) {
@@ -229,6 +250,14 @@ describe("generateRegistry: catalog outputs", () => {
 });
 
 describe("generateRegistry: manifests (golden shapes)", () => {
+  it("server.json names the server as package.json's mcpName, in the GitHub org's own case", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+    expect(pkg.mcpName).toBe(MCP_REGISTRY_NAME);
+    // The registry grants io.github.<org login>/* and compares case-sensitively; the login is SummerEngine.
+    expect(MCP_REGISTRY_NAME.startsWith("io.github.SummerEngine/")).toBe(true);
+    expect(parse(gen(basicRoot).files, "server.json").name).toBe(MCP_REGISTRY_NAME);
+  });
+
   it("plugin.claude.json keeps the current field order, stamps the version and carries both MCP servers", () => {
     const result = gen(basicRoot);
     const manifest = parse(result.files, "plugin.claude.json");

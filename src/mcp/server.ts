@@ -21,6 +21,7 @@ import { registerFabricateTools } from "./tools/fabricate-tools.js";
 import { registerUiTools } from "./tools/ui-tools.js";
 import { registerRuntimeTools } from "./tools/runtime-tools.js";
 import { registerAppTools } from "./tools/app-tools.js";
+import { registerRouterTools } from "./tools/router-tools.js";
 import {
   recordToolCall,
   registrationHasInputSchema,
@@ -38,8 +39,13 @@ import {
   setCachedBootDriftNotice,
 } from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
-import { prepareHostedMount } from "./hosted-mount.js";
+import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
+import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
+import { FileSaver } from "../core/ops/save-files.js";
+import { opForToolCall } from "../core/ops/contract.js";
+import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
+import { legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
 import {
   OUTPUT_CAPS,
   PROFILE_TOOL_LIMIT,
@@ -54,13 +60,16 @@ import {
 } from "./tool-surface.js";
 import { shapeToolResult, singleEditCounter } from "./tool-results.js";
 import { recordLocalToolCall, recordMcpSession } from "../core/telemetry.js";
-import { registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
+import { currentToolContext, registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
 } from "../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
+import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
+import { resolveSurface, type SurfaceVersion } from "../core/tool-profiles.js";
+import { OAuthError } from "../core/oauth.js";
 
 let processDiagnosticsInstalled = false;
 
@@ -91,9 +100,9 @@ export const SUMMER_MCP_INSTRUCTIONS =
 /** The same first-turn habits for a profile without engine tools (`--profile assets`). */
 export const SUMMER_MCP_ASSETS_INSTRUCTIONS =
   "Summer MCP, assets profile: generation and the Summer asset library, no engine tools. " +
-  "Before making an asset, summer_search_library then summer_read_library its skill (sound-effect, music-track, concept-art, prop-model). " +
-  "Generation costs credits: confirm with the person first. A long job returns a jobId: summer_check_job. " +
-  "Every asset lands in the person's Summer library: summer_list_my_assets, summer_get_asset_download_url. " +
+  "Read skill/summer-assets, then the asset's skill (sound-effect, prop-model, ...): stop at the file, skip its engine steps. " +
+  "Generation costs credits: confirm first. A job returns a jobId: summer_check_job. " +
+  "Hand over files with summer_get_asset_download_url. " +
   "Report verified entries via summer_library_feedback.";
 
 /**
@@ -156,12 +165,15 @@ export async function getClient(): Promise<EngineApiClient> {
       error instanceof Error
         ? error.message
         : "Summer Engine is not running.";
+    // Nothing reachable: a coded error withEngine renders as JSON
+    // (engine_not_running). Anything else (several editors open, …) already
+    // says how to pick one.
+    const notRunning = engineNotRunningFromConnectError(reason);
+    if (notRunning) throw notRunning;
     throw new Error(
       reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run\n" +
-        "Note: only tools that touch the local project need the engine. Cloud tools " +
-        "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx -y summer-engine@latest login'."
+        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>\n" +
+        "Note: " + ENGINE_FREE_NOTE
     );
   }
 }
@@ -245,7 +257,13 @@ function rawShapeIndex(args: readonly unknown[]): number {
  *   (every call under SUMMER_MCP_DEBUG=1), and, when signed in and not opted
  *   out, the tool name, success, duration and host app name (telemetry.ts).
  */
-function installToolCallWrapper(server: McpServer): () => number {
+/** What every recorded call says about the surface that served it. */
+interface SurfaceMeta {
+  surfaceVersion: SurfaceVersion;
+  profile: string;
+}
+
+function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): () => number {
   const target = server as unknown as { tool: (...args: unknown[]) => unknown };
   const original = target.tool.bind(server);
   const singleEdits = singleEditCounter();
@@ -276,6 +294,12 @@ function installToolCallWrapper(server: McpServer): () => number {
         handlerArgs = [rest, ...handlerArgs.slice(1)];
       }
       const startedAt = Date.now();
+      // A tool another tool runs (summer_call, a v4 operation over its 3.x
+      // tool) is part of that call: only the outer call sends a usage line.
+      const nested = currentToolContext() !== undefined;
+      const recordUsage = (ok: boolean, durationMs: number) => {
+        if (!nested) recordLocalToolCall({ tool: name, op: opForToolCall(name, handlerArgs[0]), ...surfaceMeta, ok, durationMs, mcpClient: hostApp() });
+      };
       let result: unknown;
       try {
         // Every Summer request the tool makes names it (core/agent-host.ts).
@@ -291,7 +315,7 @@ function installToolCallWrapper(server: McpServer): () => number {
           exception: error instanceof Error ? error.message : String(error),
           durationMs,
         });
-        recordLocalToolCall({ tool: name, ok: false, durationMs, mcpClient: hostApp() });
+        recordUsage(false, durationMs);
         throw error;
       }
       const durationMs = Date.now() - startedAt;
@@ -309,7 +333,7 @@ function installToolCallWrapper(server: McpServer): () => number {
       }
       try {
         recordMcpSession();
-        recordLocalToolCall({ tool: name, ok: !isError, durationMs, mcpClient: hostApp() });
+        recordUsage(!isError, durationMs);
         // Opt-in local trajectory capture: one JSONL line per tool call when
         // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a
         // no-op when the env var is unset.
@@ -390,10 +414,36 @@ function installToolCallWrapper(server: McpServer): () => number {
  * tests use it to count the live tool surface against
  * registry/generated/counts.json. Without a selection: the full profile.
  */
-export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
+export { resolveSurface, type SurfaceVersion };
+
+export interface CreateMcpServerOptions {
+  /** v4: the operation catalog surface (ops-surface.ts). Default v3 here; startMcpServer resolves v4 by default. */
+  surface?: SurfaceVersion;
+  /** Where v4 runs cloud operations (the hosted mount's client). */
+  cloud?: CloudCaller;
+  /** v4 only: list every local 3.x name too (the legacy toolset, legacy-toolset.ts). */
+  legacy?: boolean;
+}
+
+const NO_CLOUD: CloudCaller = {
+  call: async () => {
+    throw new OAuthError("store_login_required", "The hosted Summer server is not connected.", 'Recovery: run "summer login".');
+  },
+};
+
+export function createMcpServer(
+  selection: ToolSelection = FULL_SELECTION,
+  options: CreateMcpServerOptions = {}
+): {
   server: McpServer;
   getRegisteredToolCount: () => number;
+  /** v4: saves generated files on this machine (the mounted hosted tools share it). */
+  files: FileSaver;
 } {
+  const surface = options.surface ?? "v3";
+  // A profile without engine tools (assets) gets the no-engine instructions,
+  // playbook and task plan, so nothing points the agent at a tool it lacks.
+  const engine = !selection.toolsets || selection.toolsets.has("engine");
   const server = new McpServer(
     {
       name: "summer-engine",
@@ -401,11 +451,13 @@ export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
     },
     {
       instructions:
-        selection.toolsets && !selection.toolsets.has("engine") ? SUMMER_MCP_ASSETS_INSTRUCTIONS : SUMMER_MCP_INSTRUCTIONS,
+        surface === "v4"
+          ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
+          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS,
     }
   );
 
-  const getWrappedToolCount = installToolCallWrapper(server);
+  const getWrappedToolCount = installToolCallWrapper(server, { surfaceVersion: surface, profile: selection.profile });
   // Requests to Summer's servers name the agent app from the initialize handshake.
   registerMcpClientSource(() => server.server.getClientVersion());
 
@@ -414,7 +466,7 @@ export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
   registerVisualTools(server);
   registerSeeingTools(server);
   registerAuditTools(server);
-  registerProjectTools(server);
+  registerProjectTools(server, { engine });
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
@@ -431,9 +483,10 @@ export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
   registerUiTools(server);
   registerRuntimeTools(server);
   registerAppTools(server);
+  registerRouterTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
-  registerPlaybookPrompt(server);
+  registerPlaybookPrompt(server, { engine });
   // Strict providers (Kimi, OpenAI strict) reject tuple and $ref schemas.
   serveProviderSafeToolSchemas(server);
 
@@ -452,7 +505,18 @@ export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
     if (authority) tool.update({ annotations: annotationsFor(name, authority) });
   }
 
-  return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed };
+  // Without engine tools nothing imports a file into a project, so files save into it by default.
+  const files = new FileSaver({ saveByDefault: !engine });
+  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files });
+
+  return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed, files };
+}
+
+/** What the hosted tools a profile mounts are, for summer_store_tools. */
+function hostedToolsLabel(toolsets: ReadonlySet<string>): string | undefined {
+  if (toolsets.has("ship")) return "Summer store and publishing tools";
+  if (toolsets.has("tools")) return "Tool Factory tools (summer_tool_*) and asset editing tools";
+  return undefined;
 }
 
 export interface StartMcpServerOptions {
@@ -463,6 +527,8 @@ export interface StartMcpServerOptions {
   profile?: string;
   /** --toolsets / SUMMER_TOOLSETS (comma list; added to the profile). */
   toolsets?: string;
+  /** --surface / SUMMER_SURFACE: v4 (default) serves the operation catalog; v3 the 3.x tools. */
+  surface?: string;
 }
 
 export async function startMcpServer(
@@ -488,7 +554,11 @@ export async function startMcpServer(
     },
   });
 
-  const selection = resolveToolSelection({ profile: options.profile, toolsets: options.toolsets });
+  const surface = resolveSurface(options.surface);
+  // `legacy` is not a toolset of its own: it lists the 3.x names on the v4 surface.
+  const toolsetList = takeLegacyToolset(options.toolsets ?? process.env.SUMMER_TOOLSETS);
+  const legacy = surface === "v4" ? resolveLegacy(toolsetList.requested) : { on: false, reason: "off" as const };
+  const selection = resolveToolSelection({ profile: options.profile, toolsets: toolsetList.toolsets });
   if (selection.ignored.length > 0) {
     writeMcpStderr("mcp:unknown_toolsets", {
       ignored: selection.ignored,
@@ -496,7 +566,10 @@ export async function startMcpServer(
       toolsets: TOOLSETS,
     });
   }
-  const { server, getRegisteredToolCount } = createMcpServer(selection);
+  // v4 runs cloud operations through the hosted mount below, once it exists.
+  let hostedCall: CloudCaller["call"] | null = null;
+  const cloud: CloudCaller = { call: (name, args) => (hostedCall ? hostedCall(name, args) : NO_CLOUD.call(name, args)) };
+  const { server, getRegisteredToolCount, files } = createMcpServer(selection, { surface, cloud, legacy: legacy.on });
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {
@@ -509,20 +582,57 @@ export async function startMcpServer(
   // seconds for the mount (not under summer doctor, which times the list).
   // A profile mounts only its hosted toolsets, and never more tools in total
   // than PROFILE_TOOL_LIMIT.
-  const hosted = prepareHostedMount(server, undefined, {
+  // v4 mounts the hosted v4 surface (its direct tools for this profile;
+  // summer_search and summer_call stay local and forward to it).
+  // The legacy toolset (below) mounts after this mount, and again after a retry of it.
+  let legacyHosted: ReturnType<typeof prepareHostedMount> | null = null;
+  const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: v4HostedUrl(selection.profile) } : undefined, {
     ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
-    ...(selection.toolsets === null
-      ? {}
-      : { includeTool: (name: string) => selectionIncludes(selection, name, false), maxTools: PROFILE_TOOL_LIMIT }),
+    onMounted: () => void legacyHosted?.mount(),
+    ...(surface === "v4"
+      ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT, local: hostedFileTools(files) }
+      : selection.toolsets === null
+        ? {}
+        : {
+            includeTool: (name: string) => selectionIncludes(selection, name, false),
+            maxTools: PROFILE_TOOL_LIMIT,
+            hostedToolsLabel: hostedToolsLabel(selection.toolsets),
+          }),
   });
+  hostedCall = hosted.call;
+  // The legacy toolset also lists the hosted 3.x names this profile listed in
+  // 3.x, from the hosted 3.x surface, each running its 3.x tool, under the
+  // same limit as in 3.x. Its sign-in waits for the v4 mount's (a token
+  // refresh is not shared), so it starts at boot and the first tools/list
+  // still waits for it.
+  legacyHosted = legacy.on
+    ? prepareHostedMount(
+        server,
+        {
+          ...defaultHostedMountDependencies,
+          token: async () => {
+            await hosted.mount();
+            return defaultHostedMountDependencies.token();
+          },
+        },
+        {
+          ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
+          ...(selection.toolsets === null ? {} : { includeTool: (name: string) => selectionIncludes(selection, name, false), maxTools: PROFILE_TOOL_LIMIT }),
+          describe: legacyHostedDescription,
+        }
+      )
+    : null;
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
   void hosted.mount();
+  void legacyHosted?.mount();
   appendMcpLogEvent("mcp:ready", {
     version,
     pid: process.pid,
     profile: selection.profile,
+    surface,
+    ...(surface === "v4" ? { legacy: legacy.reason } : {}),
     toolCount: getRegisteredToolCount(),
   });
   process.stderr.write(`[summer-mcp] MCP server running v${version}.\n`);

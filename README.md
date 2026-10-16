@@ -4,12 +4,12 @@
 
 <img src="docs/brand/sun.png" alt="" width="128">
 
-### Let any AI coding agent build games in Summer Engine.
+### The game engine built for AI.
 
-**MCP server · game-dev skills · `summer` CLI. One npm package: `summer-engine`.**
+**Any agent builds, tests and publishes a full multiplayer game. MCP server · game-dev skills · `summer` CLI, in one npm package: `summer-engine`.**
 
 [![npm](https://img.shields.io/npm/v/summer-engine?label=npm&color=f7b731)](https://www.npmjs.com/package/summer-engine)
-[![downloads](https://img.shields.io/npm/dm/summer-engine?label=installs&color=f7b731)](https://www.npmjs.com/package/summer-engine)
+[![downloads](https://img.shields.io/npm/dm/summer-engine?label=downloads&color=f7b731)](https://www.npmjs.com/package/summer-engine)
 [![license](https://img.shields.io/badge/license-MIT-1a1a1a)](LICENSE)
 
 [**Website**](https://www.summerengine.com) · [**Docs**](https://docs.summerengine.com) · [**CLI setup**](https://www.summerengine.com/cli) · [**MCP setup**](https://www.summerengine.com/mcp)
@@ -18,13 +18,30 @@
 
 ---
 
+## Connect
+
+**Cloud work: `https://mcp.summerengine.com/mcp`.** Nothing to install. Add the URL to your agent and sign in to your Summer account once. Your agent then makes assets (images, 3D models, motion, sound effects, music, voices, video), searches and downloads your Summer asset library, plans games, and runs your projects, the store, publishing, prices, analytics, A/B tests, your team and Studio. It has no engine tools: for those, use the local server below.
+
+| Agent | Add the hosted server |
+|---|---|
+| Claude Code | `claude mcp add --transport http summer-cloud https://mcp.summerengine.com/mcp`, then `/mcp` to sign in |
+| Codex | `codex mcp add summer-cloud --url https://mcp.summerengine.com/mcp`, then `codex mcp login summer-cloud` |
+| Cursor | [Add to Cursor](https://cursor.com/install-mcp?name=summer-cloud&config=eyJ1cmwiOiJodHRwczovL21jcC5zdW1tZXJlbmdpbmUuY29tL21jcCJ9), or add `"summer-cloud": {"url": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.cursor/mcp.json` |
+| VS Code | [Add to VS Code](https://vscode.dev/redirect/mcp/install?name=summer-cloud&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.summerengine.com%2Fmcp%22%7D), or `code --add-mcp '{"name":"summer-cloud","type":"http","url":"https://mcp.summerengine.com/mcp"}'` |
+| Devin Desktop (formerly Windsurf) | add `"summer-cloud": {"serverUrl": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.codeium/windsurf/mcp_config.json` |
+| Claude Desktop, claude.ai | Settings > Connectors > Add custom connector, then paste the URL |
+
+**Engine work: `npx -y summer-engine@latest setup <agent> --yes`** (needs Node 20+). It writes the local server (`summer mcp`) into your agent's config with the skills. The local server drives the Summer Engine app on your machine: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login` it also runs every cloud operation, so your agent needs one server. Or paste the prompt in [Get started](#get-started-one-prompt) and your agent does every step.
+
+**ChatGPT and Claude's connector directory** use two reviewed store versions with a fixed tool list: `https://mcp.summerengine.com/chatgpt` (games, assets and generation; no publishing, no billing links) and `https://mcp.summerengine.com/directory` (the store, publishing and Grow reads; no image, 3D, audio or video generation). They keep their 3.x tool names and have no `summer_search` or `summer_call`. For everything else, use `/mcp`.
+
 ## What this is
 
-[Summer Engine](https://www.summerengine.com) is a desktop game engine. This repo connects your AI coding agent (Claude Code, Cursor, Codex, Copilot and many more) to it, the way an MCP server for Blender connects an agent to Blender, but for making whole games.
+[Summer Engine](https://www.summerengine.com) is the game engine built for AI. This repo connects your AI coding agent (Claude Code, Cursor, Codex, Copilot and many more) to it: the agent builds a whole game in the engine, tests it, publishes it to [summer.games](https://summer.games) and reads how players play it.
 
 | Part | What it does |
 |---|---|
-| **MCP server** (`summer mcp`) | Tools your agent calls to drive the running editor: build scenes, write scripts, play the game, take screenshots, read errors. |
+| **MCP server** (`summer mcp`) | Tools your agent calls to drive the running editor: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login` it also runs the cloud operations: assets, plans, the store, publishing, prices and analytics. |
 | **Skills** | Game-dev know-how your agent loads: movement, combat, multiplayer, VFX, audio, UI, level design and more. |
 | **CLI** (`summer`) | Installs the engine, signs you in, sets up your agent, creates projects from templates and publishes games. |
 
@@ -34,13 +51,30 @@ With Summer installed, your agent can:
 
 - **Build real games**: scenes, scripts, physics and UI, through live MCP tools.
 - **Build multiplayer games** on Summer's own networking: matchmaking, parties, leaderboards, player data and world saves.
-- **Add analytics** to see how players play.
-- **Publish games** to the [summer.games](https://summer.games) store.
+- **Add analytics** to the game and read it back: store page views, launches, play sessions, play time and your own events.
+- **Publish games** to the [summer.games](https://summer.games) store: the store page, art, the build, a private preview link and the release. Summer's store review runs before anything goes live.
 - **Use proven recipes**: skills, templates and references, all searchable through one index.
 - **Check its own work**: play the game, take screenshots, read the debugger, press real keys.
 - **Resume any project**: `.summer/` project memory lets a fresh agent pick up where the last one stopped.
 
-You stay in control of every change and release. Summer never publishes, installs, or spends without your explicit confirmation, and library entries are structurally prevented (by a capability lint in CI) from instructing agents to touch the network, credentials, or package managers.
+### You decide what your agent may do
+
+Studio > Settings > Agent permissions has six switches. They apply to every app you connect, like Claude or ChatGPT. These defaults apply now. You can change them soon. Until then, Summer Games still asks the game's owner before an agent publishes, and price, A/B test and member changes ask you first.
+
+| Switch | Default | What the agent may do without asking |
+|---|---|---|
+| Make and build | on | Edit drafts, scenes, plans and uploads, and start builds. |
+| Spend credits | on | Generate assets and run paid builds, within your credits and your auto top-up limit. |
+| Publish | on | Publish store pages, versions and releases. Summer's store review still runs first. |
+| Prices and live changes | on | Change prices and sales, start or stop A/B tests, change member roles. |
+| Delete for good | off: asks | Delete games, assets, pages and releases. |
+| Contact people | off: asks | Send invites and other emails to real people. |
+
+When a switch is off, the agent asks you first. It gives you a link (`https://www.summerengine.com/studio/approvals/<id>`), and an open Studio tab shows the request with Approve and Decline. Nothing changes until you approve. The agent always asks before it changes agent permissions or auto top-up, enters a jam, or changes the analytics event limit. Studio > Settings > Agent activity lists what agents changed or asked for, newest first, with Undo for prices, sales, country prices, member roles, team names and the event limit.
+
+Generation and paid builds spend your Summer credits. Turn on auto top-up in Studio Billing: when your credits fall below an amount you pick, Summer adds the amount you choose, up to a monthly limit you set. Agents can never change auto top-up on their own. When credits run out, your agent gets the error `no_credits` with one link: https://www.summerengine.com/studio/credits.
+
+Summer never installs software without your explicit confirmation. Library entries are structurally prevented (by a capability lint in CI) from instructing agents to touch the network, credentials, or package managers.
 
 ## Get started: one prompt
 
@@ -69,23 +103,26 @@ In Claude Code, type:
 /plugin install summer --marketplace summerengine/summer
 ```
 
-Then type `/summer:start`. It signs you in and gets a first game playing in about five minutes: from a template that already plays, or from a board of concept art Summer draws for your idea right in the chat, built in the Summer Engine desktop app. The plugin brings Summer's skills and two MCP servers: `summer-engine` drives the desktop app (needs Node), and `summer-cloud` is Summer's hosted server (sign in once with `/mcp`). Use the plugin or `summer setup claude-code`, not both: they install the same skills.
+Then type `/summer:start`. It signs you in and gets a first game playing in about five minutes: from a template that already plays, or from a plan of concept art Summer draws for your idea right in the chat, built in the Summer Engine desktop app. The plugin brings Summer's skills and two MCP servers: `summer-engine` drives the desktop app (needs Node), and `summer-cloud` is Summer's hosted server (sign in once with `/mcp`). Use the plugin or `summer setup claude-code`, not both: they install the same skills.
 
 ### Only want assets?
 
-Sound effects, music, voices, images, 3D models and video are made on Summer's servers, so you do not need the Summer Engine app for them. Paste this instead:
+Sound effects, music, voices, images, 3D models, motion and video are made on Summer's servers, so you do not need the Summer Engine app for them. The quickest way is the hosted server in [Connect](#connect): no Node, no install. To get the asset skills too, paste this instead:
 
 > Connect Summer to this agent so I can make game assets. Read github.com/summerengine/summer, connect yourself to Summer and log me in. Skip the Summer Engine app and the starter project, I only want assets.
 
-The agent installs the skills and the MCP config and signs you in. It does not download the engine. Each asset lands in your Summer library, so a game project (in Summer Engine or anywhere else) can use it later.
+The agent installs the asset skills and the MCP config (summer-engine 4.0.0 or newer) and signs you in. It does not download the engine. Each asset lands in your Summer library as a normal file: GLB for 3D models, PNG, JPG or WebP for images, MP3 or WAV for audio, MP4 for video. The agent saves each file into your project (your engine's asset folder, or the folder you name), so any engine or web app can use it.
 
 ---
 
 ## AGENTS READING THIS: install playbook
 
+<details>
+<summary>The step-by-step install playbook your agent runs (humans can skip it)</summary>
+
 You are an AI coding agent. The user told you to install Summer Engine. **Run this playbook via your shell**: Bash on macOS/Linux or PowerShell on Windows. Detection first, then only install what's missing. (Once installed, your working guide is [`AGENTS.md`](AGENTS.md).)
 
-**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--assets-only` added, and Step 3, then stop installing. `--assets-only` writes the `assets` tool profile (generation and asset tools, no engine tools), installs only the asset skills, and leaves out Summer Games (it is for playing with friends, and leaving it out saves a sign-in). Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset tools (`summer_generate_audio`, `summer_generate_sfx_choices`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_video`, `summer_search_assets`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, call the same tool from the shell: `npx -y summer-engine@latest tool <slug> --args '<json>'` (`summer tool --list` prints the slugs). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest tool generate-sfx-choices --args '{"text":"sword clash"}'`. Each asset lands in the user's Summer library.
+**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--assets-only` added, and Step 3, then stop installing. `--assets-only` writes the `assets` tool profile (generation and asset tools, no engine tools), installs only the asset skills, and leaves out Summer Games (it is for playing with friends, and leaving it out saves a sign-in). Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset operations (`assets.generate_audio`, `assets.generate_sfx_choices`, `assets.generate_image`, `assets.generate_3d`, `assets.generate_video`, `assets.search`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, run the same operation from the shell: `npx -y summer-engine@latest <area> <action> --<field> <value>` (`summer ops search <words>` finds one and its input). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest assets generate-sfx-choices --text "sword clash"`. Each asset lands in the user's Summer library; `out` (a folder or a file path) on the call saves it on this machine and the answer gives `localPath`, and `assets.get` returns a `downloadUrl` for use outside Summer Engine.
 
 **Windows PowerShell: type `npx.cmd` wherever this playbook says `npx`.** Plain `npx` in PowerShell runs `npx.ps1`, which Windows blocks by default ("running scripts is disabled on this system"). `npx.cmd` is the same command without that block. Never change the execution policy or turn off Windows Defender to work around it. Bash (including Git Bash on Windows) can use plain `npx`.
 
@@ -149,7 +186,7 @@ Replace `claude-code` with the user's actual agent: `claude-desktop`, `codex`, `
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
-**Do NOT run `/plugin install` or any slash command.** The CLI is the supported install path; the plugin marketplace is only for users who ask for it.
+**Do NOT run `/plugin install` or any other slash command.** An agent cannot type them; this playbook installs through the CLI. The Claude Code plugin (above) is the user's own one-step choice. If the user already installed it, skip Step 1: the plugin and `summer setup` install the same skills.
 
 ### Step 2: Install the engine app (only if `engine-install` needs attention)
 
@@ -216,7 +253,7 @@ Once `local-api` is `ok`, MCP tools are safe to call.
 
 ### Step 6: Brainstorm the game, then build
 
-Now you have skills + MCP. **Don't jump into `summer create` content from a vague prompt**. Call `summer_start_game_task` with the user's goal, then invoke the recommended skill. For vague "make a game" requests, that should usually be the `brainstorm-game` skill (installed skills are invoked by their bare slug — there is no `summer:` prefix). It scopes mechanics, art direction, and the V1 cut list, and writes the result to `.summer/GameSoul.md`. Every other Summer skill reads from that file.
+Now you have skills + MCP. **Don't jump into `summer create` content from a vague prompt**. Plan the task first: `summer_call` with `{"op": "docs.plan", "input": {"goal": "<the user's goal>"}}` (from a shell: `summer plan <goal>`), then invoke the recommended skill. For vague "make a game" requests, that should usually be the `brainstorm-game` skill (installed skills are invoked by their bare slug — there is no `summer:` prefix). It scopes mechanics, art direction, and the V1 cut list, and writes the result to `.summer/GameSoul.md`. Every other Summer skill reads from that file.
 
 Project memory lives in `.summer/` as readable Markdown. Use `.summer/memory/` for locked facts that should not drift across sessions, such as character voice IDs, world canon, and provider bindings. Users can inspect it with `summer memory`; agents should read relevant memory surfaced by `summer_get_project_context` before changing creative/audio/dialogue/level/character work.
 
@@ -235,12 +272,14 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't drop `@latest` from the npx commands.** `npx -y summer-engine` (no version pin) serves whatever's in npx's local cache, which can be a stale older version. The `@latest` tag forces npm to re-resolve from the registry. If a user reports "unknown command 'doctor'" or sees a much smaller skill list than expected, they got cache-served. Tell them to run `npx clear-npx-cache` then retry with `@latest`.
 - **Don't call MCP tools (`summer_get_scene_tree`, etc.) until `local-api` is `ok`.** The engine takes a few seconds to boot after `summer run`. Use Step 5b's wait-loop.
 - **Don't `summer create` without `cd`'ing to a stable parent directory first.** It writes into CWD; agents that start in a temp dir will leave the project there.
-- **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
+- **Don't loop `summer login` if it times out.** It waits up to 15 minutes for the account sign-in. Re-run it once and tell the user to finish "Yes, Sign In" in the browser tab it opens; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke the `brainstorm-game` skill first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
 **Using a different agent?** Use its id from Step 1 (aliases such as `devin`, `agy` and `droid` also work; see the [CLI reference](#cli-reference)). Skill folders vary per agent; the CLI handles the difference, and [`integrations/README.md`](integrations/README.md) documents exactly what gets written where for every client. After install, **Cline users should restart VS Code** so the extension reloads its MCP config. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it.
 
 If the user wants `summer` on their `PATH` for everyday terminal use, a global npm install works too. The agent flow doesn't need it.
+
+</details>
 
 ---
 
@@ -250,8 +289,23 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (`summer login` signs you in to the store too). Nothing is submitted silently. |
-| **Grow** | Planned | Analytics, retention and live-ops tooling will arrive as new library entries. Not part of this package yet. |
+| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `store.upload_file` uploads it after you confirm the exact game, file and version. `store.update_listing`, `store.set_art` and `store.set_trailer` write the store page (text, tags, long description, support contact, release date, art, trailer); `store.preview_link` makes a private preview link; `store.publish` sends the game to Summer's store review; `store.status` shows the review and the releases; `store.release` ships an approved build. With the Publish switch off, the agent asks you first. |
+| **Grow** | Available | `analytics.overview` and `analytics.summary` read store page views, launches, play sessions, play time and your game's own events (see the `summer-analytics` skill). `pricing.*` sets prices, country prices and sales; `experiments.*` runs store page A/B tests; `games.members` and the member operations manage who works on a game; `marketing.*` applies for Summer's growth services. |
+
+These are operations on the hosted Summer server; the local server runs them too after `summer login`.
+
+## How agents call Summer
+
+Every capability is an operation named `<area>.<action>`: `assets.generate_image`, `store.publish`, `pricing.set_base`.
+
+- **Direct tools** cover the common jobs: `summer_` plus the operation name, with `_` for `.` (`games.list` is `summer_games_list`). Engine tools keep their 3.x names (`summer_add_node`, `summer_run_script`, `summer_play`, `summer_screenshot`), and makers keep `summer_tool_<slug>`.
+- **Everything else**: `summer_search` finds the operation for a job you describe in words and returns its exact input. `summer_call` runs it: `{op, input, dryRun?, idempotencyKey?}`.
+- **One answer shape**: `done` with a `result`, `running` with a job (`summer_jobs_wait` waits up to 50 seconds per call), `needs_approval` with a link for you, `dry_run` with a preview, or an error with a `code`, a `message` and exactly one `next` step.
+- **Safe to try**: every change takes `dryRun: true` (it changes nothing and spends nothing; a spend shows your own credit estimate) and an `idempotencyKey`, so a retry never runs twice.
+- **Error codes**: `invalid_input`, `not_signed_in`, `forbidden`, `not_found`, `conflict`, `idempotency_conflict`, `in_progress`, `rate_limited`, `no_credits`, `over_limit`, `engine_not_running`, `engine_lacks_op`, `unsupported`, `not_in_profile`, `moved`, `outcome_unknown`, `unavailable`, `internal`.
+- **3.x names keep working** for all of 4.x: `summer_call` accepts them on every server, `summer mcp --toolsets legacy` lists them on the local server, and the local server lists them by itself while your installed skills are older than 4.0. The map from old names to operations is [`registry/operations/legacy-names.json`](registry/operations/legacy-names.json).
+
+The same operations run from a shell: `summer <area> <action> --<field> <value>` (for example `summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9`), with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json` (prints the answer only; exit code 0 for any `ok` answer, 1 for an error). `summer whoami` shows who is signed in. `summer ops search <words>` and `summer ops describe <op>` find an operation and its input.
 
 ## What's in this repo
 
@@ -269,8 +323,13 @@ summer/
 ├── registry/          # schemas + generated/ (the compiled index everything reads; never hand-edited)
 ├── evals/             # evidence the library works: routing, skills, examples, templates, tools, end-to-end
 ├── integrations/      # one folder per supported agent: what gets installed where
+├── commands/          # the shipped slash commands (/summer, /gameskill, the plugin's /summer:start)
+├── hooks/             # lifecycle hooks: session-start orientation, opt-in pre-commit doctor
+├── assets/            # files the tools ship with: offline API docs, engine-side probe and audit scripts
 ├── scripts/           # generate-registry (the compiler), validate-library (schema + capability lint)
-└── docs/              # development guide, migration notes, design contract
+├── tests/             # v2 prose behaviour specs (the code tests sit next to the code in src/)
+├── docs/              # development guide, migration notes, design contract
+└── .claude-plugin/ …  # plugin manifests for Claude Code, Codex, Cursor and Factory (generated)
 ```
 
 One rule ties it together: **every entry is described once** (a `resource.yaml` in `library/`), and the registry compiler generates everything else — the searchable index, every agent plugin manifest, the skill installer data, counts, and legacy aliases. CI fails on any drift. See [`docs/design/CONTRACT.md`](docs/design/CONTRACT.md).
@@ -286,7 +345,7 @@ Six kinds of entry, all searchable through the same generated index:
 - **References** — facts: engine version compatibility, GDScript style, tool references.
 - **Tools** — the executable capabilities themselves, described in the same registry so agents can discover what they can do.
 
-Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) through `summer_search_library` (or `summer tool search-library`) by summary, use-cases, and facets, then load the hit with `summer_read_library`. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
+Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) through `summer_docs_search` (or `summer tool search-library`) by summary, use-cases, and facets, then load the hit with `summer_docs_read`. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
 
 ## The ecosystem
 
@@ -330,7 +389,7 @@ Official entries land in this repo by PR, gated by schema validation and the cap
 
 ## Library feedback
 
-- Agents can report how an entry worked (`summer_library_feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
+- Agents can report how an entry worked (`summer_call` with `docs.feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
 - Today those reports land in a write-only mailbox that maintainers read. Only verified outcomes count; popularity never ranks an entry.
 
 ## What gets downloaded
@@ -344,7 +403,7 @@ We tell you before we touch your disk.
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
 | Store sign-in | ~2 KB | `summer login` (right after the account sign-in), or `summer login --store` alone | Browser OAuth (PKCE, loopback port 47615-47617) to `~/.summer/oauth-token` with its refresh token, plus this machine's public client id in `~/.summer/oauth-client`; never replaces the auth token |
 | Skill files | small, bundled | in the npm package | no extra network call |
-| Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
+| Generated assets (3D / image / audio / video) | varies | only on explicit `assets.generate_*` calls | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded, not collected:
@@ -358,19 +417,20 @@ Not downloaded, not collected:
 |---|---|---|
 | **Summer** (this repo: CLI, MCP server, library, integrations) | **MIT** | [summerengine/summer](https://github.com/summerengine/summer) |
 | **Summer Engine app** (the desktop editor and runtime) | free to download, closed source for now | [summerengine.com/download](https://summerengine.com/download) |
-| **Hosted Summer integrations** | availability and terms vary by rollout; preview features are labeled in the CLI | [summerengine.com/pricing](https://summerengine.com/pricing) |
+| **Hosted Summer services** (store, publishing, Grow, multiplayer hosting, AI generation) | run under your Summer account | [summerengine.com/pricing](https://summerengine.com/pricing) |
 
-A command, tool contract, or roadmap entry does not by itself mean a hosted
-service is production-ready. Managed publishing, hosting, store submission, and
-matchmaking are not promised by this package.
+Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 
 ## CLI reference
 
 | Command | What it does |
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
-| `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow tools in the same browser. `--no-store` skips the store step. |
-| `summer login --store` | Only the store sign-in (`summer_publish_build`, the store, publishing, board and Grow tools). |
+| `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow operations in the same browser. `--no-store` skips the store step. |
+| `summer login --store` | Only the store sign-in (`store.upload_file` and the cloud operations: plans, the store, publishing and Grow). |
+| `summer whoami` | The signed-in account, its plan and credits. |
+| `summer <area> <action> [--<field> <value> …] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]` | Run any operation from the shell, for example `summer assets generate-image --prompt "…"` or `summer store status --game-id <id>`. |
+| `summer ops search <words…>` / `summer ops describe <op>` | Find the operation for a job, or print one operation's input, effect and approval. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer status` | Engine state, port, auth. |
@@ -388,7 +448,7 @@ matchmaking are not promised by this package.
 | `summer skills install <name>` | Install one. |
 | `summer skills install --all --agent <agent>` / `--recommended` / `--assets` [`--stable-only`] | Install every skill (preview included and labelled), only the recommended subset, or only the asset skills; `--stable-only` skips preview skills. |
 | `summer tool <name> --args '<json>'` | Run any Summer tool from the shell — the same implementation the MCP tool uses. `summer tool --list` prints them all. |
-| `summer mcp [--project <path> \| --instance <id>] [--profile <p>] [--toolsets <list>]` | Start MCP; normally auto-binds from the agent's project directory. `--profile` (env `SUMMER_PROFILE`): `full` (every tool, the default), `engine` (engine, generation and store tools; fits the per-request tool cap of clients such as VS Code Copilot, which is 128), `assets` (generation and asset tools, no engine tools). `--toolsets` (env `SUMMER_TOOLSETS`) adds toolsets by name: `core`, `assets`, `tools`, `engine`, `ui`, `ship`, `uploads`, `apps`, `board`, `grow`, `studio`, `cloud`, `other`, or `all`. |
+| `summer mcp [--project <path> \| --instance <id>] [--profile <p>] [--toolsets <list>] [--surface v4\|v3]` | Start MCP; normally auto-binds from the agent's project directory. `--surface` (env `SUMMER_SURFACE`): `v4` (the default: engine tools, `summer_docs_search`, `summer_docs_read`, `summer_search` and `summer_call`) or `v3` (the 3.x tools). `--profile` (env `SUMMER_PROFILE`): `full` (every tool, the default), `engine` (engine, generation and store tools; fits the per-request tool cap of clients such as VS Code Copilot, which is 128), `assets` (generation and asset tools, no engine tools). `--toolsets` (env `SUMMER_TOOLSETS`) adds toolsets by name: `core`, `assets`, `tools`, `engine`, `ui`, `ship`, `uploads`, `apps`, `board`, `grow`, `studio`, `cloud`, `router`, `other`, or `all`. `--toolsets legacy` also lists every 3.x tool name. |
 | `summer mcp setup <agent>` | Deprecated alias of `summer setup <agent>`. |
 | `summer setup <agent> [--yes] [--force] [--recommended] [--stable-only] [--no-games] [--profile <p>] [--assets-only]` | One shot: MCP config + all skills, preview included (`--recommended` for the subset, `--stable-only` to skip preview) + doctor. Idempotent. `--profile` writes a tool profile into the agent's MCP entry (`SUMMER_PROFILE`); `vscode-copilot` gets `engine` unless you pass `--profile full`, every other agent gets every tool. `--assets-only` is the assets path: the `assets` profile, only the asset skills, no Summer Games. For most agents (not Claude Desktop, Visual Studio, Qoder, Rovo Dev, LM Studio or the legacy targets) it also adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) unless the same URL is already listed; you sign in once through summer.games. `--no-games` skips it. |
 
@@ -398,7 +458,7 @@ Agents: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigra
 
 The library grows by PR, and CI holds the line:
 
-1. **Report a bad entry.** Open an issue quoting the prompt and the response — or, if you're an agent, file `summer_library_feedback` after a verified failure.
+1. **Report a bad entry.** Open an issue quoting the prompt and the response — or, if you're an agent, file `docs.feedback` through `summer_call` after a verified failure.
 2. **Improve or add an entry.** Add `library/<kind>/<slug>/` with a `resource.yaml` (plus `SKILL.md` for skills). Run `npm run validate:library`, regenerate with `node scripts/generate-registry/cli.ts`, and commit both. Schema, capability lint, and registry parity are enforced in CI.
 
 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) is the contributor guide; [`docs/design/CONTRACT.md`](./docs/design/CONTRACT.md) is the rulebook.

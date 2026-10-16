@@ -21,6 +21,16 @@ import { join } from "node:path";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { EngineApiClient } from "../api-client.js";
 import {
+  CLI_RECOVERY,
+  codedFailure,
+  codeForStatus,
+  describeNetworkError,
+  engineNotRunningFromConnectError,
+  networkDetails,
+  NOT_SIGNED_IN,
+  type SummerErrorCode,
+} from "../error-codes.js";
+import {
   missingEngineEventsResult,
   missingEngineOpResult,
   type MissingOpResult,
@@ -101,8 +111,8 @@ import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
-  buildRunSceneScriptOp,
 } from "./scene-script.js";
+import { runSceneScriptOn } from "./scene-script-target.js";
 import {
   CAMERA_BOOKMARK_ACTIONS,
   CAMERA_BOOKMARK_FALLBACK,
@@ -241,6 +251,7 @@ import {
   appToolsArgsSchema,
 } from "./apps.js";
 import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "./enable-plugin.js";
+import { ROUTER_OPERATIONS } from "../router/operations.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -265,8 +276,6 @@ export interface ToolDispatchEntry {
 /** Dispatch-level failure with a user-facing message (no stack needed). */
 export class ToolDispatchError extends Error {}
 
-/** The local engine is not reachable — a clean state, not a crash. */
-export class EngineUnavailableError extends ToolDispatchError {}
 
 /** A tool failed with a structured receipt that `summer tool` prints whole
  *  (JSON on stdout, exit 1) instead of flattening to `message`: every engine
@@ -284,6 +293,25 @@ export class ToolResultError extends ToolDispatchError {
   }
 }
 
+/** A shared failure (core/error-codes.ts) — not signed in, no credits,
+ *  network — printed as `{ok:false, code, error, recovery}` with the shell
+ *  wording of the next step. */
+export class CodedToolError extends ToolResultError {
+  constructor(code: SummerErrorCode, message: string, extra: Record<string, unknown> = {}, recovery: string = CLI_RECOVERY[code]) {
+    super(codedFailure(code, message, extra, recovery), message);
+  }
+}
+
+/** The local engine is not reachable — a clean state, not a crash. Prints
+ *  `{ok:false, code:"engine_not_running", error, recovery, hint}`. */
+export class EngineUnavailableError extends CodedToolError {
+  constructor(message: string) {
+    super("engine_not_running", message, {
+      hint: "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it.",
+    });
+  }
+}
+
 export function createDefaultDispatchContext(): ToolDispatchContext {
   let cached: EngineApiClient | null = null;
   return {
@@ -295,12 +323,11 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
       } catch (error) {
         const reason =
           error instanceof Error ? error.message : String(error);
-        throw new EngineUnavailableError(
-          "Summer Engine is not running (or no project is open).\n" +
-            `${reason}\n` +
-            "Start it with 'summer run' or open the project in the Summer desktop app, then retry.\n" +
-            "Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it."
-        );
+        // Several editors open (or another selection problem) already says
+        // how to pick one; only "nothing reachable" is engine_not_running.
+        const notRunning = engineNotRunningFromConnectError(reason);
+        if (!notRunning) throw new ToolDispatchError(reason);
+        throw new EngineUnavailableError(notRunning.message);
       }
     },
   };
@@ -464,12 +491,17 @@ async function dispatchUiOp(ctx: ToolDispatchContext, built: BuiltUiOp): Promise
 // ---------------------------------------------------------------------------
 async function requireToken(): Promise<string> {
   const token = await getAuthToken();
-  if (!token) {
-    throw new ToolDispatchError(
-      "Not signed in. Run 'summer login' first — these tools require a Summer Engine account."
-    );
-  }
+  if (!token) throw new CodedToolError("not_signed_in", NOT_SIGNED_IN);
   return token;
+}
+
+/** A non-OK Summer web reply: 401 and 402 carry the shared codes. */
+function gatewayFailure(status: number, data: DispatchArgs): ToolDispatchError {
+  const message = String(data.message || data.error || `Request failed (${status})`);
+  const code = codeForStatus(status);
+  if (code === "not_signed_in") return new CodedToolError(code, message, { status }, "Run: summer login --force");
+  if (code) return new CodedToolError(code, message, { status });
+  return new ToolDispatchError(message);
 }
 
 function gatewayHeaders(token: string, endpoint: string): Record<string, string> {
@@ -508,16 +540,10 @@ async function gatewayGet(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new ToolDispatchError(
-      `Request failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new CodedToolError("unavailable", `Request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
-  if (!res.ok) {
-    throw new ToolDispatchError(
-      String(data.message || data.error || `Request failed (${res.status})`)
-    );
-  }
+  if (!res.ok) throw gatewayFailure(res.status, data);
   return data;
 }
 
@@ -540,21 +566,10 @@ async function gatewayPost(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new ToolDispatchError(
-      `Generation request failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new CodedToolError("unavailable", `Generation request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
-  if (!res.ok) {
-    let message = String(data.message || data.error || `Request failed (${res.status})`);
-    if (res.status === 402) {
-      message = `${message} — insufficient credits; top up or upgrade on the Summer dashboard.`;
-    }
-    if (res.status === 401) {
-      message = `${message} — auth token expired; run 'summer login' again.`;
-    }
-    throw new ToolDispatchError(message);
-  }
+  if (!res.ok) throw gatewayFailure(res.status, data);
   return data;
 }
 
@@ -568,17 +583,20 @@ async function pollGenerationJob(
   const deadline = Date.now() + maxWaitMs;
   let interval = intervalMs;
   while (Date.now() < deadline) {
-    const res = await fetch(
-      `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
-      {
-        headers: gatewayHeaders(token, "/api/mcp/jobs"),
-        signal: AbortSignal.timeout(15_000),
-      }
-    );
-    const data = await readJsonBody(res);
-    if (!res.ok) {
-      throw new ToolDispatchError(String(data.message || "Job poll failed"));
+    let res: Response;
+    try {
+      res = await fetch(
+        `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+        {
+          headers: gatewayHeaders(token, "/api/mcp/jobs"),
+          signal: AbortSignal.timeout(15_000),
+        }
+      );
+    } catch (err) {
+      throw new CodedToolError("unavailable", `Job poll failed: ${describeNetworkError(err)}`, { jobId, ...networkDetails(err) });
     }
+    const data = await readJsonBody(res);
+    if (!res.ok) throw gatewayFailure(res.status, { message: "Job poll failed", ...data });
     if (data.status === "completed") return data;
     if (data.status === "failed") {
       throw new ToolDispatchError(String(data.error || "Job failed"));
@@ -587,8 +605,18 @@ async function pollGenerationJob(
     interval = Math.min(interval * 1.2, 15_000);
   }
   throw new ToolDispatchError(
-    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: summer tool check-job --json '{"jobId":"${jobId}"}'`
+    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: ${cliCheckJobCommand(jobId)}`
   );
+}
+
+function cliCheckJobCommand(jobId: string): string {
+  return `summer tool check-job --args '{"jobId":"${jobId}"}'`;
+}
+
+/** generate-3d / generate-motion return the job at once, like the MCP face;
+ *  `--args '{"wait":true,…}'` blocks instead. */
+function cliCheckJobNext(jobId: string): string {
+  return `The job runs on Summer's servers. Check it with: ${cliCheckJobCommand(jobId)}`;
 }
 
 async function searchAssetsGateway(params: {
@@ -629,6 +657,10 @@ async function gatewayReply(call: () => Promise<DispatchArgs>): Promise<GatewayR
     return { data: await call(), status: 200 };
   } catch (error) {
     if (!(error instanceof ToolDispatchError)) throw error;
+    if (error instanceof CodedToolError) {
+      const { code, recovery } = error.result as { code: SummerErrorCode; recovery: string };
+      return { error: error.message, status: 0, code, recovery };
+    }
     return { error: error.message, status: 0 };
   }
 }
@@ -1282,7 +1314,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       options,
     });
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (args.wait === false || !jobId) return result;
+    if (args.wait !== true || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId);
     return { ...final, jobId };
   }),
@@ -1305,7 +1337,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if ("error" in built) throw new ToolDispatchError(built.error);
     const result = await gatewayPost("/api/mcp/generate/motion", built.body);
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (!parsed.wait || !jobId) return result;
+    if (!parsed.wait || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId, 600_000);
     return { ...final, jobId };
   }),
@@ -1589,19 +1621,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene scripting ---
-  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against the open scene", true, async (args, ctx) => {
+  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against scenePath (or the open scene)", true, async (args, ctx) => {
     const client = await ctx.engine();
     const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
     if (missing) refuseMissingOp(missing);
     const undo = optStr(args, "undo");
-    const { op, timeoutMs } = buildRunSceneScriptOp({
-      source: str(args, "source"),
-      max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
-      checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
-      undo: undo === "action" || undo === "none" ? undo : undefined,
-    });
     return requireSupportedOp(
-      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      await runSceneScriptOn(client, {
+        scenePath: optStr(args, "scenePath"),
+        source: str(args, "source"),
+        max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
+        checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
+        undo: undo === "action" || undo === "none" ? undo : undefined,
+      }),
       "RunSceneScript",
       RUN_SCRIPT_FALLBACK
     );
@@ -2089,6 +2121,21 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       agent_model: optStr(args, "agent_model") ?? "unknown",
     });
   }),
+  // Summer Router (core/router/operations.ts): the project-side operations, the same functions as the MCP face.
+  ...([
+    ["summer_router_setup", "Make Claude Code or Codex ready for Summer Router (MCP entry and skills)"],
+    ["summer_router_add_character", "Write ai/characters/<id>.json from a Summer Router template"],
+    ["summer_router_check", "Check Summer Router characters and their GDScript tool handlers (offline)"],
+    ["summer_router_push", "Check, then save the Summer Router characters on Summer for the game"],
+    ["summer_router_pull", "Write the game's Summer Router characters from Summer into ai/characters/"],
+    ["summer_router_doctor", "Every Summer Router check for this project in one list"],
+  ] as const).map(([name, summary]) =>
+    entry(name, summary, false, async (args) => {
+      const result = await ROUTER_OPERATIONS[name](args);
+      if (result.ok !== true) throw new ToolResultError(result, String(result.message));
+      return result;
+    })
+  ),
 ];
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 id: skill/voice-and-mic-permissions
 kind: skill
 version: 0.1.0
-summary: "Use the microphone in a Summer game the safe way: declare it, ask only from a talk tap, keep a text path, never touch OS permissions."
+summary: "Use the microphone in a Summer game safely: ask only from a talk tap, keep a text path, never touch OS permissions."
 use_when:
   - adding a talking AI character the player speaks to
   - voice commands, shout or sing mechanics, or a mic level meter

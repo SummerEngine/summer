@@ -1,11 +1,11 @@
 ---
 name: music-track
-description: "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear."
+description: "Generate a music track: game loops of 30s or more with a loop point, or linear cinematic cues."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["audio/music/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -126,18 +126,18 @@ Show the prompt:
 > `85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop`
 > Duration 60s. This uses credits. Generate?
 
-The `music` capability reads the description from **`prompt`**, not `text` — the mirror image of `sound_effects`. Passing `text` here is a 400 `prompt_required`.
+The `music` capability reads the description from **`prompt`**, not `text` — the mirror image of `sound_effects`. Without `prompt` the call is refused (`prompt_required`).
 
 ```
-summer_generate_audio(
+assets.generate_audio({
   capability: "music",
   prompt: "85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop",
   durationSeconds: 60
-)
-// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/music/calm_exploration.mp3")
+})
+// Then: summer_import_from_url(url: "<asset.fileUrl>", path: "res://audio/music/calm_exploration.mp3")
 ```
 
-`durationSeconds` is clamped to 3–600. Music comes back as MP3 (`audio/mpeg`), so a `.mp3` target path is correct.
+`durationSeconds` is clamped to 3–600, and a longer track costs more: `dryRun: true` returns the `estimate` in credits first. Music comes back as MP3 (`audio/mpeg`), so a `.mp3` target path is correct.
 
 ### 7. Mark the loop point in Summer Engine
 
@@ -161,14 +161,19 @@ For seamless looping, the cleaner option is to ask the model to generate a cell 
 
 ### 8. Wire it as `AudioStreamPlayer` on the `Music` bus
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent=".", type="AudioStreamPlayer", name="MusicCalm")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="stream", value="res://audio/music/calm_exploration.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="bus", value="Music")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="volume_db", value=-8.0)
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="autoplay", value=true)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "MusicCalm", null, {
+        "stream": load("res://audio/music/calm_exploration.mp3"),
+        "bus": "Music",
+        "volume_db": -8.0,
+        "autoplay": true,
+    })
+    ctx.save_scene()
+""")
 ```
 
 Music is `AudioStreamPlayer` (not 2D / 3D) — non-positional. The bible's `Music -8 dB` mix sits the music behind SFX where it belongs.
@@ -256,6 +261,10 @@ Cutscene (cinematic):   varies tempo, D minor, 4/4, solo piano opens,
 - **Clip is too long.** Trim the tail in the import dock with `loop_offset`, or in an audio editor.
 - **Track sounds nothing like the references.** Re-read the bible; the prompt may be missing the anchor instrument. Add it explicitly.
 - **Track has unexpected vocals.** Add `no vocals, instrumental only` to the prompt.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (loop point, `AudioStreamPlayer`, crossfade script). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. For a loop track, tell them it is made to loop.
 
 ## Fallback (no MCP)
 

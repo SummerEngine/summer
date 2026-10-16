@@ -1,0 +1,307 @@
+import { Command } from "commander";
+import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
+import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
+import { answerOfLocalFailure, errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
+import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
+import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
+import { loadLibraryIndex } from "../../core/library-search.js";
+import { FileSaver, withOutField } from "../../core/ops/save-files.js";
+import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+
+/**
+ * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
+ *
+ *   summer <area> <action> [--<field> <value> ...] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]
+ *   summer whoami
+ *   summer ops search <words...> | summer ops describe <op>
+ *
+ * Engine and local operations run in this process (the same functions
+ * `summer tool` runs); cloud operations run on the hosted Summer server
+ * through its summer_call, with the person's sign-in.
+ */
+
+/** Areas with operations today; CLI command words stay out of this list. */
+export const CLI_AREAS = [
+  "team", "profile", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
+  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
+  "plugins", "engine", "account", "router",
+] as const;
+
+type JsonSchema = { type?: string | string[]; properties?: Record<string, JsonSchema>; items?: JsonSchema };
+
+const RESERVED_FLAGS = new Set(["json", "dry-run", "wait", "idempotency-key", "input"]);
+const camel = (flag: string) => flag.replace(/-([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase());
+
+/** A flag's field: camelCase (`--scene-path` is scenePath), or snake_case when the schema names it so (`--look-at` is look_at). */
+function fieldName(flag: string, schema: JsonSchema | null): string {
+  const snake = flag.replace(/-/g, "_");
+  return snake !== flag && schema?.properties?.[snake] && !schema.properties[camel(flag)] ? snake : camel(flag);
+}
+
+function coerce(value: string | true, schema: JsonSchema | undefined): unknown {
+  const type = Array.isArray(schema?.type) ? schema?.type[0] : schema?.type;
+  if (value === true) return true;
+  if (type === "number" || type === "integer") return Number(value);
+  if (type === "boolean") return value === "true";
+  if (type === "string") return value;
+  if (type === "object" || type === "array") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return type === "array" ? value.split(",") : value;
+    }
+  }
+  return /^(-?\d+(\.\d+)?|true|false)$/.test(value) ? JSON.parse(value) : value;
+}
+
+export interface ParsedCall {
+  input: Record<string, unknown>;
+  json: boolean;
+  dryRun: boolean;
+  wait: boolean;
+  idempotencyKey?: string;
+}
+
+/** `--max-items 3 --tag a --tag b --no-loop` -> `{ maxItems: 3, tag: ["a", "b"], loop: false }`, typed by the schema. */
+export function parseCallFlags(argv: readonly string[], schema: JsonSchema | null): ParsedCall {
+  const out: ParsedCall = { input: {}, json: false, dryRun: false, wait: false };
+  const fields: Record<string, unknown> = {};
+  for (let index = 0; index < argv.length; index++) {
+    const token = argv[index];
+    if (!token.startsWith("--")) throw new Error(`Unexpected argument "${token}". Pass fields as --name value.`);
+    const [rawName, inline] = token.slice(2).split(/=(.*)/s, 2) as [string, string | undefined];
+    if (rawName === "json") out.json = true;
+    else if (rawName === "dry-run") out.dryRun = true;
+    else if (rawName === "wait") out.wait = true;
+    else if (rawName === "idempotency-key" || rawName === "input") {
+      const value = inline ?? argv[++index];
+      if (value === undefined) throw new Error(`--${rawName} needs a value.`);
+      if (rawName === "input") {
+        const parsed = JSON.parse(value) as unknown;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("--input must be a JSON object.");
+        Object.assign(out.input, parsed);
+      } else out.idempotencyKey = value;
+    } else if (rawName.startsWith("no-") && !RESERVED_FLAGS.has(rawName)) {
+      fields[fieldName(rawName.slice(3), schema)] = false;
+    } else {
+      const name = fieldName(rawName, schema);
+      const next = argv[index + 1];
+      const value: string | true = inline ?? (next !== undefined && !next.startsWith("--") ? (index++, next) : true);
+      const property = schema?.properties?.[name];
+      const typed = property?.type === "array" ? coerce(value, property.items) : coerce(value, property);
+      if (property?.type === "array") fields[name] = [...((fields[name] as unknown[]) ?? []), ...(Array.isArray(typed) ? typed : [typed])];
+      else fields[name] = name in fields ? [...[fields[name]].flat(), typed] : typed;
+    }
+  }
+  out.input = { ...out.input, ...fields };
+  return out;
+}
+
+export interface OpsCliDeps {
+  hosted: HostedCall;
+  dispatch: typeof dispatchTool;
+  print: (text: string) => void;
+  printError: (text: string) => void;
+  /** Saves generated files (`--out`, else the project's asset folder). Default: a new FileSaver per run. */
+  files?: FileSaver;
+}
+
+export const defaultOpsCliDeps: OpsCliDeps = {
+  hosted: (name, args) => callHostedV4(name, args),
+  dispatch: dispatchTool,
+  print: (text) => process.stdout.write(`${text}\n`),
+  printError: (text) => process.stderr.write(`${text}\n`),
+};
+
+/** The docs.read id of a local tool's guide (tool/<slug>). */
+function guideOf(toolName: string): string | undefined {
+  const entry = loadLibraryIndex().find((candidate) => candidate.kind === "tool" && candidate.mcp_tool_name === toolName);
+  return entry?.id;
+}
+
+async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise<Answer> {
+  // A split operation runs its 3.x tool with the action fixed (core/ops/engine.ts).
+  const split = ENGINE_SPLIT_OPS[op];
+  const entry = localEntries().find((candidate) => candidate.name === op);
+  const tool = split?.tool ?? entry?.mcpTool ?? localToolsFor(op)[0];
+  if (!tool) return errorAnswer("not_found", `No operation is named "${op}".`, { next: { op: "ops.search", input: { query: op } } });
+  const args = split ? splitToolArgs(split, call.input) : call.input;
+  const def = engineOpDef(op);
+  const guide = guideOf(tool);
+  const describe = guide && def ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } };
+  const missing = missingInput(localInputSchema(op), call.input);
+  if (missing) return errorAnswer("invalid_input", missing, { next: describe });
+  if (call.dryRun) {
+    return { ok: true, status: "dry_run", preview: { summary: `${entry?.title ?? op}: the input is valid. Nothing was done.`, changes: [], approval: entry?.approval ?? "none", estimate: null, valid: true } };
+  }
+  try {
+    return { ok: true, status: "done", result: await deps.dispatch(tool, args) };
+  } catch (error) {
+    if (error instanceof EngineUnavailableError) return engineNotRunning();
+    if (error instanceof ToolResultError) {
+      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : answerOfLocalFailure(error.result, error.message);
+    }
+    return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
+  }
+}
+
+async function runCloud(op: string, call: ParsedCall, deps: OpsCliDeps): Promise<Answer> {
+  try {
+    return answerOfHosted(
+      await deps.hosted("summer_call", { op, input: call.input, ...(call.dryRun ? { dryRun: true } : {}), ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}) })
+    );
+  } catch (error) {
+    return hostedCallFailure(error, { op, dryRun: call.dryRun, idempotencyKey: call.idempotencyKey });
+  }
+}
+
+/** The input schema used to type flags: the local descriptor, or the hosted ops.describe. */
+async function schemaFor(op: string, deps: OpsCliDeps): Promise<JsonSchema | null> {
+  if (isLocalOp(op)) return localInputSchema(op);
+  const answer = await runCloud("ops.describe", { input: { name: op }, json: true, dryRun: false, wait: false }, deps);
+  const input = answer.ok && answer.status === "done" ? (answer.result as { operation?: { input?: JsonSchema } }).operation?.input : undefined;
+  return input ? (withOutField(op, input) as JsonSchema) : null;
+}
+
+/** Failed waits the job itself does not cause: the call to Summer did not get through. */
+const WAIT_DID_NOT_GET_THROUGH: ReadonlySet<ErrorCode> = new Set<ErrorCode>(["unavailable", "outcome_unknown", "not_signed_in", "forbidden", "rate_limited"]);
+
+/** Follow a running job or an approval until it ends (jobs.wait, at most 50 s per call). */
+async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
+  let current = answer;
+  if (current.ok && current.status === "needs_approval") deps.printError(`Waiting for approval: ${current.approval.url}`);
+  for (let round = 0; round < 120 && current.ok && (current.status === "running" || current.status === "needs_approval"); round++) {
+    const job = current.job.id;
+    const waited = await runCloud("jobs.wait", { input: { jobId: job, timeoutSeconds: 50 }, json: true, dryRun: false, wait: false }, deps);
+    // The job runs on whatever the wait answered: a failed wait names it, so the job is waited on, not started again.
+    // One that did not get through says to wait again; any other keeps its own next step (sign in, slow down).
+    if (!waited.ok && WAIT_DID_NOT_GET_THROUGH.has(waited.error.code)) {
+      const { code, message, retry, next, details } = waited.error;
+      return errorAnswer(code, `${message} Job ${job} is still on Summer's server.`, {
+        retry,
+        next: code === "unavailable" ? { op: "jobs.wait", input: { jobId: job } } : next,
+        details: { ...details, job },
+      });
+    }
+    if (!waited.ok || waited.status !== "done") return waited;
+    const result = waited.result as { job: { state: string; result?: unknown; error?: { code: string; message: string } }; finished: boolean };
+    if (!result.finished) continue;
+    // An approved generation runs on as its own job: follow that job.
+    const chained = result.job.result as { status?: string; job?: JobRef } | undefined;
+    if (result.job.state === "done" && chained?.status === "running" && chained.job?.id) {
+      current = { ok: true, status: "running", job: chained.job };
+      continue;
+    }
+    if (result.job.state === "done") return { ok: true, status: "done", result: result.job.result ?? {} };
+    return errorAnswer(result.job.state === "failed" ? "invalid_input" : "conflict", result.job.error?.message ?? `The job ended: ${result.job.state}.`, { details: { job } });
+  }
+  return current;
+}
+
+/** A value as one shell word: single quotes, so the shell expands nothing in it. */
+const shellWord = (value: string) => (/^[\w./:@+=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`);
+
+/** The answer for a person; `out` is the --out to keep in the printed wait command. */
+export function formatAnswer(answer: Answer, out?: string): string {
+  const waitFlags = (id: string) => `summer jobs wait --job-id ${id}${out ? ` --out ${shellWord(out)}` : ""}`;
+  if (!answer.ok) {
+    const next = answer.error.next;
+    const step = !next ? "" : "op" in next ? `\nNext: ${next.op}` : "url" in next ? `\nNext: ${next.label}: ${next.url}` : `\nNext: ${next.say}`;
+    return `Error (${answer.error.code}): ${answer.error.message}${step}`;
+  }
+  switch (answer.status) {
+    case "done":
+      return JSON.stringify(answer.result, null, 2);
+    case "running":
+      return `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
+    case "needs_approval":
+      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: ${waitFlags(answer.job.id)}`;
+    case "dry_run":
+      return `Dry run: ${String(answer.preview.summary ?? "")}\n${JSON.stringify(answer.preview, null, 2)}`;
+  }
+}
+
+/** Run one operation from the command line and print its answer; returns the exit code. */
+export async function runOpFromCli(op: string, argv: readonly string[], deps: OpsCliDeps = defaultOpsCliDeps): Promise<number> {
+  if (!OP_NAME.test(op)) {
+    deps.printError(formatAnswer(errorAnswer("invalid_input", `"${op}" is not an operation name (area action).`, { next: { op: "ops.search" } })));
+    return 1;
+  }
+  let call: ParsedCall;
+  try {
+    const hasFields = argv.some((token) => token.startsWith("--") && !RESERVED_FLAGS.has(token.slice(2).split("=")[0]));
+    call = parseCallFlags(argv, hasFields ? await schemaFor(op, deps) : null);
+  } catch (error) {
+    deps.printError(formatAnswer(errorAnswer("invalid_input", error instanceof Error ? error.message : String(error))));
+    return 1;
+  }
+  let answer: Answer;
+  let out: string | undefined;
+  if (isLocalOp(op)) {
+    answer = await runLocal(op, call, deps);
+    if (call.wait) answer = await waitFor(answer, deps);
+  } else {
+    // --out stays here: the files save on this machine once the answer (or the waited job) names them.
+    const files = deps.files ?? new FileSaver({ saveByDefault: true });
+    const taken = files.take(op, call.input);
+    out = taken.out;
+    answer = await runCloud(op, { ...call, input: taken.input }, deps);
+    if (call.wait) answer = await waitFor(answer, deps);
+    answer = await files.finish(op, answer, out);
+  }
+  (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer, out));
+  if (!call.json && answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
+  return answer.ok ? 0 : 1;
+}
+
+function areaCommand(area: string): Command {
+  return new Command(area)
+    .description(`Summer ${area} operations: summer ${area} <action> --field value. Find them: summer ops search ${area}`)
+    .argument("<action>", "The operation's action, e.g. list or set-base")
+    .allowUnknownOption(true)
+    .allowExcessArguments(true)
+    .helpOption(false)
+    .action(async (action: string, _options: unknown, command: Command) => {
+      process.exitCode = await runOpFromCli(opFromCli(area, action), command.args.slice(1));
+    });
+}
+
+export function opsCliCommands(): Command[] {
+  const whoami = new Command("whoami")
+    .description("Who is signed in, and their credits")
+    .allowUnknownOption(true)
+    .allowExcessArguments(true)
+    .action(async (_options: unknown, command: Command) => {
+      process.exitCode = await runOpFromCli("whoami", command.args);
+    });
+
+  const ops = new Command("ops").description("Find and describe Summer operations");
+  ops
+    .command("search <words...>")
+    .description("Find operations by describing the job in plain words")
+    .option("--area <area>", "Only this area")
+    .option("--limit <n>", "Most results", "8")
+    .option("--json", "Print the answer as JSON")
+    .action(async (wordsArg: string[], options: { area?: string; limit: string; json?: boolean }) => {
+      const { items, warning } = await searchEverywhere(wordsArg.join(" "), { area: options.area, limit: Number(options.limit) || 8 }, defaultOpsCliDeps.hosted);
+      if (options.json) {
+        defaultOpsCliDeps.print(JSON.stringify({ ok: true, status: "done", result: { items }, ...(warning ? { warnings: [warning] } : {}) }));
+        return;
+      }
+      for (const item of items) defaultOpsCliDeps.print(`${item.name.padEnd(32)} ${item.effect.padEnd(13)} ${item.title}`);
+      if (warning) defaultOpsCliDeps.printError(warning);
+    });
+  ops
+    .command("describe <op>")
+    .description("Show one operation with its exact input")
+    .action(async (op: string) => {
+      const local = localWireForm(op);
+      if (local) {
+        defaultOpsCliDeps.print(JSON.stringify(local, null, 2));
+        return;
+      }
+      process.exitCode = await runOpFromCli("ops.describe", ["--name", op]);
+    });
+
+  return [whoami, ops, ...CLI_AREAS.map(areaCommand)];
+}

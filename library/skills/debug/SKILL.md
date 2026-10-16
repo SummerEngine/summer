@@ -1,6 +1,6 @@
 ---
 name: debug
-description: "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes."
+description: "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: debugging
@@ -143,7 +143,7 @@ Surface the proposed fix in plain language and ask permission. Two patterns:
 
 - For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
 - For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
-- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of an engine literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of an engine literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ### 6. Verify — re-run the diagnostic that found it
 

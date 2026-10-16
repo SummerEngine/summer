@@ -68,7 +68,7 @@ node dist/bin/summer.js setup cursor --local-dev --yes    # ~/.cursor/mcp.json  
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first). While a release soaks on the `next` dist-tag, `npx -y summer-engine@next setup claude-code --yes --force --channel next` — without `--channel next` the entry would run `@latest`, i.e. the previous release.
+That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first). While a release soaks on the `next` dist-tag, `npx -y summer-engine@next setup claude-code --yes --force`: a CLI newer than npm `latest` writes `summer-engine@next` when `next` is its own version, and its exact version otherwise, never an older release.
 
 ## d. Quick verification, no agent involved
 
@@ -86,12 +86,17 @@ Run these from any directory with the engine open on a project.
 
 Engine not running, each `[engine]` command prints exactly this and exits 1:
 
+```json
+{
+  "ok": false,
+  "code": "engine_not_running",
+  "error": "Summer Engine is not running.",
+  "recovery": "Open the project in Summer Engine, or run: summer run <project-path> (the folder that holds project.godot).",
+  "hint": "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it."
+}
 ```
-Summer Engine is not running (or no project is open).
-Summer Engine is not running (no api-token found, no live editor registered in ~/.summer/instances). Open Summer Engine first.
-Start it with 'summer run' or open the project in the Summer desktop app, then retry.
-Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it.
-```
+
+The MCP face returns the same fields (`isError`), with the `npx -y summer-engine@latest run <project-path>` form of the command. Other shared failures carry their own `code` on both faces: `not_signed_in` (no sign-in, or the server refused the token), `no_credits`, `unavailable` (a Summer service could not be reached; the real cause, for example `connect ECONNREFUSED 127.0.0.1:443`, is in the message and in `details.cause`). Each has one next step in `recovery`. These are the codes the 4.0 tools use. The store sign-in keeps its own code, `store_login_required`.
 
 ## e. From Claude Code
 
@@ -100,7 +105,7 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 1. "Read the scene tree and describe the level." — expect `summer_get_project_context` then `summer_get_scene_tree`, and a description that matches what is open.
 2. "Add a MeshInstance3D cube at (0, 1, 0) and screenshot it." — expect `summer_add_node` (+ `summer_set_prop` / `summer_set_resource_property` for the BoxMesh), `summer_save_scene`, `summer_screenshot`; the cube is in the editor and the scene is saved.
 3. "Use the design-mechanic skill to plan a dash." — expect the skill to load (Claude names it) and a plan with the skill's structure, no engine mutation.
-4. "Report feedback on the skill you used." — expect `summer_library_feedback` with `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
+4. "Report feedback on the skill you used." — expect `summer_call` with `docs.feedback` (3.x: `summer_library_feedback`) and `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
 5. "Run an editor script that counts the nodes in the open scene and prints the total." — expect `summer_run_editor_script` and a printed count that matches `summer_get_scene_tree`.
 
 ## f. Expected to fail on older engines

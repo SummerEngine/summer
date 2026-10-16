@@ -69,8 +69,3 @@ export function buildCharacter(options: CharacterOptions): Record<string, unknow
   }
   return doc;
 }
-
-export function parseToolList(raw: string | undefined): string[] {
-  if (!raw) return [];
-  return [...new Set(raw.split(",").map((tool) => tool.trim()).filter(Boolean))];
-}

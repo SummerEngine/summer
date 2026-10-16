@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAuthToken } from "../core/auth.js";
 import { _resetTelemetryPingedForTests } from "../core/telemetry.js";
 import { setSummerDirForTests } from "../core/store.js";
+import { PACKAGE_ROOT } from "../core/package-root.js";
 import { createMcpServer } from "./server.js";
 
 let root = "";
@@ -57,13 +59,20 @@ describe("capped results through the MCP server", () => {
       expect(tools.find((tool) => tool.name === "summer_read_library")!.inputSchema.properties).toHaveProperty("maxCharacters");
       expect(tools.find((tool) => tool.name === "summer_write_file")!.inputSchema.properties).not.toHaveProperty("maxCharacters");
 
-      const cut = text(await client.callTool({ name: "summer_read_library", arguments: { id: "skill/scene-scripting", part: "skill" } }));
-      expect(cut).toMatch(/\[Truncated: 24000 of \d+ characters shown\. Call again with maxCharacters: \d+/);
-      expect(cut).toMatch(/— entry_id: skill\/scene-scripting@/);
+      // The longest skill body in the library, whichever it is today.
+      const skillsDir = join(PACKAGE_ROOT, "library", "skills");
+      const longest = readdirSync(skillsDir)
+        .filter((slug) => existsSync(join(skillsDir, slug, "SKILL.md")))
+        .map((slug) => ({ slug, length: readFileSync(join(skillsDir, slug, "SKILL.md"), "utf8").length }))
+        .sort((a, b) => b.length - a.length)[0]!;
+      expect(longest.length).toBeGreaterThan(24000);
+      const id = `skill/${longest.slug}`;
 
-      const full = text(
-        await client.callTool({ name: "summer_read_library", arguments: { id: "skill/scene-scripting", part: "skill", maxCharacters: 200000 } })
-      );
+      const cut = text(await client.callTool({ name: "summer_read_library", arguments: { id, part: "skill" } }));
+      expect(cut).toMatch(/\[Truncated: 24000 of \d+ characters shown\. Call again with maxCharacters: \d+/);
+      expect(cut).toContain(`— entry_id: ${id}@`);
+
+      const full = text(await client.callTool({ name: "summer_read_library", arguments: { id, part: "skill", maxCharacters: 200000 } }));
       expect(full).not.toContain("[Truncated:");
       expect(full.length).toBeGreaterThan(24000);
     } finally {
@@ -93,17 +102,20 @@ describe("local tool call reports", () => {
     return posts;
   }
 
-  it("sends the tool name, success, duration and the host app name, nothing else", async () => {
+  it("sends the tool name, its operation, success, duration, the host app name and the surface, nothing else", async () => {
     const posts = await callAndCollect();
     const calls = posts.filter((post) => post.body.event === "mcp_tool_call");
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://gateway.example/api/mcp/log-local-call");
-    expect(Object.keys(calls[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "tool"]);
+    expect(Object.keys(calls[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "op", "profile", "surfaceVersion", "tool"]);
     expect(calls[0].body).toMatchObject({
       client: "summer-cli",
       event: "mcp_tool_call",
       mcpClient: "claude-code",
       tool: "summer_get_agent_playbook",
+      op: "docs.read",
+      surfaceVersion: "v3",
+      profile: "full",
       ok: true,
     });
     expect(typeof calls[0].body.durationMs).toBe("number");

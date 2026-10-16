@@ -1,0 +1,50 @@
+id: tool/router-check
+kind: tool
+version: 1.0.0
+summary: 'Check the Summer Router character files against the schema and their client tools against the project''s GDScript handlers, offline.'
+use_when:
+- before router.push, or after editing ai/characters files or tool handlers
+- a character's tool is never answered in the game (tool_unhandled)
+do_not_use_when:
+- testing what a character says — router.test (cloud)
+facets:
+  lifecycle:
+  - build
+  domains:
+  - ai
+  - npc
+compatibility:
+  engine: '>=4.6'
+source: official
+license: MIT
+status: preview
+related:
+  skills:
+  - skill/summer-router
+implementation:
+  module: src/core/router/operations.ts
+  export: ROUTER_OPERATIONS
+surfaces:
+  mcp:
+    tool_name: summer_router_check
+    remote: true
+input_schema:
+  type: object
+  properties:
+    characters:
+      type: array
+      items:
+        type: string
+      description: 'Character ids (file names in ai/characters/). Default: every character file.'
+    project:
+      type: string
+      description: 'The folder with project.godot. Default: the MCP''s bound project, then the working directory.'
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+- none

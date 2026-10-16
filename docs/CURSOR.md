@@ -7,7 +7,7 @@ Cursor reads Summer skills from the shared `.agents/skills` folders.
 Paste this into Cursor:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 Cursor runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
@@ -23,8 +23,10 @@ npx -y summer-engine@latest setup cursor --yes --force
 Project-local:
 
 ```bash
-npx -y summer-engine@latest skills install --recommended --agent cursor --scope project
+npx -y summer-engine@latest skills install --all --agent cursor --scope project
 ```
+
+`--recommended` instead of `--all` installs a smaller starter set.
 
 Single skill:
 
@@ -69,6 +71,8 @@ Sign in once: in Cursor Settings, open MCP and click Connect (or Authenticate) n
 ```
 
 > **Windows:** use `"command": "cmd.exe", "args": ["/c", "npx", "-y", "summer-engine@latest", "mcp"]` instead — `npx` is a `.cmd` shim on Windows and hosts that spawn it directly fail with ENOENT. `summer setup` writes the right form automatically.
+
+After `summer login` it also runs Summer's cloud operations, so Cursor needs one server. For assets, plans, the store, publishing, prices and analytics only, nothing needs installing: add `"summer-cloud": {"url": "https://mcp.summerengine.com/mcp"}` under `mcpServers` and sign in once with Connect in Cursor's MCP settings.
 
 Keep the engine open on the project:
 

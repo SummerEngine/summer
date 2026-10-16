@@ -73,6 +73,8 @@ export const MANIFEST_TARGETS: Record<string, ManifestTarget[]> = {
 export const DOC_TARGETS: ManifestTarget[] = [
   // The human index of the flat skills folder (see buildSkillsIndexMarkdown).
   { generated: "skills-index.md", destination: "library/skills/README.md" },
+  // The official MCP Registry entry (manifests.ts buildMcpRegistryServer).
+  { generated: "server.json", destination: "server.json" },
 ];
 
 export function allTargets(): ManifestTarget[] {

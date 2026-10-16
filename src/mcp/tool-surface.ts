@@ -42,6 +42,15 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
   ],
   ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_capture_gameplay"],
   ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree"],
+  // Summer Router's project operations (router.*): full profile, or --toolsets router.
+  router: [
+    "summer_router_setup",
+    "summer_router_add_character",
+    "summer_router_check",
+    "summer_router_push",
+    "summer_router_pull",
+    "summer_router_doctor",
+  ],
 };
 
 const localToolset = new Map<string, Toolset>(
@@ -59,6 +68,7 @@ const HOSTED_TOOLSETS: ReadonlyArray<[RegExp, Toolset]> = [
   [/^summer_grow_\w+$/, "grow"],
   [/^summer_studio_\w+$/, "studio"],
   [/^summer_app_\w+$/, "apps"],
+  [/^summer_router_\w+$/, "router"],
   [/^summer_(build_\w+|make_game|game|game_\w+|list_projects|get_project)$/, "cloud"],
 ];
 

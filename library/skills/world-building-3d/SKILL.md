@@ -1,6 +1,6 @@
 ---
 name: world-building-3d
-description: "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified."
+description: "Compose, ground and space 3D scenes with Summer's four spatial tools, one geometric decision at a time."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

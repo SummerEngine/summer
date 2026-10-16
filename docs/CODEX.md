@@ -7,7 +7,7 @@ Codex can use Summer skills from the standard `.agents/skills` locations.
 Paste this into Codex:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 Codex runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
@@ -23,8 +23,10 @@ npx -y summer-engine@latest setup codex --yes --force
 Project-local:
 
 ```bash
-npx -y summer-engine@latest skills install --recommended --agent codex --scope project
+npx -y summer-engine@latest skills install --all --agent codex --scope project
 ```
+
+`--recommended` instead of `--all` installs a smaller starter set.
 
 Paths:
 
@@ -37,6 +39,17 @@ Paths:
 
 ```bash
 npx -y summer-engine@latest mcp
+```
+
+After `summer login` it also runs Summer's cloud operations, so Codex needs one server.
+
+### Cloud work without the engine
+
+For assets, plans, the store, publishing, prices and analytics only, nothing needs installing. Add Summer's hosted server and sign in once:
+
+```bash
+codex mcp add summer-cloud --url https://mcp.summerengine.com/mcp
+codex mcp login summer-cloud
 ```
 
 ### Summer Games

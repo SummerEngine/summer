@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-15",
+  "generated_at": "2026-10-16",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 274,
-  "query_count": 140,
+  "corpus_size": 281,
+  "query_count": 142,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8286,
-  "mrr_at_5": 0.9345,
+  "mean_recall_at_1": 0.8275,
+  "mrr_at_5": 0.9354,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,13 +14,13 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 118,
-      "hit": 118,
+      "expected": 119,
+      "hit": 119,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 40,
-      "hit": 40,
+      "expected": 42,
+      "hit": 42,
       "recall_at_5": 1
     }
   },
@@ -57,6 +57,8 @@
     "add a guard NPC who opens the gate when you say the password": 1,
     "players speak to an NPC with the microphone and it answers": 1,
     "the game asks for the microphone at launch": 1,
+    "push my AI characters to Summer": 1,
+    "check that every character tool has a GDScript handler": 1,
     "what should my game sound like overall": 1,
     "make three versions of a sword clash sound so I can pick the best one": 1,
     "I approved the sounds I liked in Studio, use them": 1,

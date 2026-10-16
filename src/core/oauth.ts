@@ -177,6 +177,10 @@ async function postForm(
   const body = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
   if (!response.ok) {
     const reason = typeof body.error === "string" ? body.error : `http_${response.status}`;
+    // A 5xx is the sign-in server failing, not the sign-in being wrong.
+    if (response.status >= 500) {
+      throw new OAuthError("oauth_server_failed", `The sign-in server failed (${reason}).`, "Recovery: try again in a minute.");
+    }
     throw new OAuthError(
       reason === "invalid_grant" ? "oauth_grant_invalid" : "oauth_token_refused",
       `The sign-in server refused the token request (${reason}).`,

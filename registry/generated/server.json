@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.SummerEngine/summer",
+  "title": "Summer Engine",
+  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
+  "version": "4.0.0",
+  "websiteUrl": "https://summerengine.com",
+  "repository": {
+    "url": "https://github.com/summerengine/summer",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "summer-engine",
+      "version": "4.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.summerengine.com/mcp"
+    }
+  ]
+}

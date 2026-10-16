@@ -57,11 +57,53 @@ export async function connectHostedMcp(url: string, token: () => Promise<string>
   };
 }
 
+/**
+ * The hosted server's 3.x surface: the same address with `?surface=v3`. Once
+ * the hosted server serves 4.0 to every request that does not ask, only 3.x
+ * npm releases keep 3.x without asking, so the 3.x tool names here ask.
+ */
+export function withV3Surface(url: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.set("surface", "v3");
+  return parsed.href;
+}
+
 export const defaultHostedConnectDependencies: HostedConnectDependencies = {
-  url: () => resolveMcpResourceUrl(),
+  url: () => withV3Surface(resolveMcpResourceUrl()),
   token: () => getStoreAccessToken(),
   connect: connectHostedMcp,
 };
+
+/** The hosted server could not be reached, so no call was sent (a sign-in problem is an OAuthError instead). */
+export class HostedUnreachableError extends Error {
+  constructor(
+    message: string,
+    readonly recovery: string
+  ) {
+    super(`${message} ${recovery}`);
+    this.name = "HostedUnreachableError";
+  }
+}
+
+/** The HTTP status an MCP transport error carries (the SDK's StreamableHTTPError puts it on `code`). */
+export function httpStatusOf(error: unknown): number | undefined {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "number" && code >= 100 && code <= 599 ? code : undefined;
+}
+
+/**
+ * A failure to connect to the hosted server, before any call was sent: a
+ * sign-in problem (an OAuthError, or a 401), an account the server refuses
+ * (403, store_access_denied), or the server not answering.
+ */
+export function hostedConnectFailure(error: unknown, unreachableRecovery: string): OAuthError | HostedUnreachableError {
+  if (error instanceof OAuthError || error instanceof HostedUnreachableError) return error;
+  const cause = error instanceof Error ? error.message : String(error);
+  const status = httpStatusOf(error);
+  if (status === 401) return new OAuthError("oauth_token_invalid", `Summer's hosted server refused the sign-in: ${cause}.`, 'Recovery: run "summer login --store --force".');
+  if (status === 403) return new OAuthError("store_access_denied", `Summer's hosted server refused this account: ${cause}.`, "Recovery: check the account in Summer Studio (for example confirm the email), then try again.");
+  return new HostedUnreachableError(`The hosted Summer Engine MCP did not answer: ${cause}.`, unreachableRecovery);
+}
 
 /** True when this machine has a store sign-in on disk (no network). */
 export async function hasStoreSignIn(): Promise<boolean> {

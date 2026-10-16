@@ -89,6 +89,10 @@ queries:
     expected: [skill/summer-router, skill/voice-and-mic-permissions]
   - query: "the game asks for the microphone at launch"
     expected: [skill/voice-and-mic-permissions]
+  - query: "push my AI characters to Summer"
+    expected: [tool/router-push, skill/summer-router]
+  - query: "check that every character tool has a GDScript handler"
+    expected: [tool/router-check]
   - query: "what should my game sound like overall"
     expected: [skill/audio-direction]
   - query: "make three versions of a sword clash sound so I can pick the best one"

@@ -1,6 +1,6 @@
 ---
 name: compatibility-renderer-traps
-description: "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors."
+description: "Make a Forward+ game look right on the Compatibility renderer: instance uniforms, MultiMesh, vertex colors."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting

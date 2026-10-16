@@ -33,7 +33,7 @@ export interface AgentConfigOptions {
   dryRun?: boolean;
   print?: boolean;
   localDev?: boolean;
-  /** npm dist-tag the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
+  /** npm dist-tag or exact version the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
    *  Default "latest"; "next" while a release soaks on the next tag. Ignored with localDev. */
   channel?: string;
   /** MCP tool profile written as SUMMER_PROFILE; default the agent's own (full for most). */
@@ -55,7 +55,8 @@ export interface AgentConfigResult {
   dryRun: boolean;
   print: boolean;
   localDev: boolean;
-  /** The dist-tag the written entry runs ("latest" unless --channel / SUMMER_CHANNEL). */
+  /** The dist-tag or exact version the written entry runs ("latest" unless --channel /
+   *  SUMMER_CHANNEL, or a CLI ahead of npm latest: see resolveDefaultChannel). */
   channel: string;
   /** The MCP tool profile the entry runs (full = every tool, no SUMMER_PROFILE written). */
   profile: Profile;
@@ -89,9 +90,14 @@ export function resolveAgentSelection(
     throw new Error("Specify the agent either positionally or with --agent, not both.");
   }
 
-  const parsed = parseAgent(agentOpt ?? agentArg);
+  const name = agentOpt ?? agentArg;
+  const parsed = parseAgent(name);
   if (!parsed) {
-    throw new Error(`Specify an agent: ${supportedAgents.join(", ")}`);
+    throw new Error(
+      name
+        ? `Unknown agent "${name}". Supported: ${supportedAgents.join(", ")}`
+        : `Specify an agent: ${supportedAgents.join(", ")}`
+    );
   }
 
   return parsed;
@@ -351,14 +357,16 @@ async function upsertConfig(
 export const DEFAULT_CHANNEL = "latest";
 
 /** npm dist-tags are lowercase words like `latest`, `next`, `beta`, `v3-preview`;
- *  anything that could be read as a version or a path is refused (a bare
- *  version belongs in a version bump, not a channel). */
+ *  an exact version (`3.9.1`, `3.9.1-rc.1`) pins the entry to that release, which
+ *  setup does for a CLI that is ahead of npm latest. Anything else, partial
+ *  versions and paths included, is refused. */
 export function normalizeChannel(channel: string | undefined): string {
   const value = (channel ?? "").trim();
   if (value === "") return DEFAULT_CHANNEL;
+  if (/^\d+\.\d+\.\d+(?:-[0-9a-z][0-9a-z.-]*)?$/.test(value)) return value;
   if (!/^[a-z][a-z0-9-]*$/.test(value) || /^v?\d/.test(value)) {
     throw new Error(
-      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens).`
+      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens), or an exact version such as 4.0.0.`
     );
   }
   return value;

@@ -1,6 +1,6 @@
 ---
 name: tune-performance
-description: "Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations."
+description: "Profile a slow game, find rendering, physics or script hotspots, and propose fixes with expected gains."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: performance
@@ -221,7 +221,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 ## Collaborative protocol
 
-This skill makes scene/resource/code changes. Always ask before each fix is applied. See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill makes scene/resource/code changes. Always ask before each fix is applied. See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -229,10 +229,10 @@ No template — this is a workflow. Performance tuning is project-specific by de
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list
-- `../../references/godot-version/godot-version.md` — renderer API churn notes (Compositor, RenderSceneBuffers)
-- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
-- `../../references/gd-style/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_docs_read` id `reference/godot-version` — renderer API churn notes (Compositor, RenderSceneBuffers)
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/gd-style` — GDScript conventions (avoid bare types, use `:=`)
 - `debug` — bug triage (related but different)
 - `diagnosing-perf-regressions` — when it *got* slow rather than always was
 - `3d-lighting` — light setup and bake decisions

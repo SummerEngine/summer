@@ -263,6 +263,38 @@ function buildGeminiExtension(i: ManifestInputs): string {
   });
 }
 
+/**
+ * The official MCP Registry's name for Summer. It must equal `mcpName` in
+ * package.json: the registry checks the published npm package for it. The
+ * io.github namespace needs a GitHub sign-in by an Owner of the SummerEngine
+ * org, and the registry matches it against the org's login case-sensitively
+ * (`io.github.SummerEngine/*`); com.summerengine/* would need a DNS record.
+ */
+export const MCP_REGISTRY_NAME = "io.github.SummerEngine/summer";
+
+/** server.json for the official MCP Registry: the npm package and the hosted server under one name. */
+function buildMcpRegistryServer(i: ManifestInputs): string {
+  return stableJson({
+    $schema: "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    name: MCP_REGISTRY_NAME,
+    title: "Summer Engine",
+    description: "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
+    version: i.version,
+    websiteUrl: "https://summerengine.com",
+    repository: { url: "https://github.com/summerengine/summer", source: "github" },
+    packages: [
+      {
+        registryType: "npm",
+        identifier: "summer-engine",
+        version: i.version,
+        transport: { type: "stdio" },
+        packageArguments: [{ type: "positional", value: "mcp" }],
+      },
+    ],
+    remotes: [{ type: "streamable-http", url: HOSTED_MCP_URL }],
+  });
+}
+
 /** Generated-file name -> content, for every agent manifest. */
 export function buildManifests(i: ManifestInputs): Map<string, string> {
   const out = new Map<string, string>();
@@ -273,5 +305,6 @@ export function buildManifests(i: ManifestInputs): Map<string, string> {
   out.set("plugin.factory.json", buildFactoryPlugin(i));
   out.set("gemini-extension.json", buildGeminiExtension(i));
   out.set("mcp.json", buildMcpJson());
+  out.set("server.json", buildMcpRegistryServer(i));
   return out;
 }

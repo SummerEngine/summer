@@ -5,7 +5,7 @@ import { TOOLKIT_VERSION } from "../version.js";
 import { RouterApiError, seg } from "./api.js";
 import type { RouterContext } from "./commands.js";
 import { scanToolHandlers, unhandledClientTools } from "./handlers.js";
-import { success, failure, type RouterOutcome } from "./outcome.js";
+import { success, type RouterAnswer } from "./result.js";
 import { CHARACTERS_DIR, findProjectRoot, readCharacterFiles, resolveGameId } from "./project.js";
 import { bundledRegistry, loadRegistry, validateCharacter } from "./registry.js";
 import { detectRouterAgents, ROUTER_SKILLS } from "./setup.js";
@@ -15,8 +15,8 @@ import { join, resolve } from "node:path";
 import { studioRouterUrl } from "./studio.js";
 
 /**
- * `summer router doctor`: every check an agent needs before and after a
- * push, as {ok, checks: [{id, status, message, fix}]}. A "fail" is something
+ * router.doctor (`summer router doctor`): every check an agent needs before
+ * and after a push, as {ok, checks: [{id, status, message, fix}]}. A "fail" is something
  * that stops Summer Router from working; a "warning" is worth fixing.
  */
 
@@ -30,7 +30,7 @@ export interface RouterCheck {
   url?: string;
 }
 
-export async function doctor(ctx: RouterContext, home: string = homedir()): Promise<RouterOutcome> {
+export async function doctor(ctx: RouterContext, home: string = homedir()): Promise<RouterAnswer> {
   const checks: RouterCheck[] = [];
   const add = (check: RouterCheck) => checks.push(check);
 
@@ -40,14 +40,14 @@ export async function doctor(ctx: RouterContext, home: string = homedir()): Prom
   add(
     root
       ? { id: "project", status: "ok", message: root }
-      : { id: "project", status: "fail", message: "No project.godot at or above this folder.", fix: "Run inside the Summer project, or pass --project <dir>." }
+      : { id: "project", status: "fail", message: "No project.godot at or above this folder.", fix: "Run inside the Summer project, or pass project." }
   );
 
   const { gameId, source } = resolveGameId(root, ctx.game, ctx.env);
   add(
     gameId
       ? { id: "game_id", status: "ok", message: `${gameId} (from ${source})` }
-      : { id: "game_id", status: "warning", message: "No game id.", fix: "Add gameId to summer.build.json, set SUMMER_GAME_ID, or pass --game <gameId>." }
+      : { id: "game_id", status: "warning", message: "No game id.", fix: "Add gameId to summer.build.json, set SUMMER_GAME_ID, or pass gameId." }
   );
 
   const accountToken = Boolean(await getAuthToken());
@@ -62,7 +62,7 @@ export async function doctor(ctx: RouterContext, home: string = homedir()): Prom
   const bundledVersion = bundledRegistry().version;
   add(
     registrySource === "live" && registry.version !== bundledVersion
-      ? { id: "registry", status: "warning", message: `Summer serves registry version ${registry.version}; this CLI ships version ${bundledVersion}.`, fix: "Update the CLI: npx -y summer-engine@latest router doctor" }
+      ? { id: "registry", status: "warning", message: `Summer serves registry version ${registry.version}; this CLI ships version ${bundledVersion}.`, fix: "Update summer-engine: npx -y summer-engine@latest router doctor" }
       : { id: "registry", status: "ok", message: `Registry version ${registry.version} (${registrySource}).` }
   );
 
@@ -71,15 +71,15 @@ export async function doctor(ctx: RouterContext, home: string = homedir()): Prom
     const invalid = files.filter((file) => file.error || validateCharacter(file.doc, registry).length > 0).map((file) => file.id);
     add(
       files.length === 0
-        ? { id: "characters", status: "warning", message: `No characters in ${CHARACTERS_DIR}/.`, fix: "summer router character add guard --template voice-npc --tools open_gate" }
+        ? { id: "characters", status: "warning", message: `No characters in ${CHARACTERS_DIR}/.`, fix: "summer router add-character --id guard --template voice-npc --tools open_gate" }
         : invalid.length
-          ? { id: "characters", status: "fail", message: `Invalid: ${invalid.join(", ")}.`, fix: "Run summer router push --dry-run to see each problem." }
+          ? { id: "characters", status: "fail", message: `Invalid: ${invalid.join(", ")}.`, fix: "Run summer router check to see each problem." }
           : { id: "characters", status: "ok", message: `${files.length} valid: ${files.map((file) => file.id).join(", ")}.` }
     );
     const unhandled = unhandledClientTools(files.filter((file) => file.doc), scanToolHandlers(root));
     add(
       unhandled.length
-        ? { id: "tool_handlers", status: "fail", message: `No GDScript handler for ${unhandled.map((t) => `${t.character}.${t.tool}`).join(", ")}.`, fix: "Run summer router push --dry-run for the GDScript to add." }
+        ? { id: "tool_handlers", status: "fail", message: `No GDScript handler for ${unhandled.map((t) => `${t.character}.${t.tool}`).join(", ")}.`, fix: "Run summer router check for the GDScript to add." }
         : { id: "tool_handlers", status: "ok", message: "Every client tool has a GDScript handler." }
     );
   }
@@ -117,9 +117,6 @@ export async function doctor(ctx: RouterContext, home: string = homedir()): Prom
   const failures = checks.filter((check) => check.status === "fail").length;
   const warnings = checks.filter((check) => check.status === "warning").length;
   const result = { checks, summary: { ok: checks.length - failures - warnings, warnings, failures } };
-  const lines = checks.map((check) => `${check.status === "ok" ? "ok  " : check.status === "warning" ? "warn" : "FAIL"}  ${check.id}: ${check.message}${check.fix ? `  Fix: ${check.fix}` : ""}${check.url ? `  ${check.url}` : ""}`);
-  if (failures > 0) {
-    return failure({ code: "doctor_failed", message: `${failures} check${failures === 1 ? "" : "s"} failed.`, fix: "Apply the fix on each failed check, then run summer router doctor again." }, { result, lines });
-  }
-  return success(result, lines);
+  // The call worked either way: healthy says whether every check passed.
+  return success({ healthy: failures === 0, ...result });
 }

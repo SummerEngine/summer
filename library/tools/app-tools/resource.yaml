@@ -3,7 +3,7 @@ kind: tool
 version: 1.0.0
 summary: List the agent tools a Summer App declares.
 use_when:
-  - before calling app logic with summer_app_call
+  - before calling app logic with apps.call
   - '"what can our balance app do for me"'
 facets:
   lifecycle:

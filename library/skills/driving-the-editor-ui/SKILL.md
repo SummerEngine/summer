@@ -1,6 +1,6 @@
 ---
 name: driving-the-editor-ui
-description: "Drive the editor UI by name: invoke actions, clear blocking dialogs, switch the main screen, read a dock — and route scene work to the scene tools instead."
+description: "Drive the editor UI by name: run actions, clear blocking dialogs, switch screens, read a dock."
 ---
 
 # Driving the Editor UI

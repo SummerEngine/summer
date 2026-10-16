@@ -1,6 +1,6 @@
 # The Summer App manifest
 
-Sent as `manifest` on every `summer_app_publish` and written into the app as
+Sent as `manifest` on every `apps.publish` and written into the app as
 `summer.app.json`. Unknown keys and unknown permissions are refused with a message that
 names them. Every field:
 

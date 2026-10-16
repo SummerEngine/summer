@@ -57,7 +57,7 @@ export const setupCommand = new Command("setup")
   )
   .option(
     "--channel <dist-tag>",
-    "npm dist-tag the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; use next while a release soaks on the next tag). SUMMER_CHANNEL does the same."
+    "npm dist-tag or exact version the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; a CLI newer than npm latest pins next when next is this version, else this version). SUMMER_CHANNEL does the same."
   )
   .option("--yes", "Apply practical setup steps without prompting")
   .option(
@@ -217,15 +217,7 @@ function printSetupResult(
         ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated${note ? `; ${note}` : ""})`)
         : "";
       console.log(`  ${sym.ok()}  Installed ${c.bold(String(installed.length) + " skills")}${tally}  ${where ? c.dim(tildeify(where)) : ""}`);
-      const grouped = installed.reduce<string[][]>((rows, name, i) => {
-        const row = Math.floor(i / 3);
-        rows[row] = rows[row] ?? [];
-        rows[row].push(name);
-        return rows;
-      }, []);
-      for (const row of grouped) {
-        console.log(`     ${c.dim(row.join(" · "))}`);
-      }
+      console.log(`     ${c.dim(skillNamesSample(installed))}`);
     } else {
       console.log(`  ${sym.ok()}  ${skills.message}`);
     }
@@ -255,6 +247,12 @@ function printSetupResult(
     const ask = config.profile === "assets" ? "make a sword clash sound effect" : "add a DirectionalLight3D and Camera3D to my scene";
     console.log(`${c.dim("Try it:")} open ${label} and ask: ${c.bold(`"${ask}"`)}`);
   }
+}
+
+/** One line instead of a row per three skills: the first few names and how many more. `--json` keeps the full list. */
+export function skillNamesSample(names: readonly string[], max = 8): string {
+  const shown = names.slice(0, max).join(" · ");
+  return names.length > max ? `${shown} · and ${names.length - max} more` : shown;
 }
 
 function parseInstalledSkills(stdout: string | undefined): string[] {

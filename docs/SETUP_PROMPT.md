@@ -8,7 +8,7 @@ MCP setup page: https://summerengine.com/mcp
 Paste this into the AI environment:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 The agent should read the Summer README/install playbook, detect the current machine state, and run only the missing setup steps with `npx -y summer-engine@latest`.
@@ -26,3 +26,5 @@ Expected agent behavior:
 First-class setup targets: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted): `gemini`, `roo-code`.
 
 Manual terminal commands still work, but the copy-paste prompt is the main path: the agent handles npm and platform details.
+
+Cloud work only (assets, plans, the store, publishing, prices, analytics) needs no install: add `https://mcp.summerengine.com/mcp` to the agent and sign in once. The README's "Connect" section has the line for each agent.

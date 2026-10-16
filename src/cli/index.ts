@@ -16,10 +16,11 @@ import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { eventsCommand } from "./commands/events.js";
 import { toolCommand } from "./commands/tool.js";
-import { routerCommand } from "./commands/router.js";
+import { opsCliCommands } from "./commands/ops.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
+import { resolveSurface } from "../core/tool-profiles.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 
@@ -56,7 +57,10 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
   program.addCommand(toolCommand);
-  program.addCommand(routerCommand);
+  // The 4.0 operation catalog (`summer <area> <action>`); SUMMER_SURFACE=v3 leaves it out.
+  if (resolveSurface(undefined) === "v4") {
+    for (const command of opsCliCommands()) program.addCommand(command);
+  }
 
   program.parseAsync().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

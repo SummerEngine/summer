@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main, v3-foundation]
+    branches: [main]
   pull_request:
-    branches: [main, v3-foundation]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -43,9 +46,6 @@ jobs:
       - name: Routing eval — held-out (report only)
         run: npm run eval:routing:heldout
 
-      - name: Example evals (SKIP until runner lands)
-        run: node evals/examples/runner-stub.ts
-
       # Outcome evals, static half only: task YAML + assertion DSL validate,
       # every golden JSONL matches its readable source, fixtures and
       # skills_expected resolve. No engine, no model — the replay itself is
@@ -60,3 +60,51 @@ jobs:
       # Unconditional: the compiler exists; a missing script is a failure.
       - name: Registry parity (regenerate == committed, count claims == counts.json)
         run: npm run generate:registry -- --check
+
+  # The CLI on the other platforms and on the oldest Node the package supports
+  # (engines.node). The full suite needs Node 22 and runs once, above.
+  smoke:
+    name: CLI smoke (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            node: 22
+          - os: windows-latest
+            node: 22
+          - os: ubuntu-latest
+            node: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Version
+        run: node dist/bin/summer.js --version
+
+      - name: Tool list (no engine needed)
+        run: node dist/bin/summer.js tool --list
+
+      # Warnings (not signed in, no engine) exit 0; a failed check exits 1.
+      - name: Doctor
+        run: node dist/bin/summer.js doctor --json
+
+      # macOS only: these tests expect a POSIX host (Windows writes
+      # `cmd.exe /c npx` entries and backslash paths on purpose).
+      - name: Installer tests (config paths and formats)
+        if: matrix.os == 'macos-latest'
+        run: npx vitest run src/installer/agent-config.test.ts src/installer/agent-table.test.ts

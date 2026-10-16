@@ -24,6 +24,15 @@ import { resolveGatewayUrl } from "../../core/config.js";
 import { readJsonResponse } from "../../core/util/http.js";
 import { asRecord, stringFrom } from "../../core/util/json.js";
 import { summerRequestHeaders } from "../../core/agent-host.js";
+import {
+  codedFailure,
+  codeForStatus,
+  describeNetworkError,
+  networkDetails,
+  NOT_SIGNED_IN,
+  SIGN_IN_AGAIN_RECOVERY,
+  type SummerErrorCode,
+} from "../../core/error-codes.js";
 
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
@@ -101,18 +110,26 @@ async function readLenientJson(res: Response): Promise<any> {
   return text ? { message: text.slice(0, 1000) } : {};
 }
 
+/** A Summer web reply. `code` (and a `recovery` that differs from the
+ *  default) is set for the shared failures in core/error-codes.ts. */
+type GatewayResult = { data?: any; error?: string; status: number; code?: SummerErrorCode; recovery?: string };
+
+/** The coded failure for a non-OK reply: 401 (token expired) and 402 (no
+ *  credits) carry the shared codes. */
+function statusFailure(status: number): Pick<GatewayResult, "code" | "recovery"> {
+  const code = codeForStatus(status);
+  if (!code) return {};
+  return code === "not_signed_in" ? { code, recovery: SIGN_IN_AGAIN_RECOVERY } : { code };
+}
+
 async function mcpGenerate(
   endpoint: string,
   body: Record<string, any>,
   timeoutMs = 120_000
-): Promise<{ data?: any; error?: string; status: number }> {
+): Promise<GatewayResult> {
   const token = await getAuthToken();
   if (!token) {
-    return {
-      error:
-        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login",
-      status: 401,
-    };
+    return { error: NOT_SIGNED_IN, status: 401, code: "not_signed_in" };
   }
 
   const gatewayUrl = await resolveGatewayUrl();
@@ -130,26 +147,16 @@ async function mcpGenerate(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { error: `Generation request failed: ${msg}`, status: 0 };
+    return { error: `Generation request failed: ${describeNetworkError(err)}`, status: 0, code: "unavailable", data: networkDetails(err) };
   }
 
   const data = await readLenientJson(res);
   if (!res.ok) {
     let message = formattedApiErrorMessage(res.status, data);
-
-    if (res.status === 402) {
-      // One link: the Add credits step in Studio (no plan needed). Newer servers already put it in the message.
-      const base = String(data.message || "Not enough credits.");
-      message = base.includes("/studio/credits") ? base : `${base}\nAdd credits: https://summerengine.com/studio/credits`;
-    }
-    if (res.status === 401) {
-      message =
-        (data.message || "Auth token expired.") +
-        "\nRe-authenticate:\n  npx -y summer-engine@latest login";
-    }
-
-    return { error: message, data: { ...data, status: res.status }, status: res.status };
+    // The next step (Add credits, sign in again) rides in `recovery`.
+    if (res.status === 402) message = String(data.message || "Not enough credits.");
+    if (res.status === 401) message = String(data.message || "Auth token expired.");
+    return { error: message, data: { ...data, status: res.status }, status: res.status, ...statusFailure(res.status) };
   }
   return { data, status: res.status };
 }
@@ -158,7 +165,7 @@ async function mcpGet(
   endpoint: string,
   searchParams?: URLSearchParams,
   timeoutMs = 30_000
-): Promise<{ data?: any; error?: string; status: number }> {
+): Promise<GatewayResult> {
   const token = await getAuthToken();
   const suffix = searchParams?.size ? `?${searchParams.toString()}` : "";
   const gatewayUrl = await resolveGatewayUrl();
@@ -173,8 +180,7 @@ async function mcpGet(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { error: `Request failed: ${msg}`, status: 0 };
+    return { error: `Request failed: ${describeNetworkError(err)}`, status: 0, code: "unavailable", data: networkDetails(err) };
   }
 
   const data = await readLenientJson(res);
@@ -183,6 +189,8 @@ async function mcpGet(
       error: formattedApiErrorMessage(res.status, data),
       data: { ...data, status: res.status },
       status: res.status,
+      // Without a token a 401 means "sign in", not "sign in again".
+      ...(!token && res.status === 401 ? { code: "not_signed_in" as const } : statusFailure(res.status)),
     };
   }
   return { data, status: res.status };
@@ -196,9 +204,9 @@ async function pollJob(
   jobId: string,
   maxWaitMs = 600_000,
   intervalMs = 5_000
-): Promise<{ data?: any; error?: string }> {
+): Promise<Omit<GatewayResult, "status">> {
   const token = await getAuthToken();
-  if (!token) return { error: "Not signed in" };
+  if (!token) return { error: NOT_SIGNED_IN, code: "not_signed_in" };
 
   const gatewayUrl = await resolveGatewayUrl();
   const deadline = Date.now() + maxWaitMs;
@@ -213,8 +221,8 @@ async function pollJob(
         }
       );
 
-      const data = await res.json();
-      if (!res.ok) return { error: data.message || "Poll failed", data };
+      const data = await readLenientJson(res);
+      if (!res.ok) return { error: data.message || "Poll failed", data, ...statusFailure(res.status) };
 
       if (data.status === "completed") return { data };
       if (data.status === "failed") return { error: data.error || "Job failed", data };
@@ -227,24 +235,34 @@ async function pollJob(
         intervalMs = Math.min(intervalMs * 1.2, 15_000);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { error: `Poll error: ${msg}` };
+      return { error: `Poll error: ${describeNetworkError(err)}`, code: "unavailable", data: networkDetails(err) };
     }
   }
 
   return { error: `Timed out after ${maxWaitMs / 1000}s. Use summer_check_job({ jobId: "${jobId}" }) to check later.` };
 }
 
-function errorResult(message: string, extra?: Record<string, any>) {
+/** A failed tool call. With a shared code (core/error-codes.ts) the body is
+ *  `{ok:false, code, error, recovery, …, message}`; otherwise the older
+ *  `{error:true, …, message}`. */
+function errorResult(message: string, extra?: Record<string, any>, coded?: Pick<GatewayResult, "code" | "recovery">) {
+  const body = coded?.code
+    ? codedFailure(coded.code, message, { ...extra, message }, coded.recovery)
+    : { error: true, ...extra, message };
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ error: true, ...extra, message }, null, 2),
+        text: JSON.stringify(body, null, 2),
       },
     ],
     isError: true,
   };
+}
+
+/** The step after a generation job starts (the hosted tools answer the same way). */
+function checkJobNext(jobId: string): string {
+  return `The job runs on Summer's servers. Poll summer_check_job({ jobId: "${jobId}" }) every 15-30 seconds until status is "completed".`;
 }
 
 function successResult(data: any) {
@@ -284,7 +302,7 @@ handoff that MCP cannot perform automatically; do not pretend that stage ran.`,
       const params = new URLSearchParams();
       if (workflowId) params.set("id", workflowId);
       const result = await mcpGet("/api/mcp/workflows", params);
-      if (result.error) return errorResult(result.error, result.data);
+      if (result.error) return errorResult(result.error, result.data, result);
       return successResult(result.data);
     }
   );
@@ -309,7 +327,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     boardArgsSchema.shape,
     async (args) => {
       const result = await mcpGet(BOARD_ENDPOINT, boardQuery(args), 45_000);
-      if (result.error) return errorResult(result.error, result.data);
+      if (result.error) return errorResult(result.error, result.data, result);
       return { content: boardContent(result.data ?? {}) };
     }
   );
@@ -375,7 +393,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       );
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        return errorResult(result.error, result.data, result);
       }
 
       // Download to temp so the AI can Read and show the image
@@ -427,7 +445,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       );
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        return errorResult(result.error, result.data, result);
       }
 
       return successResult({
@@ -531,7 +549,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       const result = await mcpGenerate("/api/mcp/generate/audio", body);
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        return errorResult(result.error, result.data, result);
       }
 
       return successResult(result.data);
@@ -640,8 +658,9 @@ For a complete animated humanoid package, pass rig=true plus animationNames or
 actionIds. This routes through the shared character pipeline instead of a
 one-off mesh job.
 
-By default, waits for completion (up to 10 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+Returns a jobId within seconds. Poll summer_check_job with it until status is
+"completed" (most models take 1-5 minutes; tell the user it is running and keep
+working meanwhile). wait=true blocks up to 10 minutes instead.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
@@ -697,8 +716,8 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
         .describe("Character height used by auto-rigging"),
       wait: z
         .boolean()
-        .default(true)
-        .describe("Wait for completion (default true, up to 10 min). Set false to get jobId immediately."),
+        .default(false)
+        .describe("Block until the job finishes (up to 10 min) and return the result. Default false returns the jobId at once; poll summer_check_job."),
       options: z
         .record(z.any())
         .optional()
@@ -742,21 +761,21 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       });
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        return errorResult(result.error, result.data, result);
       }
 
       const jobId = result.data?.jobId;
 
-      // If not waiting or no jobId, return immediately
+      // The job runs on Summer's servers; the agent polls summer_check_job.
       if (!wait || !jobId) {
-        return successResult(result.data);
+        return successResult(jobId ? { ...result.data, next: checkJobNext(jobId) } : result.data);
       }
 
-      // Auto-poll until done
+      // wait=true: block until done
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
-        return errorResult(pollResult.error, { ...pollResult.data, jobId });
+        return errorResult(pollResult.error, { ...pollResult.data, jobId }, pollResult);
       }
 
       return successResult({
@@ -826,7 +845,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       });
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        return errorResult(result.error, result.data, result);
       }
 
       return successResult(result.data);
@@ -840,9 +859,10 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     "summer_check_job",
     `Check the status of an async generation job.
 
-Use this when you called summer_generate_3d with wait=false, or need to re-check
-a job that timed out. Most of the time you won't need this — summer_generate_3d
-waits automatically.
+summer_generate_3d and summer_generate_motion return a jobId; call this with it
+every 15-30 seconds until status is "completed" or "failed". A completed job
+carries the result: assetId (3D), rigAssetId (rig=true), animationAssetId or
+result.assets (motion), with file URLs. Import with summer_import_asset_by_id.
 
 Status values: waiting, active, completed, failed, delayed, unknown.
 
@@ -854,29 +874,25 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     async ({ jobId }) => {
       const token = await getAuthToken();
       if (!token) {
-        return errorResult(
-          "Not signed in. Run: npx -y summer-engine@latest login"
-        );
+        return errorResult(NOT_SIGNED_IN, undefined, { code: "not_signed_in" });
       }
 
+      let res: Response;
       try {
         const gatewayUrl = await resolveGatewayUrl();
-        const res = await fetch(`${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
+        res = await fetch(`${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
           headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
         });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          return errorResult(data.message || data.error || "Failed to check job status", data);
-        }
-
-        return successResult(data);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return errorResult(`Job status check failed: ${msg}`);
+        return errorResult(`Job status check failed: ${describeNetworkError(err)}`, networkDetails(err), { code: "unavailable" });
       }
+
+      const data = await readLenientJson(res);
+      if (!res.ok) {
+        return errorResult(data.message || data.error || "Failed to check job status", data, statusFailure(res.status));
+      }
+      return successResult(data);
     }
   );
 
@@ -917,9 +933,9 @@ Each clip (meshy: each motion; text-to-motion: each prompt x take) is billed.
 State the clip list and estimated cost and confirm with the user before
 spending.
 
-By default, waits for completion (up to 10 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll with summer_check_job.
-Import finished clips with summer_import_asset_by_id.
+Returns a jobId within seconds. Poll summer_check_job with it until status is
+"completed" (wait=true blocks up to 10 minutes instead). Import finished clips
+with summer_import_asset_by_id.
 
 Errors: backend_unavailable means text-to-motion is not enabled on this server
 yet — use meshy-library for humanoids and do not retry. Job failures starting
@@ -940,20 +956,20 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
 
       if (result.error) {
         const hint = motionErrorHint(result.data?.error);
-        return errorResult(result.error, hint ? { ...result.data, hint } : result.data);
+        return errorResult(result.error, hint ? { ...result.data, hint } : result.data, result);
       }
 
       const jobId = result.data?.jobId;
 
       if (!args.wait || !jobId) {
-        return successResult(result.data);
+        return successResult(jobId ? { ...result.data, next: checkJobNext(jobId) } : result.data);
       }
 
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
         const hint = motionJobFailureHint(pollResult.error);
-        return errorResult(pollResult.error, { ...pollResult.data, jobId, ...(hint ? { hint } : {}) });
+        return errorResult(pollResult.error, { ...pollResult.data, jobId, ...(hint ? { hint } : {}) }, pollResult);
       }
 
       return successResult({

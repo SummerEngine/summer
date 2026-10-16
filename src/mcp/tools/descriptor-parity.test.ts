@@ -57,6 +57,7 @@ import { registerFabricateTools } from "./fabricate-tools.js";
 import { registerUiTools } from "./ui-tools.js";
 import { registerRuntimeTools } from "./runtime-tools.js";
 import { registerAppTools } from "./app-tools.js";
+import { registerRouterTools } from "./router-tools.js";
 import { withMaxCharactersArg } from "../tool-surface.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -290,6 +291,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerUiTools,
     registerRuntimeTools,
     registerAppTools,
+    registerRouterTools,
   ]) {
     register(fakeServer);
   }

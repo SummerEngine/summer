@@ -1,6 +1,6 @@
 ---
 name: voice-and-mic-permissions
-description: "Use the microphone in a Summer game the safe way: declare it, ask only from a talk tap, keep a text path, never touch OS permissions."
+description: "Use the microphone in a Summer game safely: ask only from a talk tap, keep a text path, never touch OS permissions."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -28,7 +28,7 @@ player's answer per game. Your game code does four things and nothing more:
 
 **Second principle:** voice output never needs the mic. When the player types, the character still speaks.
 
-**Status: preview.** `Summer.client.mic` and the gated capture ship with the Summer Engine release that carries
+**Early access.** `Summer.client.mic` and the gated capture ship with the Summer Engine release that carries
 Summer Router voice. Names follow the Summer microphone contract; if the engine reports a different signature, the
 engine's class reference wins.
 
@@ -221,7 +221,7 @@ Summer Router calls need the Summer Host, so they return `unavailable` in export
    must find nothing.
 2. Launch with `summer_play` and play for a minute without pressing talk. `summer_get_diagnostics` must show no
    microphone prompt and no capture.
-3. Every branch without a real mic (preview flag; the name may change): run with
+3. Every branch without a real mic (early-access flag; the name may change): run with
    `--summer-mic-fake=granted`, `not_determined`, `denied`, `restricted`, `silent` and `no_device`. For each one,
    press talk with `summer_game_input` and check that the text path works.
 4. Real device, once per platform you ship:

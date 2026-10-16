@@ -7,15 +7,15 @@ import { readStoredOAuthToken } from "../oauth.js";
 import { getSkillRegistry, resolveSkillDir } from "../skills-registry.js";
 import { configureAgentMcp, SUMMER_MCP_SERVER_NAME, type SupportedAgent } from "../../installer/agent-config.js";
 import { resolveInstallLocation } from "../../installer/skill-locations.js";
-import { failure, success, usageError, type RouterOutcome } from "./outcome.js";
+import { failure, success, type RouterAnswer } from "./result.js";
 
 /**
- * `summer router setup`: make the coding agent ready for Summer Router in one
- * idempotent command. For each agent (Claude Code, Codex; detected or named
- * with --agent) it ensures the summer-engine MCP entry and the Summer Router
- * skills, then reports whether this machine is signed in. Without --yes it
- * only reports the plan. It never replaces an existing summer-engine entry
- * (a local or channel build stays as it is).
+ * router.setup (`summer router setup --yes`): make the coding agent ready for
+ * Summer Router in one idempotent call. For each agent (Claude Code, Codex;
+ * detected or named in agent) it ensures the summer-engine MCP entry and the
+ * Summer Router skills, then reports whether this machine is signed in.
+ * Without yes it only reports the plan. It never replaces an existing
+ * summer-engine entry (a local or channel build stays as it is).
  */
 
 export const ROUTER_AGENTS = ["claude-code", "codex"] as const;
@@ -72,21 +72,21 @@ function ensureSkill(agent: RouterAgent, name: string, apply: boolean): AgentPla
   return { name, status: installed === null ? "installed" : "updated", path: dest };
 }
 
-export async function setup(opts: SetupOptions): Promise<RouterOutcome> {
+export async function setup(opts: SetupOptions): Promise<RouterAnswer> {
   const env = opts.env ?? process.env;
   const home = opts.home ?? homedir();
   let agents: RouterAgent[];
   if (opts.agent) {
     const named = opts.agent === "claude" ? "claude-code" : opts.agent;
     if (!(ROUTER_AGENTS as readonly string[]).includes(named)) {
-      return usageError("invalid_input", `Unknown agent "${opts.agent}".`, `Pass --agent ${ROUTER_AGENTS.join(" or --agent ")}. For other agents run: summer setup <agent> --yes`);
+      return failure("invalid_input", `Unknown agent "${opts.agent}".`, `Pass agent ${ROUTER_AGENTS.join(" or ")}. For other agents run: summer setup <agent> --yes`);
     }
     agents = [named as RouterAgent];
   } else {
     agents = detectRouterAgents(env, home);
   }
   if (agents.length === 0) {
-    return usageError("no_agent_detected", "Found no Claude Code or Codex on this machine.", "Pass --agent claude-code or --agent codex. For other agents run: summer setup <agent> --yes");
+    return failure("no_agent_detected", "Found no Claude Code or Codex on this machine.", "Pass agent claude-code or codex. For other agents run: summer setup <agent> --yes");
   }
 
   const apply = Boolean(opts.yes);
@@ -96,7 +96,7 @@ export async function setup(opts: SetupOptions): Promise<RouterOutcome> {
       plans.push({ agent, mcp: await ensureMcp(agent, apply), skills: ROUTER_SKILLS.map((name) => ensureSkill(agent, name, apply)) });
     }
   } catch (error) {
-    return failure({ code: "setup_failed", message: error instanceof Error ? error.message : String(error), fix: "Fix the agent config file named in the message, then run summer router setup --yes again." });
+    return failure("setup_failed", error instanceof Error ? error.message : String(error), "Fix the agent config file named in the message, then run router.setup with yes again.");
   }
 
   const signedIn = Boolean(await getAuthToken()) && Boolean(await readStoredOAuthToken());
@@ -104,21 +104,9 @@ export async function setup(opts: SetupOptions): Promise<RouterOutcome> {
   const nextSteps = [
     ...(pending ? ["summer router setup --yes"] : []),
     ...(signedIn ? [] : ["summer login"]),
-    "summer router character add guard --template voice-npc --tools open_gate",
-    "summer router push --dry-run",
+    "summer router add-character --id guard --template voice-npc --tools open_gate",
+    "summer router check",
   ];
   const changed = plans.some((plan) => plan.mcp.status === "configured");
-  return success(
-    { applied: apply, agents: plans, signed_in: signedIn, restart_agent: changed, next_steps: nextSteps },
-    [
-      ...plans.flatMap((plan) => [
-        `${plan.agent}: MCP ${plan.mcp.status.replace(/_/g, " ")} (${plan.mcp.path})`,
-        ...plan.skills.map((skill) => `  skill ${skill.name}: ${skill.status.replace(/_/g, " ")}`),
-      ]),
-      signedIn ? "Signed in to Summer." : "Not signed in to Summer yet.",
-      ...(changed ? ["Restart the agent (or run /mcp) so it loads the summer-engine MCP."] : []),
-      "Next:",
-      ...nextSteps.map((step) => `  ${step}`),
-    ]
-  );
+  return success({ applied: apply, agents: plans, signed_in: signedIn, restart_agent: changed, next_steps: nextSteps });
 }

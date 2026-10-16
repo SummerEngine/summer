@@ -1,0 +1,51 @@
+id: tool/router-setup
+kind: tool
+version: 1.0.0
+summary: 'Give Claude Code or Codex the summer-engine MCP entry and the Summer Router skills, idempotent; without yes it returns the plan.'
+use_when:
+- setting up an agent for Summer Router (AI characters, voice NPCs) on this machine
+- '"set up summer router", "install the router skill"'
+do_not_use_when:
+- other agents (Cursor, Gemini, ...) — summer setup <agent> --yes
+facets:
+  lifecycle:
+  - build
+  domains:
+  - ai
+  - npc
+compatibility:
+  engine: '>=4.6'
+source: official
+license: MIT
+status: preview
+related:
+  skills:
+  - skill/summer-router
+implementation:
+  module: src/core/router/operations.ts
+  export: ROUTER_OPERATIONS
+surfaces:
+  mcp:
+    tool_name: summer_router_setup
+    remote: true
+input_schema:
+  type: object
+  properties:
+    agent:
+      type: string
+      enum:
+      - claude-code
+      - codex
+      description: 'The agent to set up. Default: every Claude Code and Codex found on this machine.'
+    'yes':
+      type: boolean
+      description: Apply the plan. Without it nothing is written.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+- none

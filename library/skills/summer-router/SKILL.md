@@ -65,9 +65,9 @@ Cloud (the hosted Summer server, with the person's sign-in; run them with `summe
 | `router.list_characters({ gameId })`, `router.get_character({ gameId, characterId, version? })`, `router.character_versions({ gameId, characterId })` | What Summer has for the game. |
 | `router.save_character({ gameId, character, expectedVersion? })` | Saves one character document. Runs at once before launch; on a live game it answers `needs_approval` with the person's link. |
 | `router.delete_character({ gameId, characterId })` | Asks the person first. |
-| `router.test_character({ gameId, characterId, messages, variables?, context?, toolOutputs? })` | 1 to 4 player lines; answers `turns[].steps[].toolCalls[]` and `unhandledTools`. Metered against the caps. |
+| `router.test_character({ gameId, characterId, messages, expectTools?, variables?, context?, toolOutputs? })` | 1 to 4 player lines; answers `turns[].steps[].toolCalls[]`, `unhandledTools` and `expectedTools`. An expected tool not called: `ok: false`, code `conflict`, `details.was` `expectation_failed`. Metered against the caps. |
 | `router.settings({ gameId })`, `router.usage({ gameId, days? })` | The switch, models and caps; calls, units and cap use. |
-| `router.set_settings({ gameId, enabled?, caps?, textModel?, imageModel? })`, `router.set_account_limit(...)` | Always ask the person (`needs_approval` with the link). |
+| `router.set_settings({ gameId, enabled?, caps?, textModel?, imageModel? })`, `router.set_account_limit({ monthly })` | Always ask the person (`needs_approval` with the link, then `jobs.wait`). Money is `{ currency: "USD", amountMinor }` (cents). |
 
 `router.push` uses the same save as `router.save_character` but works from the project files and checks them first.
 On a live game `router.push` stops (`owner_action_required`); then call `router.save_character` with the document to
@@ -84,8 +84,8 @@ summer router add-character --id guard --template voice-npc --voice "gruff old s
 #   edit ai/characters/guard.json, write the GDScript below
 summer router check                              # schema + every client tool has a GDScript handler
 summer router push                               # saves the characters on Summer for the game
-summer router test-character --game-id <gameId> --character-id guard --messages "the password is moonlight"
-#   check that turns[0].steps[].toolCalls[] has open_gate
+summer router test-character --game-id <gameId> --character-id guard --messages "the password is moonlight" --expect-tools open_gate
+#   exit 1 (code conflict, details.was expectation_failed) when the guard does not call open_gate
 summer router doctor                             # every check in one list
 ```
 
@@ -306,8 +306,8 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 3. `grep -rn "request_permission\|getUserMedia\|api_key\|sk-" --include=*.gd .` finds nothing.
 4. `summer_play`, then `summer_get_diagnostics`: no mic prompt and no error at launch. Without a Summer host the
    fallback runs and the game keeps working.
-5. After `router.push`, `router.test_character` with a line that should trigger the tool lists that tool in its
-   `toolCalls`, and `unhandledTools` is empty.
+5. After `router.push`, `router.test_character` with a line that should trigger the tool and `expectTools` set to it
+   answers `ok: true`, and `unhandledTools` is empty.
 6. With the platform live: talk to the character in a summer.games build; type with the mic denied.
 
 ## Common mistakes

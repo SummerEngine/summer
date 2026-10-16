@@ -291,7 +291,7 @@ export async function push(ctx: RouterContext, input: PushInput): Promise<Router
     game_id: game.gameId,
     pushed,
     studio_url: studio,
-    next_steps: [`router.test_character (cloud) with gameId "${game.gameId}", characterId "${first}"${firstTool ? `, and check that its toolCalls include ${firstTool}` : ""}`],
+    next_steps: [`router.test_character (cloud) with gameId "${game.gameId}", characterId "${first}"${firstTool ? `, expectTools ["${firstTool}"]` : ""}`],
   });
 }
 

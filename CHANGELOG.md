@@ -2,7 +2,9 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [4.2.0] - 2026-10-16
+
+Upgrades keep agents current: the installed Summer skills refresh themselves after an upgrade, every Summer project gets an AGENTS.md, the CLI path can let Claude Code and Codex run read-only commands without asking, and Gemini CLI installs come with the skills.
 
 - **The CLI path can ask less.** `summer setup claude-code --cli --allow-rules --yes` lets Claude Code run read-only and dry-run `summer` commands without asking: a reviewed list of reads (`summer ops search`, `summer jobs wait`, `summer engine screenshot`, ...; `jobs wait` and `assets get` also save the files they name) and every spend only as a dry run (`summer assets generate-image --dry-run ...`, the flag right after the action). It is opt-in: the flag is in the command the person approves, setup prints every rule, and without `--yes` it writes nothing. The rules, for both `summer` and `npx -y summer-engine@latest`, go into `permissions.allow` in `~/.claude/settings.json` (`.claude/settings.local.json` with `--scope project`); nothing else in the file changes. `summer setup codex --cli --allow-rules --yes` writes the same as Summer's own Codex rules file, `~/.codex/rules/summer.rules`. `--remove-allow-rules` takes exactly these rules out again. Changes, publishing, prices, deletes, messages and `engine capture-gameplay` (it runs the project's own code) still ask. A call with `--dry-run` is now a dry run whatever its input says (`--no-dry-run` or `"dryRun": false` in `--input` no longer undo it).
 - **Devin Desktop (formerly Windsurf): the MCP config moved** to `~/.config/devin/mcp_config.json` (`$XDG_CONFIG_HOME/devin`, Windows `%APPDATA%\devin`), per Devin's docs. `summer setup windsurf` writes it there and says when an earlier setup's entry is still in `~/.codeium/windsurf/mcp_config.json` (left as it is for older builds).

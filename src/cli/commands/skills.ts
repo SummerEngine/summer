@@ -477,7 +477,7 @@ skillsCommand
       }
     }
 
-    writeMarkerForLocation(location);
+    writeMarkerForLocation(location, skills.map((skill) => skill.name));
     printInstallSummary(skills.length, agent, scope, location);
   });
 
@@ -518,11 +518,12 @@ function installClaudeCommands(
  * `skills-version-stale` check can detect drift later. Devin Desktop (formerly Windsurf) writes a
  * single rules file with no surrounding dir, so we skip it there.
  */
-function writeMarkerForLocation(location: InstallLocation): void {
+function writeMarkerForLocation(location: InstallLocation, installed: readonly string[]): void {
   if (location.kind === "windsurf-rule-file") return;
   try {
     mkdirSync(location.path, { recursive: true });
-    writeSkillMarker(location.path, cliVersion);
+    // Skills the upgrade refresh left stay protected, unless this install just replaced them.
+    writeSkillMarker(location.path, cliVersion, new Date(), installed);
   } catch {
     // Marker is purely informational. If the FS rejects it (e.g. permission
     // surprises on locked-down corp machines) we don't want to fail the install.

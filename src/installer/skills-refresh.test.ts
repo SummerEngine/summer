@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { getSkillRegistry, resolveSkillDir, type SkillRegistryEntry } from "../core/skills-registry.js";
 import { refreshInstalledSkills, refreshNotice, type RefreshedFolder } from "./skills-refresh.js";
-import { readSkillMarker, SKILL_VERSION_MARKER_FILENAME } from "./version-check.js";
+import { readKeptSkills, readSkillMarker, SKILL_VERSION_MARKER_FILENAME, writeSkillMarker } from "./version-check.js";
 
 const bundled = getSkillRegistry().filter((entry) => entry.bundled !== false && entry.status !== "deprecated");
 const [first, second, third] = bundled;
@@ -96,6 +96,22 @@ describe("refreshInstalledSkills", () => {
     expect(next.refreshed[0]).toMatchObject({ kept: [second.name] });
     expect(installedText(dir, second.name)).toMatch(/old 3\.x/);
     expect(readFileSync(join(dir, second.name, "my-notes.md"), "utf-8")).toBe("mine\n");
+  });
+
+  it("keeps the kept list when a later install writes the marker, minus the skills that install replaced", () => {
+    const dir = oldInstall();
+    writeFileSync(join(dir, second.name, "my-notes.md"), "mine\n");
+    refreshInstalledSkills("4.2.0", { dirs: [dir], registry: bundled });
+    expect(readKeptSkills(dir)).toEqual([second.name]);
+    // `summer skills install <one-skill>` writes the marker with the names it installed.
+    writeSkillMarker(dir, "4.2.0", new Date(), [third.name]);
+    expect(readKeptSkills(dir)).toEqual([second.name]);
+    expect(refreshInstalledSkills("4.3.0", { dirs: [dir], registry: bundled }).refreshed[0]).toMatchObject({ kept: [second.name] });
+    expect(readFileSync(join(dir, second.name, "my-notes.md"), "utf-8")).toBe("mine\n");
+    // An install that replaced the kept skill itself (setup --force does) clears it.
+    writeSkillMarker(dir, "4.3.0", new Date(), [first.name, second.name]);
+    expect(readKeptSkills(dir)).toEqual([]);
+    expect(readSkillMarker(dir)?.version).toBe("4.3.0");
   });
 
   it("treats a deleted file as a change", () => {

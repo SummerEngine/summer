@@ -303,6 +303,8 @@ export const SKILL_VERSION_MARKER_FILENAME = ".summer-version";
 export interface SkillVersionMarker {
   version: string;
   installedAt: string;
+  /** Summer skills the upgrade refresh left because someone changed them (installer/skills-refresh.ts). */
+  kept?: string[];
 }
 
 export function readSkillMarker(dir: string): SkillVersionMarker | null {
@@ -320,15 +322,33 @@ export function readSkillMarker(dir: string): SkillVersionMarker | null {
   }
 }
 
+/** The skills the upgrade refresh left in this folder (the raw marker; readSkillMarker keeps setup's fields). */
+export function readKeptSkills(dir: string): string[] {
+  try {
+    const kept = (JSON.parse(readFileSync(join(dir, SKILL_VERSION_MARKER_FILENAME), "utf-8")) as SkillVersionMarker).kept;
+    return Array.isArray(kept) ? kept.filter((name): name is string => typeof name === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Write the folder's marker. The skills an upgrade refresh left stay listed
+ * (so later refreshes keep leaving them), except the ones this install just
+ * wrote: `installed` names them; leave it out to keep every one.
+ */
 export function writeSkillMarker(
   dir: string,
   version: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  installed?: readonly string[]
 ): string {
   const path = join(dir, SKILL_VERSION_MARKER_FILENAME);
+  const kept = readKeptSkills(dir).filter((name) => !installed?.includes(name));
   const payload: SkillVersionMarker = {
     version,
     installedAt: now.toISOString(),
+    ...(kept.length > 0 ? { kept } : {}),
   };
   writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf-8");
   return path;

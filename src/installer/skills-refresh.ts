@@ -2,13 +2,7 @@ import { closeSync, cpSync, existsSync, lstatSync, openSync, readdirSync, readFi
 import { join } from "node:path";
 import { getSkillRegistry, resolveSkillDir, type SkillRegistryEntry } from "../core/skills-registry.js";
 import { allAgentSpecs, defaultPathContext, resolveSkillPath } from "./agent-table.js";
-import { compareSemver, parseSemver, readSkillMarker, SKILL_VERSION_MARKER_FILENAME, type SkillVersionMarker } from "./version-check.js";
-
-/** The marker a refresh writes: setup's fields plus the skills it left because someone changed them. */
-interface RefreshMarker extends SkillVersionMarker {
-  /** Kept across releases: a later refresh leaves these until setup --force replaces them. */
-  kept?: string[];
-}
+import { compareSemver, parseSemver, readKeptSkills, readSkillMarker, SKILL_VERSION_MARKER_FILENAME, type SkillVersionMarker } from "./version-check.js";
 
 /**
  * After an upgrade, bring the Summer skills already installed on this
@@ -86,15 +80,7 @@ function isBehind(marker: SkillVersionMarker, cliVersion: string): boolean {
   return order < 0 || (order === 0 && isPrerelease(marker.version) && !isPrerelease(cliVersion));
 }
 
-/** The names an earlier refresh left; readSkillMarker keeps only setup's fields. */
-function previouslyKept(dir: string): Set<string> {
-  try {
-    const kept = (JSON.parse(readFileSync(join(dir, SKILL_VERSION_MARKER_FILENAME), "utf-8")) as RefreshMarker).kept;
-    return new Set(Array.isArray(kept) ? kept.filter((name): name is string => typeof name === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
+
 
 const errorCode = (error: unknown): string =>
   (error as NodeJS.ErrnoException)?.code ?? (error instanceof Error ? error.message : String(error));
@@ -216,7 +202,7 @@ function refreshFolder(
     const installedAt = Date.parse(marker.installedAt);
     const editedAfter = (Number.isFinite(installedAt) ? installedAt : 0) + EDIT_GRACE_MS;
     const folder: RefreshedFolder = { dir, from: marker.version, to: cliVersion, updated: [], added: [], kept: [] };
-    const keptBefore = previouslyKept(dir);
+    const keptBefore = new Set(readKeptSkills(dir));
     const owned = registry.filter((entry) => isSummersSkill(join(dir, entry.name), entry.name));
     for (const entry of owned) {
       const dest = join(dir, entry.name);
@@ -249,7 +235,7 @@ function refreshFolder(
     }
 
     // Written last, through a rename: a kill before this leaves the old marker, and the next start finishes.
-    const next: RefreshMarker = { version: cliVersion, installedAt: new Date().toISOString(), ...(folder.kept.length > 0 ? { kept: folder.kept } : {}) };
+    const next: SkillVersionMarker = { version: cliVersion, installedAt: new Date().toISOString(), ...(folder.kept.length > 0 ? { kept: folder.kept } : {}) };
     writeFileSync(markerTemp, JSON.stringify(next, null, 2) + "\n", "utf-8");
     renameSync(markerTemp, join(dir, SKILL_VERSION_MARKER_FILENAME));
     return folder;

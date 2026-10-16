@@ -52,6 +52,23 @@ export class BuildToolError extends Error {
   }
 }
 
+/**
+ * The structured failure every face prints for a BuildToolError: its code,
+ * the message without the recovery, the recovery, the HTTP status when the
+ * store sent one, and its detail (a manifest's problem list, the person's
+ * games).
+ */
+export function buildToolFailure(error: BuildToolError): Record<string, unknown> {
+  return {
+    ok: false,
+    code: error.code,
+    message: error.message.replace(` ${error.recovery}`, ""),
+    recovery: error.recovery,
+    ...(error.status ? { status: error.status } : {}),
+    ...error.detail,
+  };
+}
+
 export interface BundleFile {
   path: string;
   sha256: string;

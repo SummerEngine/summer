@@ -66,6 +66,22 @@ answers `no_tab` for a local Studio tab. To test both locally, also point
 and sign in to it with `summer login --store`. Otherwise use the `summer_app_*` tools and open
 the app in your local Studio by hand.
 
+### Switching between staging and production
+
+The machine keeps one store sign-in (`~/.summer/oauth-token`), made for one hosted MCP. The store
+and publishing tools that run here (`summer_publish_build`, `summer_sync_items`) and the mounted
+hosted tools all use it. To switch between staging and production, change both settings, then sign
+in again:
+
+1. `SUMMER_GATEWAY_URL` (or `summer config set gateway.url`): the web host the store calls go to.
+2. `SUMMER_MCP_RESOURCE_URL`: that environment's hosted MCP (its MCP host and `/mcp`).
+3. `summer login --store --force`: replaces the sign-in with one for that hosted MCP.
+
+Until step 3, the store refuses the old sign-in. `summer_sync_items` stops before reading or sending
+anything with `store_login_other_environment`. Game ids differ between staging and production, so
+pass the gameId from that environment's `summer_store_list_games`. `summer.items.json` is the same
+file in both: items are matched by slug.
+
 ## More
 
 - Product and agent docs: the Summer Apps pages on the Summer docs site.

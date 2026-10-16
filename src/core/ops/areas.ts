@@ -17,10 +17,11 @@ export const CLI_AREAS = [
 /**
  * Operations that run in this package: everything in `engine`, the library
  * (`docs`, apart from the Studio workflows, which are cloud), opening a
- * page or an editor surface, docking an App in the editor, and uploading a
- * local export. Everything else runs on the hosted server.
+ * page or an editor surface, docking an App in the editor, uploading a
+ * local export, and syncing the project's summer.items.json. Everything
+ * else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file"]);
+const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "economy.sync_items"]);
 
 export function isLocalOp(op: string): boolean {
   return op.startsWith("engine.") || LOCAL_OPS.has(op);

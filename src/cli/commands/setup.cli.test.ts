@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
@@ -79,6 +80,28 @@ describe("summer setup --cli: the skills and no MCP server", () => {
       expect(config.text).not.toContain("mcp.summer.games");
     }
   );
+
+  it("lets Claude Code and Codex run read-only and dry-run summer commands without asking, unless --no-allow-rules", async () => {
+    vi.stubEnv("CODEX_HOME", "");
+    try {
+      const claude = await setup(["claude-code", "--cli", "--yes", "--json"]);
+      // The first --cli run in this file already added them; a second adds nothing.
+      const rules = claude.json.allowRules as { path: string; added: string[]; rules: string[] };
+      expect(rules).toMatchObject({ path: join(homedir(), ".claude", "settings.json"), added: [] });
+      const allow = JSON.parse(readFileSync(rules.path, "utf-8")).permissions.allow as string[];
+      expect(allow.some((rule) => /^Bash\((summer|npx -y summer-engine@latest) jobs wait \*\)$/.test(rule))).toBe(true);
+      expect(allow.some((rule) => rule.includes(" store publish"))).toBe(false);
+      const codex = await setup(["codex", "--cli", "--yes", "--json"]);
+      expect(readFileSync((codex.json.allowRules as { path: string }).path, "utf-8")).toContain("prefix_rule(");
+      const skipped = await setup(["claude-code", "--cli", "--yes", "--no-allow-rules", "--json"]);
+      expect(skipped.json.allowRules).toBeNull();
+      const planned = await setup(["claude-code", "--cli", "--json", "--scope", "project"]);
+      expect(planned.json.allowRules).toMatchObject({ wrote: false });
+      expect(existsSync((planned.json.allowRules as { path: string }).path)).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 
   it("--no-mcp is the same as --cli", async () => {
     const { json } = await setup(["kimi-code", "--no-mcp", "--yes", "--json"]);

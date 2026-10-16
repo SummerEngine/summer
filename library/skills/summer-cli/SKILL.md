@@ -38,7 +38,7 @@ Each Summer skill ends with a **From a shell** table: the command for each MCP t
 ## 3. Run it
 
 ```bash
-summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9 --dry-run
+summer assets generate-image --dry-run --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9
 summer engine set-prop --scene-path res://main.tscn --path Player --key position --value "Vector3(0, 1, 0)"
 summer store status --game-id <id> --json
 ```
@@ -46,7 +46,7 @@ summer store status --game-id <id> --json
 - Actions and fields are kebab-case: `aspectRatio` is `--aspect-ratio`, `look_at` is `--look-at`.
 - `--<field>` alone sets a boolean field to true; `--no-<field>` sets it to false. Repeat a flag to give a list.
 - Objects, and anything hard to quote, go in `--input '<json>'`. A flag wins over the same key in `--input`.
-- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
+- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Put it right after the action: Claude Code and Codex then run it without asking (so do reads), after `summer setup <agent> --cli --yes`. Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
 - `--idempotency-key <key>` makes a retry safe: Summer runs a change once per key.
 - `--json` prints only the answer: `{"ok":true,"status":"done","result":{...}}`. The exit code is 0 for every `ok` answer and 1 for an error.
 

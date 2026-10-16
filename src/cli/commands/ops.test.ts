@@ -280,3 +280,13 @@ describe("summer ops search and describe signed out", () => {
     expect(unknown.err[0]).toMatch(/^Error \(not_signed_in\)/);
   });
 });
+
+describe("a call with --dry-run is a dry run (allow rules rely on it)", () => {
+  it("whatever its input says", () => {
+    for (const argv of [["--dry-run", "--no-dry-run"], ["--dry-run", "--input", '{"dryRun":false,"prompt":"x"}'], ["--dry-run=false"]]) {
+      const call = parseCallFlags(argv, null);
+      expect(call.dryRun, argv.join(" ")).toBe(true);
+      expect(call.input).not.toHaveProperty("dryRun");
+    }
+  });
+});

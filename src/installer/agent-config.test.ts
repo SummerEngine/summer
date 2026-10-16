@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { allAgentSpecs } from "./agent-table.js";
@@ -633,5 +633,26 @@ describe("resolveAgentSelection", () => {
     expect(() => resolveAgentSelection("notanagent", undefined)).toThrow(/^Unknown agent "notanagent"\. Supported: .*claude-code/);
     expect(() => resolveAgentSelection(undefined, undefined)).toThrow(/^Specify an agent: /);
     expect(resolveAgentSelection("claude", undefined)).toBe("claude-code");
+  });
+});
+
+describe("Devin Desktop moved its MCP config to ~/.config/devin", () => {
+  it("writes the new file and names an entry an earlier setup left in ~/.codeium/windsurf", async () => {
+    const home = tmp();
+    const oldFile = join(home, ".codeium", "windsurf", "mcp_config.json");
+    mkdirSync(dirname(oldFile), { recursive: true });
+    writeFileSync(oldFile, JSON.stringify({ mcpServers: { "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] } } }));
+    const previousHome = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const env = { XDG_CONFIG_HOME: join(home, "xdg") } as NodeJS.ProcessEnv;
+      const result = await configureAgentMcp({ agent: "windsurf", scope: "user", env });
+      expect(result.path).toBe(join(home, "xdg", "devin", "mcp_config.json"));
+      expect(JSON.parse(readFileSync(result.path, "utf-8")).mcpServers["summer-engine"]).toBeDefined();
+      expect(result.warnings).toEqual([expect.stringContaining(`${oldFile} still lists summer-engine`)]);
+      expect(readFileSync(oldFile, "utf-8")).toContain("summer-engine");
+    } finally {
+      process.env.HOME = previousHome;
+    }
   });
 });

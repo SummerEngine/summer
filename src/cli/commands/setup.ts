@@ -15,7 +15,8 @@ import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { readRecordedMcpServer, resolveDefaultChannel } from "../../installer/version-check.js";
-import { agentLabel, agentSpec } from "../../installer/agent-table.js";
+import { agentLabel, agentSpec, defaultPathContext } from "../../installer/agent-table.js";
+import { addAllowRules, allowRulesPath, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
@@ -46,6 +47,8 @@ interface SetupCommandOptions {
   cli?: boolean;
   /** false with --no-mcp, the same as --cli. */
   mcp?: boolean;
+  /** false with --no-allow-rules: --cli adds no allow rules for Claude Code or Codex. */
+  allowRules?: boolean;
 }
 
 /** The options that only shape the MCP entry, which --cli does not write. */
@@ -91,6 +94,10 @@ export const setupCommand = new Command("setup")
     "CLI only: install the skills and no MCP server (and no Summer Games). The agent runs Summer as summer <area> <action> commands in its shell; the summer-cli skill teaches it"
   )
   .option("--no-mcp", "Same as --cli")
+  .option(
+    "--no-allow-rules",
+    "With --cli: do not let Claude Code or Codex run read-only and dry-run summer commands without asking (added by default with --yes)"
+  )
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -203,11 +210,20 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     stableOnly: Boolean(opts.stableOnly),
     assetsOnly: Boolean(opts.assetsOnly),
   });
+  // Read-only and dry-run summer commands run without asking, where the agent has clean allow rules.
+  let allowRules: AllowRulesResult | null = null;
+  if (supportsAllowRules(agent) && opts.allowRules !== false) {
+    try {
+      allowRules = await addAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), Boolean(opts.yes) && !dryRun);
+    } catch (error) {
+      warnings.push(error instanceof Error ? error.message : String(error));
+    }
+  }
   const doctor = await runDoctor({ quiet: true });
   const ok = doctor.ok && skills.status !== "failed";
 
   if (opts.json) {
-    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, doctor, warnings }, null, 2));
+    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, allowRules, doctor, warnings }, null, 2));
   } else {
     const label = agentLabel(agent);
     console.log("");
@@ -216,12 +232,28 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${c.bold(`CLI only for ${label}`)}: no MCP server`);
     console.log(`     ${c.dim("The agent runs Summer in its shell: summer <area> <action>, or npx -y summer-engine@latest <area> <action>. The summer-cli skill teaches it.")}`);
     printSkillsLine(skills, dryRun);
+    if (allowRules) printAllowRules(allowRules, label, Boolean(opts.yes) && !dryRun);
     for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
     console.log("");
     printDoctorResult(doctor);
     if (ok && !dryRun) printTryIt(label, Boolean(opts.assetsOnly));
   }
   if (!ok) process.exit(1);
+}
+
+/** The allow rules, each on its line: what the agent now runs without asking, or would with --yes. */
+function printAllowRules(result: AllowRulesResult, label: string, write: boolean): void {
+  const where = c.dim(tildeify(result.path));
+  if (!write) {
+    console.log(`  ${sym.arrow()}  ${label} would run read-only and dry-run summer commands without asking. Add the rules: run again with --yes. Skip: --no-allow-rules.  ${where}`);
+  } else if (result.added.length === 0) {
+    console.log(`  ${sym.ok()}  ${label} already runs read-only and dry-run summer commands without asking  ${where}`);
+    return;
+  } else {
+    console.log(`  ${sym.ok()}  ${label} runs read-only and dry-run summer commands without asking (${result.added.length} rules added)  ${where}`);
+  }
+  for (const rule of result.rules) console.log(`     ${c.dim(rule)}`);
+  console.log(`     ${c.dim("Changes, publishing, prices, deletes and messages still ask. Put --dry-run right after the action: summer assets generate-image --dry-run --prompt ...")}`);
 }
 
 /** The config file that already lists summer-engine for this agent and scope, or null. */

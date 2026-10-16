@@ -36,7 +36,7 @@
 | Codex | `codex mcp add summer-cloud --url https://mcp.summerengine.com/mcp`, then `codex mcp login summer-cloud` |
 | Cursor | [Add to Cursor](https://cursor.com/install-mcp?name=summer-cloud&config=eyJ1cmwiOiJodHRwczovL21jcC5zdW1tZXJlbmdpbmUuY29tL21jcCJ9), or add `"summer-cloud": {"url": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.cursor/mcp.json` |
 | VS Code | [Add to VS Code](https://vscode.dev/redirect/mcp/install?name=summer-cloud&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.summerengine.com%2Fmcp%22%7D), or `code --add-mcp '{"name":"summer-cloud","type":"http","url":"https://mcp.summerengine.com/mcp"}'` |
-| Devin Desktop (formerly Windsurf) | add `"summer-cloud": {"serverUrl": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.codeium/windsurf/mcp_config.json` |
+| Devin Desktop (formerly Windsurf) | add `"summer-cloud": {"serverUrl": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.config/devin/mcp_config.json` (Windows `%APPDATA%\devin\mcp_config.json`) |
 | Claude Desktop, claude.ai | Settings > Connectors > Add custom connector, then paste the URL |
 
 **Engine work: `npx -y summer-engine@latest setup <agent> --yes`** (needs Node 20+). It writes the local server (`summer mcp`) into your agent's config with the skills. The local server drives the Summer Engine app on your machine: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login` it also runs every cloud operation, so your agent needs one server. Or paste the prompt in [Get started](#get-started-one-prompt) and your agent does every step.

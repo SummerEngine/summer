@@ -90,6 +90,8 @@ export function parseCallFlags(argv: readonly string[], schema: JsonSchema | nul
     }
   }
   out.input = { ...out.input, ...fields };
+  // --dry-run anywhere makes a dry run, whatever the input says: allow rules for dry runs rely on it (installer/cli-permissions.ts).
+  if (out.dryRun) delete out.input.dryRun;
   return out;
 }
 

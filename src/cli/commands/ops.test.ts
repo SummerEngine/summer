@@ -295,3 +295,25 @@ describe("summer ops search and describe signed out", () => {
     expect(unknown.err[0]).toMatch(/^Error \(not_signed_in\)/);
   });
 });
+
+describe("a call with --dry-run is a dry run (allow rules rely on it)", () => {
+  it("whatever its input says", () => {
+    for (const argv of [["--dry-run", "--no-dry-run"], ["--dry-run", "--input", '{"dryRun":false,"prompt":"x"}'], ["--dry-run=false"]]) {
+      const call = parseCallFlags(argv, null);
+      expect(call.dryRun, argv.join(" ")).toBe(true);
+      expect(call.input).not.toHaveProperty("dryRun");
+    }
+  });
+
+  it("end to end: a cloud spend reaches Summer only as a dry run, a local one never runs", async () => {
+    const hosted = vi.fn(async () => envelope({ ok: true, status: "dry_run", preview: { summary: "Would draw a picture." } }));
+    const cloud = deps(hosted);
+    expect(await runOpFromCli("assets.generate_image", ["--dry-run", "--input", '{"dryRun":false,"prompt":"x"}'], cloud)).toBe(0);
+    expect(hosted).toHaveBeenCalledTimes(1);
+    expect(hosted).toHaveBeenCalledWith("summer_call", { op: "assets.generate_image", input: { prompt: "x" }, dryRun: true });
+    const local = deps();
+    expect(await runOpFromCli("engine.set_prop", ["--dry-run", "--no-dry-run", "--input", '{"scenePath":"res://main.tscn","path":"Player","key":"visible","value":"false"}'], local)).toBe(0);
+    expect(local.dispatch).not.toHaveBeenCalled();
+    expect(local.out[0]).toMatch(/^Dry run:/);
+  });
+});

@@ -20,11 +20,9 @@
 
 ## Install
 
-```sh
-https://mcp.summerengine.com/mcp        # chat apps (Claude, ChatGPT, Cursor...): add this URL, nothing to install
-brew install summerengine/tap/summer    # Homebrew
-npm install -g summer-engine            # npm, Node 20+
-```
+- **Chat apps** (Claude, ChatGPT, Cursor...): add `https://mcp.summerengine.com/mcp`. Nothing to install.
+- **Homebrew:** `brew install summerengine/tap/summer`
+- **npm** (Node 20+): `npm install -g summer-engine`
 
 **CLI only**, no MCP server: `summer setup --cli`. `summer ops search "publish my game"` finds any operation, signed in or not.
 

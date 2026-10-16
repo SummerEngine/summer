@@ -1,0 +1,50 @@
+name: Attach the Gemini extension to the release
+
+# `gemini extensions install https://github.com/SummerEngine/summer` (and the
+# Gemini CLI gallery) installs a release's only asset when it has one. The
+# repository keeps its skills in library/skills/, where Gemini does not look,
+# so each release carries the extension with skills/ at its root
+# (scripts/build-gemini-extension.ts). The workflow token uploads it: no secret.
+# Runs when a GitHub Release is published, or by hand for an existing tag.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the extension to (for example v4.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      # The script from this workflow's commit, the content from the tag: a release
+      # made before the script existed can be packaged by hand.
+      - name: Checkout the script
+        uses: actions/checkout@v5
+        with:
+          path: tools
+
+      - name: Checkout the release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          path: release
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the extension
+        run: node tools/scripts/build-gemini-extension.ts "$RUNNER_TEMP/gemini" release
+
+      - name: Attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP/gemini/summer-gemini-extension.tar.gz" --clobber --repo "$GITHUB_REPOSITORY"

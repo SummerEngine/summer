@@ -2,6 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Gemini CLI extensions get the skills.** `gemini extensions install https://github.com/SummerEngine/summer` and the Gemini CLI gallery install a release's only asset, and each GitHub Release now carries one: `summer-gemini-extension.tar.gz`, the extension with `skills/<slug>/` for every bundled skill (Gemini reads skills only from that folder; the repository keeps them in `library/skills/`). A clone of the repository gave no skills.
+- **A Claude plugin for Anthropic's plugin directory** in `plugins/claude/`: the same plugin from a folder of its own (291 files, under the directory's 512), with the server and every `summer-engine@latest` pinned to this version. `npm run generate:registry` writes it, `--check` fails when it drifts, and `claude plugin validate --strict plugins/claude` passes.
+
 ## [4.1.0] - 2026-10-16
 
 Summer without MCP: any agent runs Summer from its shell with the `summer` CLI and the `summer-cli` skill. Every operation is found without a sign-in, search understands plain English, and Summer installs with Homebrew.

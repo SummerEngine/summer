@@ -1,0 +1,23 @@
+id: skill/writing-plans
+kind: skill
+version: 1.0.3
+summary: Turn a spec or requirements for a multi-step task into a written implementation plan before touching code.
+use_when:
+  - you have a spec or requirements for a multi-step task, before touching code
+  - a task spans several files or steps and needs an ordered, reviewable plan before implementation starts
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/workflow/writing-plans

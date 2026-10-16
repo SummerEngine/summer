@@ -1,0 +1,30 @@
+id: skill/summer-leaderboards
+kind: skill
+version: 1.0.0
+summary: "Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores."
+use_when:
+  - "the user wants a leaderboard, high scores, ranks, MMR, Elo or a 'top 50' screen in a Summer game"
+  - "a rated queue should show each player's rating, standing or percentile"
+  - "the authority should write a score, such as total coins or best time, to a Game-wide ranking"
+  - "a co-op mode should rate players against the content with authority_v1 rating deltas"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - ui
+  modalities:
+    - scripts
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/summer-matchmaking
+    - skill/summer-match-results
+    - skill/summer-player-data
+source: official
+license: MIT
+status: preview
+recommended: false

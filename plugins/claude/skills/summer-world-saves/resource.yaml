@@ -1,0 +1,29 @@
+id: skill/summer-world-saves
+kind: skill
+version: 1.0.0
+summary: "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save."
+use_when:
+  - "building a persistent World, shared base, farm or realm in a Summer game that must survive server restarts"
+  - "saving and restoring World state with commit_save, load_save, finish_restore, save_requested or finish_snapshot"
+  - "deciding whether progress belongs in a World save or in player data"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - scripting
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-state
+    - skill/summer-player-data
+    - skill/summer-match-results
+source: official
+license: MIT
+status: preview
+recommended: false

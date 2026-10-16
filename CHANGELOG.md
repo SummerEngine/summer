@@ -12,6 +12,7 @@ Usage counts the `summer` CLI: each signed-in command sends one usage line, like
 - **CLI calls to the hosted server say they come from the CLI.** `summer <area> <action>`, `summer ops search` and hosted `summer tool` calls connect as `summer-cli` with `X-Summer-Client-Surface: cli`, so usage can tell them from the MCP server, which still connects as `summer-engine-local`.
 - **A failed MCP tool call's usage line names its error code** (`not_signed_in`, `engine_not_running`, `engine_lacks_op`, ...; `exception` when the tool threw). Only the code is sent, never the message.
 - `multiplayer-publish` no longer says bundle upload is rolling out or tells agents to stop before uploading: Builds pages take the `.zip` bundle.
+- Tests: the Gemini extension tests (they copy and pack every skill) get 120 s and the whole-library validation 60 s, so the release gates pass on a busy machine (one took 34.5 s against the 20 s default).
 
 ## [4.2.0] - 2026-10-16
 

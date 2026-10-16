@@ -28020,7 +28020,7 @@
                   "type": "object",
                   "properties": {
                     "assetId": {
-                      "description": "One of your Summer assets (summer_list_my_assets, summer_generate_image).",
+                      "description": "One of your Summer assets (assets.search with scope mine, assets.generate_image).",
                       "type": "string",
                       "minLength": 1
                     }
@@ -28231,7 +28231,7 @@
                     "type": "object",
                     "properties": {
                       "assetId": {
-                        "description": "One of your Summer audio assets, MP3 or M4A (summer_list_my_assets, summer_generate_audio music).",
+                        "description": "One of your Summer audio assets, MP3 or M4A (assets.search with scope mine, assets.generate_audio music).",
                         "type": "string",
                         "minLength": 1
                       }
@@ -28357,7 +28357,7 @@
                     "type": "object",
                     "properties": {
                       "assetId": {
-                        "description": "One of your Summer video assets (summer_list_my_assets, summer_generate_video).",
+                        "description": "One of your Summer video assets (assets.search with scope mine, assets.generate_video).",
                         "type": "string",
                         "minLength": 1
                       }

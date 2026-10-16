@@ -48,6 +48,7 @@ If this stops, do not improvise. Fix the version or source in a reviewed commit,
 
 ```bash
 npm ci
+npm run sync:catalog -- --check
 npm test
 npm run build
 npm pack --dry-run
@@ -58,6 +59,7 @@ test -z "$(git status --porcelain)"
 
 The package scripts are:
 
+- Catalog: `npm run sync:catalog -- --check` fails when `registry/operations/public-catalog.json` differs from the hosted server's (PublicSummerEngine main; needs `gh` signed in). Fix it with `npm run sync:catalog` in a reviewed PR, never in this clone.
 - Build: `npm run build`, which cleans `dist/` and compiles TypeScript.
 - Test: `npm test`, which runs Vitest once, then `validate:library`.
 - Publish guard: `prepublishOnly`, which runs the build and tests again immediately before a real publish.
@@ -117,18 +119,17 @@ gh release create "v$PACKAGE_VERSION" --repo summerengine/summer --target "$(git
 
 `gh release create` makes the tag on GitHub, so nothing is pushed from this clone. For a release on `next`, add `--prerelease` and drop it when you promote (`gh release edit "v$PACKAGE_VERSION" --prerelease=false`).
 
-## 8. List the release in the official MCP Registry
+## 8. Check the MCP Registry and Homebrew
 
-`server.json` (generated from `package.json`) lists the npm package and the hosted server under `io.github.SummerEngine/summer`. The registry checks that npm's `summer-engine@<version>` carries the same `mcpName`, so run this after step 5 passes. Sign in with a GitHub account that is an Owner of the SummerEngine org: the registry grants `io.github.SummerEngine/*` only to org Owners, and matches the name's case exactly. Install the publisher once with `brew install mcp-publisher`.
+Publishing the GitHub Release in step 7 runs `.github/workflows/publish-mcp-registry.yml`. It lists `server.json` in the official MCP Registry as `io.github.SummerEngine/summer`, signed in with GitHub OIDC, so no personal sign-in is needed. Check that it finished, then check the registry:
 
 ```bash
-test "$(node -p 'require("./server.json").version')" = "$PACKAGE_VERSION"
-mcp-publisher validate
-mcp-publisher login github
-mcp-publisher publish
+gh run list --repo summerengine/summer --workflow publish-mcp-registry.yml --limit 1
 curl -fsS "https://registry.modelcontextprotocol.io/v0/servers/io.github.SummerEngine%2Fsummer/versions/latest" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const v=JSON.parse(d).server.version;if(v!==process.argv[1]){console.error("STOP: registry has "+v);process.exit(1)}console.log("registry",v)})' "$PACKAGE_VERSION"
 ```
 
-The last command prints `registry <version>`. If `publish` answers with a permission error although you are an Owner, the SummerEngine org may restrict third-party OAuth apps: approve the MCP Registry app for the org, then `mcp-publisher login github` again.
+If the run failed, run it again for the tag: `gh workflow run publish-mcp-registry.yml --repo summerengine/summer -f tag=v$PACKAGE_VERSION`.
+
+Homebrew (`brew install summerengine/tap/summer`) needs no step: SummerEngine/homebrew-tap checks npm `latest` every hour and bumps its formula.
 
 The temporary clone can be deleted now.

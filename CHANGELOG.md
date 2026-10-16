@@ -2,7 +2,9 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [4.1.0] - 2026-10-16
+
+Summer without MCP: any agent runs Summer from its shell with the `summer` CLI and the `summer-cli` skill. Every operation is found without a sign-in, search understands plain English, and Summer installs with Homebrew.
 
 - **`--json` on every read command.** `summer ops describe <op> --json` failed with "unknown option '--json'"; it now prints the same answer as the other operation commands (`{ok, status, result: {operation}}`, warnings inside). `summer status`, `summer list templates|projects`, `summer skills list`, `summer skills info`, `summer memory show`, `summer memory path` and `summer config get` take `--json` too. A test lists every CLI command and fails when a read command has no `--json`. `summer tool` keeps printing JSON; its `--json` is still the old alias of `--args`.
 - **`summer setup <agent> --cli`: Summer without MCP.** Installs the skills for the agent and writes no MCP entry and no Summer Games entry. The agent runs Summer as `summer <area> <action>` commands in its shell. `--no-mcp` is the same. With `--assets-only` it installs only the asset skills. Claude Code gets no slash commands (`/summer`, `/gameskill`, `/start` start work through the MCP tools; `summer skills install --no-commands` leaves them out too). An existing `summer-engine` entry from an earlier setup stays, and setup says so: a stdio or URL entry, and Claude Code's per-project ones. `--print`, `--profile`, `--local-dev` and `--channel` shape only the MCP entry, so `--cli` refuses them. It also refuses agents without a skills folder, Gemini CLI (its skills load only through its extension, which runs the MCP server) and Roo Code (its skills are rule files that tell it to use the MCP tools). When an agent's config lists no `summer-engine` and `--cli` can set the agent up, the skills refresh `summer doctor` recommends adds `--cli`, so it adds no MCP server.

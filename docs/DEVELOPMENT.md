@@ -108,7 +108,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. With a store sign-in it also lists and runs the hosted store and publishing tools (`summer tool summer_store_list_games`). |
 | `summer <area> <action> [--<field> <value> …] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]` | Run one operation of the catalog (`src/cli/commands/ops.ts`). Kebab-case actions and flags (`summer assets generate-image --aspect-ratio 16:9`); flags are typed from the input schema; objects go in `--input`. Engine and local operations run in this process; cloud operations run on the hosted server with the person's sign-in. `--wait` follows a job or an approval to the end; `--json` prints only the answer; exit 0 for any `ok` answer, 1 for an error. |
 | `summer whoami` | The signed-in account (`whoami`). |
-| `summer ops search <words…>` / `summer ops describe <op>` | Find operations, local and cloud, with their exact input; print one operation's wire form. |
+| `summer ops search <words…>` / `summer ops describe <op>` | Find operations, local and cloud, with their exact input; print one operation's wire form. Signed out, cloud operations come from the shipped catalog (`registry/operations/public-catalog.json`), marked needs sign-in. |
 | `summer mcp --toolsets legacy` | Also list every 3.x tool name (or `SUMMER_LEGACY_TOOLS=on`). It is on by itself while the installed skills are older than 4.0; `SUMMER_LEGACY_TOOLS=off` turns it off. |
 | `summer help [command]` | Commander's built-in help. |
 
@@ -174,6 +174,10 @@ Today a tool is four edits, kept in step by tests:
 4. `npm run generate:registry`; then `npm test` — `descriptor-parity.test.ts` fails if the zod shape and `input_schema` disagree, `tool-dispatch.test.ts` if the CLI face is missing, and the validator if the descriptor names a module/export/tool that does not exist.
 5. An engine tool is also an operation of the catalog (`engine.<name>`): add its row to `registry/operations/legacy-names.json` (`contract.test.ts` fails without it), its title, a summary of 300 characters or fewer, its effect and one example to `src/core/ops/engine.ts` (`engine.test.ts` checks them against the contract and the descriptor), and its guide: `npm run generate:tool-guides && npm run generate:registry` writes the tool's MCP description to `library/tools/<slug>/GUIDE.md`, which `summer_read_library tool/<slug>` returns and the v4 surface points at (`tool-guides.test.ts` fails when they drift).
 6. Check its place in `src/mcp/tool-surface.ts`: a local tool joins the `engine` toolset unless a list there names it (`core`, `assets`, `ship`, `ui`; `summer_app_*` is `apps`), its MCP annotations come from `authority` plus the refinement sets there (a render that only writes an image is a read; a change that only adds is not destructive), and a tool with large text output can join `OUTPUT_CAPS` (then its descriptor lists `maxCharacters`). `tool-surface.test.ts` fails on a tool without annotations.
+
+### The shipped operation catalog
+
+`registry/operations/public-catalog.json` is a byte copy of the hosted server's public catalog (PublicSummerEngine `src/lib/ops/public-catalog.json`), so search and describe list every cloud operation with no sign-in. `npm run sync:catalog` copies it from PublicSummerEngine main (with `gh`, or `-- --from <checkout>`); `npm run sync:catalog -- --check` fails when the copy differs, and runs before every release. `public-catalog.test.ts` fails when the copy and `legacy-names.json` disagree. Ranking is `src/core/ops/search.ts`; `search.test.ts` holds the plain-English phrases each operation must win.
 
 ### Adding an agent integration
 

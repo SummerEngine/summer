@@ -29,7 +29,7 @@ summer ops search "make a sound effect"       # the best matches: name, effect, 
 summer ops describe assets.generate_audio     # the exact input: fields, types, which are required
 ```
 
-Describe the job in plain words. `--area assets` keeps one area. Without a sign-in, search finds only the engine and library operations, and says so.
+Describe the job in plain words. `--area assets` keeps one area. Without a sign-in, search and describe still find every operation: a cloud one shows `(needs sign-in)` and runs after `summer login`.
 
 For a guide instead of an operation, search the library: `summer docs search --query "<the task>"`, then `summer docs read --id <id>`. Both work offline. Then follow the skill it names.
 

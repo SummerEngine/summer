@@ -7,13 +7,13 @@ For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_
 ## Release contract
 
 1. Reconcile all approved CLI work into the public repository without overwriting newer public changes.
-2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit.
+2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit. `npm run sync:catalog -- --check` must pass: the shipped operation catalog matches the hosted server's.
 3. Merge that commit to public `main` before publishing.
 4. Run the fresh-terminal procedure from a new clone of the public repository.
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 6. Point the `next` dist-tag at the same version, so `next` is never older than `latest`.
 7. Create the `v<version>` tag and GitHub Release from that version's CHANGELOG section.
-8. Publish `server.json` to the official MCP Registry with `mcp-publisher` (GitHub sign-in by a SummerEngine org Owner).
+8. Publishing the GitHub Release lists `server.json` in the official MCP Registry (`.github/workflows/publish-mcp-registry.yml`). Homebrew (`brew install summerengine/tap/summer`) follows npm `latest` by itself: SummerEngine/homebrew-tap checks every hour and bumps its formula.
 
 Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 

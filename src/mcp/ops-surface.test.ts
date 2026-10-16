@@ -184,6 +184,11 @@ describe("v4, engine profile", () => {
       expect(answer.warnings[0]).toContain("Not signed in");
       const call = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "games.list" } }));
       expect(call).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
+      // Every cloud operation is still found and described, from the catalog in this version.
+      const publish = answerOf(await client.callTool({ name: "summer_search", arguments: { query: "publish my game" } }));
+      expect(publish.result.items[0]).toMatchObject({ name: "store.publish", needsSignIn: true });
+      const described = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "ops.describe", input: { name: "store.publish" } } }));
+      expect(described).toMatchObject({ ok: true, result: { operation: { name: "store.publish", needsSignIn: true } }, warnings: [expect.stringMatching(/^Not signed in/)] });
     } finally {
       await close();
     }

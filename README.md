@@ -1,4 +1,4 @@
-# Summer: MCP server, CLI and skills for Summer Engine
+# Summer Engine: MCP server, CLI and skills
 
 <div align="center">
 
@@ -17,6 +17,14 @@
 </div>
 
 ---
+
+## Install
+
+- **Chat apps** (Claude, ChatGPT, Cursor...): add `https://mcp.summerengine.com/mcp`. Nothing to install.
+- **Homebrew:** `brew install summerengine/tap/summer`
+- **npm** (Node 20+): `npm install -g summer-engine`
+
+**CLI only**, no MCP server: `summer setup --cli`. `summer ops search "publish my game"` finds any operation, signed in or not.
 
 ## Connect
 
@@ -432,7 +440,7 @@ Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 | `summer login --store` | Only the store sign-in (`store.upload_file` and the cloud operations: plans, the store, publishing and Grow). |
 | `summer whoami` | The signed-in account, its plan and credits. |
 | `summer <area> <action> [--<field> <value> …] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]` | Run any operation from the shell, for example `summer assets generate-image --prompt "…"` or `summer store status --game-id <id>`. |
-| `summer ops search <words…>` / `summer ops describe <op>` | Find the operation for a job, or print one operation's input, effect and approval. |
+| `summer ops search <words…>` / `summer ops describe <op>` | Find the operation for a job, or print one operation's input, effect and approval. Works signed out: a cloud operation shows `(needs sign-in)`. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer status` | Engine state, port, auth. |

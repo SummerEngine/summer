@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import { CLI_AREAS } from "../../core/ops/areas.js";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
-import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
+import { answerOfHosted, callHostedV4, describeFromShipped, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
+import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
@@ -253,6 +253,40 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
   return answer.ok ? 0 : 1;
 }
 
+/**
+ * `summer ops search <words...>`: every operation, local and cloud, signed in
+ * or not; a cloud one that needs a sign-in says so. A how-to (docs.search
+ * first) points at the library.
+ */
+export async function searchFromCli(query: string, options: { area?: string; limit: number; json: boolean }, deps: OpsCliDeps = defaultOpsCliDeps): Promise<void> {
+  const { items, warning } = await searchEverywhere(query, { area: options.area, limit: options.limit }, deps.hosted);
+  if (options.json) {
+    deps.print(JSON.stringify({ ok: true, status: "done", result: { items }, ...(warning ? { warnings: [warning] } : {}) }));
+    return;
+  }
+  for (const item of items) deps.print(`${item.name.padEnd(32)} ${item.effect.padEnd(13)} ${item.title}${item.needsSignIn ? "  (needs sign-in)" : ""}`);
+  if (items[0]?.name === "docs.search") deps.print(`How-to guides for this: summer docs search --query ${shellWord(query)}`);
+  if (warning) deps.printError(warning);
+}
+
+/**
+ * `summer ops describe <op>`: a local operation from this package; a cloud
+ * one from Summer's server, or from the shipped catalog when the server
+ * cannot answer (signed out, offline).
+ */
+export async function describeFromCli(op: string, deps: OpsCliDeps = defaultOpsCliDeps): Promise<number> {
+  const local = localWireForm(resolveOpName(op));
+  if (local) {
+    deps.print(JSON.stringify(local, null, 2));
+    return 0;
+  }
+  const asked = await runCloud("ops.describe", { input: { name: op }, json: false, dryRun: false, wait: false }, deps);
+  const answer = describeFromShipped(op, asked) ?? asked;
+  (answer.ok ? deps.print : deps.printError)(formatAnswer(answer));
+  if (answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
+  return answer.ok ? 0 : 1;
+}
+
 function areaCommand(area: string): Command {
   return new Command(area)
     .description(`Summer ${area} operations: summer ${area} <action> --field value. Find them: summer ops search ${area}`)
@@ -282,24 +316,13 @@ export function opsCliCommands(): Command[] {
     .option("--limit <n>", "Most results", "8")
     .option("--json", "Print the answer as JSON")
     .action(async (wordsArg: string[], options: { area?: string; limit: string; json?: boolean }) => {
-      const { items, warning } = await searchEverywhere(wordsArg.join(" "), { area: options.area, limit: Number(options.limit) || 8 }, defaultOpsCliDeps.hosted);
-      if (options.json) {
-        defaultOpsCliDeps.print(JSON.stringify({ ok: true, status: "done", result: { items }, ...(warning ? { warnings: [warning] } : {}) }));
-        return;
-      }
-      for (const item of items) defaultOpsCliDeps.print(`${item.name.padEnd(32)} ${item.effect.padEnd(13)} ${item.title}`);
-      if (warning) defaultOpsCliDeps.printError(warning);
+      await searchFromCli(wordsArg.join(" "), { area: options.area, limit: Number(options.limit) || 8, json: options.json === true });
     });
   ops
     .command("describe <op>")
     .description("Show one operation with its exact input")
     .action(async (op: string) => {
-      const local = localWireForm(op);
-      if (local) {
-        defaultOpsCliDeps.print(JSON.stringify(local, null, 2));
-        return;
-      }
-      process.exitCode = await runOpFromCli("ops.describe", ["--name", op]);
+      process.exitCode = await describeFromCli(op);
     });
 
   return [whoami, ops, ...CLI_AREAS.map(areaCommand)];

@@ -2,7 +2,7 @@ import type { McpServer, RegisteredTool } from "@modelcontextprotocol/sdk/server
 import { ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { localEntries, localInputSchema, localWireForm, missingInput, type CatalogEntry } from "../core/ops/catalog.js";
-import { answerOfHosted, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
+import { answerOfHosted, describeFromShipped, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
@@ -432,12 +432,14 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       // `out` stays here: this package saves the files (core/ops/save-files.ts).
       const { input: sent, out } = options.files.take(resolved, args);
       let raw: Record<string, unknown>;
+      // Describing a cloud operation works signed out: the shipped catalog has it.
+      const describe = (answer: Answer) => (resolved === "ops.describe" && typeof args.name === "string" ? describeFromShipped(args.name, answer) : null) ?? answer;
       try {
         raw = await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input: sent } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) });
       } catch (error) {
-        return toolResult(hostedCallFailure(error, { op: resolved, dryRun: dryRun === true, idempotencyKey }));
+        return toolResult(describe(hostedCallFailure(error, { op: resolved, dryRun: dryRun === true, idempotencyKey })));
       }
-      return toolResult(await options.files.finish(resolved, answerOfHosted(raw), out));
+      return toolResult(describe(await options.files.finish(resolved, answerOfHosted(raw), out)));
     }) as never
   );
 }

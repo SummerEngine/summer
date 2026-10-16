@@ -1,9 +1,10 @@
 import { defaultHostedConnectDependencies, hostedConnectFailure, HostedUnreachableError, httpStatusOf, type HostedClient, type HostedConnectDependencies } from "../hosted-mcp.js";
 import { OAuthError, resolveMcpResourceUrl } from "../oauth.js";
 import { localEntries, localInputSchema, type CatalogEntry } from "./catalog.js";
-import { errorAnswer, isLocalOp, type Answer } from "./contract.js";
+import { errorAnswer, isLocalOp, resolveOpName, type Answer, type ErrorCode } from "./contract.js";
+import { shippedCloudEntries, shippedWireForm } from "./public-catalog.js";
 import { withOutField } from "./save-files.js";
-import { scoreEntry, searchEntries } from "./search.js";
+import { searchEntries } from "./search.js";
 
 /**
  * The hosted Summer server's v4 surface: the same address with `?surface=v4`
@@ -150,10 +151,40 @@ export function answerOfHosted(result: Record<string, unknown>): Answer {
 /** Runs a tool on the hosted v4 surface: the MCP's mounted client or the CLI's one-shot call. */
 export type HostedCall = (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>;
 
+/** Failures that mean Summer's server did not describe the operation, so the shipped catalog may. */
+const DID_NOT_ANSWER: ReadonlySet<ErrorCode> = new Set<ErrorCode>(["not_signed_in", "forbidden", "rate_limited", "unavailable"]);
+
+/**
+ * ops.describe of a cloud operation when Summer's server could not answer it
+ * (no sign-in, no network): the operation from the shipped catalog, with a
+ * warning. Null when the catalog has no such operation; the failure stands.
+ */
+export function describeFromShipped(name: string, failure: Answer): Answer | null {
+  // The server's own answer stands (not_found: it no longer has the operation).
+  if (failure.ok || !DID_NOT_ANSWER.has(failure.error.code)) return null;
+  const operation = shippedWireForm(resolveOpName(name));
+  if (!operation) return null;
+  const warning =
+    failure.error.code === "not_signed_in"
+      ? "Not signed in: this is the catalog in this version; the operation runs after `summer login`."
+      : `Summer's server did not answer (${failure.error.message}); this is the catalog in this version.`;
+  return { ok: true, status: "done", result: { operation }, warnings: [warning] };
+}
+
+/** The warning when cloud operations come from the shipped catalog, and whether that is because no one is signed in. */
+function shippedReason(answer: Answer): { warning: string; signedOut: boolean } {
+  if (!answer.ok && answer.error.code === "not_signed_in") {
+    return { warning: "Not signed in: cloud operations are listed from the catalog in this version and run after `summer login` (needsSignIn).", signedOut: true };
+  }
+  return { warning: `Cloud operations are listed from the catalog in this version; Summer's server did not search: ${answer.ok ? "no answer" : answer.error.message}`, signedOut: false };
+}
+
 /**
  * One ranked list of local and cloud operations for a plain-words query.
- * Local hits carry their input schema from the library descriptor. When the
- * hosted server cannot be asked, the local hits come back with a warning.
+ * Every cloud operation comes from the shipped catalog (public-catalog.ts),
+ * so search finds it signed out, marked needsSignIn; signed in, the server's
+ * own search lays its live rows over the shipped ones (and adds newer
+ * operations). Local hits carry their input schema from the library descriptor.
  */
 export async function searchEverywhere(
   query: string,
@@ -161,29 +192,24 @@ export async function searchEverywhere(
   call: HostedCall,
   isDirect: (toolName: string) => boolean = () => false
 ): Promise<{ items: CatalogEntry[]; warning: string | null }> {
-  const local = searchEntries(localEntries(), query, filters).map((entry) => ({
-    ...entry,
-    input: localInputSchema(entry.name) ?? { type: "object" },
-    mcpTool: entry.mcpTool && isDirect(entry.mcpTool) ? entry.mcpTool : undefined,
-  }));
-  let cloud: CatalogEntry[] = [];
-  let warning: string | null = null;
+  let live: CatalogEntry[] = [];
+  let reason: { warning: string; signedOut: boolean } | null = null;
   try {
-    const answer = answerOfHosted(await call("summer_search", { query, ...(filters.area ? { area: filters.area } : {}), limit: filters.limit }));
-    // The operations that save files take `out` here (save-files.ts), so their input shows it.
-    if (answer.ok && answer.status === "done") {
-      cloud = ((answer.result as { items?: CatalogEntry[] }).items ?? [])
-        .filter((entry) => !isLocalOp(entry.name))
-        .map((entry) => (entry.input ? { ...entry, input: withOutField(entry.name, entry.input) as Record<string, unknown> } : entry));
-    }
-    else if (!answer.ok) warning = `Cloud operations were not searched: ${answer.error.message}`;
+    const answer = answerOfHosted(await call("summer_search", { query, ...(filters.area ? { area: filters.area } : {}), limit: 20 }));
+    if (answer.ok && answer.status === "done") live = ((answer.result as { items?: CatalogEntry[] }).items ?? []).filter((entry) => !isLocalOp(entry.name));
+    else reason = shippedReason(answer);
   } catch (error) {
-    warning = `Cloud operations were not searched: ${error instanceof Error ? error.message : String(error)}`;
+    reason = shippedReason(hostedCallFailure(error, { op: "ops.search", read: true }));
   }
-  const items = [...local, ...cloud]
-    .map((entry) => ({ entry, score: scoreEntry(entry, query) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, filters.limit)
-    .map(({ entry }) => entry);
-  return { items, warning };
+  const cloud = new Map(shippedCloudEntries().map((entry) => [entry.name, reason?.signedOut ? { ...entry, needsSignIn: true as const } : entry]));
+  // The operations that save files take `out` here (save-files.ts), so their input shows it.
+  for (const entry of live) {
+    cloud.set(entry.name, { ...cloud.get(entry.name), ...entry, ...(entry.input ? { input: withOutField(entry.name, entry.input) as Record<string, unknown> } : {}) });
+  }
+  const items = searchEntries([...localEntries(), ...cloud.values()], query, filters).map(({ topics: _topics, ...entry }) =>
+    isLocalOp(entry.name)
+      ? { ...entry, input: localInputSchema(entry.name) ?? { type: "object" }, mcpTool: entry.mcpTool && isDirect(entry.mcpTool) ? entry.mcpTool : undefined }
+      : entry
+  );
+  return { items, warning: reason?.warning ?? null };
 }

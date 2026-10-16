@@ -9,6 +9,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - **Each skill shows the command for every tool it names.** A skill that names an MCP tool or an operation ends with a generated "From a shell" table: `summer_play` is `summer engine play`, `assets.generate_image` is `summer assets generate-image`, a split 3.x tool lists each operation, and a merged one keeps the input it fixes (`summer_get_agent_playbook` is `summer docs read --id reference/agent-playbook`). `npm run generate:registry` writes it from the operation catalog, `validate:library` fails when it is stale, and a test checks that every command names an operation this package runs or the catalog knows. MCP tool names do not change.
 - **README: CLI only**, next to the hosted MCP block.
 - `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Three slow tests have realistic time limits: the first import of the built package, the template fetch timeout, and the trajectory log rotation.
+- **`content` is an area.** `summer content <action>` runs the content operations Summer's hosted server serves (`content.list_games`, `content.get_kit`, `content.list_references`, `content.search_library`, `content.save_piece`, `content.add_feedback`, ...). The 4.0.0 `marketing.*` content operations are renamed to them (`marketing.content_feed` is `content.list_references`, `marketing.get_brand_pack` is `content.get_kit`); `registry/operations/legacy-names.json` maps each old name to its new one.
 
 ## [4.0.0] - 2026-10-15
 

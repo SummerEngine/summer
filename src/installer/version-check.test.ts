@@ -16,6 +16,8 @@ import {
   runningCliIsCheckout,
   SKILL_VERSION_MARKER_FILENAME,
   skillsRefreshCommand,
+  listsSummerEngine,
+  detectRecordedInstall,
   writeSkillMarker,
   type RecordedInstall,
 } from "./version-check.js";
@@ -425,6 +427,22 @@ describe("recorded install detection (the shape `summer setup` writes)", () => {
       "npx clear-npx-cache && npx -y summer-engine@latest setup cursor --yes --force"
     );
     expect(skillsRefreshCommand("cursor", null)).toContain("npx -y summer-engine@latest setup cursor");
+  });
+
+  it("listsSummerEngine finds a summer-engine entry in any shape: stdio, URL, Claude Code per project, TOML", () => {
+    expect(listsSummerEngine(JSON.stringify({ mcpServers: { "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] } } }), "json")).toBe(true);
+    expect(listsSummerEngine(JSON.stringify({ mcpServers: { "summer-engine": { type: "http", url: "https://example.invalid/mcp" } } }), "json-stdio")).toBe(true);
+    expect(listsSummerEngine(JSON.stringify({ projects: { "/w": { mcpServers: { "summer-engine": { command: "node", args: [] } } } } }), "json-stdio")).toBe(true);
+    expect(listsSummerEngine('[mcp_servers.summer-engine]\nurl = "https://example.invalid/mcp"\n', "toml")).toBe(true);
+    expect(listsSummerEngine(JSON.stringify({ mcpServers: { other: { command: "x" } } }), "json")).toBe(false);
+    expect(listsSummerEngine("", "toml")).toBe(false);
+  });
+
+  it("detectRecordedInstall marks an agent without an entry CLI only, never one --cli refuses", async () => {
+    expect((await detectRecordedInstall("cursor"))?.cliOnly).toBe(true);
+    expect((await detectRecordedInstall("gemini"))?.cliOnly).toBeUndefined();
+    expect((await detectRecordedInstall("claude-desktop"))?.cliOnly).toBeUndefined();
+    expect((await detectRecordedInstall("roo-code"))?.cliOnly).toBeUndefined();
   });
 
   it("skillsRefreshCommand keeps an agent without a summer-engine entry CLI only", () => {

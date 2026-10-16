@@ -7,19 +7,17 @@ import { runValidation } from "../../../scripts/validate-library/index.ts";
 import {
   SHELL_SECTION_END,
   SHELL_SECTION_START,
+  V4_ONLY_OPS,
   callsOfTool,
   loadShellCatalog,
   planShellSections,
   shellCommandOf,
   shellRows,
+  unknownTools,
   withShellSection,
   writeShellSections,
-  type ShellCatalog,
 } from "../../../scripts/validate-library/shell-commands.ts";
-import { CLI_AREAS } from "../../core/ops/areas.js";
-import { localEntries } from "../../core/ops/catalog.js";
-import { isLocalOp, legacyNames, opFromCli } from "../../core/ops/contract.js";
-import { ENGINE_SPLIT_OPS } from "../../core/ops/engine.js";
+import { isLocalOp } from "../../core/ops/contract.js";
 import { TAKES_OUT } from "../../core/ops/save-files.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -44,8 +42,12 @@ describe("shell commands: each MCP tool name to its summer command", () => {
 
   it("a split tool gives one command per action; a merged tool keeps the input its note fixes", () => {
     expect(commandsOf("summer_ui_actions")).toEqual(["summer engine list-ui-actions", "summer engine invoke-ui-action"]);
-    expect(commandsOf("summer_get_agent_playbook")).toEqual(["summer docs read --id reference/agent-playbook"]);
     expect(commandsOf("summer_list_my_assets")).toEqual(["summer assets search --scope mine"]);
+    expect(commandsOf("summer_build_begin_upload")).toEqual(["summer store upload-begin --kind bundle"]);
+  });
+
+  it("a merged tool whose operation runs here runs as the 3.x tool: the note's input is not one the operation takes", () => {
+    expect(commandsOf("summer_get_agent_playbook")).toEqual(["summer tool get-agent-playbook"]);
   });
 
   it("summer_search is summer ops search; summer_call and names that are no tool have no row", () => {
@@ -54,10 +56,20 @@ describe("shell commands: each MCP tool name to its summer command", () => {
     expect(commandsOf("summer_probe_base")).toEqual([]);
     expect(commandsOf("summer_retarget_motion")).toEqual([]);
   });
+
+  it("a 4.0 name runs only an operation the catalog has; a typo is reported, not printed", () => {
+    expect(commandsOf("summer_assets_genrate_image")).toEqual([]);
+    expect(unknownTools(["Use `summer_assets_genrate_image`, `summer_jobs_wait`, `summer_play` and `summer_probe_base`."], catalog)).toEqual(["summer_assets_genrate_image"]);
+  });
+
+  it("the 4.0-only operations are ones this package knows", () => {
+    for (const op of V4_ONLY_OPS) expect(TAKES_OUT.has(op) || isLocalOp(op)).toBe(true);
+    expect(catalog.ops.has("jobs.wait")).toBe(true);
+  });
 });
 
 describe("shell commands: the section in SKILL.md", () => {
-  const known: ShellCatalog = { tools: catalog.tools, ops: new Set([...catalog.ops, "jobs.wait"]) };
+  const known = catalog;
   const skill = "---\nname: x\n---\n\n# X\n\nCall `summer_play`, then `assets.generate_image({ prompt })` and `jobs.wait`.\nNot `res://summer_probe_base.gd` or `world.json`.\n";
 
   it("lists the tools and operations the skill names, one row per command, sorted by command", () => {
@@ -99,6 +111,19 @@ describe("shell commands: the library lint", () => {
     return root;
   }
 
+  it("fails a skill that names a 4.0 tool the catalog does not have", () => {
+    const root = fixtureRoot();
+    try {
+      fs.appendFileSync(path.join(root, "library", "skills", "create-environment-kit", "SKILL.md"), "Then `summer_assets_genrate_image`.\n");
+      writeShellSections(root);
+      expect(runValidation(root, { schemasDir }).errors.filter((e) => e.includes("summer_assets_genrate_image"))).toEqual([
+        expect.stringContaining("names summer_assets_genrate_image, but the operation catalog has no assets.genrate_image"),
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("fails a skill whose section is missing or stale, and generate:registry's writer fixes it", () => {
     const root = fixtureRoot();
     try {
@@ -118,38 +143,5 @@ describe("shell commands: the library lint", () => {
 
   it("checks nothing in a tree without the operation catalog", () => {
     expect(planShellSections(path.join(repoRoot, "scripts", "validate-library", "fixtures", "valid"))).toEqual([]);
-  });
-});
-
-describe("shell commands: every command the library prints runs", () => {
-  const areas = new Set<string>(CLI_AREAS);
-  const local = new Set([...localEntries().map((entry) => entry.name), ...Object.keys(ENGINE_SPLIT_OPS)]);
-  const cloud = new Set([...Object.values(legacyNames()).map((row) => row.op), ...TAKES_OUT]);
-  const sections = planShellSections(repoRoot)
-    .map((plan) => plan.expected)
-    .filter((text) => text.includes(SHELL_SECTION_START))
-    .map((text) => text.slice(text.indexOf(SHELL_SECTION_START)));
-  const commands = new Set(
-    sections.flatMap((section) => [...section.matchAll(/^\| .* \| (.*) \|$/gm)].flatMap((row) => [...row[1]!.matchAll(/`(summer [^`]+)`/g)].map((m) => m[1]!)))
-  );
-
-  it("the library has sections, and every one is current", () => {
-    expect(commands.size).toBeGreaterThan(50);
-    expect(planShellSections(repoRoot).filter((plan) => plan.current !== plan.expected).map((plan) => plan.file)).toEqual([]);
-  });
-
-  it("names a command summer has, and an operation this package runs or the catalog names", () => {
-    const problems: string[] = [];
-    for (const command of commands) {
-      const [, area, action] = command.split(" ");
-      if (area === "ops" || area === "whoami") continue;
-      if (!areas.has(area!)) {
-        problems.push(`${command}: summer has no ${area} command`);
-        continue;
-      }
-      const op = opFromCli(area!, action);
-      if (!(isLocalOp(op) ? local : cloud).has(op)) problems.push(`${command}: ${op} is not in the catalog`);
-    }
-    expect(problems).toEqual([]);
   });
 });

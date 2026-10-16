@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PACKAGE_ROOT } from "../package-root.js";
+import { isLocalOp } from "./areas.js";
 
 /**
  * The Summer operation catalog, the part this package needs (contract 1).
@@ -116,23 +117,13 @@ export function resolveOpName(name: string): string {
 }
 
 /**
- * Operations that run in this package: everything in `engine`, the library
- * (`docs`, apart from the Studio workflows, which are cloud), opening a
- * page or an editor surface, docking an App in the editor, and uploading a
- * local export. Everything else runs on the hosted server.
- */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file"]);
-
-/**
  * Local operations a 3.x tool runs although legacy-names.json maps that
  * tool to a cloud operation: the local-only input is its own operation
  * (apps.publish_folder reads a folder on disk; apps.publish takes files).
  */
 export const LOCAL_RUNNERS: Readonly<Record<string, string>> = { "apps.publish_folder": "summer_app_publish" };
 
-export function isLocalOp(op: string): boolean {
-  return op.startsWith("engine.") || LOCAL_OPS.has(op);
-}
+export { isLocalOp };
 
 /**
  * The local 3.x tools that run an operation here, first choice first: the

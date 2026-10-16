@@ -109,9 +109,10 @@ What it checks:
     with the "From a shell" section `shell-commands.ts` renders from the
     operation catalog (`registry/operations/legacy-names.json` and the 4.0
     rule `summer_<area>_<action>` = `area.action`): each name with its
-    `summer <area> <action>` command. A stale or missing section fails;
-    `npm run generate:registry` writes it. Trees without the catalog (test
-    fixtures) are not checked.
+    `summer <area> <action>` command. A stale or missing section fails, and
+    so does a 4.0 tool name whose operation the catalog does not have (a
+    typo); `npm run generate:registry` writes the section. Trees without the
+    catalog (test fixtures) are not checked.
 
 Exit codes: 0 clean (including when `library/` does not exist), 1 on any
 violation; `WARN` lines never change the exit code. Requires Node >= 22.18

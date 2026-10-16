@@ -78,7 +78,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [skill-create](./skill-create/SKILL.md) (library only) | Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections. | meta |
 | [skill-improve](./skill-improve/SKILL.md) (library only) | Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner. | meta |
 | [skill-test](./skill-test/SKILL.md) (library only) | Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs. | meta |
-| [*summer-cli*](./summer-cli/SKILL.md) ★ (preview) | Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine. | assets, tools |
+| [*summer-cli*](./summer-cli/SKILL.md) ★ (preview) | Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine. | assets, tools |
 | [using-summer](./using-summer/SKILL.md) | Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response. | meta |
 | [verification-before-completion](./verification-before-completion/SKILL.md) ★ | Run verification and read its output before claiming work done, fixed or passing: evidence first. | verification |
 | [writing-plans](./writing-plans/SKILL.md) | Turn a spec or requirements for a multi-step task into a written implementation plan before touching code. | meta |
@@ -110,7 +110,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation. | pipeline |
 | [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) (library only) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
 | [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) (library only) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
-| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app. | agent-workflow |
+| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app. | agent-workflow |
 
 ## audio
 
@@ -174,7 +174,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step. | 3d, world-building, agent-workflow |
+| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step. | 3d, world-building, agent-workflow |
 | [design-level](./design-level/SKILL.md) ★ | Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton. | game-design |
 | [scene-to-level](./scene-to-level/SKILL.md) | Turn a reference image or concept art into a playable scene: concept, asset pack, terrain, assembly. | game-design |
 

@@ -121,17 +121,20 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   const entry = localEntries().find((candidate) => candidate.name === op);
   const tool = split?.tool ?? entry?.mcpTool ?? localToolsFor(op)[0];
   if (!tool) return errorAnswer("not_found", `No operation is named "${op}".`, { next: { op: "ops.search", input: { query: op } } });
-  const args = split ? splitToolArgs(split, call.input) : call.input;
+  // maxCharacters cuts the text an MCP client gets; the CLI prints the whole answer.
+  const { maxCharacters, ...input } = call.input;
+  const uncut = maxCharacters === undefined ? undefined : ["maxCharacters: the CLI prints the whole answer; cut it in the shell (for example | head -c 8000)."];
+  const args = split ? splitToolArgs(split, input) : input;
   const def = engineOpDef(op);
   const guide = guideOf(tool);
   const describe = guide && def ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } };
-  const missing = missingInput(localInputSchema(op), call.input);
+  const missing = missingInput(localInputSchema(op), input);
   if (missing) return errorAnswer("invalid_input", missing, { next: describe });
   if (call.dryRun) {
     return { ok: true, status: "dry_run", preview: { summary: `${entry?.title ?? op}: the input is valid. Nothing was done.`, changes: [], approval: entry?.approval ?? "none", estimate: null, valid: true } };
   }
   try {
-    return { ok: true, status: "done", result: await deps.dispatch(tool, args) };
+    return { ok: true, status: "done", result: await deps.dispatch(tool, args), ...(uncut ? { warnings: uncut } : {}) };
   } catch (error) {
     if (error instanceof EngineUnavailableError) return engineNotRunning();
     if (error instanceof ToolResultError) {

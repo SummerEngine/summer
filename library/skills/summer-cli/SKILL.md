@@ -1,6 +1,6 @@
 ---
 name: summer-cli
-description: "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine."
+description: "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta
@@ -11,7 +11,7 @@ allowed-tools: Bash Read
 
 Use this skill when the session has no `summer_*` MCP tools (Summer was set up with `summer setup <agent> --cli`), or when a script or CI job runs Summer. Every Summer capability is an operation named `area.action`, and every operation is one command: `summer <area> <action>`. The commands run the same code as the MCP tools and give the same answers.
 
-If the shell does not find `summer`, put `npx -y summer-engine@latest` in its place, with the same arguments. In Windows PowerShell, write `npx.cmd`.
+First run `summer --version`. If the shell does not find `summer`, or the version is below 4.0 (an old global install, which has no `summer <area> <action>` commands), put `npx -y summer-engine@latest` in place of `summer`, with the same arguments. In Windows PowerShell, write `npx.cmd`.
 
 ## 1. Sign in once
 
@@ -109,6 +109,12 @@ An error prints `Error (<code>): <message>` and one `Next:` step, and exits 1. D
 | `not_found` | Check the id (the area's `list` command), or find the right operation with `summer ops search`. |
 | `rate_limited`, `unavailable` | Nothing ran. Wait a minute and run it again. If it repeats, tell the person the message. |
 | `outcome_unknown` | The change may have run. Run it again only with the same `--idempotency-key`, or check first. |
+| `in_progress` | The same change is still running. Wait, then follow its job or run it again with the same `--idempotency-key`. |
+| `idempotency_conflict` | That key was used for a different input. A new change needs a new key. |
+| `conflict` | The state changed, or a job or approval ended without running (declined, expired, stale or cancelled). Check the current state; start again only if the person wants it. |
+| `over_limit` | A plan limit or cap was reached. Give the person the message and the link in `Next`. Do not retry. |
+| `unsupported` | Summer cannot do this yet, or not here. Tell the person the message. Do not retry. |
+| `internal` | Summer failed on its side. Run it once more; if it fails again, tell the person the message. |
 
 ## Done means
 

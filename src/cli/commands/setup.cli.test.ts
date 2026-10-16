@@ -155,10 +155,14 @@ describe("summer setup --cli: the skills and no MCP server", () => {
 }, 120_000);
 
 describe("summer setup inside a Summer project", () => {
-  async function inProject(run: (project: string) => Promise<void>): Promise<void> {
+  type ProjectFilesJson = { root: string; written: boolean; dryRun: boolean; files: Array<{ file: string; action: string }> } | null;
+  const files = (json: Record<string, unknown>) => (json.projectFiles as ProjectFilesJson)?.files.map((f) => `${f.file} ${f.action}`);
+
+  async function inProject(run: (project: string) => Promise<void>, layout: { gitAt?: "project" | "scenes" } = {}): Promise<void> {
     const project = mkdtempSync(join(tmpdir(), "summer-setup-project-"));
     writeFileSync(join(project, "project.godot"), "");
     mkdirSync(join(project, "scenes"));
+    if (layout.gitAt) mkdirSync(join(project, ...(layout.gitAt === "scenes" ? ["scenes"] : []), ".git"));
     const cwd = process.cwd();
     process.chdir(join(project, "scenes"));
     try {
@@ -169,24 +173,51 @@ describe("summer setup inside a Summer project", () => {
     }
   }
 
-  it("adds AGENTS.md and CLAUDE.md at the project root, and keeps a project's own AGENTS.md text", async () => {
+  it("with --yes adds AGENTS.md and CLAUDE.md at the project root, and keeps a project's own AGENTS.md text", async () => {
     await inProject(async (project) => {
       writeFileSync(join(project, "AGENTS.md"), "# Our rules\n");
       const { json } = await setup(["amp", "--cli", "--yes", "--json"]);
-      expect((json.projectFiles as Array<{ file: string; action: string }>).map((f) => `${f.file} ${f.action}`)).toEqual(["AGENTS.md added", "CLAUDE.md created"]);
+      expect(json.projectFiles).toMatchObject({ written: true });
+      expect(files(json)).toEqual(["AGENTS.md added", "CLAUDE.md created"]);
       expect(readFileSync(join(project, "AGENTS.md"), "utf-8")).toMatch(/^# Our rules\n\n<!-- summer-engine:start/);
       expect(readFileSync(join(project, "CLAUDE.md"), "utf-8")).toBe("@AGENTS.md\n");
-      const again = await setup(["amp", "--cli", "--yes", "--json"]);
-      expect((again.json.projectFiles as Array<{ action: string }>).map((f) => f.action)).toEqual(["unchanged", "unchanged"]);
+      expect(files((await setup(["amp", "--cli", "--yes", "--json"])).json)).toEqual(["AGENTS.md unchanged", "CLAUDE.md unchanged"]);
+    }, { gitAt: "project" });
+  });
+
+  it("without --yes only plans them, like the skills, and says how to add them", async () => {
+    await inProject(async (project) => {
+      const { json } = await setup(["amp", "--cli", "--json"]);
+      expect(json.projectFiles).toMatchObject({ written: false, dryRun: false });
+      expect(files(json)).toEqual(["AGENTS.md created", "CLAUDE.md created"]);
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+      const { lines } = await setup(["amp", "--cli"]);
+      expect(lines.join("\n")).toContain("Run the same setup command again with --yes to add them");
     });
   });
 
   it("the MCP setup does the same, and a dry run writes nothing", async () => {
     await inProject(async (project) => {
-      const { json } = await setup(["claude-code", "--dry-run", "--json"]);
-      expect((json.projectFiles as Array<{ action: string }>).map((f) => f.action)).toEqual(["created", "created"]);
+      const { json } = await setup(["claude-code", "--dry-run", "--yes", "--json"]);
+      expect(json.projectFiles).toMatchObject({ written: false, dryRun: true });
+      expect(files(json)).toEqual(["AGENTS.md created", "CLAUDE.md created"]);
       expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
       expect(existsSync(join(project, "CLAUDE.md"))).toBe(false);
     });
+  });
+
+  it("leaves the project alone with --no-project-files and with --assets-only", async () => {
+    await inProject(async (project) => {
+      expect((await setup(["amp", "--cli", "--yes", "--no-project-files", "--json"])).json.projectFiles).toBeNull();
+      expect((await setup(["amp", "--cli", "--assets-only", "--yes", "--json"])).json.projectFiles).toBeNull();
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+    });
+  });
+
+  it("does not look above the git top level for project.godot", async () => {
+    await inProject(async (project) => {
+      expect((await setup(["amp", "--cli", "--yes", "--json"])).json.projectFiles).toBeNull();
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+    }, { gitAt: "scenes" });
   });
 });

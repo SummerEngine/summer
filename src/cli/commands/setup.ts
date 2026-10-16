@@ -17,8 +17,7 @@ import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
 import { agentLabel, agentSpec, cliSetupRefusal } from "../../installer/agent-table.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
-import { findProjectRoot } from "../../core/engine.js";
-import { writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
+import { findSetupProjectRoot, writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
   full: "Every Summer tool.",
@@ -48,6 +47,17 @@ interface SetupCommandOptions {
   cli?: boolean;
   /** false with --no-mcp, the same as --cli. */
   mcp?: boolean;
+  /** false with --no-project-files: leave the project's AGENTS.md and CLAUDE.md alone. */
+  projectFiles?: boolean;
+}
+
+/** The project's AGENTS.md and CLAUDE.md: what setup did, or would do without --yes. */
+interface ProjectFiles {
+  root: string;
+  /** false: planned only (no --yes, or --dry-run). */
+  written: boolean;
+  dryRun: boolean;
+  files: InstructionFileResult[];
 }
 
 /** The options that only shape the MCP entry, which --cli does not write. */
@@ -93,6 +103,10 @@ export const setupCommand = new Command("setup")
     "CLI only: install the skills and no MCP server (and no Summer Games). The agent runs Summer as summer <area> <action> commands in its shell; the summer-cli skill teaches it"
   )
   .option("--no-mcp", "Same as --cli")
+  .option(
+    "--no-project-files",
+    "Inside a Summer project, do not add the Summer instructions to its AGENTS.md and CLAUDE.md (added with --yes by default)"
+  )
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -144,7 +158,7 @@ export const setupCommand = new Command("setup")
       stableOnly: Boolean(opts.stableOnly),
       assetsOnly: Boolean(opts.assetsOnly),
     });
-    const projectFiles = opts.print ? null : await setupProjectInstructions(Boolean(opts.dryRun));
+    const projectFiles = setupProjectInstructions(opts);
 
     const doctor = await runDoctor({ quiet: true });
 
@@ -204,7 +218,7 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     assetsOnly: Boolean(opts.assetsOnly),
     commands: false,
   });
-  const projectFiles = await setupProjectInstructions(dryRun);
+  const projectFiles = setupProjectInstructions(opts);
   const doctor = await runDoctor({ quiet: true });
   const ok = doctor.ok && skills.status !== "failed";
 
@@ -218,7 +232,7 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${c.bold(`CLI only for ${label}`)}: no MCP server`);
     console.log(`     ${c.dim("The agent runs Summer in its shell: summer <area> <action>, or npx -y summer-engine@latest <area> <action>. The summer-cli skill teaches it.")}`);
     printSkillsLine(skills, dryRun);
-    printProjectFiles(projectFiles, dryRun);
+    printProjectFiles(projectFiles);
     for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
     console.log("");
     printDoctorResult(doctor);
@@ -228,28 +242,35 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
 }
 
 /**
- * Inside a Summer project (project.godot at or above the working directory):
- * its AGENTS.md and CLAUDE.md, added when missing and never overwritten
- * (project-memory/agent-instructions.ts). Null outside a project.
+ * Inside a Summer project (findSetupProjectRoot: project.godot at or above the
+ * working directory, no higher than the git top level, never home): its
+ * AGENTS.md and CLAUDE.md, added when missing and never overwritten
+ * (project-memory/agent-instructions.ts). Like the skills, they are only
+ * planned without --yes. Null outside a project, with --no-project-files,
+ * --print, and --assets-only (the block is about building in Summer Engine).
  */
-async function setupProjectInstructions(dryRun: boolean): Promise<InstructionFileResult[] | null> {
-  const root = await findProjectRoot(process.cwd());
+function setupProjectInstructions(opts: SetupCommandOptions): ProjectFiles | null {
+  if (opts.projectFiles === false || opts.print || opts.assetsOnly) return null;
+  const root = findSetupProjectRoot();
   if (!root) return null;
-  try {
-    return writeAgentInstructions(root, { dryRun });
-  } catch {
-    return null;
-  }
+  const dryRun = Boolean(opts.dryRun);
+  const written = Boolean(opts.yes) && !dryRun;
+  return { root, written, dryRun, files: writeAgentInstructions(root, { dryRun: !written }) };
 }
 
-function printProjectFiles(files: InstructionFileResult[] | null, dryRun: boolean): void {
-  const changed = (files ?? []).filter((file) => file.action === "created" || file.action === "added" || file.action === "updated");
+function printProjectFiles(project: ProjectFiles | null): void {
+  if (!project) return;
+  const changed = project.files.filter((file) => file.action === "created" || file.action === "added" || file.action === "updated");
   if (changed.length) {
-    const where = changed.map((file) => tildeify(file.path)).join(", ");
-    console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${dryRun ? "Would add" : "Added"} the Summer instructions for agents  ${c.dim(where)}`);
+    const where = c.dim(changed.map((file) => tildeify(file.path)).join(", "));
+    if (project.written) console.log(`  ${sym.ok()}  Added the Summer instructions for agents  ${where}`);
+    else if (project.dryRun) console.log(`  ${c.dim("(dry run)")}  Would add the Summer instructions for agents  ${where}`);
+    else console.log(`  ${sym.warn()}  Instructions for agents not added. Run the same setup command again with --yes to add them  ${where}`);
   }
-  for (const file of files ?? []) {
-    if (file.reason) console.log(`  ${sym.warn()}  ${c.yellow(`${tildeify(file.path)} left as it is: ${file.reason}`)}`);
+  for (const file of project.files) {
+    if (!file.reason) continue;
+    const what = file.action === "skipped" ? "not written" : "left as it is";
+    console.log(`  ${sym.warn()}  ${c.yellow(`${tildeify(file.path)} ${what}: ${file.reason}`)}`);
   }
 }
 
@@ -282,7 +303,7 @@ function printSetupResult(
   games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
   doctor: DoctorResult,
-  projectFiles: InstructionFileResult[] | null
+  projectFiles: ProjectFiles | null
 ): void {
   if (config.print) {
     console.log(config.snippet.trimEnd());
@@ -329,7 +350,7 @@ function printSetupResult(
   }
 
   printSkillsLine(skills, config.dryRun);
-  printProjectFiles(projectFiles, config.dryRun);
+  printProjectFiles(projectFiles);
 
   for (const warning of config.warnings) {
     console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);

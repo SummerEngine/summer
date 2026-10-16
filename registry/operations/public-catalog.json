@@ -13306,10 +13306,11 @@
         "type": "object",
         "properties": {
           "limit": {
+            "description": "Games per page, at most 50 (a bigger number gives 50).",
             "default": 20,
             "type": "integer",
             "minimum": 1,
-            "maximum": 50
+            "maximum": 9007199254740991
           },
           "cursor": {
             "description": "nextCursor from the previous page.",

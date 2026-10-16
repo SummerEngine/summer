@@ -11,7 +11,7 @@
       "name": "summer",
       "source": "./",
       "version": "4.0.0",
-      "description": "Make real, playable games with Summer Engine. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.",
+      "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.",
       "author": {
         "name": "Summer Engine",
         "email": "founders@summerengine.com"

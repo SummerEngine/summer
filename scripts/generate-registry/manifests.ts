@@ -48,6 +48,15 @@ export function bundledMcpServer(): { command: string; args: string[] } {
  */
 export const HOSTED_MCP_URL = "https://mcp.summerengine.com/mcp";
 
+/** The one-line product description every directory listing leads with. */
+const PRODUCT_LINE = "The game engine built for AI. Any agent makes a multiplayer game and publishes it.";
+
+/** The Summer sun, 512x512 PNG, on Summer's own domain (MCP Registry `icons`). */
+const ICON_URL = "https://www.summerengine.com/icon/web-app-manifest-512x512.png";
+
+/** The same icon in the repo, for plugin manifests that take a relative path. */
+const ICON_PATH = "assets/icon.png";
+
 function buildMcpJson(): string {
   return stableJson({
     _generated: manifestBanner("claude"),
@@ -65,8 +74,7 @@ function author(): Record<string, string> {
   };
 }
 
-const CLAUDE_DESCRIPTION =
-  "Make real, playable games with Summer Engine. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.";
+const CLAUDE_DESCRIPTION = `${PRODUCT_LINE} A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.`;
 
 function buildClaudePlugin(i: ManifestInputs): string {
   return stableJson({
@@ -94,7 +102,7 @@ function buildClaudePlugin(i: ManifestInputs): string {
       "performance",
     ],
     // Anthropic's directory listing fields; Claude Code ignores them at load time.
-    icon: "./assets/icon.png",
+    icon: `./${ICON_PATH}`,
     documentationUrl: "https://www.summerengine.com/mcp",
     supportUrl: "https://summer.games/support",
     privacyPolicyUrl: "https://www.summerengine.com/privacy",
@@ -147,7 +155,7 @@ function buildCodexPlugin(i: ManifestInputs): string {
     _generated: manifestBanner("codex"),
     name: "summer",
     version: i.version,
-    description: `Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge. Build games by talking.`,
+    description: `${PRODUCT_LINE} Game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app.`,
     author: author(),
     homepage: "https://summerengine.com",
     repository: "https://github.com/summerengine/summer",
@@ -166,21 +174,24 @@ function buildCodexPlugin(i: ManifestInputs): string {
     mcpServers: "./.mcp.json",
     hooks: "./hooks/hooks.json",
     interface: {
-      displayName: "Summer",
-      shortDescription: "Superpowers for AI game dev. Build games by talking.",
-      longDescription: `Summer turns Codex into a game-dev studio for Summer Engine. Users make Summer games with the Summer SDK and GDScript. The plugin adds game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge for guarded project files, scene editing, asset import, play mode, diagnostics, generation, and creator workflows. Git, shell, and grep stay with the host agent. Summer follows its upstream technical base continuously; version-sensitive work uses the bundled compatibility reference instead of a fixed onboarding version. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.`,
-      developerName: "Summer Engine",
-      category: "Coding",
+      displayName: "Summer Engine",
+      shortDescription: "Make games with AI",
+      longDescription: `Summer Engine is the game engine built for AI. Codex builds a full multiplayer game in it, plays and tests it, and publishes it on summer.games. The plugin adds game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app: project files, scenes, asset import, play mode, screenshots, diagnostics, asset generation and the store. Git, shell, and grep stay with Codex. Session-start orients each session. The pre-commit doctor (opt-in) blocks bad commits.`,
+      developerName: "Summer Labs, Inc.",
+      category: "Developer Tools",
       capabilities: ["Interactive", "Read", "Write"],
-      websiteURL: "https://summerengine.com",
-      privacyPolicyURL: "https://summerengine.com/privacy",
-      termsOfServiceURL: "https://summerengine.com/terms",
+      websiteURL: "https://www.summerengine.com",
+      supportURL: "https://summer.games/support",
+      privacyPolicyURL: "https://www.summerengine.com/privacy",
+      termsOfServiceURL: "https://www.summerengine.com/terms",
       defaultPrompt: [
         "I want to make a game.",
-        "/summer:brainstorm-game",
+        "Make a small multiplayer game and let me play it.",
         "Open this Summer Engine project and tell me what's broken.",
       ],
       brandColor: "#FF8F17",
+      composerIcon: `./${ICON_PATH}`,
+      logo: `./${ICON_PATH}`,
       screenshots: [],
     },
   });
@@ -191,14 +202,15 @@ function buildCursorPlugin(i: ManifestInputs): string {
     $schema: "https://cursor.com/schemas/cursor-plugin/plugin.json",
     _generated: manifestBanner("cursor"),
     name: "summer",
-    displayName: "Summer",
+    displayName: "Summer Engine",
     version: i.version,
-    description: `Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the local desktop app.`,
+    description: `${PRODUCT_LINE} Game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app.`,
     author: {
       name: "Summer Engine",
       email: "founders@summerengine.com",
     },
     publisher: "summer-engine",
+    logo: ICON_PATH,
     homepage: "https://summerengine.com",
     repository: "https://github.com/summerengine/summer",
     license: "MIT",
@@ -226,7 +238,7 @@ function buildFactoryPlugin(i: ManifestInputs): string {
   return stableJson({
     _generated: manifestBanner("factory"),
     name: "summer",
-    description: `Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the local desktop app.`,
+    description: `${PRODUCT_LINE} Game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app.`,
     version: i.version,
     author: author(),
     homepage: "https://summerengine.com",
@@ -242,8 +254,7 @@ function buildGeminiExtension(i: ManifestInputs): string {
     _generated: manifestBanner("gemini"),
     name: "summer",
     version: i.version,
-    description:
-      "Agent tooling for Summer Engine: MCP bridge, context primer, and game-dev skills. Use with the npm CLI for skill files on disk.",
+    description: `${PRODUCT_LINE} The Summer Engine MCP server and context primer; run the summer-engine CLI for the game-dev skills.`,
     contextFileName: "GEMINI.md",
     mcpServers: {
       "summer-engine": {
@@ -278,9 +289,10 @@ function buildMcpRegistryServer(i: ManifestInputs): string {
     $schema: "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
     name: MCP_REGISTRY_NAME,
     title: "Summer Engine",
-    description: "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
+    description: PRODUCT_LINE,
     version: i.version,
     websiteUrl: "https://summerengine.com",
+    icons: [{ src: ICON_URL, mimeType: "image/png", sizes: ["512x512"] }],
     repository: { url: "https://github.com/summerengine/summer", source: "github" },
     packages: [
       {

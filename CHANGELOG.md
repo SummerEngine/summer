@@ -10,6 +10,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - **README: CLI only**, next to the hosted MCP block.
 - `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Every test has a 20 s limit instead of 5 s, and three slow tests have their own: the first import of the built package (60 s), the template fetch timeout and the trajectory log rotation (30 s each).
 - **`content` is an area.** `summer content <action>` runs the content operations Summer's hosted server serves (`content.list_games`, `content.get_kit`, `content.list_references`, `content.search_library`, `content.save_piece`, `content.add_feedback`, ...). The 4.0.0 `marketing.*` content operations are renamed to them (`marketing.content_feed` is `content.list_references`, `marketing.get_brand_pack` is `content.get_kit`); `registry/operations/legacy-names.json` maps each old name to its new one.
+- **Directory listings lead with "The game engine built for AI."** The MCP Registry entry (`server.json`) gets the Summer sun icon. The Codex plugin is named Summer Engine, with the short description "Make games with AI" (OpenAI allows 30 characters), a logo, a composer icon and a support link. The Cursor plugin is named Summer Engine and gets a logo. The Claude, Cursor, Codex, Factory and Gemini descriptions open with the product line. `glama.json` lets the maintainers claim the Glama listing. The README links support, privacy and terms.
 
 ## [4.0.0] - 2026-10-15
 

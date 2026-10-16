@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Three slow tests have realistic time limits: the first import of the built package, the template fetch timeout, and the trajectory log rotation.
+
 ## [4.0.0] - 2026-10-15
 
 3.9.0 and 3.9.1 were not published to npm. 4.0.0 is the first release with everything in them (the [3.9.1] and [3.9.0] sections below), plus these changes.

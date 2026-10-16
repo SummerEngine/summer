@@ -59,7 +59,7 @@ import {
   type ToolSelection,
 } from "./tool-surface.js";
 import { shapeToolResult, singleEditCounter } from "./tool-results.js";
-import { recordLocalToolCall, recordMcpSession } from "../core/telemetry.js";
+import { recordLocalToolCall, recordMcpSession, toolErrorCode } from "../core/telemetry.js";
 import { currentToolContext, registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
@@ -297,8 +297,8 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
       // A tool another tool runs (summer_call, a v4 operation over its 3.x
       // tool) is part of that call: only the outer call sends a usage line.
       const nested = currentToolContext() !== undefined;
-      const recordUsage = (ok: boolean, durationMs: number) => {
-        if (!nested) recordLocalToolCall({ tool: name, op: opForToolCall(name, handlerArgs[0]), ...surfaceMeta, ok, durationMs, mcpClient: hostApp() });
+      const recordUsage = (ok: boolean, durationMs: number, error?: string | null) => {
+        if (!nested) recordLocalToolCall({ tool: name, op: opForToolCall(name, handlerArgs[0]), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error });
       };
       let result: unknown;
       try {
@@ -315,7 +315,7 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
           exception: error instanceof Error ? error.message : String(error),
           durationMs,
         });
-        recordUsage(false, durationMs);
+        recordUsage(false, durationMs, "exception");
         throw error;
       }
       const durationMs = Date.now() - startedAt;
@@ -333,7 +333,7 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
       }
       try {
         recordMcpSession();
-        recordUsage(!isError, durationMs);
+        recordUsage(!isError, durationMs, isError ? toolErrorCode(result, meta?.failureReason ?? meta?.errorClass) : null);
         // Opt-in local trajectory capture: one JSONL line per tool call when
         // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a
         // no-op when the env var is unset.

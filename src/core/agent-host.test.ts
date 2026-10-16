@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   hostFromClientName,
   hostFromEnv,
+  processSurface,
   registerMcpClientSource,
   resolveAgentHost,
   runWithToolContext,
@@ -79,5 +80,14 @@ describe("summerRequestHeaders", () => {
       const headers = runWithToolContext("summer_generate_3d", "mcp", () => summerRequestHeaders({}, env));
       expect(Object.keys(headers).sort()).toEqual(["X-Summer-Client", "X-Summer-Client-Surface", "X-Summer-Client-Version"]);
     }
+  });
+});
+
+describe("processSurface", () => {
+  it("is cli for a command and mcp inside summer mcp, so the hosted server can tell them apart", () => {
+    expect(processSurface()).toBe("cli");
+    expect(summerRequestHeaders()["X-Summer-Client-Surface"]).toBe("cli");
+    registerMcpClientSource(() => undefined);
+    expect(processSurface()).toBe("mcp");
   });
 });

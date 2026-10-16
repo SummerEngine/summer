@@ -152,6 +152,11 @@ export function hostFromEnv(env: Env): string | null {
 // initialize handshake has given the client's name and version.
 let mcpClientSource: (() => McpClientInfo | undefined) | null = null;
 
+/** `mcp` inside `summer mcp` (it registers its handshake), `cli` for every other command. */
+export function processSurface(): ClientSurface {
+  return mcpClientSource ? "mcp" : "cli";
+}
+
 export function registerMcpClientSource(source: (() => McpClientInfo | undefined) | null): void {
   mcpClientSource = source;
 }
@@ -203,7 +208,7 @@ export function summerRequestHeaders(
   env: Env = process.env
 ): Record<string, string> {
   const context = toolContext.getStore();
-  const surface = context?.surface ?? options.surface ?? (mcpClientSource ? "mcp" : "cli");
+  const surface = context?.surface ?? options.surface ?? processSurface();
   const headers: Record<string, string> = {
     "X-Summer-Client": "summer-cli",
     "X-Summer-Client-Version": TOOLKIT_VERSION,

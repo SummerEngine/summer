@@ -5,26 +5,15 @@ import { exportGame } from "../../core/capabilities/export-game.js";
 import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
 import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
 import { publishBuild } from "../../core/capabilities/publish-build.js";
-import { BuildToolError } from "../../core/capabilities/summer-bundle.js";
+import { BuildToolError, buildToolFailure } from "../../core/capabilities/summer-bundle.js";
+import { syncItems } from "../../core/capabilities/sync-items.js";
 import { textJson } from "./text-json.js";
 
 async function creatorResult<T>(operation: () => Promise<T>) {
   try {
     return textJson(await operation());
   } catch (error) {
-    if (error instanceof BuildToolError) {
-      return textJson(
-        {
-          ok: false,
-          code: error.code,
-          message: error.message.replace(` ${error.recovery}`, ""),
-          recovery: error.recovery,
-          ...(error.status ? { status: error.status } : {}),
-          ...error.detail,
-        },
-        true
-      );
-    }
+    if (error instanceof BuildToolError) return textJson(buildToolFailure(error), true);
     return textJson(
       {
         ok: false,
@@ -141,5 +130,18 @@ export function registerCreatorTools(server: McpServer): void {
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
     },
     async (args) => creatorResult(() => publishBuild({ ...args, face: "mcp" }))
+  );
+
+  server.tool(
+    "summer_sync_items",
+    "Bring the store game's items in line with summer.items.json in the project root, matched by each item's slug (the creator key the game's code uses, e.g. emote_ponder), so the same file gives the staging game and the production game the same items. First call with confirm=false: it checks the file, reads the game's items by slug and returns the plan (create, update with the changed fields, unchanged, blocked with the reason, and the game's items the file does not name, which are never changed) for the gateway this machine is set to; show it to the user. With confirm=true it uploads the changed images and sends the plan to the game's owner: the answer carries the approval link; nothing changes until the owner approves in Studio, then each item is created or revised, priced in Sparks and submitted for Summer's review. Never activates or releases an item. Needs \"summer login --store\". Staging or production is the gateway this machine is set to; switching takes SUMMER_GATEWAY_URL and SUMMER_MCP_RESOURCE_URL, then \"summer login --store --force\" (one store sign-in per machine; a sign-in for the other environment fails with store_login_other_environment).",
+    {
+      gameId: z.string().optional().describe("The store game id on this gateway (from summer_store_list_games). Staging and production games have different ids. Without it the call fails with game_required and lists your store games."),
+      project: z.string().optional().describe("Project folder with project.godot and summer.items.json. Defaults to the MCP's bound project, then the working directory."),
+      file: z.string().optional().describe("The items file, relative to the project. Default summer.items.json."),
+      slugs: z.array(z.string()).max(500).optional().describe("Only these items (their slugs); the rest of the file is left out of the plan."),
+      confirm: z.boolean().default(false).describe("Set true only after the user approves the plan."),
+    },
+    async (args) => creatorResult(() => syncItems({ ...args, face: "mcp" }))
   );
 }

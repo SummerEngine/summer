@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a9312ef0240d688e2754cc88840bca9ffa835156abbaf1c04ff391ca3372679e",
+      "content_hash": "9ffdbdfa211c2812028b5aa87bf290c3c6ac74688212a1ea8da53428bd13f51a",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -10139,6 +10139,43 @@
         "network": false,
         "credentials": false,
         "publish": false
+      }
+    },
+    {
+      "id": "tool/sync-items",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4dd87b67ee304b600d1010970d1d1132674798abaa49bb29c77ffd0b504a8360",
+      "summary": "Sync summer.items.json to the creator's store game by item slug, confirm-gated - a plan first, then media upload and the owner's approval in Studio.",
+      "use_when": [
+        "\"add these items to my game\"",
+        "\"sync my items to staging\"",
+        "\"put the same items in production\"",
+        "\"change the price of emote_ponder\"",
+        "creating or revising store items from summer.items.json, matched by slug",
+        "making the staging game and the production game carry the same items"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_sync_items",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
       }
     },
     {

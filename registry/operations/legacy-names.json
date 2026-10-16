@@ -1036,6 +1036,11 @@
       "note": "generic page executor: legacy only, never in store profiles",
       "op": "studio.use_page"
     },
+    "summer_sync_items": {
+      "kind": "same",
+      "note": "local: reads summer.items.json and uploads its media; the owner approves the item changes",
+      "op": "economy.sync_items"
+    },
     "summer_team": {
       "kind": "split",
       "note": "list teams; create and rename move to team.create and team.rename, invites to team.invite (confirm)",

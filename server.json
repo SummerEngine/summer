@@ -5,6 +5,15 @@
   "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
   "version": "4.0.0",
   "websiteUrl": "https://summerengine.com",
+  "icons": [
+    {
+      "src": "https://www.summerengine.com/icon/web-app-manifest-512x512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/summerengine/summer",
     "source": "github"

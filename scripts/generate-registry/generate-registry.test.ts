@@ -333,8 +333,20 @@ describe("generateRegistry: manifests (golden shapes)", () => {
 
     const codex = parse(result.files, "plugin.codex.json");
     const codexInterface = codex.interface as Record<string, unknown>;
-    expect(codexInterface.displayName).toBe("Summer");
+    expect(codexInterface.displayName).toBe("Summer Engine");
     expect(codexInterface.longDescription).toContain("a 1-tool MCP bridge");
+    // OpenAI's plugin directory: at most 30 characters, and a logo and composer icon.
+    expect((codexInterface.shortDescription as string).length).toBeLessThanOrEqual(30);
+    expect(codexInterface.logo).toBe("./assets/icon.png");
+    expect(codexInterface.composerIcon).toBe("./assets/icon.png");
+    expect(cursor.logo).toBe("assets/icon.png");
+
+    // The MCP Registry caps the description at 100 characters; registry readers show the icon.
+    const server = parse(result.files, "server.json");
+    expect((server.description as string).length).toBeLessThanOrEqual(100);
+    expect(server.icons).toEqual([
+      { src: "https://www.summerengine.com/icon/web-app-manifest-512x512.png", mimeType: "image/png", sizes: ["512x512"] },
+    ]);
 
     const gemini = parse(result.files, "gemini-extension.json");
     expect(gemini.contextFileName).toBe("GEMINI.md");

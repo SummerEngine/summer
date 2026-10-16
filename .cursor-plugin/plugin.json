@@ -2,14 +2,15 @@
   "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
   "_generated": "GENERATED from integrations/cursor — do not edit; npm run generate:registry",
   "name": "summer",
-  "displayName": "Summer",
+  "displayName": "Summer Engine",
   "version": "4.0.0",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 119-tool MCP bridge to the local desktop app.",
+  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 119-tool MCP bridge to the Summer Engine desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com"
   },
   "publisher": "summer-engine",
+  "logo": "assets/icon.png",
   "homepage": "https://summerengine.com",
   "repository": "https://github.com/summerengine/summer",
   "license": "MIT",

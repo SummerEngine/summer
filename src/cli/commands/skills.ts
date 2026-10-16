@@ -333,8 +333,13 @@ skillsCommand
   .command("list")
   .description("List available skills")
   .option("--by-domain", "Group skills by their primary domain (same grouping as library/skills/README.md)")
-  .action((opts: { byDomain?: boolean }) => {
+  .option("--json", "Print the skills as JSON")
+  .action((opts: { byDomain?: boolean; json?: boolean }) => {
     const skills = getBuiltinSkills();
+    if (opts.json) {
+      console.log(JSON.stringify({ skills }));
+      return;
+    }
     if (skills.length === 0) {
       console.log("No skills found.");
       return;
@@ -527,7 +532,8 @@ function writeMarkerForLocation(location: InstallLocation): void {
 skillsCommand
   .command("info <name>")
   .description("Show skill description and preview")
-  .action((name: string) => {
+  .option("--json", "Print the skill and its full SKILL.md body as JSON")
+  .action((name: string, opts: { json?: boolean }) => {
     const meta = getSkillMeta(name);
     if (!meta) {
       console.error(`Unknown skill: ${name}`);
@@ -537,6 +543,10 @@ skillsCommand
     if (!src) die(`Skill files missing: ${name}`);
     const skillPath = join(src, "SKILL.md");
     const content = readFileSync(skillPath, "utf-8");
+    if (opts.json) {
+      console.log(JSON.stringify({ ...meta, file: skillPath, body: content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "") }));
+      return;
+    }
     console.log(`\n${meta.name}`);
     console.log("-".repeat(40));
     console.log(meta.description);

@@ -21,4 +21,4 @@ The Summer Engine app, summerengine.com and summer.games are not in this repo, b
 
 ## What leaves your machine
 
-Only the library feedback reports and, when you are signed in, one usage line per tool call. [`AGENTS.md`](AGENTS.md) section 1 lists every field. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns both off.
+Only the library feedback reports and, when you are signed in, one usage line per MCP tool call and per `summer` command that runs on your computer. [`AGENTS.md`](AGENTS.md) section 1 lists every field. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns both off.

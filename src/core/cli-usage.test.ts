@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   _resetCliUsageForTests,
@@ -9,11 +12,12 @@ import {
   sendCliUsage,
   startCliCommand,
 } from "./cli-usage.js";
+import { setSummerDirForTests } from "./store.js";
 
 const saved = { ...process.env };
 afterEach(() => {
   _resetCliUsageForTests();
-  for (const key of ["SUMMER_NO_TELEMETRY", "DO_NOT_TRACK", "SUMMER_AGENT_HOST"]) {
+  for (const key of ["SUMMER_NO_TELEMETRY", "DO_NOT_TRACK", "SUMMER_AGENT_HOST", "SUMMER_TOKEN"]) {
     if (saved[key] === undefined) delete process.env[key];
     else process.env[key] = saved[key];
   }
@@ -80,8 +84,40 @@ describe("CLI usage line", () => {
 
   it("drops an operation name that is not one", () => {
     startCliCommand("engine", "engine.play --scene res://secret.tscn");
-    expect(sent(0)).toMatchObject({ tool: "engine" });
-    expect(sent(0)).toBeNull();
+    const body = sent(0);
+    expect(body).toMatchObject({ tool: "engine" });
+    expect(body).not.toHaveProperty("op");
+  });
+
+  it("keeps only lowercase snake_case error codes", () => {
+    startCliCommand("engine", "engine.play");
+    noteCliError("player.gd");
+    expect(sent(1)).toMatchObject({ error: "exit_1" });
+  });
+
+  it("counts SUMMER_TOKEN or a stored account token as signed in, and nothing else", () => {
+    const home = mkdtempSync(join(tmpdir(), "summer-cli-usage-"));
+    setSummerDirForTests(join(home, ".summer"));
+    const spawn = vi.fn(() => ({ unref: () => undefined }));
+    try {
+      delete process.env.SUMMER_TOKEN;
+      startCliCommand("doctor");
+      sendCliUsage(0, { spawn: spawn as never });
+      expect(spawn).not.toHaveBeenCalled();
+      mkdirSync(join(home, ".summer"), { recursive: true });
+      writeFileSync(join(home, ".summer", "auth-token"), "token");
+      startCliCommand("doctor");
+      sendCliUsage(0, { spawn: spawn as never });
+      expect(spawn).toHaveBeenCalledTimes(1);
+      rmSync(join(home, ".summer", "auth-token"));
+      process.env.SUMMER_TOKEN = "env-token";
+      startCliCommand("doctor");
+      sendCliUsage(0, { spawn: spawn as never });
+      expect(spawn).toHaveBeenCalledTimes(2);
+    } finally {
+      setSummerDirForTests(null);
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("sends nothing when signed out, when telemetry is off, or for a name that is not a command", () => {

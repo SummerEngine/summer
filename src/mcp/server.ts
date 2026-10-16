@@ -42,6 +42,7 @@ import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mou
 import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
 import { opForToolCall } from "../core/ops/contract.js";
+import { knownOp } from "../core/ops/catalog.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
 import { legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
@@ -298,7 +299,7 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
       // tool) is part of that call: only the outer call sends a usage line.
       const nested = currentToolContext() !== undefined;
       const recordUsage = (ok: boolean, durationMs: number, error?: string | null) => {
-        if (!nested) recordLocalToolCall({ tool: name, op: opForToolCall(name, handlerArgs[0]), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error });
+        if (!nested) recordLocalToolCall({ tool: name, op: knownOp(opForToolCall(name, handlerArgs[0])), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error });
       };
       let result: unknown;
       try {

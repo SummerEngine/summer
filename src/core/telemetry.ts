@@ -57,7 +57,7 @@ export interface LocalToolCall {
   error?: string | null;
 }
 
-const ERROR_CODE = /^[a-z][a-z0-9_.:-]{0,63}$/i;
+const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 
 /**
  * The code a failed tool result names, read from its first text block: the

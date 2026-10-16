@@ -23,6 +23,12 @@ describe("trackCommandUsage", () => {
     expect(start.mock.calls).toEqual([["skills_install", undefined], ["engine", "engine.set_prop"], ["whoami", "whoami"]]);
   });
 
+  it("never sends a typed word as an operation: an action that is no operation reports the area alone", async () => {
+    const start = vi.fn();
+    await program(start).parseAsync(["engine", "my-secret-game-jane-doe", "--json"], { from: "user" });
+    expect(start.mock.calls).toEqual([["engine", undefined]]);
+  });
+
   it("leaves summer mcp to its own session and tool-call lines", async () => {
     const start = vi.fn();
     await program(start).parseAsync(["mcp"], { from: "user" });

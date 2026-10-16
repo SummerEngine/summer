@@ -45,8 +45,10 @@ export interface McpClientInfo {
 type Env = Record<string, string | undefined>;
 
 /** The opt-out switches, the same two the library feedback mailbox honors. */
+/** SUMMER_NO_TELEMETRY or DO_NOT_TRACK set to 1, true, yes or on. */
 export function isTelemetryDisabled(env: Env = process.env): boolean {
-  return env.SUMMER_NO_TELEMETRY === "1" || env.DO_NOT_TRACK === "1";
+  const on = (value: string | undefined) => value !== undefined && /^(1|true|yes|on)$/i.test(value.trim());
+  return on(env.SUMMER_NO_TELEMETRY) || on(env.DO_NOT_TRACK);
 }
 
 const set = (env: Env, key: string) => {

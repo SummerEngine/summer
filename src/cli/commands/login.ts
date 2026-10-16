@@ -93,7 +93,7 @@ export async function runLoginCommand(
   } else {
     await deps.login();
     deps.log(
-      "Signed-in MCP sessions report each tool call to Summer (tool name, success, duration, agent app name); SUMMER_NO_TELEMETRY=1 turns that off."
+      "Signed in, Summer gets one usage line per MCP tool call and per `summer` command (name, success or error code, duration, agent app; never arguments or paths). SUMMER_NO_TELEMETRY=1 turns it off."
     );
   }
   if (!storeNeeded) return;

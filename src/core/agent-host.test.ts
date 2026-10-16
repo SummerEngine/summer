@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   hostFromClientName,
   hostFromEnv,
+  isTelemetryDisabled,
   processSurface,
   registerMcpClientSource,
   resolveAgentHost,
@@ -89,5 +90,16 @@ describe("processSurface", () => {
     expect(summerRequestHeaders()["X-Summer-Client-Surface"]).toBe("cli");
     registerMcpClientSource(() => undefined);
     expect(processSurface()).toBe("mcp");
+  });
+});
+
+describe("isTelemetryDisabled", () => {
+  it("takes 1, true, yes or on in either variable", () => {
+    for (const value of ["1", "true", "TRUE", "yes", "on", " 1 "]) {
+      expect(isTelemetryDisabled({ SUMMER_NO_TELEMETRY: value })).toBe(true);
+      expect(isTelemetryDisabled({ DO_NOT_TRACK: value })).toBe(true);
+    }
+    for (const value of ["0", "false", "", "no"]) expect(isTelemetryDisabled({ DO_NOT_TRACK: value })).toBe(false);
+    expect(isTelemetryDisabled({})).toBe(false);
   });
 });

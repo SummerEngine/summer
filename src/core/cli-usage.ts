@@ -26,7 +26,7 @@ import { getSummerDir } from "./store.js";
 
 /** What the server accepts as a tool: `summer_call`, `summer_play`, `create`, `skills_install`. */
 const TOOL = /^[a-z][a-z0-9_]{0,79}$/;
-const ERROR_CODE = /^[a-z0-9][a-z0-9_.:-]{0,63}$/i;
+const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 const BEACON = fileURLToPath(new URL("./cli-usage-beacon.js", import.meta.url));
 
 interface Pending {
@@ -104,14 +104,18 @@ function signedIn(): boolean {
   return hasEnvAuthToken() || existsSync(join(getSummerDir(), "auth-token"));
 }
 
-export function sendCliUsage(exitCode: number, deps: { spawn: typeof spawn; signedIn: () => boolean } = { spawn, signedIn }): void {
+export function sendCliUsage(exitCode: number, deps: { spawn?: typeof spawn; signedIn?: () => boolean } = {}): void {
   const started = pending;
   pending = null;
-  if (!started || started.hosted || isTelemetryDisabled() || !deps.signedIn()) return;
+  if (!started || started.hosted || isTelemetryDisabled() || !(deps.signedIn ?? signedIn)()) return;
   try {
-    deps
-      .spawn(process.execPath, [BEACON, JSON.stringify(cliUsageBody(started, exitCode))], { detached: true, stdio: "ignore", windowsHide: true })
-      .unref();
+    (deps.spawn ?? spawn)(process.execPath, [BEACON, JSON.stringify(cliUsageBody(started, exitCode))], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      // A debugger flag (--inspect-brk) would make the child wait forever.
+      env: { ...process.env, NODE_OPTIONS: (process.env.NODE_OPTIONS ?? "").replace(/--inspect\S*/g, "").trim() },
+    }).unref();
   } catch {
     // never throws: usage is best-effort
   }

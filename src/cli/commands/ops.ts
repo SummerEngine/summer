@@ -23,7 +23,7 @@ import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../cor
 /** Areas with operations today; CLI command words stay out of this list. */
 export const CLI_AREAS = [
   "team", "profile", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
-  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
+  "analytics", "experiments", "marketing", "content", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
   "plugins", "engine", "account",
 ] as const;
 

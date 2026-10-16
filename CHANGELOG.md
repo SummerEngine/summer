@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **`content` is an area.** `summer content <action>` runs the content operations Summer's hosted server serves (`content.list_games`, `content.get_kit`, `content.list_references`, `content.search_library`, `content.save_piece`, `content.add_feedback`, ...). The 4.0.0 `marketing.*` content operations are renamed to them (`marketing.content_feed` is `content.list_references`, `marketing.get_brand_pack` is `content.get_kit`); `registry/operations/legacy-names.json` maps each old name to its new one.
+
 ## [4.0.0] - 2026-10-15
 
 3.9.0 and 3.9.1 were not published to npm. 4.0.0 is the first release with everything in them (the [3.9.1] and [3.9.0] sections below), plus these changes.

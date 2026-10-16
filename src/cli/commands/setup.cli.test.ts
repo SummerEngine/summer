@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { configureAgentMcp, type SupportedAgent } from "../../installer/agent-config.js";
 import { resolveInstallLocation } from "../../installer/skill-locations.js";
 import { readRecordedMcpServer } from "../../installer/version-check.js";
-import { setupCommand } from "./setup.js";
+import { notGitIgnored, setupCommand } from "./setup.js";
 import { skillsCommand } from "./skills.js";
 
 // `summer setup` ends with a doctor pass (network + engine probes): stub it.
@@ -83,6 +84,54 @@ describe("summer setup --cli: the skills and no MCP server", () => {
       expect(config.text).not.toContain("mcp.summer.games");
     }
   );
+
+  it("adds Claude Code and Codex allow rules only with --allow-rules, and --remove-allow-rules takes them out", async () => {
+    const settings = join(homedir(), ".claude", "settings.json");
+    const summerRules = () => (existsSync(settings) ? (JSON.parse(readFileSync(settings, "utf-8")).permissions?.allow ?? []) : []).filter((rule: string) => /^Bash\((summer|npx -y summer-engine@latest) /.test(rule));
+
+    const plain = await setup(["claude-code", "--cli", "--yes"]);
+    expect(plain.lines.join("\n")).toContain("summer setup claude-code --cli --allow-rules --yes");
+    expect(summerRules()).toEqual([]);
+
+    const planned = await setup(["claude-code", "--cli", "--allow-rules", "--json", "--scope", "project"]);
+    expect(planned.json.allowRules).toMatchObject({ wrote: false });
+    expect(existsSync((planned.json.allowRules as { path: string }).path)).toBe(false);
+
+    const claude = await setup(["claude-code", "--cli", "--allow-rules", "--yes", "--json"]);
+    expect(claude.json.allowRules).toMatchObject({ path: settings, wrote: true });
+    expect(summerRules()).toContain("Bash(summer jobs wait *)");
+    expect(summerRules().some((rule: string) => rule.includes(" store publish") || rule.includes("capture-gameplay"))).toBe(false);
+    const codex = await setup(["codex", "--cli", "--allow-rules", "--yes", "--json"]);
+    const codexFile = (codex.json.allowRules as { path: string }).path;
+    expect(readFileSync(codexFile, "utf-8")).toContain("prefix_rule(");
+
+    expect((await setup(["claude-code", "--remove-allow-rules", "--json"])).json.allowRules).toMatchObject({ wrote: true });
+    expect(summerRules()).toEqual([]);
+    await setup(["codex", "--remove-allow-rules"]);
+    expect(existsSync(codexFile)).toBe(false);
+  });
+
+  it("says --allow-rules needs --cli instead of ignoring it", async () => {
+    const errors: string[] = [];
+    const error = vi.spyOn(console, "error").mockImplementation((line: unknown) => void errors.push(String(line)));
+    try {
+      await setup(["claude-code", "--allow-rules", "--yes", "--json"]);
+    } finally {
+      error.mockRestore();
+    }
+    expect(errors.join("\n")).toContain("--allow-rules works with --cli only");
+  });
+
+  it("knows when git would share a project's settings.local.json", () => {
+    const repo = mkdtempSync(join(tmpdir(), "summer-gitignore-"));
+    const git = (...args: string[]) => execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    const file = join(repo, ".claude", "settings.local.json");
+    expect(notGitIgnored(file, repo)).toBe(true);
+    writeFileSync(join(repo, ".gitignore"), ".claude/settings.local.json\n");
+    expect(notGitIgnored(file, repo)).toBe(false);
+    expect(notGitIgnored(file, mkdtempSync(join(tmpdir(), "summer-no-git-")))).toBe(false);
+  });
 
   it("--no-mcp is the same as --cli", async () => {
     const { json } = await setup(["kimi-code", "--no-mcp", "--yes", "--json"]);

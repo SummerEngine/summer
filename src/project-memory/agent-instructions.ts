@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from "fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, writeFileSync } from "fs";
 import { homedir } from "os";
-import { dirname, join, parse, relative, resolve, isAbsolute } from "path";
+import { basename, dirname, join, parse, relative, resolve, isAbsolute } from "path";
 import { PACKAGE_ROOT } from "../core/package-root.js";
 
 /**
@@ -69,7 +69,7 @@ export interface InstructionFileResult {
   reason?: string;
 }
 
-/** The text with `block` as its one Summer block: the first replaced and any later ones dropped, else appended. Keeps the file's line endings. */
+/** The text with `block` as its Summer block: replaced where it is, else appended. Keeps the file's line endings. */
 function withBlock(text: string, block: string): { text: string; action: InstructionAction; reason?: string } {
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const ours = block.replace(/\r?\n/g, eol);
@@ -80,14 +80,10 @@ function withBlock(text: string, block: string): { text: string; action: Instruc
   }
   const end = text.indexOf(SUMMER_BLOCK_END, start);
   if (end === -1) return { text, action: "skipped", reason: "its Summer block has no end marker" };
-  let rest = text.slice(end + SUMMER_BLOCK_END.length);
-  // A second complete block (a merge, a copy) goes: one block, the first one.
-  for (let again = rest.indexOf(SUMMER_BLOCK_START); again !== -1; again = rest.indexOf(SUMMER_BLOCK_START)) {
-    const close = rest.indexOf(SUMMER_BLOCK_END, again);
-    if (close === -1) break;
-    rest = `${rest.slice(0, again).replace(/(\r?\n)+$/, "")}${rest.slice(close + SUMMER_BLOCK_END.length)}`;
-  }
-  const next = `${text.slice(0, start)}${ours}${rest}`;
+  // Two blocks (a merge, or the markers quoted in the person's text): which
+  // one is Summer's is not knowable, so the person picks; nothing is deleted.
+  if (text.indexOf(SUMMER_BLOCK_START, end) !== -1) return { text, action: "skipped", reason: "it has two Summer blocks; delete one and run setup again" };
+  const next = `${text.slice(0, start)}${ours}${text.slice(end + SUMMER_BLOCK_END.length)}`;
   return { text: next, action: next === text ? "unchanged" : "updated" };
 }
 
@@ -108,22 +104,26 @@ function inside(root: string, path: string): boolean {
 }
 
 /**
- * Where a file may be written: "missing" (create it here), "file" (a file
- * or a link to one inside the project; `real` is that file), or a reason to
- * leave it alone (a link that points nowhere or out of the project).
+ * Where a file may be written, and `real`, the file a write lands in:
+ * "missing" (create it: here, or the missing target of a link inside the
+ * project), "file" (a file, or a link to one inside the project), or a
+ * reason to leave it alone (a link that points nowhere or out of the
+ * project). `real` is known before anything is written, so a link from one
+ * name to the other counts as one file even when its target is missing.
  */
-function locate(path: string, realRoot: string): { kind: "missing" } | { kind: "file"; real: string } | { kind: "skip"; reason: string } {
+function locate(path: string, realRoot: string): { kind: "missing" | "file"; real: string } | { kind: "skip"; reason: string } {
   let isLink = false;
   try {
     isLink = lstatSync(path).isSymbolicLink();
   } catch {
-    return { kind: "missing" };
+    return { kind: "missing", real: join(realRoot, basename(path)) };
   }
   let real: string;
   try {
     real = realpathSync(path);
   } catch {
-    return { kind: "skip", reason: "it is a link to a file that does not exist" };
+    const target = resolve(realRoot, readlinkSync(path));
+    return inside(realRoot, target) ? { kind: "missing", real: target } : { kind: "skip", reason: "it is a link to a file that does not exist" };
   }
   if (isLink && !inside(realRoot, real)) return { kind: "skip", reason: "it is a link to a file outside the project" };
   return { kind: "file", real };
@@ -178,7 +178,7 @@ export function writeAgentInstructions(projectDir: string, options: { dryRun?: b
   const claudeResult = step("CLAUDE.md", claude, () => {
     if (claudeAt.kind === "skip") return { action: "skipped", reason: claudeAt.reason };
     // CLAUDE.md -> AGENTS.md (or the reverse): one file, which already has the AGENTS.md block.
-    if (claudeAt.kind === "file" && agentsAt.kind === "file" && claudeAt.real === agentsAt.real) {
+    if (agentsAt.kind !== "skip" && claudeAt.real === agentsAt.real) {
       return { action: "unchanged", reason: "it is the same file as AGENTS.md" };
     }
     if (claudeAt.kind === "missing") {

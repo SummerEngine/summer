@@ -248,3 +248,35 @@ When you've made code changes and want to declare them "verified":
 A typical cautionary scenario: many parallel agents write thousands of lines of game code in one batch with verification static-only. The build is "diagnostic-clean" yet the running game has telegraph meshes that render the wrong axis, parse-valid scripts that crash on first autoload because of a guard pattern that doesn't compile, projectile tracers sized so they read as straight lines instead of projectiles, transform-leaked colliders from a copied scene, and `@onready` paths that throw on every boot when the script is loaded into a sibling scene that lacks one of the referenced children. None of these surface in `summer_get_diagnostics` until something actually plays the game — which is exactly what a `RunVerification` probe does, and why "I had no way to test it" is not an available excuse.
 
 Static analysis is necessary but never sufficient.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_clear_console` | `summer engine clear-console` |
+| `summer_create_debug_report` | `summer engine create-debug-report` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_debugger_warnings` | `summer engine get-debugger-warnings` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `summer_replace_node` | `summer engine replace-node` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

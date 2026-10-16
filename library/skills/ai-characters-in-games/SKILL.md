@@ -218,3 +218,18 @@ func _gateway() -> Object:
 - Retrying on `limit_exceeded` or `credits_exhausted`. The limit is the product working.
 - Putting a provider key in the project "until Summer is live". There is no bring-your-own-key path; keys in builds leak.
 - Letting the model decide rewards because "it only suggests". It will be talked into suggesting everything.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

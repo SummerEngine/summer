@@ -1252,6 +1252,20 @@
       ]
     },
     {
+      "id": "skill/summer-cli",
+      "name": "summer-cli",
+      "description": "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/summer-cli/",
+      "domains": [
+        "agent-workflow",
+        "assets",
+        "tools"
+      ]
+    },
+    {
       "id": "skill/summer-friends",
       "name": "summer-friends",
       "description": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",

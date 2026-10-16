@@ -166,3 +166,32 @@ critical are the person's to press.
 The app is published; `apps.screenshot` shows it with real data in light, dark and at
 390 px with no errors; its states (loading, empty, error) work; and the person knows what it
 does and where its data goes.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `apps.call`, `summer_apps_call` | `summer apps call` |
+| `apps.create`, `summer_apps_create` | `summer apps create` |
+| `apps.dock` | `summer apps dock` |
+| `apps.events`, `summer_apps_events` | `summer apps events` |
+| `apps.get`, `summer_apps_get` | `summer apps get` |
+| `apps.guide`, `summer_apps_guide` | `summer apps guide` |
+| `summer_apps_list` | `summer apps list` |
+| `apps.page`, `summer_apps_page` | `summer apps page` |
+| `apps.publish`, `summer_apps_publish` | `summer apps publish` |
+| `apps.read_data`, `summer_apps_read_data` | `summer apps read-data` |
+| `apps.report_gap`, `summer_apps_report_gap` | `summer apps report-gap` |
+| `apps.screenshot`, `summer_apps_screenshot` | `summer apps screenshot` |
+| `apps.tools`, `summer_apps_tools` | `summer apps tools` |
+| `apps.update`, `summer_apps_update` | `summer apps update` |
+| `apps.use_page`, `summer_apps_use_page` | `summer apps use-page` |
+| `apps.write_data`, `summer_apps_write_data` | `summer apps write-data` |
+| `assets.generate_sfx_choices` | `summer assets generate-sfx-choices` |
+| `docs.feedback` | `summer docs feedback` |
+| `jobs.wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

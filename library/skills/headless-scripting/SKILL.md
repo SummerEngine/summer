@@ -412,3 +412,16 @@ Keep scripts in the project (`res://` is required for `-s`), but name them so th
 - `playtesting-a-feature` — the verify instance, probes, and proving gameplay behaviour.
 - `export-and-ship` — the full release pipeline this skill's export example is one step of.
 - `verification-before-completion` — checking the artifact before claiming done.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

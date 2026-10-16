@@ -299,3 +299,29 @@ the same `.tres`; it is slower but discoverable.
 - `character-animation-wiring` — the end-to-end rigged-GLB path: inspect real clip/bone names, `ctx.anim_state_machine`, method tracks, root motion, playtest verification.
 - `generate-motion` — produce the clips this tree references.
 - `retarget` — share one tree across many characters.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_remove_node` | `summer engine remove-node` |
+| `summer_replace_node` | `summer engine replace-node` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

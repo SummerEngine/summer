@@ -1,5 +1,7 @@
+import { existsSync, readFileSync } from "fs";
 import { Command, Option } from "commander";
 import {
+  ConfigScope,
   SupportedAgent,
   configureAgentMcp,
   configureSummerGamesMcp,
@@ -12,8 +14,8 @@ import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilit
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
-import { resolveDefaultChannel } from "../../installer/version-check.js";
-import { agentLabel } from "../../installer/agent-table.js";
+import { readRecordedMcpServer, resolveDefaultChannel } from "../../installer/version-check.js";
+import { agentLabel, agentSpec } from "../../installer/agent-table.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
@@ -40,11 +42,23 @@ interface SetupCommandOptions {
   stableOnly?: boolean;
   /** Hidden no-op alias kept for one release; preview skills install by default now. */
   includePreview?: boolean;
+  /** --cli: the skills and no MCP server. */
+  cli?: boolean;
+  /** false with --no-mcp, the same as --cli. */
+  mcp?: boolean;
 }
+
+/** The options that only shape the MCP entry, which --cli does not write. */
+const MCP_ENTRY_FLAGS: ReadonlyArray<[keyof SetupCommandOptions, string]> = [
+  ["print", "--print"],
+  ["localDev", "--local-dev"],
+  ["channel", "--channel"],
+  ["profile", "--profile"],
+];
 
 export const setupCommand = new Command("setup")
   .description(
-    "Configure Summer Engine for an AI agent and run diagnostics. For agents that can sign in to it, it also adds Summer Games (summer-games)."
+    "Configure Summer Engine for an AI agent and run diagnostics. For agents that can sign in to it, it also adds Summer Games (summer-games). --cli installs the skills only: the agent runs summer commands in its shell, with no MCP server."
   )
   .argument("[agent]", `Agent to configure: ${supportedAgents.join(", ")}`)
   .option("--agent <agent>", `Agent to configure: ${supportedAgents.join(", ")}`)
@@ -72,6 +86,11 @@ export const setupCommand = new Command("setup")
     "--assets-only",
     "Set up for making assets without Summer Engine: the assets profile, only the asset skills, and no Summer Games"
   )
+  .option(
+    "--cli",
+    "CLI only: install the skills and no MCP server (and no Summer Games). The agent runs Summer as summer <area> <action> commands in its shell; the summer-cli skill teaches it"
+  )
+  .option("--no-mcp", "Same as --cli")
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -90,6 +109,10 @@ export const setupCommand = new Command("setup")
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
+    if (opts.cli || opts.mcp === false) {
+      await setupCliOnly(agent, scope, opts);
+      return;
+    }
     const profile = resolveSetupProfile(opts);
 
     const defaultChannel = await resolveDefaultChannel(cliVersion);
@@ -144,6 +167,73 @@ export const setupCommand = new Command("setup")
       process.exit(1);
     }
   });
+
+/**
+ * `summer setup <agent> --cli`: the skills (the asset skills with --assets-only)
+ * and no MCP server, so the agent runs Summer as `summer <area> <action>` in its
+ * shell. Writes no agent config file; an existing summer-engine entry from an
+ * earlier setup is left as it is and named in a warning.
+ */
+async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: SetupCommandOptions): Promise<void> {
+  const spec = agentSpec(agent);
+  const mcpFlags = MCP_ENTRY_FLAGS.filter(([key]) => opts[key] !== undefined && opts[key] !== false).map(([, flag]) => flag);
+  if (mcpFlags.length > 0) {
+    throw new Error(`${mcpFlags.join(", ")} sets up the MCP entry, and --cli writes none. Leave ${mcpFlags.length === 1 ? "it" : "them"} out, or leave out --cli.`);
+  }
+  if (!spec.skills) {
+    throw new Error(`${spec.label} has no skills folder, so --cli has nothing to install. Run summer setup ${agent} without --cli for the MCP server.`);
+  }
+  if (spec.format === "json-gemini") {
+    throw new Error(`Gemini CLI loads Summer's skills only through its extension, which runs the MCP server. Run summer setup ${agent} without --cli, or use antigravity.`);
+  }
+
+  const warnings = spec.status === "legacy" && spec.legacyNote ? [spec.legacyNote] : [];
+  const existing = await recordedMcpEntry(agent, scope);
+  if (existing) {
+    warnings.push(`${tildeify(existing)} still lists the summer-engine MCP server from an earlier setup. Remove that entry to use the CLI only.`);
+  }
+
+  const dryRun = Boolean(opts.dryRun);
+  const skills = setupSkills(agent, {
+    dryRun,
+    yes: Boolean(opts.yes),
+    force: Boolean(opts.force),
+    scope,
+    recommended: Boolean(opts.recommended),
+    stableOnly: Boolean(opts.stableOnly),
+    assetsOnly: Boolean(opts.assetsOnly),
+  });
+  const doctor = await runDoctor({ quiet: true });
+  const ok = doctor.ok && skills.status !== "failed";
+
+  if (opts.json) {
+    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, doctor, warnings }, null, 2));
+  } else {
+    const label = agentLabel(agent);
+    console.log("");
+    console.log(brandLine(cliVersion));
+    console.log("");
+    console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${c.bold(`CLI only for ${label}`)}: no MCP server`);
+    console.log(`     ${c.dim("The agent runs Summer in its shell: summer <area> <action>, or npx -y summer-engine@latest <area> <action>. The summer-cli skill teaches it.")}`);
+    printSkillsLine(skills, dryRun);
+    for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
+    console.log("");
+    printDoctorResult(doctor);
+    if (ok && !dryRun) printTryIt(label, Boolean(opts.assetsOnly));
+  }
+  if (!ok) process.exit(1);
+}
+
+/** The config file that already lists summer-engine for this agent and scope, or null. */
+async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Promise<string | null> {
+  try {
+    const target = await configureAgentMcp({ agent, scope, print: true });
+    if (!existsSync(target.path)) return null;
+    return readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format) ? target.path : null;
+  } catch {
+    return null;
+  }
+}
 
 /** --assets-only means the assets profile; --profile must name a profile and agree with it. */
 function resolveSetupProfile(opts: SetupCommandOptions): Profile | undefined {
@@ -208,6 +298,25 @@ function printSetupResult(
     if (!config.dryRun) console.log(`     ${c.dim(`Sign in once: ${games.signIn}`)}`);
   }
 
+  printSkillsLine(skills, config.dryRun);
+
+  for (const warning of config.warnings) {
+    console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
+  }
+
+  console.log("");
+  printDoctorResult(doctor);
+
+  if (doctor.ok && skills.status !== "failed" && !config.dryRun) printTryIt(label, config.profile === "assets");
+}
+
+function printTryIt(label: string, assets: boolean): void {
+  console.log("");
+  const ask = assets ? "make a sword clash sound effect" : "add a DirectionalLight3D and Camera3D to my scene";
+  console.log(`${c.dim("Try it:")} open ${label} and ask: ${c.bold(`"${ask}"`)}`);
+}
+
+function printSkillsLine(skills: SkillSetupResult, dryRun: boolean): void {
   if (skills.status === "installed") {
     const installed = parseInstalledSkills(skills.stdout);
     if (installed.length > 0) {
@@ -221,7 +330,7 @@ function printSetupResult(
     } else {
       console.log(`  ${sym.ok()}  ${skills.message}`);
     }
-  } else if (skills.status === "planned" && config.dryRun) {
+  } else if (skills.status === "planned" && dryRun) {
     const note = previewNote(skills);
     console.log(
       `  ${c.dim("(dry run)")}  Would install ${c.bold(String(skills.count ?? "?") + " skills")}${
@@ -233,19 +342,6 @@ function printSetupResult(
   } else if (skills.status === "failed") {
     console.log(`  ${sym.fail()}  Skills install failed`);
     if (skills.stderr) console.log(`     ${c.dim(skills.stderr)}`);
-  }
-
-  for (const warning of config.warnings) {
-    console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
-  }
-
-  console.log("");
-  printDoctorResult(doctor);
-
-  if (doctor.ok && skills.status !== "failed" && !config.dryRun) {
-    console.log("");
-    const ask = config.profile === "assets" ? "make a sword clash sound effect" : "add a DirectionalLight3D and Camera3D to my scene";
-    console.log(`${c.dim("Try it:")} open ${label} and ask: ${c.bold(`"${ask}"`)}`);
   }
 }
 

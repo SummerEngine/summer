@@ -176,3 +176,26 @@ Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`),
 - `music-track` — music
 - `voice-line` — speech
 - `summer_docs_read` id `reference/mcp-tools-reference`
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.choices`, `summer_assets_choices` | `summer assets choices` |
+| `assets.generate_audio`, `summer_assets_generate_audio` | `summer assets generate-audio` |
+| `assets.generate_sfx_choices`, `summer_assets_generate_sfx_choices` | `summer assets generate-sfx-choices` |
+| `assets.get` | `summer assets get` |
+| `assets.search`, `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

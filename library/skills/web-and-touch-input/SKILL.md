@@ -36,3 +36,22 @@ Add a `TouchControls` CanvasLayer (layer 10) and show it only when `DisplayServe
 ## 4. Verify
 
 Run the game and check the keyboard controls and the title screen's first click. Set `input_devices/pointing/emulate_touch_from_mouse` on temporarily to try the touch buttons with the mouse, then turn it off again.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_play` | `summer engine play` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

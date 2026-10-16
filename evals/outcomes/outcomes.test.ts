@@ -393,5 +393,5 @@ describe.skipIf(!distPresent)("pre-flight refusal (needs dist/ — run npm run b
     expect(noAdvert).toMatchObject({ advertised: false, missing: [], opkinds_sha256: null });
     const simulated = preflight({ capabilities: { opKinds: full } }, needs, ["GetWorldSnapshot", "RunVerification"]);
     expect(simulated.missing).toEqual(["GetWorldSnapshot"]);
-  });
+  }, 60_000); // the first import of the built dist/ can take many seconds right after `npm run build` (prepublishOnly)
 });

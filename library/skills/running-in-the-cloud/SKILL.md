@@ -101,3 +101,13 @@ Treat it as a secret: env-inject it from the runner's secret store, never bake i
 - `headless-scripting` — the headless invocation contract, exit-code traps, and what scripts unlock.
 - `playtesting-a-feature` — the verify instance and probes (run them under xvfb in the cloud).
 - `verification-before-completion` — judging work by artifacts, which matters more when nobody can see a screen.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_screenshot` | `summer engine screenshot` |
+<!-- /shell-commands -->

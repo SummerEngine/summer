@@ -192,3 +192,33 @@ If `summer_run_script` answers `engine_lacks_op`, the engine build predates RunS
 - `character-animation-wiring` — the animation tier end to end.
 - `gdscript-patterns` — idioms for the scripts `attach_script` writes.
 - `verification-before-completion` — proving the result before claiming done.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.slice_sheet` | `summer assets slice-sheet` |
+| `summer_api_docs` | `summer docs engine-api` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_run_editor_script` | `summer engine run-editor-script` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_stop` | `summer engine stop` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

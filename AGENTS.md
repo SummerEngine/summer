@@ -95,7 +95,7 @@ Climb only as high as the change demands; the agent playbook has the full versio
 
 **Honesty:** never describe an image you did not receive. A failed capture is a result — report it, climb down a rung, or ask the user. Pass structured failures (`failure_reason`, `terminalState`, `identity_mismatch`) through verbatim. Ask the user to play only for what a probe cannot judge: feel, looks, fun.
 
-**Same tools from a shell.** Every MCP tool is also `summer tool <slug> --args '<json>'` (same implementation; `summer tool --list` for the slugs), and every operation is `summer <area> <action> --<field> <value>` (`summer ops search <words>` finds it; `--dry-run`, `--wait`, `--json`). Use them when the host has no MCP session or you want a one-off call in a script.
+**Same tools from a shell.** Every MCP tool is also `summer tool <slug> --args '<json>'` (same implementation; `summer tool --list` for the slugs), and every operation is `summer <area> <action> --<field> <value>` (`summer ops search <words>` finds it; `--dry-run`, `--wait`, `--json`). Use them when the host has no MCP session or you want a one-off call in a script. `summer setup <agent> --cli` installs the skills with no MCP server; the `summer-cli` skill teaches the commands, and each skill ends with a "From a shell" table of the command for every tool it names.
 
 **Engine capability pre-flight.** `summer_get_project_context` reads the engine's capability list; a tool whose op the running engine build provably lacks returns a structured `engine_lacks_op` result instead of running (for example, the runtime and spatial tools on engines older than 0.5.66). `SUMMER_CAPABILITY_PREFLIGHT=off` sends every call anyway — for engine developers testing unreleased builds, not for normal sessions.
 

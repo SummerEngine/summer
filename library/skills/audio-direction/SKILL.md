@@ -259,3 +259,19 @@ No template — this is a workflow that produces the bible the rest of the proje
 - `art-direction` — the visual counterpart; audio must rhyme with it
 - `adaptive-music` — implements the dynamic music plan
 - `sound-effect`, `music-track`, `ambient-bed`, `voice-line` — generate the audio the bible describes
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_assets_generate_audio` | `summer assets generate-audio` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_project_setting` | `summer engine project-setting` |
+<!-- /shell-commands -->

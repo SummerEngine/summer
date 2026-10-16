@@ -62,3 +62,14 @@ Read the current project as ground truth. Working code from the real project bea
 ## When there is nothing worth capturing
 
 Say so: "session was tactical, no durable learnings worth a skill." Better to ship nothing than to ship noise.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `docs.feedback` | `summer docs feedback` |
+| `summer_docs_search` | `summer docs search` |
+<!-- /shell-commands -->

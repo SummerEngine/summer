@@ -277,3 +277,17 @@ No template — this is a workflow that produces the bible the rest of the proje
 - `brainstorm-game` — produces the brief that anchors the bible
 - `audio-direction` — the sonic counterpart
 - `3d-lighting` — implements the lighting plan and the environment's glow, tonemap and SSAO settings
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_image` | `summer assets generate-image` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

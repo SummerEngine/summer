@@ -1,6 +1,6 @@
 # Summer skills
 
-> 127 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 128 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -10,7 +10,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 - [2d](#2d) (10)
 - [3d](#3d) (6)
-- [agent-workflow](#agent-workflow) (18)
+- [agent-workflow](#agent-workflow) (19)
 - [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (4)
@@ -78,6 +78,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [skill-create](./skill-create/SKILL.md) (library only) | Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections. | meta |
 | [skill-improve](./skill-improve/SKILL.md) (library only) | Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner. | meta |
 | [skill-test](./skill-test/SKILL.md) (library only) | Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs. | meta |
+| [*summer-cli*](./summer-cli/SKILL.md) ★ (preview) | Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine. | assets, tools |
 | [using-summer](./using-summer/SKILL.md) | Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response. | meta |
 | [verification-before-completion](./verification-before-completion/SKILL.md) ★ | Run verification and read its output before claiming work done, fixed or passing: evidence first. | verification |
 | [writing-plans](./writing-plans/SKILL.md) | Turn a spec or requirements for a multi-step task into a written implementation plan before touching code. | meta |

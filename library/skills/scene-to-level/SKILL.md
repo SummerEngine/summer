@@ -125,3 +125,25 @@ Expect about 30 minutes for the asset packs (in parallel) and another 15 for sce
 - **Auto-tiling terrain.** The pipeline node exists in the decision tree but the leaf skill that implements it is not built.
 - **Animation orchestration.** Per-character `sprite-sheet` is invoked manually; no auto-pairing of characters with their animation pipelines yet.
 - **Gameplay code.** Player movement, interactions, win conditions — those are level-design + gameplay-mechanics skills, not this one.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_assets_search` | `summer assets search` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_open_scene` | `summer engine open-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

@@ -150,3 +150,33 @@ In a session without Summer Engine tools (the assets profile; the `summer-assets
 ## Fallback (no MCP)
 
 The router still works without MCP — classification is text-only. It hands off to the specialist, which surfaces its own no-MCP fallback (typically: run the same generation in the Summer dashboard, then `summer_import_from_url` once MCP is back).
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.choices` | `summer assets choices` |
+| `assets.delete` | `summer assets delete` |
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_audio` | `summer assets generate-audio` |
+| `assets.generate_image` | `summer assets generate-image` |
+| `assets.generate_motion` | `summer assets generate-motion` |
+| `assets.generate_sfx_choices` | `summer assets generate-sfx-choices` |
+| `assets.generate_video` | `summer assets generate-video` |
+| `assets.get`, `summer_assets_get` | `summer assets get` |
+| `assets.remove_background` | `summer assets remove-background` |
+| `assets.search`, `summer_assets_search` | `summer assets search` |
+| `assets.slice_sheet` | `summer assets slice-sheet` |
+| `assets.update` | `summer assets update` |
+| `assets.upload_begin` | `summer assets upload-begin` |
+| `assets.upload_complete` | `summer assets upload-complete` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `jobs.wait` | `summer jobs wait` |
+| `makers.npc_voice` | `summer makers npc-voice` |
+| `makers.trailer_forge` | `summer makers trailer-forge` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

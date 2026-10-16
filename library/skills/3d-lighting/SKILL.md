@@ -180,3 +180,19 @@ Then create `Environment` and `Sky` resources via the inspector or load from `.t
 ## Collaborative protocol
 
 This skill mutates the scene (adds lights + WorldEnvironment + tunes Environment sub-properties). Always ask before applying: "May I add a DirectionalLight3D Sun with shadows + a WorldEnvironment with a procedural sky?".
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

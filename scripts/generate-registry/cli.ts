@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
  * npm run generate:registry            — generate registry/generated/ + apply
- *                                        manifests to their root destinations.
+ *                                        manifests to their root destinations,
+ *                                        after rewriting each skill's "From a
+ *                                        shell" section from the operation
+ *                                        catalog (validate-library/shell-commands.ts).
  * npm run generate:registry -- --check — CI parity gate: regenerate, byte-compare
  *                                        against committed output AND applied root
  *                                        manifests, verify doc count claims.
@@ -31,6 +34,7 @@ import { generateRegistry, writeGenerated, GenerateError } from "./index.ts";
 import { applyManifests } from "./apply.ts";
 import { checkRegistry } from "./check.ts";
 import { createProviderFromEnvironment, embedRegistry } from "./embed.ts";
+import { writeShellSections } from "../validate-library/shell-commands.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDir, "..", "..");
@@ -65,6 +69,10 @@ try {
   // Resolve the embedding provider BEFORE generating so a misconfigured
   // --embed (no login, no endpoint) fails fast and writes nothing.
   const embed = flags.has("--embed") ? createProviderFromEnvironment() : null;
+
+  // Each skill's "From a shell" section comes from the operation catalog;
+  // write it first so validation and the content hashes see the current text.
+  for (const file of writeShellSections(rootDir)) console.log(`generate-registry: wrote the shell commands in ${file}`);
 
   const result = generateRegistry(rootDir, options);
 

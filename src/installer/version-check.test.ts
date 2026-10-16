@@ -426,6 +426,18 @@ describe("recorded install detection (the shape `summer setup` writes)", () => {
     );
     expect(skillsRefreshCommand("cursor", null)).toContain("npx -y summer-engine@latest setup cursor");
   });
+
+  it("skillsRefreshCommand keeps an agent without a summer-engine entry CLI only", () => {
+    expect(skillsRefreshCommand("cursor", { localDev: false, cliPath: null, source: "running-cli", cliOnly: true })).toBe(
+      "npx clear-npx-cache && npx -y summer-engine@latest setup cursor --cli --yes --force"
+    );
+    expect(skillsRefreshCommand("cursor", { localDev: false, cliPath: null, source: "running-cli", cliOnly: true }, "next")).toBe(
+      "npx clear-npx-cache && npx -y summer-engine@next setup cursor --cli --yes --force"
+    );
+    expect(skillsRefreshCommand("cursor", { localDev: true, cliPath: "/w/dist/bin/summer.js", source: "running-cli", cliOnly: true })).toBe(
+      "node /w/dist/bin/summer.js setup cursor --cli --yes --force"
+    );
+  });
 });
 
 describe("buildBootDriftNotice", () => {

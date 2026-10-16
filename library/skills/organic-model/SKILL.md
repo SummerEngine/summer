@@ -200,3 +200,27 @@ After the organic models are scattered:
 - `asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `scene-composition` — MultiMeshInstance3D scatter pattern.
 - `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d`, `summer_assets_generate_3d` | `summer assets generate-3d` |
+| `summer_assets_generate_image` | `summer assets generate-image` |
+| `summer_assets_get` | `summer assets get` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

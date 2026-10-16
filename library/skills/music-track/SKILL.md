@@ -283,3 +283,19 @@ Print the prompt and instruct the user to run via the Summer dashboard, then `su
 - `adaptive-music` — wiring stems to game state
 - `sound-effect` — short stings
 - `ambient-bed` — non-melodic location bed
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_assets_generate_audio` | `summer assets generate-audio` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

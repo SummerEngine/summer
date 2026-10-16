@@ -303,3 +303,32 @@ When all phases are done:
 > "<Game name> is in. <N> mechanics, <playable from main scene to win condition>. <Brief summary of the build>. Want me to package a build (`export-and-ship`) or iterate?"
 
 That's the handoff back to the user.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_export_game` | `summer engine export-game` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_import_asset` | `summer engine import-asset` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_play` | `summer engine play` |
+| `summer_replace_text` | `summer engine replace-text` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

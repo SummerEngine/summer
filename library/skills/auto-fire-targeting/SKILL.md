@@ -194,3 +194,17 @@ Do **not** reach for `SimulateInput` here. It is only reachable from the
 in-editor chat bridge; an MCP or CLI caller gets
 `{ok: false, failure_reason: "unsupported_transport"}` back. Drive input from
 inside the probe with `press()` / `key()` instead.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_batch` | `summer engine batch` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+<!-- /shell-commands -->

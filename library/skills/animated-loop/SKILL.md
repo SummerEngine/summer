@@ -231,3 +231,22 @@ Once the loop is wired:
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
 - `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.generate_video`, `summer_assets_generate_video` | `summer assets generate-video` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

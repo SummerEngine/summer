@@ -83,3 +83,26 @@ The engine refuses, with `denied_action`, anything that ends or replaces the ses
 | `no_renderer` | headless editor, no pixels | `summer_ui_tree`; pixels need a display |
 
 **Related skills:** `scene-scripting` and `verifying-scenes` own the scene loop this skill deliberately stays out of; `verification-before-completion` carries the done-claiming rules; `headless-scripting` is the route when there is no editor UI at all.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_ui_actions` | `summer engine list-ui-actions`, `summer engine invoke-ui-action` |
+| `summer_open_scene` | `summer engine open-scene` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_select_node` | `summer engine select-node` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_ui_activate` | `summer engine ui-activate` |
+| `summer_ui_screenshot` | `summer engine ui-screenshot` |
+| `summer_ui_tree` | `summer engine ui-tree` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+<!-- /shell-commands -->

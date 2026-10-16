@@ -299,3 +299,20 @@ Test the accept prompt and rating-based grouping on a hosted staging build.
 - `summer-leaderboards` — ratings and leaderboards for rated queues
 - `summer-parties` — friends entering a queue together
 - `multiplayer-testing` — Local Play options and bots
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_replace_text` | `summer engine replace-text` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

@@ -26,6 +26,7 @@ import {
 import { checkCallExamples, type ToolSignature } from "./call-examples.ts";
 import { escapingSkillPaths } from "./skill-links.ts";
 import { checkSceneEditExamples, SINGLE_EDIT_CHAIN_LIMIT } from "./scene-edits.ts";
+import { planShellSections, withoutShellSection } from "./shell-commands.ts";
 
 export const MEDIA_SIZE_LIMIT_BYTES = 200 * 1024;
 
@@ -669,6 +670,16 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
   }
 
+  // (k) Each skill ends with its "From a shell" section: every MCP tool and
+  //     operation it names with the summer command that runs it, written from
+  //     the operation catalog (shell-commands.ts), never by hand.
+  for (const plan of planShellSections(rootDir)) {
+    if (plan.current === plan.expected) continue;
+    errors.push(
+      `${plan.file}: the "From a shell" section does not match the operation catalog (each MCP tool and operation the skill names, with its summer command). Run npm run generate:registry and commit the SKILL.md`,
+    );
+  }
+
   // --- 4.0 tool names: the 3.x docs-area tools the 4.0 MCP server no longer lists ---
   // Skills and references name what an agent can call in 4.0. Tool descriptors
   // (kind tool) describe the 3.x tools themselves and are skipped. A line may
@@ -677,7 +688,8 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
   for (const res of resources) {
     if (res.data.kind === "tool") continue;
     for (const mdAbs of walkMarkdownFiles(res.absDir)) {
-      const lines = fs.readFileSync(mdAbs, "utf8").split("\n");
+      // The generated "From a shell" table maps each name the skill uses, 3.x ones too.
+      const lines = withoutShellSection(fs.readFileSync(mdAbs, "utf8")).split("\n");
       lines.forEach((line, i) => {
         for (const [old, now] of Object.entries(RETIRED_DOCS_TOOLS)) {
           if (!line.includes(old) || /3\.x/.test(line) || new RegExp(`op"?:\\s*"${old}"`).test(line)) continue;

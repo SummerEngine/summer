@@ -150,3 +150,21 @@ In a session without Summer Engine tools (the assets profile; the `summer-assets
 - Character animation routing. Once a slice is classified as `character`, the next step (sprite-sheet generation) is a separate skill that the user has to invoke manually.
 - Terrain auto-tiling / Wang-tile generation. Use `tileable-texture` for that.
 - Level composition / scene assembly. Use `design-level`.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_image`, `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.get` | `summer assets get` |
+| `summer_assets_search` | `summer assets search` |
+| `assets.slice_sheet`, `summer_assets_slice_sheet` | `summer assets slice-sheet` |
+| `docs.workflows` | `summer docs workflows` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_import_from_url_batch` | `summer engine import-from-url-batch` |
+| `studio.open` | `summer studio open` |
+<!-- /shell-commands -->

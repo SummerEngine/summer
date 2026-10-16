@@ -317,3 +317,20 @@ Use step 4d to see which scene runs.
 | Export with a development build of Summer | Export with the released editor from the download page, again after every update | Players run the pack on the released Summer of the stamped version; newer APIs fail to compile and the game opens to an empty window |
 | Read an empty server log as a hang | Run step 4d | A release server holds back its output until it exits |
 | Export a patch | Export Project, or Export PCK/ZIP without Export As Patch | summer.games takes complete bundles or packs |
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_export_game` | `summer engine export-game` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_write_file` | `summer engine write-file` |
+| `store.publish` | `summer store publish` |
+| `store.release` | `summer store release` |
+| `store.upload_file` | `summer store upload-file` |
+| `studio.open` | `summer studio open` |
+<!-- /shell-commands -->

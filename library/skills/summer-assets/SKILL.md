@@ -54,3 +54,33 @@ Each asset is a normal file in the person's Summer library: GLB for 3D models, P
 | Generating the same asset again to get the file | `assets.get` with `out` on the asset you already have |
 | Telling the person the asset looks right without a preview | Say what you received, or that no preview came back |
 | The person wants a whole game, not assets | Say that this needs Summer Engine and the full setup: `npx -y summer-engine@latest setup <agent> --yes` |
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.choices` | `summer assets choices` |
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_audio` | `summer assets generate-audio` |
+| `assets.generate_image` | `summer assets generate-image` |
+| `assets.generate_motion` | `summer assets generate-motion` |
+| `assets.generate_sfx_choices` | `summer assets generate-sfx-choices` |
+| `assets.generate_video` | `summer assets generate-video` |
+| `assets.get` | `summer assets get` |
+| `assets.search` | `summer assets search` |
+| `assets.slice_sheet` | `summer assets slice-sheet` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_docs_search` | `summer docs search` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_play` | `summer engine play` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `jobs.wait` | `summer jobs wait` |
+| `makers.npc_voice` | `summer makers npc-voice` |
+| `makers.trailer_forge` | `summer makers trailer-forge` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

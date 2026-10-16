@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CLI_AREAS } from "../core/ops/areas.js";
 import { localEntries } from "../core/ops/catalog.js";
@@ -129,12 +129,19 @@ export function allowRulesPath(agent: SupportedAgent, scope: "user" | "project",
   return ctx.env.SUMMER_CLAUDE_SETTINGS_FILE || (scope === "project" ? join(ctx.cwd, ".claude", "settings.local.json") : join(ctx.home, ".claude", "settings.json"));
 }
 
-/** Write next to the file, then rename over it, so Claude Code never reads half a file. */
+/**
+ * Write next to the file, then rename over it, so Claude Code never reads
+ * half a file. A symlinked settings file (a dotfiles repo) is written through
+ * the link, in its real folder, and keeps its mode.
+ */
 async function writeAtomically(path: string, text: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const temp = `${path}.summer-${process.pid}.tmp`;
-  await writeFile(temp, text);
-  await rename(temp, path);
+  const target = existsSync(path) ? await realpath(path) : path;
+  await mkdir(dirname(target), { recursive: true });
+  const mode = existsSync(target) ? (await stat(target)).mode & 0o7777 : undefined;
+  const temp = `${target}.summer-${process.pid}.tmp`;
+  await writeFile(temp, text, mode === undefined ? {} : { mode });
+  if (mode !== undefined) await chmod(temp, mode);
+  await rename(temp, target);
 }
 
 async function readClaudeSettings(path: string): Promise<{ settings: Record<string, unknown>; permissions: Record<string, unknown>; allow: unknown[] }> {

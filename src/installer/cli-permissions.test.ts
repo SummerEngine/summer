@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -61,6 +61,24 @@ describe("Claude Code settings", () => {
     expect(removed.changed.length).toBe(claudeAllowRules().length);
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ model: "opus", permissions: { allow: ["Bash(git status *)", "Bash(summer engine set-prop *)"], deny: ["Bash(rm *)"] } });
     expect(readdirSync(join(path, ".."))).toEqual(["settings.json"]);
+  });
+
+  it("writes through a symlinked settings file (a dotfiles repo) and keeps its mode", async () => {
+    const dir = scratch();
+    const real = join(dir, "dotfiles", "claude-settings.json");
+    mkdirSync(join(dir, "dotfiles"));
+    writeFileSync(real, JSON.stringify({ model: "opus" }));
+    chmodSync(real, 0o600);
+    const link = join(dir, "settings.json");
+    symlinkSync(real, link);
+    await addAllowRules("claude-code", link, true);
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(JSON.parse(readFileSync(real, "utf8")).permissions.allow).toContain("Bash(summer ops search *)");
+    expect(statSync(real).mode & 0o777).toBe(0o600);
+    await removeAllowRules("claude-code", link, true);
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(JSON.parse(readFileSync(real, "utf8"))).toEqual({ model: "opus", permissions: { allow: [] } });
+    expect(readdirSync(join(dir, "dotfiles"))).toEqual(["claude-settings.json"]);
   });
 
   it("writes nothing without write, and leaves a file it cannot read safely alone", async () => {

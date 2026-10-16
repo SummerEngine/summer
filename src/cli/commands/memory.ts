@@ -60,7 +60,8 @@ memoryCommand
   .command("show <file>")
   .description("Print a .summer memory Markdown file")
   .option("--project <path>", "Project directory to inspect")
-  .action(async (file: string, opts: Pick<MemoryOptions, "project">) => {
+  .option("--json", "Print the file path and content as JSON")
+  .action(async (file: string, opts: Pick<MemoryOptions, "project" | "json">) => {
     const resolvedProject = await resolveMemoryProject(opts.project);
     if (!resolvedProject.projectPath) {
       console.error(resolvedProject.reason ?? "Could not find a Summer project.");
@@ -69,21 +70,24 @@ memoryCommand
     }
 
     const filePath = resolveMemoryFilePath(resolvedProject.projectPath, file);
-    console.log(readFileSync(filePath, "utf-8"));
+    const content = readFileSync(filePath, "utf-8");
+    console.log(opts.json ? JSON.stringify({ path: filePath, content }) : content);
   });
 
 memoryCommand
   .command("path")
   .description("Print the .summer directory path for the current project")
   .option("--project <path>", "Project directory to inspect")
-  .action(async (opts: Pick<MemoryOptions, "project">) => {
+  .option("--json", "Print the path as JSON")
+  .action(async (opts: Pick<MemoryOptions, "project" | "json">) => {
     const resolvedProject = await resolveMemoryProject(opts.project);
     if (!resolvedProject.projectPath) {
       console.error(resolvedProject.reason ?? "Could not find a Summer project.");
       console.error("Run from a project directory, pass --project <path>, or start Summer Engine.");
       process.exit(1);
     }
-    console.log(join(resolvedProject.projectPath, ".summer"));
+    const path = join(resolvedProject.projectPath, ".summer");
+    console.log(opts.json ? JSON.stringify({ path }) : path);
   });
 
 async function resolveMemoryProject(

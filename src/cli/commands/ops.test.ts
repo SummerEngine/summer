@@ -270,6 +270,21 @@ describe("summer ops search and describe signed out", () => {
     }
   });
 
+  it("--json prints the one answer shape for a cloud, a local and an unknown operation", async () => {
+    const cloud = signedOut();
+    expect(await describeFromCli("store.publish", cloud, { json: true })).toBe(0);
+    const answer = JSON.parse(cloud.out[0]);
+    expect(answer).toMatchObject({ ok: true, status: "done", result: { operation: { name: "store.publish" } } });
+    expect(answer.warnings?.[0]).toMatch(/^Not signed in/);
+    expect(cloud.err).toEqual([]);
+    const local = signedOut();
+    expect(await describeFromCli("summer_set_prop", local, { json: true })).toBe(0);
+    expect(JSON.parse(local.out[0])).toMatchObject({ ok: true, status: "done", result: { operation: { name: "engine.set_prop" } } });
+    const unknown = signedOut();
+    expect(await describeFromCli("store.no_such_op", unknown, { json: true })).toBe(1);
+    expect(JSON.parse(unknown.err[0])).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
+  });
+
   it("describes a local operation without asking the server, and fails on an unknown one", async () => {
     const local = signedOut();
     expect(await describeFromCli("summer_set_prop", local)).toBe(0);

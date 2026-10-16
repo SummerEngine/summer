@@ -274,16 +274,21 @@ export async function searchFromCli(query: string, options: { area?: string; lim
  * one from Summer's server, or from the shipped catalog when the server
  * cannot answer (signed out, offline).
  */
-export async function describeFromCli(op: string, deps: OpsCliDeps = defaultOpsCliDeps): Promise<number> {
+export async function describeFromCli(
+  op: string,
+  deps: OpsCliDeps = defaultOpsCliDeps,
+  options: { json?: boolean } = {}
+): Promise<number> {
   const local = localWireForm(resolveOpName(op));
   if (local) {
-    deps.print(JSON.stringify(local, null, 2));
+    // --json: the same answer shape as the cloud describe ({operation}).
+    deps.print(options.json ? JSON.stringify({ ok: true, status: "done", result: { operation: local } }) : JSON.stringify(local, null, 2));
     return 0;
   }
-  const asked = await runCloud("ops.describe", { input: { name: op }, json: false, dryRun: false, wait: false }, deps);
+  const asked = await runCloud("ops.describe", { input: { name: op }, json: options.json === true, dryRun: false, wait: false }, deps);
   const answer = describeFromShipped(op, asked) ?? asked;
-  (answer.ok ? deps.print : deps.printError)(formatAnswer(answer));
-  if (answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
+  (answer.ok ? deps.print : deps.printError)(options.json ? JSON.stringify(answer) : formatAnswer(answer));
+  if (!options.json && answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
   return answer.ok ? 0 : 1;
 }
 
@@ -321,8 +326,9 @@ export function opsCliCommands(): Command[] {
   ops
     .command("describe <op>")
     .description("Show one operation with its exact input")
-    .action(async (op: string) => {
-      process.exitCode = await describeFromCli(op);
+    .option("--json", "Print the answer as JSON")
+    .action(async (op: string, options: { json?: boolean }) => {
+      process.exitCode = await describeFromCli(op, defaultOpsCliDeps, { json: options.json === true });
     });
 
   return [whoami, ops, ...CLI_AREAS.map(areaCommand)];

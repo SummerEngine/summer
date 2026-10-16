@@ -144,7 +144,7 @@ describe("trajectory capture", () => {
     const lines = readLines(dir);
     expect(lines).toHaveLength(1);
     expect(lines[0]!.tool).toBe("summer_play");
-  });
+  }, 30_000); // writes past a 16 MB cap; slow disks take longer than the 5 s default
 });
 
 describe("eval-mode full capture (SUMMER_TRAJECTORY_EVAL=1)", () => {

@@ -1,23 +1,26 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from "fs";
+import { homedir } from "os";
+import { dirname, join, parse, relative, resolve, isAbsolute } from "path";
 import { PACKAGE_ROOT } from "../core/package-root.js";
 
 /**
  * AGENTS.md and CLAUDE.md in a Summer project. AGENTS.md is the one file
- * most agents read in every session (Codex, Cursor, Copilot, Gemini, Amp
- * and more); Claude Code reads CLAUDE.md, which here only imports AGENTS.md.
- * `summer create` writes both; `summer setup` inside a project adds them
- * when missing.
+ * Codex, Cursor, Copilot, Amp and other agents read in every session;
+ * Claude Code reads CLAUDE.md, which here only imports AGENTS.md.
+ * `summer create` writes both; `summer setup --yes` inside a project adds
+ * them when missing.
  *
  * An existing file is never overwritten: Summer adds one marked block once,
- * and later runs replace only that block. The five commands are the list in
- * the summer-cli skill (between its project-commands markers), so the two
+ * and later runs replace only that block. A link is followed only to a file
+ * inside the project, and a CLAUDE.md that is the same file as AGENTS.md
+ * gets the AGENTS.md block only. The five commands are the list in the
+ * summer-cli skill (between its project-commands markers), so the two
  * cannot drift; the skill's test runs every command both of them teach.
  */
 
 export const SUMMER_BLOCK_START = "<!-- summer-engine:start. summer setup updates only this block; write your own notes outside it. -->";
 export const SUMMER_BLOCK_END = "<!-- summer-engine:end -->";
-const CLAUDE_IMPORT = "@AGENTS.md";
+const CLAUDE_IMPORTS = new Set(["@AGENTS.md", "@./AGENTS.md"]);
 
 const SKILL_PATH = ["library", "skills", "summer-cli", "SKILL.md"];
 const COMMANDS = /<!-- project-commands[^>]*-->\n([\s\S]*?)\n<!-- \/project-commands -->/;
@@ -51,7 +54,7 @@ export function renderAgentsBlock(commands: string = projectCommands()): string 
     "",
     "## Publishing",
     "",
-    "`summer store publish` sends the game to Summer's store review. The game's owner approves it: give them the link the command prints. Nothing goes live until they approve.",
+    "The `publish-your-game` skill has the steps; `summer ops search \"publish my game\"` finds each operation. `summer store publish` sends the game to Summer's store review, and the game's owner approves it: give them the link it prints. Nothing goes live until they approve.",
     SUMMER_BLOCK_END,
   ].join("\n");
 }
@@ -62,52 +65,166 @@ export interface InstructionFileResult {
   file: "AGENTS.md" | "CLAUDE.md";
   path: string;
   action: InstructionAction;
-  /** Why a file was skipped. */
+  /** Why a file was skipped or left as it is. */
   reason?: string;
 }
 
-/** `text` with the Summer block set to `block`: replaced where it is, else appended once. */
+/** The text with `block` as its one Summer block: the first replaced and any later ones dropped, else appended. Keeps the file's line endings. */
 function withBlock(text: string, block: string): { text: string; action: InstructionAction; reason?: string } {
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const ours = block.replace(/\r?\n/g, eol);
   const start = text.indexOf(SUMMER_BLOCK_START);
+  if (start === -1) {
+    // Only trailing line breaks change outside the block; an empty file is the block alone.
+    return { text: text.trim() ? `${text.replace(/(\r?\n)*$/, eol)}${eol}${ours}${eol}` : `${ours}${eol}`, action: "added" };
+  }
   const end = text.indexOf(SUMMER_BLOCK_END, start);
-  if (start !== -1 && end === -1) return { text, action: "skipped", reason: "its Summer block has no end marker" };
-  if (start === -1) return { text: `${text.trimEnd()}\n\n${block}\n`, action: "added" };
-  const next = `${text.slice(0, start)}${block}${text.slice(end + SUMMER_BLOCK_END.length)}`;
+  if (end === -1) return { text, action: "skipped", reason: "its Summer block has no end marker" };
+  let rest = text.slice(end + SUMMER_BLOCK_END.length);
+  // A second complete block (a merge, a copy) goes: one block, the first one.
+  for (let again = rest.indexOf(SUMMER_BLOCK_START); again !== -1; again = rest.indexOf(SUMMER_BLOCK_START)) {
+    const close = rest.indexOf(SUMMER_BLOCK_END, again);
+    if (close === -1) break;
+    rest = `${rest.slice(0, again).replace(/(\r?\n)+$/, "")}${rest.slice(close + SUMMER_BLOCK_END.length)}`;
+  }
+  const next = `${text.slice(0, start)}${ours}${rest}`;
   return { text: next, action: next === text ? "unchanged" : "updated" };
+}
+
+/** Does the text import AGENTS.md on a line of its own, outside code fences? */
+function importsAgents(text: string): boolean {
+  let fence = false;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (/^(```|~~~)/.test(trimmed)) fence = !fence;
+    else if (!fence && CLAUDE_IMPORTS.has(trimmed)) return true;
+  }
+  return false;
+}
+
+function inside(root: string, path: string): boolean {
+  const rel = relative(root, path);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+/**
+ * Where a file may be written: "missing" (create it here), "file" (a file
+ * or a link to one inside the project; `real` is that file), or a reason to
+ * leave it alone (a link that points nowhere or out of the project).
+ */
+function locate(path: string, realRoot: string): { kind: "missing" } | { kind: "file"; real: string } | { kind: "skip"; reason: string } {
+  let isLink = false;
+  try {
+    isLink = lstatSync(path).isSymbolicLink();
+  } catch {
+    return { kind: "missing" };
+  }
+  let real: string;
+  try {
+    real = realpathSync(path);
+  } catch {
+    return { kind: "skip", reason: "it is a link to a file that does not exist" };
+  }
+  if (isLink && !inside(realRoot, real)) return { kind: "skip", reason: "it is a link to a file outside the project" };
+  return { kind: "file", real };
 }
 
 /**
  * Write or update AGENTS.md and CLAUDE.md in the project root. A new
  * AGENTS.md is the Summer block; a new CLAUDE.md is `@AGENTS.md` only. An
- * existing CLAUDE.md that already imports AGENTS.md is left as it is.
+ * existing CLAUDE.md that already imports AGENTS.md is left as it is. Each
+ * file is its own step: a file that cannot be read or written is skipped
+ * with the reason, and the other is still done.
  */
 export function writeAgentInstructions(projectDir: string, options: { dryRun?: boolean; block?: string } = {}): InstructionFileResult[] {
-  const block = options.block ?? renderAgentsBlock();
+  const agents = join(projectDir, "AGENTS.md");
+  const claude = join(projectDir, "CLAUDE.md");
+  let block: string;
+  let realRoot: string;
+  try {
+    block = options.block ?? renderAgentsBlock();
+    realRoot = realpathSync(projectDir);
+  } catch (error) {
+    const reason = messageOf(error);
+    return [
+      { file: "AGENTS.md", path: agents, action: "skipped", reason },
+      { file: "CLAUDE.md", path: claude, action: "skipped", reason },
+    ];
+  }
   const write = (path: string, text: string) => {
     if (!options.dryRun) writeFileSync(path, text, "utf-8");
   };
-  const results: InstructionFileResult[] = [];
+  const step = (file: InstructionFileResult["file"], path: string, run: () => Omit<InstructionFileResult, "file" | "path">): InstructionFileResult => {
+    try {
+      return { file, path, ...run() };
+    } catch (error) {
+      return { file, path, action: "skipped", reason: messageOf(error) };
+    }
+  };
 
-  const agents = join(projectDir, "AGENTS.md");
-  if (!existsSync(agents)) {
-    write(agents, `${block}\n`);
-    results.push({ file: "AGENTS.md", path: agents, action: "created" });
-  } else {
+  const agentsAt = locate(agents, realRoot);
+  const agentsResult = step("AGENTS.md", agents, () => {
+    if (agentsAt.kind === "skip") return { action: "skipped", reason: agentsAt.reason };
+    if (agentsAt.kind === "missing") {
+      write(agents, `${block}\n`);
+      return { action: "created" };
+    }
     const next = withBlock(readFileSync(agents, "utf-8"), block);
     if (next.action === "added" || next.action === "updated") write(agents, next.text);
-    results.push({ file: "AGENTS.md", path: agents, action: next.action, ...(next.reason ? { reason: next.reason } : {}) });
-  }
+    return { action: next.action, ...(next.reason ? { reason: next.reason } : {}) };
+  });
 
-  const claude = join(projectDir, "CLAUDE.md");
-  if (!existsSync(claude)) {
-    write(claude, `${CLAUDE_IMPORT}\n`);
-    results.push({ file: "CLAUDE.md", path: claude, action: "created" });
-  } else {
+  const claudeAt = locate(claude, realRoot);
+  const claudeResult = step("CLAUDE.md", claude, () => {
+    if (claudeAt.kind === "skip") return { action: "skipped", reason: claudeAt.reason };
+    // CLAUDE.md -> AGENTS.md (or the reverse): one file, which already has the AGENTS.md block.
+    if (claudeAt.kind === "file" && agentsAt.kind === "file" && claudeAt.real === agentsAt.real) {
+      return { action: "unchanged", reason: "it is the same file as AGENTS.md" };
+    }
+    if (claudeAt.kind === "missing") {
+      write(claude, "@AGENTS.md\n");
+      return { action: "created" };
+    }
     const text = readFileSync(claude, "utf-8");
-    const imports = text.split(/\r?\n/).some((line) => line.trim() === CLAUDE_IMPORT);
-    const next = imports && !text.includes(SUMMER_BLOCK_START) ? { text, action: "unchanged" as const } : withBlock(text, `${SUMMER_BLOCK_START}\n${CLAUDE_IMPORT}\n${SUMMER_BLOCK_END}`);
+    if (importsAgents(text) && !text.includes(SUMMER_BLOCK_START)) return { action: "unchanged" };
+    const next = withBlock(text, `${SUMMER_BLOCK_START}\n@AGENTS.md\n${SUMMER_BLOCK_END}`);
     if (next.action === "added" || next.action === "updated") write(claude, next.text);
-    results.push({ file: "CLAUDE.md", path: claude, action: next.action, ...("reason" in next && next.reason ? { reason: next.reason } : {}) });
+    return { action: next.action, ...(next.reason ? { reason: next.reason } : {}) };
+  });
+
+  return [agentsResult, claudeResult];
+}
+
+/**
+ * The Summer project the working directory is in, for `summer setup`: the
+ * nearest folder with project.godot, looking up no further than the git
+ * top level, and never the home folder or the filesystem root (a stray
+ * project.godot there must not put an AGENTS.md or CLAUDE.md in every
+ * session). Null when there is none.
+ */
+export function findSetupProjectRoot(cwd: string = process.cwd()): string | null {
+  let current: string;
+  try {
+    current = realpathSync(resolve(cwd));
+  } catch {
+    return null;
   }
-  return results;
+  let home: string;
+  try {
+    home = realpathSync(homedir());
+  } catch {
+    home = homedir();
+  }
+  while (current !== home && current !== parse(current).root) {
+    if (existsSync(join(current, "project.godot"))) return current;
+    if (existsSync(join(current, ".git"))) return null;
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+  return null;
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

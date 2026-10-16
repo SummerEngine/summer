@@ -17,10 +17,10 @@ First run `summer --version`. If the shell does not find `summer`, or the versio
 
 <!-- project-commands: the AGENTS.md that summer create and summer setup write copies this list -->
 1. `summer run .` opens the project in Summer Engine. An agent's run stays in the background.
-2. `summer engine get-project-context` reads the project, its main scene and the engine version. Run it first.
-3. `summer engine play`, then `summer engine get-diagnostics`, runs the game and reads its errors. `summer engine stop` ends it.
-4. `summer engine screenshot` saves an image of the editor or the running game. Open its `localPath` to look.
-5. `summer ops search "<what you want>"` finds any other operation. Run it as `summer <area> <action>`, with `--dry-run` first for a change.
+2. `summer engine get-project-context` (MCP: `summer_get_project_context`) reads the project, its main scene and the engine version. Run it first.
+3. `summer engine play`, then `summer engine get-diagnostics` (MCP: `summer_play`, `summer_get_diagnostics`), runs the game and reads its errors. `summer engine stop` (`summer_stop`) ends it.
+4. `summer engine screenshot` (MCP: `summer_screenshot`) saves an image of the editor or the running game. Open its `localPath` to look.
+5. `summer ops search "<what you want>"` (MCP: `summer_search`) finds any other operation. Run it as `summer <area> <action>` (MCP: `summer_call`), with `--dry-run` first for a change.
 <!-- /project-commands -->
 
 ## 1. Sign in once

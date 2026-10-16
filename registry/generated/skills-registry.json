@@ -338,7 +338,7 @@
     {
       "id": "skill/concept-to-level",
       "name": "concept-to-level",
-      "description": "Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step.",
+      "description": "Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1241,7 +1241,7 @@
     {
       "id": "skill/summer-assets",
       "name": "summer-assets",
-      "description": "Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app.",
+      "description": "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1254,7 +1254,7 @@
     {
       "id": "skill/summer-cli",
       "name": "summer-cli",
-      "description": "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine.",
+      "description": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { parse as parseYaml } from "yaml";
-import { allAgentSpecs, defaultPathContext, resolveSkillPath, type McpFormat } from "./agent-table.js";
+import { agentSpec, allAgentSpecs, cliSetupRefusal, defaultPathContext, resolveSkillPath, type McpFormat } from "./agent-table.js";
 import { join, sep } from "node:path";
 import { PACKAGE_ROOT } from "../core/package-root.js";
 import {
@@ -375,8 +375,9 @@ export interface RecordedInstall {
   /** Where the answer came from: the agent's config file, or — when it has
    *  no readable Summer entry — the nature of the CLI running this check. */
   source: "agent-config" | "running-cli";
-  /** The agent's config lists no summer-engine server (`setup --cli`, or skills
-   *  installed alone): the refresh keeps it that way. */
+  /** The agent's config lists no summer-engine server in any shape (`setup
+   *  --cli`, or skills installed alone) and `setup --cli` can set the agent
+   *  up: the refresh keeps it without an MCP server. */
   cliOnly?: boolean;
 }
 
@@ -670,6 +671,32 @@ export function readRecordedMcpServer(
   return null;
 }
 
+/**
+ * Does the agent's config list a summer-engine server in any shape: the stdio
+ * entry setup writes, a URL entry under that name, or (Claude Code) a
+ * per-project entry under projects.<dir>.mcpServers?
+ */
+export function listsSummerEngine(text: string, format: McpFormat): boolean {
+  if (readRecordedMcpServer(text, format)) return true;
+  if (!text.trim()) return false;
+  if (format === "toml") return new RegExp(`^\\s*\\[mcp_servers\\.(?:"${SUMMER_MCP_SERVER_NAME}"|${SUMMER_MCP_SERVER_NAME})[\\].]`, "m").test(text);
+  if (format === "toml-array") return new RegExp(`^\\s*name\\s*=\\s*"${SUMMER_MCP_SERVER_NAME}"`, "m").test(text);
+  let parsed: unknown;
+  try {
+    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : JSON.parse(text);
+  } catch {
+    return false;
+  }
+  if (!parsed || typeof parsed !== "object") return false;
+  const root = parsed as Record<string, unknown>;
+  const projects = root.projects && typeof root.projects === "object" ? Object.values(root.projects as Record<string, unknown>) : [];
+  const maps = [
+    ...[topLevelKey(format), "mcpServers", "servers", "mcp", "context_servers", "extensions", "mcp_servers", "amp.mcpServers"].map((key) => root[key]),
+    ...projects.map((project) => (project && typeof project === "object" ? (project as Record<string, unknown>).mcpServers : undefined)),
+  ];
+  return maps.some((map) => Boolean(map) && typeof map === "object" && SUMMER_MCP_SERVER_NAME in (map as Record<string, unknown>));
+}
+
 /** Is the CLI running this check a source checkout rather than an installed
  *  package? npm/npx/global installs all live under a node_modules directory. */
 export function runningCliIsCheckout(packageRoot: string = PACKAGE_ROOT): boolean {
@@ -690,12 +717,13 @@ export async function detectRecordedInstall(agent: string): Promise<RecordedInst
   if (supported) {
     try {
       const target = await configureAgentMcp({ agent: supported, scope: "user", print: true });
-      const recorded = existsSync(target.path) ? readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format) : null;
+      const text = existsSync(target.path) ? readFileSync(target.path, "utf-8") : "";
+      const recorded = readRecordedMcpServer(text, target.format);
       if (recorded) {
         const localDev = isLocalDevServerConfig(recorded);
         return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
       }
-      cliOnly = true;
+      cliOnly = !listsSummerEngine(text, target.format) && cliSetupRefusal(agentSpec(supported)) === null;
     } catch {
       // Unreadable config: fall through to the running-CLI answer.
     }

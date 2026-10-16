@@ -674,6 +674,11 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
   //     operation it names with the summer command that runs it, written from
   //     the operation catalog (shell-commands.ts), never by hand.
   for (const plan of planShellSections(rootDir)) {
+    for (const name of plan.unknown) {
+      errors.push(
+        `${plan.file}: names ${name}, but the operation catalog has no ${name.replace(/^summer_([a-z]+)_/, "$1.")} (registry/operations/legacy-names.json). Fix the tool name`,
+      );
+    }
     if (plan.current === plan.expected) continue;
     errors.push(
       `${plan.file}: the "From a shell" section does not match the operation catalog (each MCP tool and operation the skill names, with its summer command). Run npm run generate:registry and commit the SKILL.md`,

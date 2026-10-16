@@ -825,6 +825,25 @@ export function agentAliasMap(): Record<string, SupportedAgent> {
   return map;
 }
 
+/**
+ * Why `summer setup <agent> --cli` cannot set this agent up, or null. --cli
+ * installs the skills and no MCP server, so the agent needs a skills folder,
+ * and one that takes SKILL.md files: rule files (Roo Code) and the Gemini
+ * extension assume the MCP tools.
+ */
+export function cliSetupRefusal(spec: AgentSpec): string | null {
+  if (!spec.skills) {
+    return `${spec.label} has no skills folder, so --cli has nothing to install. Run summer setup ${spec.id} without --cli for the MCP server.`;
+  }
+  if (spec.format === "json-gemini") {
+    return `Gemini CLI loads Summer's skills only through its extension, which runs the MCP server. Run summer setup ${spec.id} without --cli, or use antigravity.`;
+  }
+  if (spec.skills.kind !== "skill-dir" && spec.skills.kind !== "opencode-skill-dir") {
+    return `${spec.label} gets Summer's skills as rule files that tell it to use the MCP tools. Run summer setup ${spec.id} without --cli.`;
+  }
+  return null;
+}
+
 export function agentLabel(id: SupportedAgent): string {
   return agentSpec(id).label;
 }

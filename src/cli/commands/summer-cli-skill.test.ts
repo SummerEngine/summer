@@ -91,6 +91,7 @@ describe("the summer-cli skill teaches real commands", () => {
       expect({ code, err: deps.err }).toEqual({ code: 0, err: [] });
       return;
     }
+    if (name === "--version") return; // the program's own option
     let target = commands.get(name!);
     expect(target, `summer has a ${name} command`).toBeDefined();
     const sub = target!.commands.find((child) => child.name() === rest[0]);

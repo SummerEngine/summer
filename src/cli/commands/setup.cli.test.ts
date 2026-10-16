@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
@@ -73,6 +74,8 @@ describe("summer setup --cli: the skills and no MCP server", () => {
       expect(json).toMatchObject({ ok: true, mcp: false, agent, config: null, games: null, existingMcpEntry: null });
       expect(existsSync(skillFile(agent, "summer-cli"))).toBe(true);
       expect(existsSync(skillFile(agent, "using-summer"))).toBe(true);
+      // The slash commands start work through the MCP tools, so a CLI-only Claude Code gets none.
+      if (agent === "claude-code") expect(existsSync(join(homedir(), ".claude", "commands", "summer.md"))).toBe(false);
       const config = await mcpConfig(agent);
       expect(config.summerEngine).toBe(false);
       expect(config.text).not.toContain("summer-games");
@@ -106,6 +109,15 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     expect((await mcpConfig("qwen-code")).text).toBe(before.text);
   });
 
+  it("names a Claude Code per-project summer-engine entry too", async () => {
+    const path = (await mcpConfig("claude-code")).path;
+    const current = existsSync(path) ? (JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>) : {};
+    mkdirSync(join(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify({ ...current, projects: { "/work/game": { mcpServers: { "summer-engine": { type: "http", url: "https://example.invalid/mcp" } } } } }));
+    const { json } = await setup(["claude-code", "--cli", "--yes", "--json"]);
+    expect(json.existingMcpEntry).toBe(path);
+  });
+
   it("--dry-run writes nothing", async () => {
     const { json } = await setup(["hermes", "--cli", "--dry-run", "--json"]);
     expect(json).toMatchObject({ mcp: false, skills: { status: "planned" } });
@@ -131,6 +143,7 @@ describe("summer setup --cli: the skills and no MCP server", () => {
   it("refuses agents --cli cannot give skills", async () => {
     await expect(setup(["claude-desktop", "--cli"])).rejects.toThrow(/has no skills folder, so --cli has nothing to install/);
     await expect(setup(["gemini", "--cli"])).rejects.toThrow(/only through its extension/);
+    await expect(setup(["roo-code", "--cli"])).rejects.toThrow(/rule files that tell it to use the MCP tools/);
   });
 
   it("is listed in --help", () => {

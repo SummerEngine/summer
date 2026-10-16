@@ -315,7 +315,7 @@ Every capability is an operation named `<area>.<action>`: `assets.generate_image
 - **Error codes**: `invalid_input`, `not_signed_in`, `forbidden`, `not_found`, `conflict`, `idempotency_conflict`, `in_progress`, `rate_limited`, `no_credits`, `over_limit`, `engine_not_running`, `engine_lacks_op`, `unsupported`, `not_in_profile`, `moved`, `outcome_unknown`, `unavailable`, `internal`.
 - **3.x names keep working** for all of 4.x: `summer_call` accepts them on every server, `summer mcp --toolsets legacy` lists them on the local server, and the local server lists them by itself while your installed skills are older than 4.0. The map from old names to operations is [`registry/operations/legacy-names.json`](registry/operations/legacy-names.json).
 
-The same operations run from a shell: `summer <area> <action> --<field> <value>` (for example `summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9`), with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json` (prints the answer only; exit code 0 for any `ok` answer, 1 for an error). `summer whoami` shows who is signed in. `summer ops search <words>` and `summer ops describe <op>` find an operation and its input.
+The same operations run from a shell: `summer <area> <action> --<field> <value>` (for example `summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9`), with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json` (prints the answer only; exit code 0 for any `ok` answer, 1 for an error). `summer whoami` shows who is signed in. `summer ops search <words>` and `summer ops describe <op>` find an operation and its input. Every command that reads something takes `--json`.
 
 ## What's in this repo
 
@@ -443,15 +443,15 @@ Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 | `summer ops search <words…>` / `summer ops describe <op>` | Find the operation for a job, or print one operation's input, effect and approval. Works signed out: a cloud operation shows `(needs sign-in)`. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
-| `summer status` | Engine state, port, auth. |
+| `summer status [--json]` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |
 | `summer memory` | Inspect project memory in `.summer`. |
 | `summer memory show <file>` | Print a project memory Markdown file. |
 | `summer run [path] [--background\|--focus] [--bin <executable>]` | Launch the engine. Agents (no TTY) launch in the background by default so the window never steals focus; `--focus` brings it to the front. `--bin` (env `SUMMER_BIN`) launches a build that is not installed. |
 | `summer open <path \| target> [--print] [--list]` | A project directory opens in the running engine. Anything else is a navigation target — `billing`, `my-games`, `mcp-guide`, `scene`, `inspector`, an intent phrase, a `res://` path — opened in the browser or sent to the editor; `--print` resolves without opening. |
-| `summer create <template> [name]` | Scaffold a project from a pinned template. |
-| `summer list templates` / `projects` | Browse. |
+| `summer create <template> [name]` | Scaffold a project from a pinned template, with an AGENTS.md for your agent (and a CLAUDE.md that imports it). |
+| `summer list templates` / `projects` | Browse. `--json` for scripts. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--json]` | The engine events channel (engine 0.5.66+): newest events, or stream them live. |
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer skills list` | Show all skills (`--by-domain` groups them; the same grouping is in [`library/skills/README.md`](library/skills/README.md)). |

@@ -18,6 +18,8 @@ import { listsSummerEngine, resolveDefaultChannel } from "../../installer/versio
 import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
 import { addAllowRules, allowRulesPath, removeAllowRules, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
+import { findProjectRoot } from "../../core/engine.js";
+import { writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
   full: "Every Summer tool.",
@@ -156,6 +158,7 @@ export const setupCommand = new Command("setup")
       stableOnly: Boolean(opts.stableOnly),
       assetsOnly: Boolean(opts.assetsOnly),
     });
+    const projectFiles = opts.print ? null : await setupProjectInstructions(Boolean(opts.dryRun));
 
     const doctor = await runDoctor({ quiet: true });
 
@@ -167,6 +170,7 @@ export const setupCommand = new Command("setup")
             config,
             games,
             skills,
+            projectFiles,
             doctor,
           },
           null,
@@ -174,7 +178,7 @@ export const setupCommand = new Command("setup")
         )
       );
     } else {
-      printSetupResult(config, games, skills, doctor);
+      printSetupResult(config, games, skills, doctor, projectFiles);
     }
 
     if (!doctor.ok || skills.status === "failed") {
@@ -226,11 +230,12 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
       warnings.push(error instanceof Error ? error.message : String(error));
     }
   }
+  const projectFiles = await setupProjectInstructions(dryRun);
   const doctor = await runDoctor({ quiet: true });
   const ok = doctor.ok && skills.status !== "failed";
 
   if (opts.json) {
-    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, allowRules, doctor, warnings }, null, 2));
+    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, allowRules, projectFiles, doctor, warnings }, null, 2));
   } else {
     const label = agentLabel(agent);
     console.log("");
@@ -243,6 +248,7 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     else if (supportsAllowRules(agent) && !opts.allowRules) {
       console.log(`  ${sym.arrow()}  ${c.dim(`${label} asks before each summer command. To run read-only and dry-run ones without asking: summer setup ${agent} --cli --allow-rules --yes (it prints every rule).`)}`);
     }
+    printProjectFiles(projectFiles, dryRun);
     for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
     console.log("");
     printDoctorResult(doctor);
@@ -279,6 +285,32 @@ async function removeCliAllowRules(agent: SupportedAgent, scope: ConfigScope, op
   else console.log(`  ${opts.dryRun ? c.dim("(dry run)") : sym.ok()}  ${opts.dryRun ? "Would remove" : "Removed"} ${result.changed.length} Summer allow rules for ${agentLabel(agent)}  ${where}`);
 }
 
+/**
+ * Inside a Summer project (project.godot at or above the working directory):
+ * its AGENTS.md and CLAUDE.md, added when missing and never overwritten
+ * (project-memory/agent-instructions.ts). Null outside a project.
+ */
+async function setupProjectInstructions(dryRun: boolean): Promise<InstructionFileResult[] | null> {
+  const root = await findProjectRoot(process.cwd());
+  if (!root) return null;
+  try {
+    return writeAgentInstructions(root, { dryRun });
+  } catch {
+    return null;
+  }
+}
+
+function printProjectFiles(files: InstructionFileResult[] | null, dryRun: boolean): void {
+  const changed = (files ?? []).filter((file) => file.action === "created" || file.action === "added" || file.action === "updated");
+  if (changed.length) {
+    const where = changed.map((file) => tildeify(file.path)).join(", ");
+    console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${dryRun ? "Would add" : "Added"} the Summer instructions for agents  ${c.dim(where)}`);
+  }
+  for (const file of files ?? []) {
+    if (file.reason) console.log(`  ${sym.warn()}  ${c.yellow(`${tildeify(file.path)} left as it is: ${file.reason}`)}`);
+  }
+}
+
 /** The config file that already lists summer-engine for this agent and scope, or null. */
 async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Promise<string | null> {
   try {
@@ -307,7 +339,8 @@ function printSetupResult(
   config: Awaited<ReturnType<typeof configureAgentMcp>>,
   games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
-  doctor: DoctorResult
+  doctor: DoctorResult,
+  projectFiles: InstructionFileResult[] | null
 ): void {
   if (config.print) {
     console.log(config.snippet.trimEnd());
@@ -354,6 +387,7 @@ function printSetupResult(
   }
 
   printSkillsLine(skills, config.dryRun);
+  printProjectFiles(projectFiles, config.dryRun);
 
   for (const warning of config.warnings) {
     console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);

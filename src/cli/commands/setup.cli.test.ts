@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
@@ -66,12 +66,13 @@ async function mcpConfig(agent: SupportedAgent): Promise<{ path: string; text: s
 
 const skillFile = (agent: SupportedAgent, skill: string) => join(resolveInstallLocation(agent, "user").path, skill, "SKILL.md");
 
+// Each test installs every skill for an agent into a scratch HOME: on a busy disk that takes far longer than the 20 s default.
 describe("summer setup --cli: the skills and no MCP server", () => {
   it.each<SupportedAgent>(["claude-code", "codex", "cursor", "github-copilot", "goose", "mistral-vibe"])(
     "%s: writes the skills, summer-cli among them, and no MCP entry",
     async (agent) => {
       const { json } = await setup([agent, "--cli", "--yes", "--json"]);
-      expect(json).toMatchObject({ ok: true, mcp: false, agent, config: null, games: null, existingMcpEntry: null });
+      expect(json).toMatchObject({ ok: true, mcp: false, agent, config: null, games: null, existingMcpEntry: null, projectFiles: null });
       expect(existsSync(skillFile(agent, "summer-cli"))).toBe(true);
       expect(existsSync(skillFile(agent, "using-summer"))).toBe(true);
       // The slash commands start work through the MCP tools, so a CLI-only Claude Code gets none.
@@ -176,5 +177,42 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     const help = setupCommand.helpInformation();
     expect(help).toContain("--cli");
     expect(help).toContain("--no-mcp");
+  });
+}, 120_000);
+
+describe("summer setup inside a Summer project", () => {
+  async function inProject(run: (project: string) => Promise<void>): Promise<void> {
+    const project = mkdtempSync(join(tmpdir(), "summer-setup-project-"));
+    writeFileSync(join(project, "project.godot"), "");
+    mkdirSync(join(project, "scenes"));
+    const cwd = process.cwd();
+    process.chdir(join(project, "scenes"));
+    try {
+      await run(project);
+    } finally {
+      process.chdir(cwd);
+      rmSync(project, { recursive: true, force: true });
+    }
+  }
+
+  it("adds AGENTS.md and CLAUDE.md at the project root, and keeps a project's own AGENTS.md text", async () => {
+    await inProject(async (project) => {
+      writeFileSync(join(project, "AGENTS.md"), "# Our rules\n");
+      const { json } = await setup(["amp", "--cli", "--yes", "--json"]);
+      expect((json.projectFiles as Array<{ file: string; action: string }>).map((f) => `${f.file} ${f.action}`)).toEqual(["AGENTS.md added", "CLAUDE.md created"]);
+      expect(readFileSync(join(project, "AGENTS.md"), "utf-8")).toMatch(/^# Our rules\n\n<!-- summer-engine:start/);
+      expect(readFileSync(join(project, "CLAUDE.md"), "utf-8")).toBe("@AGENTS.md\n");
+      const again = await setup(["amp", "--cli", "--yes", "--json"]);
+      expect((again.json.projectFiles as Array<{ action: string }>).map((f) => f.action)).toEqual(["unchanged", "unchanged"]);
+    });
+  });
+
+  it("the MCP setup does the same, and a dry run writes nothing", async () => {
+    await inProject(async (project) => {
+      const { json } = await setup(["claude-code", "--dry-run", "--json"]);
+      expect((json.projectFiles as Array<{ action: string }>).map((f) => f.action)).toEqual(["created", "created"]);
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+      expect(existsSync(join(project, "CLAUDE.md"))).toBe(false);
+    });
   });
 });

@@ -38,7 +38,8 @@ configCommand
   .command("get")
   .description("Read one configuration value")
   .argument("<key>", `One of: ${CONFIG_KEYS.join(", ")}`)
-  .action(async (rawKey: string) => {
+  .option("--json", "Print the key and value as JSON")
+  .action(async (rawKey: string, opts: { json?: boolean }) => {
     const key = requireKey(rawKey);
     const value = getConfigValue(await readSummerConfig(), key);
     if (value === undefined) {
@@ -46,7 +47,7 @@ configCommand
         `${key} is not set. Recovery: run "summer config set ${key} <value>", or rely on the documented default.`
       );
     }
-    console.log(value);
+    console.log(opts.json ? JSON.stringify({ key, value }) : value);
   });
 
 configCommand

@@ -4,6 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **CLI commands report usage like MCP tool calls.** For a signed-in person, each `summer` command (`create`, `setup`, `skills install`, `engine play`, `tool`, ...) sends one line: the command, or the operation for `summer <area> <action>`, success or its error code, duration, the CLI version and the agent app named in the environment. Never arguments, paths or project content. It goes to the same endpoint as the MCP lines, marked as the CLI. A detached process sends it when the command exits, so the command prints nothing more and never waits. Nothing is sent when signed out, or with `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`. `summer mcp` keeps its own session and tool-call lines.
 - `multiplayer-publish` no longer says bundle upload is rolling out or tells agents to stop before uploading: Builds pages take the `.zip` bundle.
 
 ## [4.2.0] - 2026-10-16

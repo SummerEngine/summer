@@ -72,36 +72,38 @@ export function recordLocalToolCall(call: LocalToolCall): void {
 }
 
 function send(body: Record<string, unknown>): void {
-  // Wrap the entire async pipeline in a void-discarded promise so the caller
-  // never accidentally awaits us.
-  void (async () => {
-    try {
-      const token = await getAuthToken();
-      if (!token) return; // unauthenticated MCP usage is allowed; we just can't attribute it
-      // Resolved per call, not at import: the gateway the token belongs to is
-      // whatever env/config says NOW (see config.resolveGatewayUrl).
-      const gatewayUrl = await resolveGatewayUrl();
+  // Void-discarded so the caller never accidentally awaits us.
+  void postUsage(body);
+}
 
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-      try {
-        await fetch(`${gatewayUrl}${TELEMETRY_PATH}`, {
-          method: "POST",
-          signal: ctrl.signal,
-          headers: {
-            ...summerRequestHeaders(),
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-      } finally {
-        clearTimeout(timer);
-      }
-    } catch {
-      // never throws — telemetry is best-effort
+/** POST one usage line with the account token; resolves when sent or given up. Never throws. */
+export async function postUsage(body: Record<string, unknown>, timeoutMs = TIMEOUT_MS): Promise<void> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return; // unauthenticated usage is allowed; we just can't attribute it
+    // Resolved per call, not at import: the gateway the token belongs to is
+    // whatever env/config says NOW (see config.resolveGatewayUrl).
+    const gatewayUrl = await resolveGatewayUrl();
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      await fetch(`${gatewayUrl}${TELEMETRY_PATH}`, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          ...summerRequestHeaders(),
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    } finally {
+      clearTimeout(timer);
     }
-  })();
+  } catch {
+    // never throws — telemetry is best-effort
+  }
 }
 
 /**

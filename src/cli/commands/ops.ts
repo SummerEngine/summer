@@ -8,6 +8,7 @@ import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js
 import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+import { noteCliError } from "../../core/cli-usage.js";
 
 /**
  * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
@@ -250,6 +251,7 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     if (call.wait) answer = await waitFor(answer, deps);
     answer = await files.finish(op, answer, out);
   }
+  if (!answer.ok) noteCliError(answer.error.code);
   (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer, out));
   if (!call.json && answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
   return answer.ok ? 0 : 1;

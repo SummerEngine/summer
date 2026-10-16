@@ -486,3 +486,4 @@ Some process skills (brainstorming, writing-plans, writing-skills, investigating
 - [Download Summer Engine](https://summerengine.com/download)
 - [Documentation](https://docs.summerengine.com)
 - [Issues](https://github.com/summerengine/summer/issues)
+- [Support](https://summer.games/support) · [Privacy policy](https://www.summerengine.com/privacy) · [Terms](https://www.summerengine.com/terms)

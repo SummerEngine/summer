@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Every Summer project has an AGENTS.md.** `summer create` writes a short AGENTS.md, the one file Codex, Cursor, Copilot, Gemini, Amp and other agents read in every session: this is a Summer Engine game in GDScript, how to work on it with the MCP tools or the `summer` CLI, where Summer's skills are, the five most useful commands, and that publishing needs the owner's approval. It also writes a CLAUDE.md that only holds `@AGENTS.md`, for Claude Code. `summer setup` run inside a project (a folder with `project.godot` at or above it) adds both when they are missing. An existing AGENTS.md or CLAUDE.md is never overwritten: setup adds one marked Summer block once and later updates only that block, and a CLAUDE.md that already imports AGENTS.md stays as it is. The five commands come from the `summer-cli` skill, and a test runs every command both teach.
+
 ## [4.1.0] - 2026-10-16
 
 Summer without MCP: any agent runs Summer from its shell with the `summer` CLI and the `summer-cli` skill. Every operation is found without a sign-in, search understands plain English, and Summer installs with Homebrew.

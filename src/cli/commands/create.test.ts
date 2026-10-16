@@ -20,6 +20,7 @@ import {
   renderProjectSettings,
   scaffoldAutopilot,
 } from "./create.js";
+import { renderAgentsBlock } from "../../project-memory/agent-instructions.js";
 
 const require = createRequire(import.meta.url);
 const { version: pkgVersion } = require("../../../package.json") as { version: string };
@@ -100,6 +101,11 @@ describe("summer create <builtin>", () => {
     // asset import comes before any verify.
     expect(out).toContain(`tests/autopilot/run.sh   (${AUTOPILOT_NEXT_STEP_HINT})`);
     expect(out).not.toContain("verify the game without opening it");
+
+    // The always-on file most agents read, and Claude Code's, which imports it.
+    expect(readFileSync(join(target, "AGENTS.md"), "utf8")).toBe(`${renderAgentsBlock()}\n`);
+    expect(readFileSync(join(target, "CLAUDE.md"), "utf8")).toBe("@AGENTS.md\n");
+    expect(out).toContain("Wrote the Summer instructions for your agent in AGENTS.md and CLAUDE.md");
   });
 
   it("records engine_version when Summer Engine is reachable at create time", async () => {

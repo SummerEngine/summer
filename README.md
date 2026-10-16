@@ -450,7 +450,7 @@ Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 | `summer memory show <file>` | Print a project memory Markdown file. |
 | `summer run [path] [--background\|--focus] [--bin <executable>]` | Launch the engine. Agents (no TTY) launch in the background by default so the window never steals focus; `--focus` brings it to the front. `--bin` (env `SUMMER_BIN`) launches a build that is not installed. |
 | `summer open <path \| target> [--print] [--list]` | A project directory opens in the running engine. Anything else is a navigation target — `billing`, `my-games`, `mcp-guide`, `scene`, `inspector`, an intent phrase, a `res://` path — opened in the browser or sent to the editor; `--print` resolves without opening. |
-| `summer create <template> [name]` | Scaffold a project from a pinned template. |
+| `summer create <template> [name]` | Scaffold a project from a pinned template, with an AGENTS.md for your agent (and a CLAUDE.md that imports it). |
 | `summer list templates` / `projects` | Browse. `--json` for scripts. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--json]` | The engine events channel (engine 0.5.66+): newest events, or stream them live. |
 | `summer debug [issue…]` | Support-ready Markdown debug report. |

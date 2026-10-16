@@ -5,10 +5,11 @@ import { errorDocsUrl, type RouterRegistry, registryError } from "./registry.js"
  * The result of a Summer Router local operation (router.add_character,
  * router.check, router.push, router.pull, router.doctor, router.setup), in the
  * shape every local Summer tool answers with: `{ok: true, ...}`, or
- * `{ok: false, code, reason, message, recovery, ...}`. `code` is the operation
+ * `{ok: false, code, was, message, recovery, ...}`. `code` is the operation
  * contract's error code (the answer's error.code: invalid_input, conflict,
- * forbidden, not_signed_in, ...); `reason` is the Summer Router tag
- * (tool_unhandled, studio_changed, ...), kept in the answer's details.tool.
+ * forbidden, not_signed_in, ...); `was` is the Summer Router tag
+ * (tool_unhandled, studio_changed, ...), the answer's details.was, as on the
+ * cloud router.* operations.
  */
 
 export type RouterResult = { ok: true } & Record<string, unknown>;
@@ -17,8 +18,8 @@ export interface RouterFailure {
   ok: false;
   /** The operation contract's error code. */
   code: string;
-  /** The Summer Router tag. */
-  reason: string;
+  /** The Summer Router tag (the answer's details.was). */
+  was: string;
   message: string;
   recovery: string;
   docs_url?: string;
@@ -60,13 +61,13 @@ const CONTRACT_CODE: Record<string, string> = {
 };
 
 export function failure(
-  reason: string,
+  was: string,
   message: string,
   recovery: string,
-  extra: Partial<Omit<RouterFailure, "ok" | "code" | "reason" | "message" | "recovery">> = {}
+  extra: Partial<Omit<RouterFailure, "ok" | "code" | "was" | "message" | "recovery">> = {}
 ): RouterFailure {
   const clean = Object.fromEntries(Object.entries(extra).filter(([, value]) => value !== undefined));
-  return { ok: false, code: CONTRACT_CODE[reason] ?? "invalid_input", reason, message, recovery, ...clean };
+  return { ok: false, code: CONTRACT_CODE[was] ?? "invalid_input", was, message, recovery, ...clean };
 }
 
 export const isFailure = (answer: RouterAnswer): answer is RouterFailure => answer.ok === false;
@@ -74,7 +75,8 @@ export const isFailure = (answer: RouterAnswer): answer is RouterFailure => answ
 /** The recovery for codes the management API and the creator store proxy return. */
 const API_RECOVERY: Record<string, string> = {
   not_signed_in: 'Run "summer login" and approve in the browser, then retry.',
-  owner_approval_required: "Only the game's owner can change this. Ask them to open studio_url and save it there.",
+  owner_approval_required:
+    "The game is live, so only its owner can change this. Run router.save_character (cloud) with the character document: it answers with the owner's approval link. Or the owner saves it on the Router tab (studio_url).",
   agent_access_not_enabled: "Confirm the email address of your Summer account, then retry.",
   version_conflict: "The character changed on Summer. Run router.pull, merge your edits, then push again.",
   invalid_input: "Fix the field the message names, then retry.",

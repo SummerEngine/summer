@@ -37,7 +37,7 @@ describe("summer router <action>: the Summer Router local operations", () => {
 
     const refused = deps();
     expect(await runOpFromCli("router.check", ["--project", root, "--json"], refused)).toBe(1);
-    expect(JSON.parse(refused.err[0])).toMatchObject({ ok: false, error: { code: "invalid_input", details: { tool: { reason: "tool_unhandled" } } } });
+    expect(JSON.parse(refused.err[0])).toMatchObject({ ok: false, error: { code: "invalid_input", details: { was: "tool_unhandled", tool: { was: "tool_unhandled" } } } });
 
     writeFileSync(join(root, "gate.gd"), `func _ready():\n\t$Guard.tool("open_gate", _o)\n\tSummer.client.router.talk("guard", {"tools": {"give_key": _g}})\n`);
     const passed = deps();

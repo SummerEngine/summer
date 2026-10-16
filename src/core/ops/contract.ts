@@ -86,10 +86,11 @@ const ERROR_CODES: ReadonlySet<string> = new Set<ErrorCode>([
 
 /**
  * A failed local (non-engine) tool result as the one answer. A result whose
- * `code` is a contract error code keeps it (not_signed_in, conflict, ...), and
- * its `studio_url` becomes the next step; any other failure is invalid_input
- * (not_found when the message says so). The whole result stays in
- * details.tool.
+ * `code` is a contract error code keeps it (not_signed_in, conflict, ...), its
+ * `studio_url` becomes the next step and its `was` (the feature's own tag)
+ * becomes details.was, as on the cloud operations; any other failure is
+ * invalid_input (not_found when the message says so). The whole result stays
+ * in details.tool.
  */
 export function answerOfLocalFailure(payload: unknown, message: string): Answer {
   const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
@@ -100,7 +101,8 @@ export function answerOfLocalFailure(payload: unknown, message: string): Answer 
         ? "not_found"
         : "invalid_input";
   const next: NextStep | undefined = typeof body.studio_url === "string" ? { url: body.studio_url, label: "Open in Studio" } : undefined;
-  return errorAnswer(code, message, { ...(next ? { next } : {}), details: { tool: payload } });
+  const was = typeof body.was === "string" ? { was: body.was } : {};
+  return errorAnswer(code, message, { ...(next ? { next } : {}), details: { ...was, tool: payload } });
 }
 
 // ── Names ────────────────────────────────────────────────────────────────────

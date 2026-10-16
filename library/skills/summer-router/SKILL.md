@@ -57,9 +57,21 @@ Local (they read and write this project, so they run in the local summer-engine 
 | `router.pull({ characters?, force?, gameId? })` | Write Summer's characters into `ai/characters/` (after a Studio edit). |
 | `router.doctor({ gameId? })` | Every check (sign-in, characters, handlers, the game on Summer, skills), each with a fix. |
 
-Cloud (the hosted Summer server, with the person's sign-in): a scripted test turn with a pushed character, the
-game's settings and caps (the owner approves changes), usage, and the model and voice catalog. Find each one and its
-exact input with `summer_search` (for example "summer router test turn"); then run it with `summer_call`.
+Cloud (the hosted Summer server, with the person's sign-in; run them with `summer_call`, or `summer router <action>`):
+
+| Operation | Does |
+| --- | --- |
+| `router.models({ include? })` | Models, voices, kinds, the character schema and the error fixes. Read it before you pick a voice or model. |
+| `router.list_characters({ gameId })`, `router.get_character({ gameId, characterId, version? })`, `router.character_versions({ gameId, characterId })` | What Summer has for the game. |
+| `router.save_character({ gameId, character, expectedVersion? })` | Saves one character document. Runs at once before launch; on a live game it answers `needs_approval` with the person's link. |
+| `router.delete_character({ gameId, characterId })` | Asks the person first. |
+| `router.test_character({ gameId, characterId, messages, variables?, context?, toolOutputs? })` | 1 to 4 player lines; answers `turns[].steps[].toolCalls[]` and `unhandledTools`. Metered against the caps. |
+| `router.settings({ gameId })`, `router.usage({ gameId, days? })` | The switch, models and caps; calls, units and cap use. |
+| `router.set_settings({ gameId, enabled?, caps?, textModel?, imageModel? })`, `router.set_account_limit(...)` | Always ask the person (`needs_approval` with the link). |
+
+`router.push` uses the same save as `router.save_character` but works from the project files and checks them first.
+On a live game `router.push` stops (`owner_action_required`); then call `router.save_character` with the document to
+get the person's approval link.
 
 ## The flow (agent, one shot)
 
@@ -72,19 +84,22 @@ summer router add-character --id guard --template voice-npc --voice "gruff old s
 #   edit ai/characters/guard.json, write the GDScript below
 summer router check                              # schema + every client tool has a GDScript handler
 summer router push                               # saves the characters on Summer for the game
-#   then a test turn (cloud): say "the password is moonlight" and check that open_gate is called
+summer router test-character --game-id <gameId> --character-id guard --messages "the password is moonlight"
+#   check that turns[0].steps[].toolCalls[] has open_gate
 summer router doctor                             # every check in one list
 ```
 
 If the `summer` command is not installed, use `npx -y summer-engine@latest` in its place.
 
-- Every answer is `{ok: true, status: "done", result}` or `{ok: false, error: {code, message, next?, details}}`. A
-  local Router failure keeps its Summer Router tag in `error.details.tool.reason` and the fix in
+- Every answer is `{ok: true, status: "done", result}` or `{ok: false, error: {code, message, next?, details}}`.
+  `error.code` is the Summer error code; the Summer Router tag (`tool_unhandled`, `studio_changed`,
+  `limit_reached`, ...) is `error.details.was`, local and cloud alike. A local failure's fix is
   `error.details.tool.recovery`.
-- The game id comes from `gameId`, `SUMMER_GAME_ID`, or `gameId` in `summer.build.json`.
-- `router.check` and `router.push` fail with reason `tool_unhandled` when a client tool has no handler in the
-  project's GDScript, and give the GDScript to add (`details.tool.details.handler_snippet`).
-- `router.push` never overwrites a Studio edit it has not seen (reason `studio_changed`, code `conflict`): run
+- The local operations take the game id from `gameId`, `SUMMER_GAME_ID`, or `summer.build.json`; the cloud ones
+  need `gameId`.
+- `router.check` and `router.push` fail with `tool_unhandled` when a client tool has no handler in the project's
+  GDScript, and give the GDScript to add (`details.tool.details.handler_snippet`).
+- `router.push` never overwrites a Studio edit it has not seen (`studio_changed`, code `conflict`): run
   `router.pull`, or push with `force` to keep yours.
 - A step for a person is one URL: `browser_url` to sign in, or the Studio link in `error.next.url` (a live game's
   characters, caps, the on/off switch). Show that URL; do not ask them to find the page.
@@ -119,7 +134,7 @@ If the `summer` command is not installed, use `npx -y summer-engine@latest` in i
 | Field | Use |
 | --- | --- |
 | `instructions`, `first_message`, `language`, `variables` | Who the character is. `{{name}}` placeholders must be declared in `variables`. The password stays on Summer, not in the build. |
-| `model`, `temperature`, `max_output_tokens`, `reasoning` | Optional. Omit `model` to use the game's default (the game's Router settings show it). |
+| `model`, `temperature`, `max_output_tokens`, `reasoning` | Optional. Omit `model` to use the game's default (`router.settings`); `router.models` lists the ids. |
 | `voice.design` or `voice.id` | A text description (Summer makes a pinned voice) or a Summer voice id. |
 | `turn.mode` | `push_to_talk` (default in the templates: no echo from speakers) or `server_vad` (open mic). |
 | `tools[]` | What the character can do in the game. `runs_on: "client"` tools need a GDScript handler. |
@@ -281,8 +296,8 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 - Tool handlers validate. The model can be talked into calling any tool; the handler checks game state and clamps
   values. A tool that changes shared state in multiplayer runs on the authority (roadmap: `runs_on: "authority"`).
 - Label AI characters as AI in the UI.
-- Caps are on by default. The owner changes them in Studio (the Router tab of the game's store page); an agent's
-  change through the Router settings operation answers with the owner's approval link.
+- Caps are on by default. The owner changes them in Studio (the Router tab of the game's store page);
+  `router.set_settings` asks the person and changes nothing until they approve.
 
 ## Verify
 
@@ -291,7 +306,8 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 3. `grep -rn "request_permission\|getUserMedia\|api_key\|sk-" --include=*.gd .` finds nothing.
 4. `summer_play`, then `summer_get_diagnostics`: no mic prompt and no error at launch. Without a Summer host the
    fallback runs and the game keeps working.
-5. After `router.push`, a cloud test turn with a line that should trigger the tool shows that tool in its tool calls.
+5. After `router.push`, `router.test_character` with a line that should trigger the tool lists that tool in its
+   `toolCalls`, and `unhandledTools` is empty.
 6. With the platform live: talk to the character in a summer.games build; type with the mic denied.
 
 ## Common mistakes

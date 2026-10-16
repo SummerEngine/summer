@@ -9,8 +9,10 @@ import { textJson } from "./text-json.js";
  * router.check, router.push, router.pull, router.doctor): they read and write
  * the game project on this machine (ai/characters/<id>.json and its GDScript).
  * On the v4 surface summer_call runs them by operation name; `summer router
- * <action>` runs the same functions. The cloud Router operations (test turns,
- * settings and caps, usage, the catalog) are on the hosted server.
+ * <action>` runs the same functions. The cloud Router operations
+ * (router.list_characters, get_character, character_versions, save_character,
+ * delete_character, test_character, settings, set_settings,
+ * set_account_limit, usage, models) are on the hosted server.
  */
 
 const project = z.string().optional().describe("The folder with project.godot. Default: the MCP's bound project, then the working directory.");
@@ -60,7 +62,7 @@ export function registerRouterTools(server: McpServer): void {
 
   server.tool(
     "summer_router_push",
-    "router.push: router.check, then save each character on Summer for the game (unchanged ones are skipped). Never overwrites a change made on Summer since the last push or pull (studio_changed: router.pull, or force). A live game's characters need the owner (owner_action_required with studio_url). Then router.test.",
+    "router.push: router.check, then save each character on Summer for the game (unchanged ones are skipped). Never overwrites a change made on Summer since the last push or pull (studio_changed: router.pull, or force). On a live game it fails (owner_action_required): router.save_character (cloud) gives the owner's approval link. Then router.test_character.",
     { characters, force: z.boolean().optional().describe("Replace a character that changed on Summer since the last push or pull."), gameId, project },
     run("summer_router_push")
   );

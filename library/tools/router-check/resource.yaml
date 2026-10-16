@@ -6,7 +6,7 @@ use_when:
 - before router.push, or after editing ai/characters files or tool handlers
 - a character's tool is never answered in the game (tool_unhandled)
 do_not_use_when:
-- testing what a character says — router.test (cloud)
+- testing what a character says — router.test_character (cloud)
 facets:
   lifecycle:
   - build

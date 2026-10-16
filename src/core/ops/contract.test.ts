@@ -74,9 +74,9 @@ describe("3.x names (registry/operations/legacy-names.json)", () => {
 
 describe("a failed local tool as the one answer", () => {
   it("keeps a contract error code and a Studio link; anything else is invalid_input", () => {
-    expect(answerOfLocalFailure({ ok: false, code: "conflict", reason: "studio_changed", studio_url: "https://summerengine.com/studio/store/g1" }, "Changed on Summer.")).toMatchObject({
+    expect(answerOfLocalFailure({ ok: false, code: "conflict", was: "studio_changed", studio_url: "https://summerengine.com/studio/store/g1" }, "Changed on Summer.")).toMatchObject({
       ok: false,
-      error: { code: "conflict", message: "Changed on Summer.", next: { url: "https://summerengine.com/studio/store/g1" }, details: { tool: { reason: "studio_changed" } } },
+      error: { code: "conflict", message: "Changed on Summer.", next: { url: "https://summerengine.com/studio/store/g1" }, details: { was: "studio_changed", tool: { was: "studio_changed" } } },
     });
     expect(answerOfLocalFailure({ ok: false, code: "not_signed_in" }, "Not signed in to Summer.")).toMatchObject({ error: { code: "not_signed_in" } });
     expect(answerOfLocalFailure({ ok: false, code: "export_required" }, "Export first.")).toMatchObject({ error: { code: "invalid_input" } });

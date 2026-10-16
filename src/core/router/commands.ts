@@ -139,7 +139,7 @@ export async function addCharacter(ctx: RouterContext, input: AddCharacterInput)
       ...(unhandled.length ? [`Add a GDScript handler for each client tool (${unhandled.map((t) => t.tool).join(", ")}): see handler_snippet.`] : []),
       `Edit ${CHARACTERS_DIR}/${input.id}.json: instructions, tool descriptions and parameters.`,
       "router.check, then router.push",
-      `router.test with characterId "${input.id}"`,
+      `router.test_character (cloud) with characterId "${input.id}" and a line that should trigger each tool`,
     ],
   });
 }
@@ -291,7 +291,7 @@ export async function push(ctx: RouterContext, input: PushInput): Promise<Router
     game_id: game.gameId,
     pushed,
     studio_url: studio,
-    next_steps: [`router.test with gameId "${game.gameId}", characterId "${first}"${firstTool ? `, and check that it calls ${firstTool}` : ""}`],
+    next_steps: [`router.test_character (cloud) with gameId "${game.gameId}", characterId "${first}"${firstTool ? `, and check that its toolCalls include ${firstTool}` : ""}`],
   });
 }
 

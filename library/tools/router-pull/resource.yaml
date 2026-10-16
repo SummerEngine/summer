@@ -6,7 +6,7 @@ use_when:
 - after a character was edited in Studio, or router.push answered studio_changed
 - starting on a machine that has no character files yet
 do_not_use_when:
-- reading one character without writing files — router.characters (cloud)
+- reading one character without writing files — router.get_character (cloud)
 facets:
   lifecycle:
   - build

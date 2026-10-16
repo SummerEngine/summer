@@ -53,11 +53,11 @@ describe("router.add_character", () => {
   it("refuses to overwrite and bad input, with a stable code", async () => {
     const ctx = context(fakeApi({}).api);
     await addCharacter(ctx, { id: "guard" });
-    expect(await addCharacter(ctx, { id: "guard" })).toMatchObject({ ok: false, reason: "character_exists" });
-    expect(await addCharacter(ctx, { id: "Guard" })).toMatchObject({ ok: false, reason: "invalid_input" });
-    expect(await addCharacter(ctx, { id: "guard2", template: "boss" })).toMatchObject({ ok: false, reason: "invalid_input" });
-    expect(await addCharacter(ctx, { id: "guard3", tools: ["open gate"] })).toMatchObject({ ok: false, reason: "invalid_input" });
-    expect(await addCharacter(context(fakeApi({}).api, { cwd: tmpdir() }), { id: "x" })).toMatchObject({ ok: false, reason: "not_a_project" });
+    expect(await addCharacter(ctx, { id: "guard" })).toMatchObject({ ok: false, was: "character_exists" });
+    expect(await addCharacter(ctx, { id: "Guard" })).toMatchObject({ ok: false, was: "invalid_input" });
+    expect(await addCharacter(ctx, { id: "guard2", template: "boss" })).toMatchObject({ ok: false, was: "invalid_input" });
+    expect(await addCharacter(ctx, { id: "guard3", tools: ["open gate"] })).toMatchObject({ ok: false, was: "invalid_input" });
+    expect(await addCharacter(context(fakeApi({}).api, { cwd: tmpdir() }), { id: "x" })).toMatchObject({ ok: false, was: "not_a_project" });
   });
 });
 
@@ -65,7 +65,7 @@ describe("router.check", () => {
   it("fails loudly on a client tool with no GDScript handler, then passes once the handler exists, offline", async () => {
     const { api, calls } = fakeApi({});
     await addCharacter(context(api), { id: "guard", tools: ["open_gate"] });
-    expect(await check(context(api), {})).toMatchObject({ ok: false, reason: "tool_unhandled", details: { unhandled: [{ character: "guard", tool: "open_gate" }] } });
+    expect(await check(context(api), {})).toMatchObject({ ok: false, was: "tool_unhandled", details: { unhandled: [{ character: "guard", tool: "open_gate" }] } });
 
     writeFileSync(join(root, "guard.gd"), GUARD_HANDLER);
     expect(await check(context(api), {})).toMatchObject({ ok: true, valid: true, characters: [{ id: "guard", client_tools: [{ name: "open_gate", handled_in: ["guard.gd:2"] }] }] });
@@ -77,7 +77,7 @@ describe("router.check", () => {
     writeFileSync(join(root, "ai/characters/guard.json"), JSON.stringify({ id: "guard", instructions: "", temperature: 9 }));
     writeFileSync(join(root, "ai/characters/bad.json"), "{ nope");
     const answer = await check(context(fakeApi({}).api), {});
-    expect(answer).toMatchObject({ ok: false, reason: "invalid_character" });
+    expect(answer).toMatchObject({ ok: false, was: "invalid_character" });
     const details = answer.details as Array<{ character: string; path: string }>;
     expect(details.map((d) => `${d.character}${d.path}`)).toEqual(["bad", "guard/instructions", "guard/temperature"]);
   });
@@ -105,7 +105,7 @@ describe("router.push", () => {
     remote = { character_id: "guard", version: 2, config: { ...remote!.config, first_message: "Studio line" } };
     writeFileSync(join(root, "ai/characters/guard.json"), JSON.stringify({ ...guardFile(), first_message: "Local line" }));
     const puts = calls.filter((c) => c.method === "PUT").length;
-    expect(await push(context(api), {})).toMatchObject({ ok: false, reason: "studio_changed", studio_url: ROUTER_TAB });
+    expect(await push(context(api), {})).toMatchObject({ ok: false, was: "studio_changed", studio_url: ROUTER_TAB });
     expect(calls.filter((c) => c.method === "PUT").length).toBe(puts);
 
     expect((await push(context(api), { force: true })).pushed).toEqual([{ id: "guard", version: 3, action: "updated" }]);
@@ -120,18 +120,18 @@ describe("router.push", () => {
       },
     });
     await addCharacter(context(api), { id: "guard" });
-    expect(await push(context(api), {})).toMatchObject({ ok: false, reason: "owner_action_required", studio_url: ROUTER_TAB });
+    expect(await push(context(api), {})).toMatchObject({ ok: false, was: "owner_action_required", studio_url: ROUTER_TAB });
 
     const signedOut: RouterApi = {
       request: async () => {
         throw new RouterApiError(401, "not_signed_in", "This machine is not signed in to Summer.");
       },
     };
-    expect(await push(context(signedOut), {})).toMatchObject({ ok: false, reason: "not_signed_in", next_step: "summer login" });
+    expect(await push(context(signedOut), {})).toMatchObject({ ok: false, was: "not_signed_in", next_step: "summer login" });
 
     writeFileSync(join(root, "summer.build.json"), "{}");
-    expect(await push(context(api), {})).toMatchObject({ ok: false, reason: "game_id_missing", studio_url: "https://www.summerengine.com/studio/store" });
-    expect(await push(context(api, { game: "game_1" }), {})).toMatchObject({ ok: false, reason: "owner_action_required" });
+    expect(await push(context(api), {})).toMatchObject({ ok: false, was: "game_id_missing", studio_url: "https://www.summerengine.com/studio/store" });
+    expect(await push(context(api, { game: "game_1" }), {})).toMatchObject({ ok: false, was: "owner_action_required" });
   });
 });
 
@@ -152,7 +152,7 @@ describe("router.pull", () => {
     const { api: changed } = fakeApi({
       "GET games/game_1/router/characters": () => ({ characters: [{ character_id: "guard", version: 5, config: { id: "guard", instructions: "Studio edit." } }] }),
     });
-    expect(await pull(context(changed), {})).toMatchObject({ ok: false, reason: "local_changes" });
+    expect(await pull(context(changed), {})).toMatchObject({ ok: false, was: "local_changes" });
     expect(guardFile().instructions).toBe("My edit.");
     expect((await pull(context(changed), { force: true })).ok).toBe(true);
     expect(guardFile().instructions).toBe("Studio edit.");

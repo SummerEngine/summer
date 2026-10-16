@@ -6,7 +6,7 @@ use_when:
 - sending ai/characters files to Summer after creating or editing a character
 - '"push the characters", "save the guard on Summer"'
 do_not_use_when:
-- settings, caps or the on/off switch — router.settings (cloud, the owner approves)
+- settings, caps or the on/off switch — router.set_settings (cloud, the person approves)
 facets:
   lifecycle:
   - build

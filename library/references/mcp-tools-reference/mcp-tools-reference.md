@@ -264,7 +264,7 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 
 ### Summer Router (6)
 
-The project side of Summer Router (AI characters in the game): the `ai/characters/<id>.json` files and the GDScript that handles their tools. Run them through `summer_call` (or `summer router <action>` in a shell); the `router` toolset, in the full profile. The cloud Router operations (test turns, settings and caps, usage, the catalog) are on the hosted server.
+The project side of Summer Router (AI characters in the game): the `ai/characters/<id>.json` files and the GDScript that handles their tools. Run them through `summer_call` (or `summer router <action>` in a shell); the `router` toolset, in the full profile. The cloud Router operations are on the hosted server, through `summer_call`: `router.models`, `router.list_characters`, `router.get_character`, `router.character_versions`, `router.save_character`, `router.delete_character`, `router.test_character`, `router.settings`, `router.set_settings`, `router.set_account_limit` and `router.usage`.
 
 | Tool | Use |
 |---|---|

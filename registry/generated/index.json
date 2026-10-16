@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "2621c069ea1095496c2481f04a6d17970716c0332c666f6140f979643f6d09b4",
+      "content_hash": "f4c03d506d19aec154c2c3dde2c7f4fb9712200934719aa1368e403588aee587",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -4060,7 +4060,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "be278df34c1c58bf830626c2dd82d85708a7e73017a2d4dae0702470f57e7d40",
+      "content_hash": "8cb79a0354c3ccf265df8525cb0e84ae34d83b8e23e3f3d6635ffd50fd68df88",
       "summary": "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",
@@ -9251,7 +9251,7 @@
       "id": "tool/router-check",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "0ccbb1c01023c7bfef7cbdd9b2dfb1758bb6442620dcdd496e419360615ec39e",
+      "content_hash": "a064f08481492741d3d8e43451f49285e76c9329fbfe051ab9dc5fd6a9fcc9a9",
       "summary": "Check the Summer Router character files against the schema and their client tools against the project's GDScript handlers, offline.",
       "use_when": [
         "before router.push, or after editing ai/characters files or tool handlers",
@@ -9327,7 +9327,7 @@
       "id": "tool/router-pull",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "8842a72b162ed1917274d4db1a8e407c7f6cd54c24793e70243dcdcfcd94fe83",
+      "content_hash": "845f19032a3f002f833d59e2c9504df058aea4d04913a92abdc99341610d940c",
       "summary": "Write the Summer Router characters Summer has for the game into ai/characters/, keeping local edits that were never pushed.",
       "use_when": [
         "after a character was edited in Studio, or router.push answered studio_changed",
@@ -9365,7 +9365,7 @@
       "id": "tool/router-push",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "2a4785782cd6e2b31bf2bdbc17620046c42de0293c3a27877f5aaa167f866e2d",
+      "content_hash": "d3f937beb77ef63811e7ce1273395d2a88ec1116b21b8f47afa5e6dd41e411f9",
       "summary": "Check, then save the project's Summer Router characters on Summer for the game; never overwrites a Studio edit it has not seen.",
       "use_when": [
         "sending ai/characters files to Summer after creating or editing a character",

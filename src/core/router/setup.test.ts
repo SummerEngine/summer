@@ -53,9 +53,9 @@ describe("router.setup", () => {
     expect(kept).toMatchObject({ agents: [{ mcp: { status: "kept_existing" } }] });
     expect(JSON.parse(readFileSync(claudeConfig(), "utf8")).mcpServers["summer-engine"].command).toBe("node");
 
-    expect(await setup({ agent: "cursor", env: {} })).toMatchObject({ ok: false, reason: "invalid_input" });
+    expect(await setup({ agent: "cursor", env: {} })).toMatchObject({ ok: false, was: "invalid_input" });
     rmSync(claudeConfig());
     rmSync(join(home(), ".claude"), { recursive: true, force: true });
-    expect(await setup({ env: {} })).toMatchObject({ ok: false, reason: "no_agent_detected" });
+    expect(await setup({ env: {} })).toMatchObject({ ok: false, was: "no_agent_detected" });
   });
 });

@@ -1,7 +1,7 @@
 id: tool/router-push
 kind: tool
 version: 1.0.0
-summary: 'Check, then save the project''s Summer Router characters on Summer for the game; never overwrites a Studio edit it has not seen.'
+summary: 'Check, then save the project''s Summer Router characters on Summer; on a live game it returns the person''s approval link.'
 use_when:
 - sending ai/characters files to Summer after creating or editing a character
 - '"push the characters", "save the guard on Summer"'

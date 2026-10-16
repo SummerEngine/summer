@@ -135,6 +135,55 @@ describe("router.push", () => {
   });
 });
 
+describe("router.push on a live game: the person's approval through router.save_character", () => {
+  const LIVE = () => {
+    throw new RouterApiError(403, "owner_approval_required", "This Game is live; only its owner can change what players see.");
+  };
+  const routes = { "GET games/game_1/router/characters/guard": NO_CHARACTER, "PUT games/game_1/router/characters/guard": LIVE };
+  const approval = { id: "goa_1", url: "https://www.summerengine.com/studio/approvals/goa_1", who: "person" as const, summary: "Save guard on Gate Game" };
+
+  it("answers with the approval and its job in one call, and keys it to the document", async () => {
+    const calls: Array<{ op: string; input: Record<string, unknown>; key: string }> = [];
+    const hosted = async (op: string, input: Record<string, unknown>, key: string) => {
+      calls.push({ op, input, key });
+      return { ok: true as const, status: "needs_approval" as const, approval, job: { id: "apr:game_1:goa_1", state: "awaiting_approval" as const } };
+    };
+    const { api } = fakeApi(routes);
+    await addCharacter(context(api), { id: "guard" });
+    const answer = await push(context(api, { hosted }), {});
+    expect(answer).toMatchObject({
+      ok: true,
+      pushed: [],
+      approval,
+      job: { id: "apr:game_1:goa_1" },
+      approvals: [{ character: "guard", url: approval.url, job_id: "apr:game_1:goa_1" }],
+    });
+    expect(calls).toEqual([{ op: "router.save_character", input: { gameId: "game_1", character: guardFile(), expectedVersion: 0 }, key: expect.stringMatching(/^router\.push:game_1:guard:/) }]);
+    expect(readRouterState(root).characters.guard).toBeUndefined();
+  });
+
+  it("records the version when the hosted save runs at once", async () => {
+    const hosted = async () => ({ ok: true as const, status: "done" as const, result: { version: 4, created: true } });
+    const { api } = fakeApi(routes);
+    await addCharacter(context(api), { id: "guard" });
+    expect(await push(context(api, { hosted }), {})).toMatchObject({ ok: true, pushed: [{ id: "guard", version: 4, action: "created" }] });
+    expect(readRouterState(root).characters.guard.version).toBe(4);
+  });
+
+  it("falls back to owner_action_required with the Studio link when the hosted save fails", async () => {
+    const hosted = async () => ({ ok: false as const, error: { code: "unavailable" as const, message: "Summer did not answer.", retry: "after" as const } });
+    const { api } = fakeApi(routes);
+    await addCharacter(context(api), { id: "guard" });
+    expect(await push(context(api, { hosted }), {})).toMatchObject({
+      ok: false,
+      was: "owner_action_required",
+      code: "forbidden",
+      studio_url: ROUTER_TAB,
+      details: { hosted_save: { code: "unavailable" } },
+    });
+  });
+});
+
 describe("router.pull", () => {
   it("writes Summer's characters and keeps unpushed local edits", async () => {
     const { api } = fakeApi({

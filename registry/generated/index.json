@@ -4060,7 +4060,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "3a81bc48a22923184ebc4fd03c0c3a4a3441c8167fa02dcbd784bd587a5f6366",
+      "content_hash": "c01e2768f3526d6d13e78e8604db5c2ac6df3aa64c82f00a553783c367125560",
       "summary": "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",
@@ -9365,8 +9365,8 @@
       "id": "tool/router-push",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "d3f937beb77ef63811e7ce1273395d2a88ec1116b21b8f47afa5e6dd41e411f9",
-      "summary": "Check, then save the project's Summer Router characters on Summer for the game; never overwrites a Studio edit it has not seen.",
+      "content_hash": "88585467d97e75fd4abe58ce0109cd4bbdcb1a2baad9266c86e2e9c0288eaf81",
+      "summary": "Check, then save the project's Summer Router characters on Summer; on a live game it returns the person's approval link.",
       "use_when": [
         "sending ai/characters files to Summer after creating or editing a character",
         "\"push the characters\", \"save the guard on Summer\""

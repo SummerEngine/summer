@@ -1,5 +1,7 @@
 import { resolveGatewayUrl } from "../config.js";
 import { engineSelectionFromEnv } from "../engine.js";
+import { errorAnswer, type Answer } from "../ops/contract.js";
+import { answerOfHosted, callHostedV4 } from "../ops/cloud.js";
 import { createRouterApi } from "./api.js";
 import { addCharacter, check, pull, push, type RouterContext } from "./commands.js";
 import { doctor } from "./doctor.js";
@@ -27,12 +29,22 @@ export interface ProjectInput {
   gameId?: string;
 }
 
+/** A cloud operation through the hosted server's summer_call, with the person's sign-in. */
+async function hosted(op: string, input: Record<string, unknown>, idempotencyKey: string): Promise<Answer> {
+  try {
+    return answerOfHosted(await callHostedV4("summer_call", { op, input, idempotencyKey }));
+  } catch (error) {
+    return errorAnswer("unavailable", error instanceof Error ? error.message : String(error));
+  }
+}
+
 export function routerContext(input: ProjectInput): RouterContext {
   return {
     cwd: engineSelectionFromEnv()?.projectPath || process.cwd(),
     env: process.env,
     api: createRouterApi(),
     gateway: () => resolveGatewayUrl(),
+    hosted,
     project: input.project,
     game: input.gameId,
   };

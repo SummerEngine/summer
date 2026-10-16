@@ -62,7 +62,7 @@ export function registerRouterTools(server: McpServer): void {
 
   server.tool(
     "summer_router_push",
-    "router.push: router.check, then save each character on Summer for the game (unchanged ones are skipped). Never overwrites a change made on Summer since the last push or pull (studio_changed: router.pull, or force). On a live game it fails (owner_action_required): router.save_character (cloud) gives the owner's approval link. Then router.test_character.",
+    "router.push: router.check, then save each character on Summer for the game (unchanged ones are skipped). Never overwrites a change made on Summer since the last push or pull (studio_changed: router.pull, or force). On a live game it asks the person through router.save_character (cloud) and answers needs_approval with their link and a job (jobs.wait). Then router.test_character.",
     { characters, force: z.boolean().optional().describe("Replace a character that changed on Summer since the last push or pull."), gameId, project },
     run("summer_router_push")
   );

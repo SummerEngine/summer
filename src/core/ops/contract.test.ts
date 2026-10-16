@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { validateAgainstSchema } from "../../../scripts/validate-library/json-schema.ts";
 import { PACKAGE_ROOT } from "../package-root.js";
 import { localEntries, localInputSchema } from "./catalog.js";
-import { answerOfLocalFailure, isLocalOp, legacyNames, localToolsFor, mcpNameOf, opForToolCall, OP_NAME, opFromCli, parseJobId, resolveOpName } from "./contract.js";
+import { answerOfLocalFailure, answerOfLocalSuccess, isLocalOp, legacyNames, localToolsFor, mcpNameOf, opForToolCall, OP_NAME, opFromCli, parseJobId, resolveOpName } from "./contract.js";
 import { searchEntries } from "./search.js";
 
 const schema = JSON.parse(readFileSync(join(PACKAGE_ROOT, "registry", "schemas", "operation.schema.json"), "utf8")) as Record<string, unknown>;
@@ -81,6 +81,20 @@ describe("a failed local tool as the one answer", () => {
     expect(answerOfLocalFailure({ ok: false, code: "not_signed_in" }, "Not signed in to Summer.")).toMatchObject({ error: { code: "not_signed_in" } });
     expect(answerOfLocalFailure({ ok: false, code: "export_required" }, "Export first.")).toMatchObject({ error: { code: "invalid_input" } });
     expect(answerOfLocalFailure({}, "No such scene.")).toMatchObject({ error: { code: "not_found" } });
+  });
+});
+
+describe("a successful local tool as the one answer", () => {
+  it("is done with the result, or needs_approval when the tool hands back a hosted approval", () => {
+    expect(answerOfLocalSuccess({ ok: true, pushed: [] })).toEqual({ ok: true, status: "done", result: { ok: true, pushed: [] } });
+    const approval = { id: "goa_1", url: "https://www.summerengine.com/studio/approvals/goa_1", who: "person", summary: "Save guard" };
+    expect(answerOfLocalSuccess({ ok: true, approval, job: { id: "apr:g:goa_1", state: "awaiting_approval" }, warnings: ["shop also waits"] })).toEqual({
+      ok: true,
+      status: "needs_approval",
+      approval,
+      job: { id: "apr:g:goa_1", state: "awaiting_approval" },
+      warnings: ["shop also waits"],
+    });
   });
 });
 

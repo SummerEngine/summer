@@ -70,8 +70,9 @@ Cloud (the hosted Summer server, with the person's sign-in; run them with `summe
 | `router.set_settings({ gameId, enabled?, caps?, textModel?, imageModel? })`, `router.set_account_limit({ monthly })` | Always ask the person (`needs_approval` with the link, then `jobs.wait`). Money is `{ currency: "USD", amountMinor }` (cents). |
 
 `router.push` uses the same save as `router.save_character` but works from the project files and checks them first.
-On a live game `router.push` stops (`owner_action_required`); then call `router.save_character` with the document to
-get the person's approval link.
+On a live game it asks through `router.save_character` itself and answers `needs_approval` with the person's link and
+a job: give the person the link, then `jobs.wait`. Only when that hosted call fails does it stop with
+`owner_action_required` and the Studio link.
 
 ## The flow (agent, one shot)
 

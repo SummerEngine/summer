@@ -105,6 +105,29 @@ export function answerOfLocalFailure(payload: unknown, message: string): Answer 
   return errorAnswer(code, message, { ...(next ? { next } : {}), details: { ...was, tool: payload } });
 }
 
+/**
+ * A successful local tool result as the one answer: `done` with the result,
+ * or `needs_approval` when the tool handed back a hosted approval (an
+ * `approval` with its url and the `job` to wait on), as router.push does on
+ * a live game.
+ */
+export function answerOfLocalSuccess(payload: unknown): Answer {
+  const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const approval = body.approval as { url?: unknown } | undefined;
+  const job = body.job as { id?: unknown } | undefined;
+  if (typeof approval?.url === "string" && typeof job?.id === "string") {
+    const warnings = Array.isArray(body.warnings) ? body.warnings.filter((item): item is string => typeof item === "string") : [];
+    return {
+      ok: true,
+      status: "needs_approval",
+      approval: approval as Extract<Answer, { status: "needs_approval" }>["approval"],
+      job: job as JobRef,
+      ...(warnings.length ? { warnings } : {}),
+    };
+  }
+  return { ok: true, status: "done", result: payload };
+}
+
 // ── Names ────────────────────────────────────────────────────────────────────
 
 export const OP_NAME = /^(whoami|[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)$/;

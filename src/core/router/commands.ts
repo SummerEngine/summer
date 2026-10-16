@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Answer, JobRef } from "../ops/contract.js";
 import { RouterApiError, seg, type RouterApi } from "./api.js";
 import { handlerSnippet, scanToolHandlers, unhandledClientTools, type HandlerMap } from "./handlers.js";
 import { apiFailure, failure, success, type RouterAnswer, type RouterFailure } from "./result.js";
@@ -28,7 +29,8 @@ import { buildCharacter, TEMPLATES, TOOL_NAME, type TemplateId } from "./templat
  *
  *   router.add_character  write ai/characters/<id>.json from a template
  *   router.check          schema + GDScript tool handlers, offline, no sign-in
- *   router.push           check, then save the characters on Summer for the game
+ *   router.push           check, then save the characters on Summer for the game; on a
+ *                         live game, router.save_character (cloud) for the person's approval
  *   router.pull           write Summer's characters into ai/characters/
  */
 
@@ -42,7 +44,11 @@ export interface RouterContext {
   project?: string;
   /** input.gameId */
   game?: string;
+  /** Runs a cloud operation on the hosted Summer server (summer_call); absent in offline contexts. */
+  hosted?: (op: string, input: Record<string, unknown>, idempotencyKey: string) => Promise<Answer>;
 }
+
+type Approval = Extract<Answer, { status: "needs_approval" }>["approval"];
 
 interface StoredCharacter {
   character_id: string;
@@ -238,7 +244,9 @@ export async function push(ctx: RouterContext, input: PushInput): Promise<Router
   const state = readRouterState(root);
   const pushed: Array<{ id: string; version: number; action: "created" | "updated" | "unchanged" }> = [];
   const conflicts: Array<{ id: string; summer_version: number; base_version: number | null }> = [];
+  const approvals: Array<{ character: string; approval: Approval; job: JobRef }> = [];
   const base = `games/${seg(game.gameId)}/router/characters`;
+  let hostedRefusal: unknown;
 
   try {
     for (const file of files) {
@@ -260,20 +268,42 @@ export async function push(ctx: RouterContext, input: PushInput): Promise<Router
         conflicts.push({ id: file.id, summer_version: remote.version, base_version: known?.version ?? null });
         continue;
       }
-      const saved = await ctx.api.request<StoredCharacter>("PUT", `${base}/${seg(file.id)}`, {
-        body: doc,
-        query: { expected_version: remote ? remote.version : 0 },
-      });
+      const expected = remote && !remote.deleted ? remote.version : 0;
+      let saved: StoredCharacter;
+      try {
+        saved = await ctx.api.request<StoredCharacter>("PUT", `${base}/${seg(file.id)}`, { body: doc, query: { expected_version: expected } });
+      } catch (error) {
+        // A live game refuses an agent's save. The hosted router.save_character
+        // turns that into the person's approval link; the same document gives the
+        // same approval (idempotency key), so a second push does not ask twice.
+        if (!(error instanceof RouterApiError && error.code === "owner_approval_required") || !ctx.hosted) throw error;
+        const answer = await ctx.hosted(
+          "router.save_character",
+          { gameId: game.gameId, character: doc, expectedVersion: expected },
+          `router.push:${game.gameId}:${file.id}:${hash}`
+        );
+        if (answer.ok && answer.status === "needs_approval") {
+          approvals.push({ character: file.id, approval: answer.approval, job: answer.job });
+          continue;
+        }
+        const version = answer.ok && answer.status === "done" ? (answer.result as { version?: unknown } | null)?.version : undefined;
+        if (typeof version !== "number") {
+          hostedRefusal = answer.ok ? { status: answer.status } : answer.error;
+          throw error;
+        }
+        saved = { character_id: file.id, version, config: doc };
+      }
       state.characters[file.id] = { version: saved.version, hash };
       pushed.push({ id: file.id, version: saved.version, action: remote && !remote.deleted ? "updated" : "created" });
     }
   } catch (error) {
     writeRouterState(root, state);
-    return apiFailure(error, {
+    const failed = apiFailure(error, {
       registry: checked.registry,
       studioUrl: studio,
       notFound: isRouteMissing(error) ? NOT_SERVED : `Summer has no game ${game.gameId} for this account. Check the game id (summer.build.json gameId).`,
     });
+    return hostedRefusal === undefined ? failed : { ...failed, details: { hosted_save: hostedRefusal } };
   }
   writeRouterState(root, state);
 
@@ -282,8 +312,21 @@ export async function push(ctx: RouterContext, input: PushInput): Promise<Router
       "studio_changed",
       `Summer has a newer version of ${conflicts.map((c) => c.id).join(", ")} than this project last saw (edited in Studio or by someone else). Not pushed, so nothing was overwritten.`,
       `Run router.pull for ${conflicts.map((c) => c.id).join(", ")} to take Summer's version, or router.push with force to replace it with yours.`,
-      { studio_url: studio, details: { conflicts, pushed } }
+      { studio_url: studio, details: { conflicts, pushed, approvals } }
     );
+  }
+  if (approvals.length) {
+    // One approval is the answer (needs_approval with its job); any others are listed.
+    const [first, ...others] = approvals;
+    return success({
+      game_id: game.gameId,
+      pushed,
+      approvals: approvals.map((a) => ({ character: a.character, url: a.approval.url, job_id: a.job.id })),
+      approval: first.approval,
+      job: first.job,
+      ...(others.length ? { warnings: others.map((a) => `${a.character} also waits for the person's approval: ${a.approval.url} (job ${a.job.id}).`) } : {}),
+      studio_url: studio,
+    });
   }
   const first = files[0].id;
   const firstTool = clientTools(files[0], handlers)[0]?.name;

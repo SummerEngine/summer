@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "9ffdbdfa211c2812028b5aa87bf290c3c6ac74688212a1ea8da53428bd13f51a",
+      "content_hash": "300498a84e9da1d55d1962edc29a80a766e6af4aad96ed3deb1118501c467ddb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -10145,7 +10145,7 @@
       "id": "tool/sync-items",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4dd87b67ee304b600d1010970d1d1132674798abaa49bb29c77ffd0b504a8360",
+      "content_hash": "96a29bed49afc31d9f16206c8c407b17ed86534ee27c043f85e348330c31fb58",
       "summary": "Sync summer.items.json to the creator's store game by item slug, confirm-gated - a plan first, then media upload and the owner's approval in Studio.",
       "use_when": [
         "\"add these items to my game\"",

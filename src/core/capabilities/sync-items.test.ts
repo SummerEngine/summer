@@ -126,6 +126,19 @@ describe("planItem", () => {
     const plan = planItem(manifestItem({ name: "Deep Ponder" }), media, remote({ revision: { state: "SUBMITTED" } }));
     expect(plan).toMatchObject({ action: "blocked" });
   });
+
+  it("never plans a new item without an image, which the platform refuses", () => {
+    expect(planItem(manifestItem({ media: [] }), [], null)).toEqual({ slug: "emote_ponder", action: "blocked", reason: "a new item needs at least one image" });
+  });
+
+  it("lets an existing item keep or drop its images", () => {
+    expect(planItem(manifestItem({ media: [] }), [], remote({ mediaSha256: [] }))).toMatchObject({ action: "unchanged" });
+    expect(planItem(manifestItem({ media: [] }), [], remote())).toMatchObject({ action: "update", changes: ["media"] });
+  });
+
+  it("leaves an existing price alone when the file names none", () => {
+    expect(planItem(manifestItem({ priceSparks: undefined }), media, remote({ priceSparks: 150 }))).toMatchObject({ action: "unchanged" });
+  });
 });
 
 interface Call {
@@ -259,6 +272,81 @@ describe("syncItems", () => {
     expect(result.status).toBe("up_to_date");
     expect(proposals).toEqual([]);
     expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+
+  it("sends a new item without its definition, and a revised item with its definition and base revision", async () => {
+    await writeFile(
+      join(root, "summer.items.json"),
+      JSON.stringify({ schema: ITEMS_MANIFEST_SCHEMA, items: [{ ...PONDER, priceSparks: 200 }, { ...PONDER, slug: "emote_bow", name: "Bow", cosmetic: { familyId: "emote", variantKey: "bow" } }] })
+    );
+    const store = fakeStore({ existing: remote() });
+    const original = store.fetch;
+    // Only emote_ponder exists on the Game.
+    const fetch = (async (input: string | URL | Request, init?: RequestInit) =>
+      String(input).includes("item-definitions?slug=emote_bow") ? new Response(JSON.stringify({ items: [] }), { status: 200 }) : original(input, init)) as typeof globalThis.fetch;
+    const proposals: ProposeItemsRequest[] = [];
+    await syncItems({ gameId: "game-1", project: root, confirm: true, face: "cli" }, deps(fetch, proposals));
+    const [bow, ponder] = proposals[0].items;
+    expect(bow).toMatchObject({ slug: "emote_bow", action: "create", item: { slug: "emote_bow" } });
+    expect(bow).not.toHaveProperty("definitionId");
+    expect(bow).not.toHaveProperty("basedOnRevisionId");
+    expect(ponder).toMatchObject({ slug: "emote_ponder", action: "update", definitionId: "item_ponder", basedOnRevisionId: "rev_1", item: { slug: "emote_ponder" } });
+  });
+
+  it("does not send a removed background colour, so applying the plan clears it", async () => {
+    const store = fakeStore({ existing: remote({ revision: { presentation: { name: "Ponder", description: "Strike a thoughtful pose.", tags: ["emote"], backgroundColor: "#112233" } } }) });
+    const proposals: ProposeItemsRequest[] = [];
+    await syncItems({ gameId: "game-1", project: root, confirm: true, face: "cli" }, deps(store.fetch, proposals));
+    expect(proposals[0].items[0]).toMatchObject({ action: "update" });
+    expect(proposals[0].items[0].item).not.toHaveProperty("backgroundColor");
+  });
+
+  describe("a plan larger than one owner approval", () => {
+    const many = Array.from({ length: 51 }, (_, index) => ({ ...PONDER, slug: `emote_${String(50 - index).padStart(2, "0")}`, cosmetic: { familyId: "emote", variantKey: `v${index}` } }));
+
+    beforeEach(async () => {
+      await writeFile(join(root, "summer.items.json"), JSON.stringify({ schema: ITEMS_MANIFEST_SCHEMA, items: many }));
+    });
+
+    it("previews the batches of at most 50, by slug", async () => {
+      const result = await syncItems({ gameId: "game-1", project: root, face: "cli" }, deps(fakeStore().fetch, []));
+      const batches = result.batches as string[][];
+      expect(batches.map((batch) => batch.length)).toEqual([50, 1]);
+      expect(batches.flat()).toEqual([...batches.flat()].sort());
+      expect(batches[1]).toEqual(["emote_50"]);
+    });
+
+    it("refuses to confirm it whole, before uploading or asking anyone", async () => {
+      const store = fakeStore();
+      const proposals: ProposeItemsRequest[] = [];
+      const error = await failure(syncItems({ gameId: "game-1", project: root, confirm: true, face: "cli" }, deps(store.fetch, proposals)));
+      expect(error.code).toBe("item_plan_too_large");
+      expect(error.recovery).toContain("slugs");
+      expect((error.detail as { batches: string[][] }).batches[0]).toHaveLength(50);
+      expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
+      expect(proposals).toEqual([]);
+    });
+
+    it("confirms one batch at a time when slugs names it", async () => {
+      const preview = await syncItems({ gameId: "game-1", project: root, face: "cli" }, deps(fakeStore().fetch, []));
+      const proposals: ProposeItemsRequest[] = [];
+      const first = (preview.batches as string[][])[0];
+      await syncItems({ gameId: "game-1", project: root, slugs: first, confirm: true, face: "cli" }, deps(fakeStore().fetch, proposals));
+      expect(proposals).toHaveLength(1);
+      expect(proposals[0].items.map((item) => item.slug)).toEqual(first);
+    });
+  });
+
+  it("says what to do when Summer does not take the plan", async () => {
+    const error = await failure(
+      syncItems(
+        { gameId: "game-1", project: root, confirm: true, face: "cli" },
+        { ...deps(fakeStore().fetch, []), propose: async () => ({ ok: false, error: { code: "not_found", message: "Not one of their games on Summer Games." } }) }
+      )
+    );
+    expect(error.code).toBe("not_found");
+    expect(error.message).toContain("Nothing changed");
+    expect(error.recovery).toContain("gameId");
   });
 
   it("stops before reading or sending when the sign-in is for the other environment", async () => {

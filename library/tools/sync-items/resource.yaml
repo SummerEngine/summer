@@ -11,6 +11,7 @@ use_when:
   - making the staging game and the production game carry the same items
 do_not_use_when:
   - the user has not approved the exact plan for this gateway and game
+  - more than 50 items change at once - one approval takes 50; confirm each listed batch with slugs
   - the store sign-in is for the other environment - after changing SUMMER_GATEWAY_URL and SUMMER_MCP_RESOURCE_URL, run summer login --store --force first
   - releasing or activating an item for players - the owner does that in Studio after Summer's review
   - retiring or deleting an item - items the file does not name are listed, never changed
@@ -51,7 +52,7 @@ input_schema:
       type: array
       items:
         type: string
-      description: Only these items (their slugs); the rest of the file is left out of the plan.
+      description: Only these items (their slugs); the rest of the file is left out of the plan. Confirm a plan of more than 50 changed items one batch (from batches) at a time.
     confirm:
       type: boolean
       default: false

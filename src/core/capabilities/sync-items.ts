@@ -42,6 +42,8 @@ import { BuildToolError } from "./summer-bundle.js";
 
 const seg = encodeURIComponent;
 const MAX_PAGES = 20;
+/** The most items one owner approval may carry (economy.propose_items). */
+export const MAX_ITEMS_PER_PROPOSAL = 50;
 /** Revisions a change may still be written into; the others get a new draft first. */
 const EDITABLE = new Set(["DRAFT", "CHANGES_REQUESTED"]);
 /** Revisions Summer is reviewing: a change waits until the review is decided. */
@@ -73,6 +75,14 @@ export interface ProposeItemsRequest {
   items: ProposedItem[];
   idempotencyKey: string;
 }
+
+/** Why economy.propose_items did not take the plan, in plain words, and what to do. */
+const PROPOSAL_FAILURES: Record<string, string> = {
+  invalid_input: "Recovery: Summer refused a field of the plan (details name it). Fix summer.items.json and call again; the uploaded media is reused.",
+  idempotency_conflict: "Recovery: this plan's key was already used for a different plan. Call again with confirm=false to read the Game afresh, then confirm the new plan.",
+  unavailable: "Recovery: Summer could not take the plan right now. Call again in a few minutes with the same summer.items.json; the owner is asked once.",
+  not_found: "Recovery: Summer found no such game for this account on this gateway. Check gameId with summer_store_list_games (staging and production games have different ids).",
+};
 
 export interface SyncItemsDependencies extends PublishBuildDependencies {
   readFile: (path: string) => Promise<Buffer>;
@@ -139,7 +149,7 @@ export type ItemPlan =
   | { slug: string; action: "create"; changes: string[] }
   | { slug: string; action: "update"; definitionId: string; revisionId: string; revision: "edit_draft" | "new_draft"; changes: string[]; warnings?: string[] }
   | { slug: string; action: "unchanged"; definitionId: string }
-  | { slug: string; action: "blocked"; definitionId: string; reason: string };
+  | { slug: string; action: "blocked"; definitionId?: string; reason: string };
 
 const sameList = (left: readonly unknown[], right: readonly unknown[]) => left.length === right.length && left.every((value, index) => value === right[index]);
 
@@ -150,9 +160,14 @@ const sameList = (left: readonly unknown[], right: readonly unknown[]) => left.l
 export function planItem(item: ManifestItem, media: LocalMedia[], remote: RemoteItem | null): ItemPlan {
   const wanted = behaviorOf(item);
   if (!remote) {
-    return { slug: item.slug, action: "create", changes: ["new item", ...(item.priceSparks !== undefined ? ["price"] : []), ...(media.length ? ["media"] : [])] };
+    // The platform refuses an item created without media.
+    if (!media.length) return { slug: item.slug, action: "blocked", reason: "a new item needs at least one image" };
+    return { slug: item.slug, action: "create", changes: ["new item", ...(item.priceSparks !== undefined ? ["price"] : []), "media"] };
   }
   const revision = remote.revision;
+  if (typeof revision.revisionId !== "string" || !revision.revisionId) {
+    return { slug: item.slug, action: "blocked", definitionId: remote.definitionId, reason: `Summer did not say which revision "${item.slug}" is on. Call again in a minute.` };
+  }
   const behavior: Json = revision.behavior ?? {};
   // Class and ownership mode belong to the definition: a revision cannot change them.
   if (behavior.class !== wanted.class || behavior.ownershipMode !== wanted.ownershipMode) {
@@ -181,7 +196,8 @@ export function planItem(item: ManifestItem, media: LocalMedia[], remote: Remote
   if (ownershipChanged) changes.push("ownership rules");
   if ((revision.supply ?? undefined) !== item.supply) changes.push("supply");
   if (!sameList(remote.mediaSha256, media.map((file) => file.sha256))) changes.push("media");
-  if ((remote.priceSparks ?? undefined) !== item.priceSparks) changes.push("price");
+  // No priceSparks leaves the item's price as it is (a price book cannot be removed).
+  if (item.priceSparks !== undefined && remote.priceSparks !== item.priceSparks) changes.push("price");
   if (!changes.length) return { slug: item.slug, action: "unchanged", definitionId: remote.definitionId };
   const state = String(revision.state ?? "");
   if (IN_REVIEW.has(state)) {
@@ -298,9 +314,16 @@ export async function syncItems(input: SyncItemsInput, overrides: Partial<SyncIt
     plans.push(planItem(item, files, found));
   }
   const notInManifest = await listUnmanaged(store, gameId, new Set(manifest.items.map((item) => item.slug)));
-  const pending = plans.filter((plan) => plan.action === "create" || plan.action === "update");
+  // Sorted by slug: the same file always gives the same proposal and the same batches.
+  const pending = plans.filter((plan) => plan.action === "create" || plan.action === "update").sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
   const blocked = plans.filter((plan) => plan.action === "blocked");
-  const warnings = plans.flatMap((plan) => (plan.action === "update" && plan.warnings) || []);
+  const batches = Array.from({ length: Math.ceil(pending.length / MAX_ITEMS_PER_PROPOSAL) }, (_, index) =>
+    pending.slice(index * MAX_ITEMS_PER_PROPOSAL, (index + 1) * MAX_ITEMS_PER_PROPOSAL).map((plan) => plan.slug)
+  );
+  const warnings = [
+    ...plans.flatMap((plan) => (plan.action === "update" && plan.warnings) || []),
+    ...(batches.length > 1 ? [`${pending.length} items change, and one owner approval takes at most ${MAX_ITEMS_PER_PROPOSAL}: confirm them in ${batches.length} calls, each with slugs from one of batches.`] : []),
+  ];
   const summary = {
     gateway,
     gameId,
@@ -308,6 +331,7 @@ export async function syncItems(input: SyncItemsInput, overrides: Partial<SyncIt
     plan: plans,
     ...(notInManifest.length ? { notInManifest } : {}),
     ...(warnings.length ? { warnings } : {}),
+    ...(batches.length > 1 ? { batches } : {}),
   };
 
   if (input.confirm !== true || !pending.length) {
@@ -321,6 +345,16 @@ export async function syncItems(input: SyncItemsInput, overrides: Partial<SyncIt
           ? "Nothing can change now: read each blocked item's reason."
           : "The Game's items already match summer.items.json.",
     };
+  }
+
+  if (batches.length > 1) {
+    throw new BuildToolError(
+      "item_plan_too_large",
+      `${pending.length} items would change, and one owner approval takes at most ${MAX_ITEMS_PER_PROPOSAL}. Nothing was uploaded or sent.`,
+      `Recovery: call again with confirm=true and slugs set to one batch at a time (batches lists them, ${MAX_ITEMS_PER_PROPOSAL} per batch, by slug); each batch gets its own approval link.`,
+      undefined,
+      { batches }
+    );
   }
 
   const audit = { at: new Date(deps.now()).toISOString(), operation: "sync_items", face: input.face, gateway, gameId, slugs: pending.map((plan) => plan.slug) };
@@ -345,12 +379,13 @@ export async function syncItems(input: SyncItemsInput, overrides: Partial<SyncIt
     await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: String(answer.status ?? (answer.ok === false ? "failed" : "sent")) });
     if (answer.ok === false) {
       const error = (answer.error ?? {}) as Json;
+      const code = String(error.code ?? "items_proposal_failed");
       throw new BuildToolError(
-        String(error.code ?? "items_proposal_failed"),
-        String(error.message ?? "Summer did not take the item plan."),
-        "Recovery: the media is uploaded; call again with the same summer.items.json to send the same plan.",
+        code,
+        `${String(error.message ?? "Summer did not take the item plan.").replace(/\.?$/, ".")} Nothing changed.`,
+        PROPOSAL_FAILURES[code] ?? "Recovery: the media is uploaded; call again with the same summer.items.json to send the same plan.",
         undefined,
-        { answer }
+        { ...(error.details ? { details: error.details } : {}), ...(error.requestId ? { requestId: error.requestId } : {}) }
       );
     }
     return {

@@ -72,7 +72,7 @@ export interface ManifestItem {
   consumable: boolean;
   /** Lifetime mint limit; absent is unlimited. */
   supply?: number;
-  /** Base price in Sparks; absent means the item is not sold. */
+  /** Base price in Sparks. Absent: this file sets no price (a new item is not sold; an existing price stays). */
   priceSparks?: number;
   backgroundColor?: string;
   /** Project-relative paths, in store order. */
@@ -170,7 +170,7 @@ function readItem(project: string, raw: unknown, index: number, problems: Manife
   if (raw.consumable !== undefined && typeof raw.consumable !== "boolean") problems.add(where, "consumable: true or false");
   if (raw.maxOwned !== undefined && !positiveInt(raw.maxOwned)) problems.add(where, "maxOwned: a whole number, 1 or more");
   if (raw.supply !== undefined && !positiveInt(raw.supply)) problems.add(where, "supply: a whole number, 1 or more (omit it for unlimited)");
-  if (raw.priceSparks !== undefined && !positiveInt(raw.priceSparks)) problems.add(where, "priceSparks: a whole number of Sparks, 1 or more (omit it when the item is not sold)");
+  if (raw.priceSparks !== undefined && !positiveInt(raw.priceSparks)) problems.add(where, "priceSparks: a whole number of Sparks, 1 or more (omit it to set no price)");
   if (raw.backgroundColor !== undefined && (typeof raw.backgroundColor !== "string" || !BACKGROUND.test(raw.backgroundColor))) {
     problems.add(where, 'backgroundColor: "#RRGGBB"');
   }
@@ -199,7 +199,8 @@ function readItem(project: string, raw: unknown, index: number, problems: Manife
   } else {
     mediaRaw.forEach((value, mediaIndex) => {
       const path = mediaPath(project, value, `${where} media[${mediaIndex}]`, problems);
-      if (path) media.push(path);
+      if (path && media.includes(path)) problems.add(`${where} media[${mediaIndex}]`, `"${value}" is listed twice`);
+      else if (path) media.push(path);
     });
   }
 

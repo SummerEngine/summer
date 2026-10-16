@@ -10,7 +10,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - **README: CLI only** (summer-engine 4.1.0 or newer), next to the hosted MCP block.
 - `summer <area> <action> --max-characters <n>` on a local read (`summer docs read`, the engine reads) no longer fails with an unknown key: the CLI prints the whole answer and says so.
 - Shorter descriptions for `summer-cli`, `summer-assets` and `concept-to-level`, so the installed skill descriptions leave room under the 12,000-character budget.
-- `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Three slow tests have realistic time limits: the first import of the built package, the template fetch timeout, and the trajectory log rotation.
+- `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Every test has a 20 s limit instead of 5 s, and three slow tests have their own: the first import of the built package (60 s), the template fetch timeout and the trajectory log rotation (30 s each).
+- **`content` is an area.** `summer content <action>` runs the content operations Summer's hosted server serves (`content.list_games`, `content.get_kit`, `content.list_references`, `content.search_library`, `content.save_piece`, `content.add_feedback`, ...). The 4.0.0 `marketing.*` content operations are renamed to them (`marketing.content_feed` is `content.list_references`, `marketing.get_brand_pack` is `content.get_kit`); `registry/operations/legacy-names.json` maps each old name to its new one.
 
 ## [4.0.0] - 2026-10-15
 

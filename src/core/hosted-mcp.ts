@@ -3,7 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getStoreAccessToken, OAuthError, readStoredOAuthToken, resolveMcpResourceUrl } from "./oauth.js";
 import { TOOLKIT_VERSION } from "./version.js";
-import { summerRequestHeaders } from "./agent-host.js";
+import { processSurface, summerRequestHeaders, type ClientSurface } from "./agent-host.js";
 
 /**
  * A client for the hosted Summer Engine MCP (mcp.summerengine.com), signed in
@@ -33,17 +33,24 @@ export interface HostedConnectDependencies {
   connect: (url: string, token: () => Promise<string>) => Promise<HostedClient>;
 }
 
-export async function connectHostedMcp(url: string, token: () => Promise<string>): Promise<HostedClient> {
+/** The handshake name the hosted server sees: the MCP server's own, or the `summer` CLI's, so usage tells them apart. */
+export const HOSTED_CLIENT_NAMES = { mcp: "summer-engine-local", cli: "summer-cli" } as const;
+
+export async function connectHostedMcp(
+  url: string,
+  token: () => Promise<string>,
+  surface: ClientSurface = processSurface()
+): Promise<HostedClient> {
   const transport = new StreamableHTTPClientTransport(new URL(url), {
     // A fresh (refreshed when near expiry) token on every request.
     fetch: async (input, init) => {
       const headers = new Headers(init?.headers);
-      for (const [name, value] of Object.entries(summerRequestHeaders({ tool: calledTool(init?.body), surface: "mcp" }))) headers.set(name, value);
+      for (const [name, value] of Object.entries(summerRequestHeaders({ tool: calledTool(init?.body), surface }))) headers.set(name, value);
       headers.set("authorization", `Bearer ${await token()}`);
       return fetch(input, { ...init, headers });
     },
   });
-  const client = new Client({ name: "summer-engine-local", version: TOOLKIT_VERSION });
+  const client = new Client({ name: HOSTED_CLIENT_NAMES[surface], version: TOOLKIT_VERSION });
   await client.connect(transport);
   const timeout = { timeout: CALL_TIMEOUT_MS };
   return {

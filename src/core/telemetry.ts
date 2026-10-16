@@ -53,6 +53,34 @@ export interface LocalToolCall {
   surfaceVersion?: "v3" | "v4";
   /** The MCP profile: full, engine, assets or custom. */
   profile?: string;
+  /** A failed call's error code (toolErrorCode); never sent for a call that worked. */
+  error?: string | null;
+}
+
+const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/;
+
+/**
+ * The code a failed tool result names, read from its first text block: the
+ * one answer shape's `error.code`, the 3.x `code`, then an engine
+ * `failure_reason`. Codes only, never the message or anything else.
+ */
+export function toolErrorCode(result: unknown, fallback?: string): string | null {
+  const content = (result as { content?: unknown } | null)?.content;
+  const text = Array.isArray(content) ? (content[0] as { text?: unknown } | undefined)?.text : undefined;
+  let parsed: Record<string, unknown> | null = null;
+  if (typeof text === "string" && text.length < 200_000) {
+    try {
+      const value: unknown = JSON.parse(text);
+      if (value && typeof value === "object" && !Array.isArray(value)) parsed = value as Record<string, unknown>;
+    } catch {
+      // plain text: no code in it
+    }
+  }
+  const nested = parsed?.error && typeof parsed.error === "object" ? (parsed.error as Record<string, unknown>).code : undefined;
+  for (const candidate of [nested, parsed?.code, parsed?.failure_reason, fallback]) {
+    if (typeof candidate === "string" && ERROR_CODE.test(candidate)) return candidate;
+  }
+  return null;
 }
 
 /** Report one local tool call: tool name, success, duration, host app name. */
@@ -67,41 +95,44 @@ export function recordLocalToolCall(call: LocalToolCall): void {
     ...(call.surfaceVersion ? { surfaceVersion: call.surfaceVersion } : {}),
     ...(call.profile ? { profile: call.profile } : {}),
     ok: call.ok,
+    ...(!call.ok && call.error && ERROR_CODE.test(call.error) ? { error: call.error } : {}),
     durationMs: Math.max(0, Math.round(call.durationMs)),
   });
 }
 
 function send(body: Record<string, unknown>): void {
-  // Wrap the entire async pipeline in a void-discarded promise so the caller
-  // never accidentally awaits us.
-  void (async () => {
-    try {
-      const token = await getAuthToken();
-      if (!token) return; // unauthenticated MCP usage is allowed; we just can't attribute it
-      // Resolved per call, not at import: the gateway the token belongs to is
-      // whatever env/config says NOW (see config.resolveGatewayUrl).
-      const gatewayUrl = await resolveGatewayUrl();
+  // Void-discarded so the caller never accidentally awaits us.
+  void postUsage(body);
+}
 
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-      try {
-        await fetch(`${gatewayUrl}${TELEMETRY_PATH}`, {
-          method: "POST",
-          signal: ctrl.signal,
-          headers: {
-            ...summerRequestHeaders(),
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-      } finally {
-        clearTimeout(timer);
-      }
-    } catch {
-      // never throws — telemetry is best-effort
+/** POST one usage line with the account token; resolves when sent or given up. Never throws. */
+export async function postUsage(body: Record<string, unknown>, timeoutMs = TIMEOUT_MS): Promise<void> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return; // unauthenticated usage is allowed; we just can't attribute it
+    // Resolved per call, not at import: the gateway the token belongs to is
+    // whatever env/config says NOW (see config.resolveGatewayUrl).
+    const gatewayUrl = await resolveGatewayUrl();
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      await fetch(`${gatewayUrl}${TELEMETRY_PATH}`, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          ...summerRequestHeaders(),
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    } finally {
+      clearTimeout(timer);
     }
-  })();
+  } catch {
+    // never throws — telemetry is best-effort
+  }
 }
 
 /**

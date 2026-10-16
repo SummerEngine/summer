@@ -8,6 +8,7 @@ import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js
 import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+import { noteCliError, noteCliHosted } from "../../core/cli-usage.js";
 
 /**
  * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
@@ -242,6 +243,8 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     answer = await runLocal(op, call, deps);
     if (call.wait) answer = await waitFor(answer, deps);
   } else {
+    // Summer's server records a cloud operation itself (X-Summer-Client-Surface: cli).
+    noteCliHosted();
     // --out stays here: the files save on this machine once the answer (or the waited job) names them.
     const files = deps.files ?? new FileSaver({ saveByDefault: true });
     const taken = files.take(op, call.input);
@@ -250,6 +253,7 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     if (call.wait) answer = await waitFor(answer, deps);
     answer = await files.finish(op, answer, out);
   }
+  if (!answer.ok) noteCliError(answer.error.code);
   (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer, out));
   if (!call.json && answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
   return answer.ok ? 0 : 1;

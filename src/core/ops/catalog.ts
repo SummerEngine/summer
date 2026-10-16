@@ -135,6 +135,17 @@ export function localInputSchema(op: string): Record<string, unknown> | null {
  * A local operation in the contract's wire form (registry/schemas/operation.schema.json):
  * what ops.describe answers and what the contract test validates.
  */
+/**
+ * The operation when it is a real one (this package runs it, or the shipped
+ * catalog lists it), else null. Usage lines name an operation only through
+ * this, so a word someone typed (`summer engine my-secret-game`) never
+ * leaves the machine as an operation name.
+ */
+export function knownOp(op: string | null | undefined): string | null {
+  if (!op) return null;
+  return localEntries().some((entry) => entry.name === op) || shippedTitle(op) !== undefined ? op : null;
+}
+
 export function localWireForm(op: string): Record<string, unknown> | null {
   const entry = localEntries().find((candidate) => candidate.name === op);
   if (!entry) return null;

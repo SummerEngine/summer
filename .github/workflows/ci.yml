@@ -103,6 +103,11 @@ jobs:
       - name: Doctor
         run: node dist/bin/summer.js doctor --json
 
+      # Signed in against a local stub gateway: one usage line with the
+      # documented fields, valid --json output, sender gone within 4 s.
+      - name: Usage line
+        run: node scripts/usage-line-smoke.mjs
+
       # macOS only: these tests expect a POSIX host (Windows writes
       # `cmd.exe /c npx` entries and backslash paths on purpose).
       - name: Installer tests (config paths and formats)

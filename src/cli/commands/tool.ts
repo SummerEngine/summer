@@ -21,6 +21,7 @@ import {
   type ToolDispatchEntry,
 } from "../../core/capabilities/tool-dispatch.js";
 import { c } from "../../core/format.js";
+import { noteCliHosted, noteCliTool } from "../../core/cli-usage.js";
 import {
   callHostedToolForCli,
   hostedResultPayload,
@@ -155,6 +156,8 @@ export const toolCommand = new Command("tool")
     const entry = resolveToolForCli(name);
     if (!entry) {
       // Not a local tool: the hosted store and publishing tools, with the store sign-in.
+      // Summer's server records the call itself (X-Summer-Client-Surface: cli).
+      noteCliHosted();
       const hosted = await hostedCli.call(name, parseJsonArgs(options.args ?? options.json));
       if (hosted.status === "called") {
         const payload = hostedResultPayload(hosted.result);
@@ -177,6 +180,7 @@ export const toolCommand = new Command("tool")
       console.error("Note: 'summer tool --json <args>' is deprecated; use --args <json>.");
     }
     const args = parseJsonArgs(options.args ?? options.json);
+    noteCliTool(entry.name);
     let result: unknown;
     try {
       result = await dispatchTool(entry.slug, args);

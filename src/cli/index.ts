@@ -21,6 +21,7 @@ import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
 import { resolveSurface } from "../core/tool-profiles.js";
+import { trackCommandUsage } from "./command-usage.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 
@@ -61,6 +62,8 @@ export function runCli(mcpCommand: Command): void {
   if (resolveSurface(undefined) === "v4") {
     for (const command of opsCliCommands()) program.addCommand(command);
   }
+
+  trackCommandUsage(program);
 
   program.parseAsync().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

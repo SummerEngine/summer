@@ -21,6 +21,7 @@
  * nothing is logged on failure — silence is the contract.
  */
 import { randomUUID } from "node:crypto";
+import { isTelemetryDisabled } from "../agent-host.js";
 import { getAuthToken } from "../auth.js";
 import { resolveGatewayUrl } from "../config.js";
 import { readStoreText, writeStoreText } from "../store.js";
@@ -49,11 +50,9 @@ async function feedbackUrl(): Promise<string> {
   return `${await resolveGatewayUrl()}${FEEDBACK_PATH}`;
 }
 
-/** Kill switches: send NOTHING when either is set to "1". */
+/** Kill switches: send NOTHING when either is set (1, true, yes or on; agent-host.ts). */
 export function isFeedbackDisabled(): boolean {
-  return (
-    process.env.SUMMER_NO_TELEMETRY === "1" || process.env.DO_NOT_TRACK === "1"
-  );
+  return isTelemetryDisabled();
 }
 
 /**

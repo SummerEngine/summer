@@ -45,8 +45,10 @@ export interface McpClientInfo {
 type Env = Record<string, string | undefined>;
 
 /** The opt-out switches, the same two the library feedback mailbox honors. */
+/** SUMMER_NO_TELEMETRY or DO_NOT_TRACK set to 1, true, yes or on. */
 export function isTelemetryDisabled(env: Env = process.env): boolean {
-  return env.SUMMER_NO_TELEMETRY === "1" || env.DO_NOT_TRACK === "1";
+  const on = (value: string | undefined) => value !== undefined && /^(1|true|yes|on)$/i.test(value.trim());
+  return on(env.SUMMER_NO_TELEMETRY) || on(env.DO_NOT_TRACK);
 }
 
 const set = (env: Env, key: string) => {
@@ -152,6 +154,11 @@ export function hostFromEnv(env: Env): string | null {
 // initialize handshake has given the client's name and version.
 let mcpClientSource: (() => McpClientInfo | undefined) | null = null;
 
+/** `mcp` inside `summer mcp` (it registers its handshake), `cli` for every other command. */
+export function processSurface(): ClientSurface {
+  return mcpClientSource ? "mcp" : "cli";
+}
+
 export function registerMcpClientSource(source: (() => McpClientInfo | undefined) | null): void {
   mcpClientSource = source;
 }
@@ -203,7 +210,7 @@ export function summerRequestHeaders(
   env: Env = process.env
 ): Record<string, string> {
   const context = toolContext.getStore();
-  const surface = context?.surface ?? options.surface ?? (mcpClientSource ? "mcp" : "cli");
+  const surface = context?.surface ?? options.surface ?? processSurface();
   const headers: Record<string, string> = {
     "X-Summer-Client": "summer-cli",
     "X-Summer-Client-Version": TOOLKIT_VERSION,

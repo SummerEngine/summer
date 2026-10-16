@@ -1,11 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { _resetCliUsageForTests, cliCommandName, cliUsageBody, noteCliError, sendCliUsage, startCliCommand } from "./cli-usage.js";
-import { TOOLKIT_VERSION } from "./version.js";
+import {
+  _resetCliUsageForTests,
+  cliCommandName,
+  cliUsageBody,
+  noteCliError,
+  noteCliHosted,
+  noteCliTool,
+  sendCliUsage,
+  startCliCommand,
+} from "./cli-usage.js";
 
 const saved = { ...process.env };
 afterEach(() => {
   _resetCliUsageForTests();
-  for (const key of ["SUMMER_NO_TELEMETRY", "DO_NOT_TRACK", "SUMMER_AGENT_HOST", "CLAUDECODE"]) {
+  for (const key of ["SUMMER_NO_TELEMETRY", "DO_NOT_TRACK", "SUMMER_AGENT_HOST"]) {
     if (saved[key] === undefined) delete process.env[key];
     else process.env[key] = saved[key];
   }
@@ -30,34 +38,50 @@ describe("CLI usage line", () => {
     expect(cliCommandName(["create"])).toBe("create");
   });
 
-  it("sends the command, the operation, success, duration, version and agent app, nothing else", () => {
+  it("reports an operation as summer_call in the MCP tool-call schema, surface cli, and nothing else", () => {
     process.env.SUMMER_AGENT_HOST = "claude-code";
     startCliCommand("engine", "engine.play", Date.now() - 250);
     const body = sent(0)!;
     expect(body).toMatchObject({
       client: "summer-cli",
-      event: "cli_command",
-      command: "engine",
+      event: "mcp_tool_call",
+      surface: "cli",
+      tool: "summer_call",
       op: "engine.play",
       ok: true,
-      version: TOOLKIT_VERSION,
-      agentHost: "claude-code",
+      mcpClient: "claude-code",
+      surfaceVersion: "v4",
     });
     expect(body.durationMs).toBeGreaterThanOrEqual(250);
-    expect(Object.keys(body).sort()).toEqual(["agentHost", "client", "command", "durationMs", "event", "ok", "op", "version"]);
+    expect(Object.keys(body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "op", "surface", "surfaceVersion", "tool"]);
+  });
+
+  it("reports any other command under its own name, and a local summer tool under the tool's name", () => {
+    startCliCommand("skills_install");
+    expect(sent(0)).toMatchObject({ tool: "skills_install", ok: true });
+    startCliCommand("tool");
+    noteCliTool("summer_play");
+    expect(sent(0)).toMatchObject({ tool: "summer_play" });
   });
 
   it("reports the operation's error code, or the exit code", () => {
-    startCliCommand("store", "store.publish");
-    noteCliError("not_signed_in");
-    expect(sent(1)).toMatchObject({ ok: false, error: "not_signed_in" });
+    startCliCommand("engine", "engine.play");
+    noteCliError("engine_not_running");
+    expect(sent(1)).toMatchObject({ ok: false, error: "engine_not_running" });
     startCliCommand("create");
-    expect(sent(1)).toMatchObject({ command: "create", ok: false, error: "exit_1" });
+    expect(sent(1)).toMatchObject({ tool: "create", ok: false, error: "exit_1" });
+  });
+
+  it("sends nothing for a command Summer's server ran (it records those itself)", () => {
+    startCliCommand("store", "store.publish");
+    noteCliHosted();
+    expect(sent(0)).toBeNull();
   });
 
   it("drops an operation name that is not one", () => {
     startCliCommand("engine", "engine.play --scene res://secret.tscn");
-    expect(sent(0)).not.toHaveProperty("op");
+    expect(sent(0)).toMatchObject({ tool: "engine" });
+    expect(sent(0)).toBeNull();
   });
 
   it("sends nothing when signed out, when telemetry is off, or for a name that is not a command", () => {
@@ -74,7 +98,7 @@ describe("CLI usage line", () => {
   });
 
   it("builds the body from the command alone: no arguments can reach it", () => {
-    const body = cliUsageBody({ command: "tool", startedAt: 0 }, 0, 10, {});
-    expect(body).toEqual({ client: "summer-cli", event: "cli_command", command: "tool", ok: true, durationMs: 10, version: TOOLKIT_VERSION });
+    const body = cliUsageBody({ tool: "tool", startedAt: 0 }, 0, 10, {});
+    expect(body).toEqual({ client: "summer-cli", event: "mcp_tool_call", surface: "cli", tool: "tool", ok: true, durationMs: 10, mcpClient: "unknown", surfaceVersion: "v4" });
   });
 });

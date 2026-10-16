@@ -394,14 +394,22 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     SUMMER_CALL,
     "Run any Summer operation by name (from summer_search) with its input. Engine operations run here; cloud ones run on Summer's server with the same approvals: money, publishing and live changes answer needs_approval with a link. 3.x tool names work too.",
     {
-      op: z.string().min(1).max(80).describe("The operation name, e.g. engine.add_node or pricing.set_base (or a 3.x tool name)."),
+      op: z.string().min(1).max(80).optional().describe("The operation name, e.g. engine.add_node or pricing.set_base (or a 3.x tool name)."),
+      // Agents reach for `name` (the field summer_search answers with); it means op.
+      name: z.string().min(1).max(80).optional().describe("Same as op."),
       input: z.record(z.unknown()).optional().describe("The operation's input, matching the schema summer_search returned."),
       dryRun: z.boolean().optional().describe("Check and describe the call without doing it."),
       idempotencyKey: z.string().min(1).max(128).optional().describe("Retry key for writes; reuse it only to retry the identical call."),
     },
     { title: "Run a Summer operation", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
-    (async ({ op, input, dryRun, idempotencyKey }: { op: string; input?: Record<string, unknown>; dryRun?: boolean; idempotencyKey?: string }, extra: unknown) => {
-      const name = op.trim();
+    (async (
+      { op, name: opAlias, input, dryRun, idempotencyKey }: { op?: string; name?: string; input?: Record<string, unknown>; dryRun?: boolean; idempotencyKey?: string },
+      extra: unknown
+    ) => {
+      const name = (op ?? opAlias ?? "").trim();
+      if (!name) {
+        return toolResult(errorAnswer("invalid_input", "Pass op: the operation name from summer_search, e.g. engine.add_node.", { next: { op: "ops.search" } }));
+      }
       const args = input ?? {};
       // A split operation's own tool name, or a mixed 3.x tool whose action picks the operation.
       const action = typeof args.action === "string" ? args.action : typeof args.mode === "string" ? args.mode : undefined;

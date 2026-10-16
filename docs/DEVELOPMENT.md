@@ -109,7 +109,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer <area> <action> [--<field> <value> …] [--input '<json>'] [--dry-run] [--idempotency-key <k>] [--wait] [--json]` | Run one operation of the catalog (`src/cli/commands/ops.ts`). Kebab-case actions and flags (`summer assets generate-image --aspect-ratio 16:9`); flags are typed from the input schema; objects go in `--input`. Engine and local operations run in this process; cloud operations run on the hosted server with the person's sign-in. `--wait` follows a job or an approval to the end; `--json` prints only the answer; exit 0 for any `ok` answer, 1 for an error. |
 | `summer whoami` | The signed-in account (`whoami`). |
 | `summer ops search <words…>` / `summer ops describe <op>` | Find operations, local and cloud, with their exact input; print one operation's wire form. Signed out, cloud operations come from the shipped catalog (`registry/operations/public-catalog.json`), marked needs sign-in. |
-| `summer mcp --toolsets legacy` | Also list every 3.x tool name (or `SUMMER_LEGACY_TOOLS=on`). It is on by itself while the installed skills are older than 4.0; `SUMMER_LEGACY_TOOLS=off` turns it off. |
+| `summer mcp --toolsets legacy` | Also list every 3.x tool name (or `SUMMER_LEGACY_TOOLS=on`). It is on by itself while the installed skills are older than 4.0; `SUMMER_LEGACY_TOOLS=off` turns it off. The first `summer mcp` start after an upgrade refreshes the installed Summer skill folders (`src/installer/skills-refresh.ts`), so that lasts one session. |
 | `summer help [command]` | Commander's built-in help. |
 
 Unknown commands exit 1. `summer` alone prints the intro.

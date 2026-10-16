@@ -1,7 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { getSkillRegistry } from "../core/skills-registry.js";
+import { refreshInstalledSkills } from "../installer/skills-refresh.js";
 import { writeSkillMarker } from "../installer/version-check.js";
 import { installedSkillsBefore4, legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
 
@@ -31,6 +33,16 @@ describe("the legacy toolset", () => {
     expect(installedSkillsBefore4([skillsDir("4.0.0"), skillsDir(null)])).toBe(false);
     expect(installedSkillsBefore4([skillsDir("4.1.0"), skillsDir("3.2.0")])).toBe(true);
     expect(installedSkillsBefore4([])).toBe(false);
+  });
+
+  it("turns off for upgraded skills once the first 4.x start refreshed them", () => {
+    const old = skillsDir("3.9.1");
+    const [skill] = getSkillRegistry();
+    mkdirSync(join(old.dir, skill.name));
+    writeFileSync(join(old.dir, skill.name, "SKILL.md"), "3.x text\n");
+    expect(installedSkillsBefore4([old])).toBe(true);
+    refreshInstalledSkills("4.1.1", { dirs: [old.dir] });
+    expect(installedSkillsBefore4([old])).toBe(false);
   });
 
   it("follows --toolsets first, then SUMMER_LEGACY_TOOLS, then the skills", () => {

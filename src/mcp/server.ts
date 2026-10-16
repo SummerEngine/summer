@@ -45,6 +45,7 @@ import { opForToolCall } from "../core/ops/contract.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
 import { legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
+import { refreshInstalledSkills, refreshNotice } from "../installer/skills-refresh.js";
 import {
   OUTPUT_CAPS,
   PROFILE_TOOL_LIMIT,
@@ -422,6 +423,8 @@ export interface CreateMcpServerOptions {
   cloud?: CloudCaller;
   /** v4 only: list every local 3.x name too (the legacy toolset, legacy-toolset.ts). */
   legacy?: boolean;
+  /** One line for this session only, after the instructions (e.g. the installed skills were refreshed). */
+  notice?: string | null;
 }
 
 const NO_CLOUD: CloudCaller = {
@@ -450,9 +453,10 @@ export function createMcpServer(
     },
     {
       instructions:
-        surface === "v4"
+        (surface === "v4"
           ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
-          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS,
+          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS) +
+        (options.notice ? ` ${options.notice} Tell the person once.` : ""),
     }
   );
 
@@ -553,6 +557,15 @@ export async function startMcpServer(
   });
 
   const surface = resolveSurface(options.surface);
+  // First start after an upgrade: bring the installed Summer skills to this
+  // version before the legacy decision below, which stays on while they are
+  // 3.x (and stays on whenever the config asks for it). Not under summer
+  // doctor's boot probe, whose session would swallow the one notice.
+  const skillsNotice = process.env.SUMMER_MCP_DOCTOR === "1" ? null : refreshNotice(refreshInstalledSkills(version));
+  if (skillsNotice) {
+    appendMcpLogEvent("mcp:skills_refreshed", { version, notice: skillsNotice });
+    process.stderr.write(`[summer-mcp] ${skillsNotice}\n`);
+  }
   // `legacy` is not a toolset of its own: it lists the 3.x names on the v4 surface.
   const toolsetList = takeLegacyToolset(options.toolsets ?? process.env.SUMMER_TOOLSETS);
   const legacy = surface === "v4" ? resolveLegacy(toolsetList.requested) : { on: false, reason: "off" as const };
@@ -567,7 +580,7 @@ export async function startMcpServer(
   // v4 runs cloud operations through the hosted mount below, once it exists.
   let hostedCall: CloudCaller["call"] | null = null;
   const cloud: CloudCaller = { call: (name, args) => (hostedCall ? hostedCall(name, args) : NO_CLOUD.call(name, args)) };
-  const { server, getRegisteredToolCount, files } = createMcpServer(selection, { surface, cloud, legacy: legacy.on });
+  const { server, getRegisteredToolCount, files } = createMcpServer(selection, { surface, cloud, legacy: legacy.on, notice: skillsNotice });
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

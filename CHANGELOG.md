@@ -2,6 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Upgrades refresh the installed skills.** The first `summer mcp` start after an upgrade brings the Summer skills already installed on the computer to the new version, then says so once: in the session's instructions, so the agent can tell the person, and on stderr. Before, skills from 3.x stayed until someone ran `summer setup --force`. While they stayed, the local server kept the legacy toolset on, and agents kept calling 3.x tools; that undid about half of 4.0's smaller tool list. Only Summer's own skill folders, in folders that carry Summer's version marker, are replaced. Nothing is added or removed, so an assets-only install stays assets-only. `--toolsets legacy` and `SUMMER_LEGACY_TOOLS=on` still keep the 3.x names listed.
+- **`summer_call` takes `name` as well as `op`.** Agents copied the `name` field that `summer_search` answers with and got an input error.
+
 ## [4.1.0] - 2026-10-16
 
 Summer without MCP: any agent runs Summer from its shell with the `summer` CLI and the `summer-cli` skill. Every operation is found without a sign-in, search understands plain English, and Summer installs with Homebrew.

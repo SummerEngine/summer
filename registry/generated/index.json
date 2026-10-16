@@ -2196,7 +2196,7 @@
       "id": "skill/make-content",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "91bfbf8dc3ad4e0eb65a6087e64b0cd15b8f5ef3bd457763074dd7016827d84b",
+      "content_hash": "a8d1ca7eaad7b5b3f74471bdf030779fb15ccc1df0dc0482f9af935ccf69b040",
       "summary": "Make a finished, postable video of your game, cut per platform and saved for the team's review.",
       "use_when": [
         "a developer asks for content for their game: a TikTok, Reels or Shorts clip, an X video, a trailer cut or a devlog",

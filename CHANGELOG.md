@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **New skill: `make-content`.** Ask your agent for content for your game and it makes a finished, postable video: it picks the format from what changed and the trends in the reference library, captures real gameplay, edits, cuts one version per platform (TikTok, Reels, Shorts, X, YouTube), checks it with a fresh critic against the game's best art, and saves it to the team's Review tab with `content.save_piece`.
+
 ## [4.3.0] - 2026-10-16
 
 Usage counts the `summer` CLI: each signed-in command sends one usage line, like an MCP tool call (never arguments, paths or project content), and a failed tool call names its error code.

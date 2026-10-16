@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- `multiplayer-publish` no longer says bundle upload is rolling out or tells agents to stop before uploading: Builds pages take the `.zip` bundle.
+
 ## [4.2.0] - 2026-10-16
 
 4.1.0 was not published to npm. 4.2.0 is the first release with everything in it (the [4.1.0] section below), plus these changes.

@@ -2371,7 +2371,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "98804c0d7cb5635fe435a01779305d460b57d55d2b178ed50faae4b74d8bf273",
+      "content_hash": "4c4cc828530cd8eca782ca72bc412ded78012ddf243698ebd170ca540e4680f5",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",

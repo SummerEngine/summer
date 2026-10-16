@@ -7,6 +7,6 @@
  */
 export const CLI_AREAS = [
   "team", "profile", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
-  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
+  "analytics", "experiments", "marketing", "content", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
   "plugins", "engine", "account",
 ] as const;

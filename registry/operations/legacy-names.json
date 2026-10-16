@@ -681,6 +681,41 @@
       "note": "ChatGPT panel name, frozen in /chatgpt",
       "op": "projects.create"
     },
+    "summer_marketing_content_feed": {
+      "kind": "same",
+      "note": "renamed before 4.0 shipped everywhere (marketing.content_feed); reads stored references only",
+      "op": "content.list_references"
+    },
+    "summer_marketing_content_videos": {
+      "kind": "same",
+      "note": "renamed (marketing.content_videos); a reference carries its videos, content.get_reference reads one",
+      "op": "content.list_references"
+    },
+    "summer_marketing_get_brand_pack": {
+      "kind": "same",
+      "note": "renamed (marketing.get_brand_pack)",
+      "op": "content.get_kit"
+    },
+    "summer_marketing_list_content_games": {
+      "kind": "same",
+      "note": "renamed (marketing.list_content_games)",
+      "op": "content.list_games"
+    },
+    "summer_marketing_make_video": {
+      "kind": "same",
+      "note": "renamed (marketing.make_video)",
+      "op": "content.make_video"
+    },
+    "summer_marketing_mark_posted": {
+      "kind": "same",
+      "note": "renamed (marketing.mark_posted)",
+      "op": "content.mark_posted"
+    },
+    "summer_marketing_save_brand_pack": {
+      "kind": "same",
+      "note": "renamed (marketing.save_brand_pack); a new game is content.create_game",
+      "op": "content.update_kit"
+    },
     "summer_measure": {
       "kind": "keep",
       "note": "",

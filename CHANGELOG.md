@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [4.2.0] - 2026-10-16
 
+4.1.0 was not published to npm. 4.2.0 is the first release with everything in it (the [4.1.0] section below), plus these changes.
+
 Upgrades keep agents current: the installed Summer skills refresh themselves after an upgrade, every Summer project gets an AGENTS.md, the CLI path can let Claude Code and Codex run read-only commands without asking, and Gemini CLI installs come with the skills.
 
 - **The CLI path can ask less.** `summer setup claude-code --cli --allow-rules --yes` lets Claude Code run read-only and dry-run `summer` commands without asking: a reviewed list of reads (`summer ops search`, `summer jobs wait`, `summer engine screenshot`, ...; `jobs wait` and `assets get` also save the files they name) and every spend only as a dry run (`summer assets generate-image --dry-run ...`, the flag right after the action). It is opt-in: the flag is in the command the person approves, setup prints every rule, and without `--yes` it writes nothing. The rules, for both `summer` and `npx -y summer-engine@latest`, go into `permissions.allow` in `~/.claude/settings.json` (`.claude/settings.local.json` with `--scope project`); nothing else in the file changes. `summer setup codex --cli --allow-rules --yes` writes the same as Summer's own Codex rules file, `~/.codex/rules/summer.rules`. `--remove-allow-rules` takes exactly these rules out again. Changes, publishing, prices, deletes, messages and `engine capture-gameplay` (it runs the project's own code) still ask. A call with `--dry-run` is now a dry run whatever its input says (`--no-dry-run` or `"dryRun": false` in `--input` no longer undo it).
@@ -18,6 +20,8 @@ Upgrades keep agents current: the installed Summer skills refresh themselves aft
 - **`summer_call` on the local server takes `name` as well as `op`.** Agents copied the `name` field that `summer_search` answers with and got an input error. When both are given and differ, it answers `invalid_input`.
 
 ## [4.1.0] - 2026-10-16
+
+Not published to npm: these changes ship in 4.2.0.
 
 Summer without MCP: any agent runs Summer from its shell with the `summer` CLI and the `summer-cli` skill. Every operation is found without a sign-in, search understands plain English, and Summer installs with Homebrew.
 

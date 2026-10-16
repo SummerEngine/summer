@@ -435,3 +435,15 @@ here would have caught:
 - [ ] 9. For an iPhone or Android bundle, `summerVersion` has the current Summer release's MAJOR.MINOR.
 - [ ] 10. A signed-in player played the released version for 3 minutes in each Summer Games app, through an analytics event, without the game closing or being signed out (or it is reported as not run).
 - [ ] One line per check reported to the user before anything is changed.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_export_game` | `summer engine export-game` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_read_file` | `summer engine read-file` |
+<!-- /shell-commands -->

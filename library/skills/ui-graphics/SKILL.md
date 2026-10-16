@@ -231,3 +231,20 @@ After the UI graphic is wired:
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
 - `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_image`, `summer_assets_generate_image` | `summer assets generate-image` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

@@ -193,3 +193,26 @@ Every failure leaves the project untouched except `import_failed` / `instantiate
 - `environment-kit`, `prop-model`, `character-model` — the generation and library specialists fabrication defers to.
 - `scene-scripting` — in-scene geometry, placement loops, and wrapping fabricated pieces in bodies and collisions.
 - `verifying-scenes` and `verification-before-completion` — the evidence discipline after import.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.search` | `summer assets search` |
+| `summer_fabricate_3d` | `summer engine fabricate-3d` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_import_asset` | `summer engine import-asset` |
+| `summer_import_hdri` | `summer engine import-hdri` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_remove_node` | `summer engine remove-node` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+<!-- /shell-commands -->

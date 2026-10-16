@@ -348,3 +348,20 @@ If the user asks for a "third-person FPS", flag the contradiction: FPS = first-p
 - `gdscript-patterns` — once movement grows past this skeleton (slide, grapple, hover), refactor into a state machine instead of stuffing more branches into `_physics_process`.
 - `character-movement` — 2D and third-person controllers.
 - `game-feel` — camera shake and hit feedback.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

@@ -229,3 +229,19 @@ on them.
 - `summer-match-results` — concluding matches, which moves ratings
 - `summer-matchmaking` — declaring rated queues and teams
 - `summer-player-data` — saving per-player progress that isn't a ranking
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_replace_text` | `summer engine replace-text` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

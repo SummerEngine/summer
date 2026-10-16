@@ -375,6 +375,9 @@ export interface RecordedInstall {
   /** Where the answer came from: the agent's config file, or — when it has
    *  no readable Summer entry — the nature of the CLI running this check. */
   source: "agent-config" | "running-cli";
+  /** The agent's config lists no summer-engine server (`setup --cli`, or skills
+   *  installed alone): the refresh keeps it that way. */
+  cliOnly?: boolean;
 }
 
 /** An npm dist-tag (`latest`, `next`) or an exact version (`3.9.1`). */
@@ -562,9 +565,16 @@ async function resolveRecordedInstall(
  * The command that refreshes an agent's skills without changing how its MCP
  * entry was recorded: the local-dev form re-links the same checkout
  * (`setup --local-dev --force` re-copies the checkout's skills); the npx form
- * is for installs that already run the published package.
+ * is for installs that already run the published package. An agent with no
+ * summer-engine entry refreshes with `--cli`, so the refresh adds no MCP server.
  */
 export function skillsRefreshCommand(agent: string, install: RecordedInstall | null, channel: RefreshChannel = "latest"): string {
+  if (install?.cliOnly) {
+    // No MCP entry to keep: --local-dev and --channel shape only that entry.
+    return install.localDev && install.cliPath
+      ? `node ${install.cliPath} setup ${agent} --cli --yes --force`
+      : `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --cli --yes --force`;
+  }
   if (install?.localDev && install.cliPath) {
     return `node ${install.cliPath} setup ${agent} --local-dev --yes --force`;
   }
@@ -676,16 +686,16 @@ export function runningCliIsCheckout(packageRoot: string = PACKAGE_ROOT): boolea
  */
 export async function detectRecordedInstall(agent: string): Promise<RecordedInstall | null> {
   const supported = parseAgent(agent);
+  let cliOnly = false;
   if (supported) {
     try {
       const target = await configureAgentMcp({ agent: supported, scope: "user", print: true });
-      if (existsSync(target.path)) {
-        const recorded = readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format);
-        if (recorded) {
-          const localDev = isLocalDevServerConfig(recorded);
-          return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
-        }
+      const recorded = existsSync(target.path) ? readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format) : null;
+      if (recorded) {
+        const localDev = isLocalDevServerConfig(recorded);
+        return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
       }
+      cliOnly = true;
     } catch {
       // Unreadable config: fall through to the running-CLI answer.
     }
@@ -695,6 +705,7 @@ export async function detectRecordedInstall(agent: string): Promise<RecordedInst
     localDev: checkout,
     cliPath: checkout ? [PACKAGE_ROOT, "dist", "bin", "summer.js"].join(sep) : null,
     source: "running-cli",
+    ...(cliOnly ? { cliOnly } : {}),
   };
 }
 

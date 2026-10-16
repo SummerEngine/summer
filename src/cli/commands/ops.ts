@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { CLI_AREAS } from "../../core/ops/areas.js";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
 import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
@@ -20,12 +21,7 @@ import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../cor
  * through its summer_call, with the person's sign-in.
  */
 
-/** Areas with operations today; CLI command words stay out of this list. */
-export const CLI_AREAS = [
-  "team", "profile", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
-  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
-  "plugins", "engine", "account",
-] as const;
+export { CLI_AREAS };
 
 type JsonSchema = { type?: string | string[]; properties?: Record<string, JsonSchema>; items?: JsonSchema };
 

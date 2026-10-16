@@ -61,3 +61,18 @@ The editor owns its own table of destinations (the `Navigate` op) and tells the 
 - Opening the scene in the editor **before** the change landed ("show me" comes after the mutation and its screenshot).
 - Guessing a `gameId`. Open `my-games` and let the user pick, or read the id from a URL they gave you.
 - Describing a page you did not open. If `ok` is false, the user saw nothing.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `store.publish` | `summer store publish` |
+| `studio.open`, `summer_open` | `summer studio open` |
+<!-- /shell-commands -->

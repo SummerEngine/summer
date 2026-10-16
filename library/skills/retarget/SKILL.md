@@ -218,3 +218,23 @@ The upstream engine docs cover this under "Retargeting 3D Skeletons".
 - `asset-strategy` — getting characters rigged in the first place.
 - `animation-tree` — wire the clips into a state machine.
 - `procedural-animation` — fix proportional mismatches with foot IK.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_motion`, `summer_assets_generate_motion` | `summer assets generate-motion` |
+| `assets.get` | `summer assets get` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_jobs_wait` | `summer jobs wait` |
+<!-- /shell-commands -->

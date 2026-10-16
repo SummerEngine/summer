@@ -105,6 +105,14 @@ What it checks:
     (`call-examples.ts`). Examples with `...` and forms that do not parse are
     skipped and counted; tools without a descriptor are skipped.
 
+13. Shell commands: every skill that names an MCP tool or an operation ends
+    with the "From a shell" section `shell-commands.ts` renders from the
+    operation catalog (`registry/operations/legacy-names.json` and the 4.0
+    rule `summer_<area>_<action>` = `area.action`): each name with its
+    `summer <area> <action>` command. A stale or missing section fails;
+    `npm run generate:registry` writes it. Trees without the catalog (test
+    fixtures) are not checked.
+
 Exit codes: 0 clean (including when `library/` does not exist), 1 on any
 violation; `WARN` lines never change the exit code. Requires Node >= 22.18
 (native TypeScript type stripping).

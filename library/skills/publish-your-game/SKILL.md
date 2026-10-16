@@ -33,3 +33,30 @@ A call written `area.action({...})` is the tool `summer_area_action` when your c
 The one rule to keep even before you load it: Asking does not publish. `store.publish` returns an approval link; only the owner's click sends the game to review, and review comes before live.
 
 After the review: when `store.status` says `review.needsChanges`, fix every point in `review.feedback`, then call `store.publish` again with a new `idempotencyKey`; the owner approves the resubmission. If there is no written feedback, say so and ask the owner instead of guessing. The game is not live until Summer approves it.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_export_game` | `summer engine export-game` |
+| `games.create` | `summer games create` |
+| `games.list` | `summer games list` |
+| `jobs.wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+| `store.get_listing` | `summer store get-listing` |
+| `store.publish` | `summer store publish` |
+| `store.release` | `summer store release` |
+| `store.set_art` | `summer store set-art` |
+| `store.set_sound` | `summer store set-sound` |
+| `store.set_trailer` | `summer store set-trailer` |
+| `store.status` | `summer store status` |
+| `store.update_listing` | `summer store update-listing` |
+| `store.upload_begin` | `summer store upload-begin` |
+| `store.upload_complete` | `summer store upload-complete` |
+| `store.upload_file` | `summer store upload-file` |
+| `store.upload_sign_parts` | `summer store upload-sign-parts` |
+<!-- /shell-commands -->

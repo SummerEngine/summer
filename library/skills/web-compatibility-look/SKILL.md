@@ -60,3 +60,23 @@ Glow and some environment adjustments depend on the engine version. If you use t
 ## Verify
 
 Run the game, take one screenshot in the web preview, and compare it to the palette and the look. A grey, blank or default-looking capture means the look is not there yet, or a Forward+-only feature was used: fix it before moving on.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

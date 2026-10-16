@@ -324,3 +324,27 @@ Do not put player controls into the generation pipeline or generic character imp
 - Diagonal speed-up = you forgot to normalize the input vector.
 - Mouse captured with no release traps the user. Always pair
   `Input.MOUSE_MODE_CAPTURED` with a `ui_cancel` handler that sets it VISIBLE.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_replace_text` | `summer engine replace-text` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

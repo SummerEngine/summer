@@ -146,3 +146,25 @@ Read `determinism.seed_scope` on the play result and believe it. Pinned: the glo
 - `verification-before-completion` — the code layer that must be green before any of this.
 - `debugging-game-feel` — when the feature works but feels wrong.
 - `investigating-bugs` — root-causing a reproducible bug once a recording reproduces it.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_game_control` | `summer engine game-control` |
+| `summer_game_input` | `summer engine game-input` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `summer_runtime_animate` | `summer engine runtime-animate` |
+| `summer_runtime_call` | `summer engine runtime-call` |
+| `summer_runtime_set` | `summer engine runtime-set` |
+| `summer_runtime_spawn` | `summer engine runtime-spawn` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

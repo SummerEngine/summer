@@ -236,3 +236,29 @@ No template — this is a workflow. Performance tuning is project-specific by de
 - `debug` — bug triage (related but different)
 - `diagnosing-perf-regressions` — when it *got* slow rather than always was
 - `3d-lighting` — light setup and bake decisions
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_clear_console` | `summer engine clear-console` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

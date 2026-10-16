@@ -247,3 +247,26 @@ After the animation is wired:
 - `generate-motion` — 3D-skeletal counterpart.
 - `sound-effect` — frame-synced SFX.
 - `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_image`, `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.get` | `summer assets get` |
+| `summer_assets_search` | `summer assets search` |
+| `assets.slice_sheet`, `summer_assets_slice_sheet` | `summer assets slice-sheet` |
+| `summer_docs_read` | `summer docs read` |
+| `docs.workflows` | `summer docs workflows` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_import_from_url_batch` | `summer engine import-from-url-batch` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

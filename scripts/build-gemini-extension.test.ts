@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,7 +31,21 @@ describe("the Gemini extension release asset", () => {
     const manifest = JSON.parse(readFileSync(join(dir, "gemini-extension.json"), "utf8"));
     expect(manifest).toMatchObject({ name: "summer", contextFileName: "GEMINI.md", mcpServers: { "summer-engine": expect.any(Object) } });
     expect(manifest).not.toHaveProperty("skills");
+    expect(manifest).not.toHaveProperty("settings");
     for (const file of ["GEMINI.md", "AGENTS.md", "LICENSE"]) expect(existsSync(join(dir, file)), file).toBe(true);
+  });
+
+  it("packs only ./library/skills/<slug>/ entries, and refuses a manifest without skills", () => {
+    for (const [skills, message] of [
+      [["./library/skills/../../.git/"], /not a \.\/library\/skills\/<slug>\/ entry/],
+      [["./.git/"], /not a \.\/library\/skills\/<slug>\/ entry/],
+      [[], /lists no skills/],
+    ] as const) {
+      const root = scratch();
+      for (const file of ["GEMINI.md", "AGENTS.md", "LICENSE"]) cpSync(join(repoRoot, file), join(root, file));
+      writeFileSync(join(root, "gemini-extension.json"), JSON.stringify({ name: "summer", skills }));
+      expect(() => buildGeminiExtension(root, scratch()), JSON.stringify(skills)).toThrow(message);
+    }
   });
 
   it("is one archive with one top-level folder, the shape Gemini unpacks", () => {

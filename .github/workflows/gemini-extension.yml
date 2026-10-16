@@ -24,14 +24,19 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       # Gemini takes a release's asset only when it is the only one: a release that
       # already has it is left alone, one with other assets is an error.
       - name: Check the release
         id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::\"$TAG\" is not a release tag such as v4.1.0."
+            exit 1
+          fi
           assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
           if printf '%s\n' "$assets" | grep -qx "summer-gemini-extension.tar.gz"; then
             echo "$TAG already has summer-gemini-extension.tar.gz; nothing to do."
@@ -43,11 +48,13 @@ jobs:
 
       # The script from this workflow's commit, every packaged file from the tag
       # itself, so a release made before the script existed packages as it was.
+      # Neither checkout keeps the token in .git/config.
       - name: Checkout the script
         if: steps.release.outputs.skip != 'true'
         uses: actions/checkout@v5
         with:
           path: tools
+          persist-credentials: false
 
       - name: Checkout the release tag
         if: steps.release.outputs.skip != 'true'
@@ -55,6 +62,7 @@ jobs:
         with:
           ref: ${{ env.TAG }}
           path: release
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         if: steps.release.outputs.skip != 'true'
@@ -67,4 +75,6 @@ jobs:
 
       - name: Attach it to the release
         if: steps.release.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" "$RUNNER_TEMP/gemini/summer-gemini-extension.tar.gz" --repo "$GITHUB_REPOSITORY"

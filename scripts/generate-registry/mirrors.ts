@@ -2,7 +2,7 @@
  * plugins/claude/: the Claude plugin for Anthropic's plugin directory, from
  * its own small folder. The directory wants 512 files or fewer, no symlinks,
  * no lockfile and every npx launcher pinned to an exact version, so this is
- * a copy of the bundled skills, /summer:start, the icon and the license, with
+ * a copy of the bundled skills, /summer:start and /summer, the icon and the license, with
  * `summer-engine@latest` pinned to this version in every text file. Its
  * manifest is generated with the others (manifests.ts, targets.ts).
  *
@@ -25,6 +25,7 @@ function filesUnder(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const abs = path.join(dir, entry.name);
     if (entry.name === ".DS_Store") return [];
+    if (entry.isSymbolicLink()) throw new Error(`${abs} is a symlink; plugins/claude copies real files only (Anthropic's directory refuses links).`);
     return entry.isDirectory() ? filesUnder(abs) : entry.isFile() ? [abs] : [];
   });
 }
@@ -44,6 +45,8 @@ export function mirrorFiles(rootDir: string, skillSlugs: string[], version: stri
   }
   for (const [from, to] of [
     ["commands/start.md", "plugins/claude/commands/start.md"],
+    // start.md hands over to /summer.
+    ["commands/summer.md", "plugins/claude/commands/summer.md"],
     ["assets/icon.png", "plugins/claude/assets/icon.png"],
     ["LICENSE", "plugins/claude/LICENSE"],
   ] as const) {

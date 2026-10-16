@@ -498,6 +498,7 @@ describe("plugins/claude/: the Claude plugin for Anthropic's directory", () => {
       if (!rel.endsWith(".png")) expect(content.toString("utf8"), rel).not.toContain("summer-engine@latest");
     }
     expect(files.has("plugins/claude/commands/start.md")).toBe(true);
+    expect(files.has("plugins/claude/commands/summer.md")).toBe(true);
     expect(files.get("plugins/claude/skills/summer-cli/SKILL.md")?.toString("utf8")).toContain(`summer-engine@${version}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, CLAUDE_DIRECTORY_MANIFEST), "utf8"));
     expect(manifest.mcpServers["summer-engine"].args).toEqual(["-y", `summer-engine@${version}`, "mcp"]);

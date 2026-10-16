@@ -9,7 +9,8 @@
  * name by the naming rule (`summer_<area>_<action>` runs `area.action`),
  * and an operation written in code (`assets.generate_image`) counts when the
  * catalog knows it. validate-library fails when a SKILL.md section is not the
- * one rendered here; `npm run generate:registry` rewrites it.
+ * one rendered here, and when a skill names a 4.0 tool whose operation the
+ * catalog does not have; `npm run generate:registry` rewrites the section.
  *
  * Names come from every markdown file in the skill folder (SKILL.md and its
  * references/); the section goes at the end of SKILL.md. A root without
@@ -18,7 +19,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { CLI_AREAS } from "../../src/core/ops/areas.ts";
+import { CLI_AREAS, isLocalOp } from "../../src/core/ops/areas.ts";
 
 export const SHELL_SECTION_START =
   "<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->";
@@ -28,6 +29,8 @@ const LEGACY_NAMES = path.join("registry", "operations", "legacy-names.json");
 /** The skill every section points at; it teaches the commands itself, so it has no section. */
 export const SHELL_GUIDE_SKILL = "summer-cli";
 const AREAS: ReadonlySet<string> = new Set(CLI_AREAS);
+/** 4.0 operations no 3.x tool became, so legacy-names.json has no row for them. */
+export const V4_ONLY_OPS: readonly string[] = ["jobs.wait"];
 
 const TOOL_NAME = /\bsummer_[a-z0-9_]*[a-z0-9]\b/g;
 /** An operation in code: `assets.generate_image` or `assets.search({ ... })`. */
@@ -37,9 +40,12 @@ const OP_FIELD = /\bop"?\s*:\s*"([a-z]+\.[a-z][a-z0-9_]*)"/g;
 const V4_TOOL = /^summer_([a-z]+)_([a-z][a-z0-9_]*)$/;
 
 export interface ShellCatalog {
-  /** 3.x tool name -> what it runs, one per action of a split tool: `area.action`, plus a fixed input as flags. */
+  /**
+   * 3.x tool name -> what it runs, one per action of a split tool: `area.action`
+   * plus a fixed input as flags, or `tool <slug>` for the 3.x tool itself.
+   */
   tools: Map<string, string[]>;
-  /** Operations named in prose that get a command: the catalog's, and those a 4.0 tool name in the library runs. */
+  /** The operations the catalog has: legacy-names.json and V4_ONLY_OPS. */
   ops: Set<string>;
 }
 
@@ -51,12 +57,15 @@ export interface ShellRow {
 
 type LegacyRow = { op: string; note?: string };
 
-/** A merged 3.x tool whose note fixes one input (`docs.read {id: reference/agent-playbook}`) runs with that flag. */
+/** A merged 3.x tool whose note fixes one input (`assets.search {scope: mine}`) runs with that flag. */
 const FIXED_INPUT = /^([a-z]+\.[a-z][a-z0-9_]*)\s*\{\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*([\w./:-]+)\s*\}$/;
 
-function callOf(row: LegacyRow): string {
+function callOf(tool: string, row: LegacyRow): string {
   const fixed = FIXED_INPUT.exec(row.note?.trim() ?? "");
-  return fixed && fixed[1] === row.op ? `${row.op} --${kebab(fixed[2]!)} ${fixed[3]}` : row.op;
+  if (!fixed || fixed[1] !== row.op) return row.op;
+  // A local operation checks its input here, and the note's may not be one it
+  // takes (no library entry is reference/agent-playbook): run the 3.x tool itself.
+  return isLocalOp(row.op) ? `tool ${tool.slice("summer_".length).replace(/_/g, "-")}` : `${row.op} --${kebab(fixed[2]!)} ${fixed[3]}`;
 }
 
 const kebab = (name: string) => name.replace(/_/g, "-").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
@@ -70,10 +79,16 @@ export function loadShellCatalog(rootDir: string): ShellCatalog | null {
   for (const [name, row] of Object.entries(names)) {
     const tool = name.split("#")[0]!;
     const calls = tools.get(tool) ?? [];
-    if (!calls.includes(callOf(row))) calls.push(callOf(row));
+    if (!calls.includes(callOf(tool, row))) calls.push(callOf(tool, row));
     tools.set(tool, calls);
   }
-  return { tools, ops: new Set(Object.values(names).map((row) => row.op)) };
+  return { tools, ops: new Set([...Object.values(names).map((row) => row.op), ...V4_ONLY_OPS]) };
+}
+
+/** The operation a 4.0 tool name runs (`summer_assets_get` runs `assets.get`), known to the catalog or not; null for other names. */
+function v4OpOf(name: string): string | null {
+  const v4 = V4_TOOL.exec(name);
+  return v4 && AREAS.has(v4[1]!) ? `${v4[1]}.${v4[2]}` : null;
 }
 
 /** What an MCP tool name runs (`area.action`, maybe with flags); empty for summer_call and for names that are no tool. */
@@ -82,12 +97,19 @@ export function callsOfTool(name: string, catalog: ShellCatalog): string[] {
   if (name === "summer_whoami") return ["whoami"];
   const legacy = catalog.tools.get(name);
   if (legacy) return legacy;
-  const v4 = V4_TOOL.exec(name);
-  return v4 && AREAS.has(v4[1]!) ? [`${v4[1]}.${v4[2]}`] : [];
+  const op = v4OpOf(name);
+  return op && catalog.ops.has(op) ? [op] : [];
+}
+
+/** 4.0 tool names in the texts whose operation the catalog does not have: a typo, or an operation missing from it. */
+export function unknownTools(texts: readonly string[], catalog: ShellCatalog): string[] {
+  const names = texts.flatMap((text) => [...withoutShellSection(text).matchAll(TOOL_NAME)].map((match) => match[0]));
+  return [...new Set(names)].filter((name) => !catalog.tools.has(name) && v4OpOf(name) !== null && !catalog.ops.has(v4OpOf(name)!)).sort();
 }
 
 /** `assets.generate_image` -> `summer assets generate-image` (flags after the operation stay); null when no command runs it. */
 export function shellCommandOf(call: string): string | null {
+  if (call.startsWith("tool ")) return `summer ${call}`;
   const [op, ...flags] = call.split(" ");
   const tail = flags.length ? ` ${flags.join(" ")}` : "";
   if (op === "whoami") return `summer whoami${tail}`;
@@ -105,14 +127,6 @@ export function withoutShellSection(markdown: string): string {
   const rest = end === -1 ? "" : markdown.slice(end + SHELL_SECTION_END.length).replace(/^\n+/, "");
   const head = markdown.slice(0, start).trimEnd();
   return rest ? `${head}\n\n${rest}` : `${head}\n`;
-}
-
-/** Operations a 4.0 tool name in this text runs: they are known operations even where legacy-names.json has no row. */
-export function v4OpsIn(markdown: string): string[] {
-  return [...markdown.matchAll(TOOL_NAME)]
-    .map((match) => V4_TOOL.exec(match[0]))
-    .filter((v4): v4 is RegExpExecArray => v4 !== null && AREAS.has(v4[1]!))
-    .map((v4) => `${v4[1]}.${v4[2]}`);
 }
 
 /** One row per command set: the tools and operations the texts name, with their commands. */
@@ -146,7 +160,7 @@ export function renderShellSection(rows: readonly ShellRow[]): string {
     SHELL_SECTION_START,
     "## From a shell",
     "",
-    "No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.",
+    "No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.",
     "",
     "| In this skill | Command |",
     "|---|---|",
@@ -186,20 +200,20 @@ export interface ShellSectionPlan {
   file: string;
   current: string;
   expected: string;
+  /** 4.0 tool names the skill uses that the catalog does not have (unknownTools). */
+  unknown: string[];
 }
 
 /** Every SKILL.md with the text it should have; empty without a catalog. */
 export function planShellSections(rootDir: string): ShellSectionPlan[] {
   const catalog = loadShellCatalog(rootDir);
   if (!catalog) return [];
-  const dirs = skillDirs(rootDir);
-  const texts = new Map(dirs.map((dir) => [dir, markdownFiles(dir).map((file) => fs.readFileSync(file, "utf8"))]));
-  const known: ShellCatalog = { tools: catalog.tools, ops: new Set([...catalog.ops, ...[...texts.values()].flat().flatMap(v4OpsIn)]) };
-  return dirs.map((dir) => {
+  return skillDirs(rootDir).map((dir) => {
+    const texts = markdownFiles(dir).map((file) => fs.readFileSync(file, "utf8"));
     const file = path.join(dir, "SKILL.md");
     const current = fs.readFileSync(file, "utf8");
-    const rows = path.basename(dir) === SHELL_GUIDE_SKILL ? [] : shellRows(texts.get(dir)!, known);
-    return { file: path.relative(rootDir, file).split(path.sep).join("/"), current, expected: withShellSection(current, rows) };
+    const rows = path.basename(dir) === SHELL_GUIDE_SKILL ? [] : shellRows(texts, catalog);
+    return { file: path.relative(rootDir, file).split(path.sep).join("/"), current, expected: withShellSection(current, rows), unknown: unknownTools(texts, catalog) };
   });
 }
 

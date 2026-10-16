@@ -14,8 +14,8 @@ import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilit
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
-import { readRecordedMcpServer, resolveDefaultChannel } from "../../installer/version-check.js";
-import { agentLabel, agentSpec, defaultPathContext } from "../../installer/agent-table.js";
+import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
+import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
 import { addAllowRules, allowRulesPath, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
 
@@ -187,12 +187,8 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
   if (mcpFlags.length > 0) {
     throw new Error(`${mcpFlags.join(", ")} sets up the MCP entry, and --cli writes none. Leave ${mcpFlags.length === 1 ? "it" : "them"} out, or leave out --cli.`);
   }
-  if (!spec.skills) {
-    throw new Error(`${spec.label} has no skills folder, so --cli has nothing to install. Run summer setup ${agent} without --cli for the MCP server.`);
-  }
-  if (spec.format === "json-gemini") {
-    throw new Error(`Gemini CLI loads Summer's skills only through its extension, which runs the MCP server. Run summer setup ${agent} without --cli, or use antigravity.`);
-  }
+  const refusal = cliSetupRefusal(spec);
+  if (refusal) throw new Error(refusal);
 
   const warnings = spec.status === "legacy" && spec.legacyNote ? [spec.legacyNote] : [];
   const existing = await recordedMcpEntry(agent, scope);
@@ -209,6 +205,7 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     recommended: Boolean(opts.recommended),
     stableOnly: Boolean(opts.stableOnly),
     assetsOnly: Boolean(opts.assetsOnly),
+    commands: false,
   });
   // Read-only and dry-run summer commands run without asking, where the agent has clean allow rules.
   let allowRules: AllowRulesResult | null = null;
@@ -261,7 +258,7 @@ async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Prom
   try {
     const target = await configureAgentMcp({ agent, scope, print: true });
     if (!existsSync(target.path)) return null;
-    return readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format) ? target.path : null;
+    return listsSummerEngine(readFileSync(target.path, "utf-8"), target.format) ? target.path : null;
   } catch {
     return null;
   }

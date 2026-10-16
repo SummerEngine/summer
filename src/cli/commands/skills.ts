@@ -66,6 +66,8 @@ interface InstallOptions {
   asClaudeSkill?: boolean;
   asCursorSkill?: boolean;
   force?: boolean;
+  /** false with --no-commands: no Claude Code slash commands. */
+  commands?: boolean;
 }
 
 interface InstallResult {
@@ -402,6 +404,7 @@ skillsCommand
     "--force",
     "Overwrite existing skill files (wipe stale skill dirs before copying)"
   )
+  .option("--no-commands", "Claude Code: skip the slash commands (/summer, /gameskill, /start), which start work through the MCP tools")
   .action((name: string | undefined, opts: InstallOptions) => {
     const agent = orDie(() => resolveSkillAgent(opts));
     const scope = orDie(() => resolveSkillScope(agent, opts));
@@ -459,9 +462,10 @@ skillsCommand
 
     // Claude Code: also install slash commands (`commands/*.md`)
     // into `~/.claude/commands/`. Other agents don't have an equivalent today.
-    // The commands start and route game work in the engine, so the asset
-    // skills (--assets, setup --assets-only) leave them out.
-    if (agent === "claude-code" && !opts.assets) {
+    // The commands start and route game work in the engine through the MCP
+    // tools, so the asset skills (--assets, setup --assets-only) and a setup
+    // without MCP (--no-commands, setup --cli) leave them out.
+    if (agent === "claude-code" && !opts.assets && opts.commands !== false) {
       const commandResults = installClaudeCommands(scope, Boolean(opts.force));
       for (const r of commandResults) {
         console.log(`  ${r.action} command ${r.name} -> ${r.path}`);

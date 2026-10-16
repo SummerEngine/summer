@@ -46,6 +46,8 @@ export interface SkillSetupOptions {
   stableOnly?: boolean;
   /** Install only the asset skills (`setup --assets-only`). */
   assetsOnly?: boolean;
+  /** false: no Claude Code slash commands (`setup --cli`; they start work through the MCP tools). */
+  commands?: boolean;
 }
 
 /**
@@ -95,6 +97,7 @@ export function setupSkills(
     recommended,
     stableOnly,
     assetsOnly,
+    commands: options.commands !== false,
   });
 
   if (!invocation) {
@@ -197,7 +200,7 @@ export function tallyInstallOutput(stdout: string): {
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean; assetsOnly: boolean }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean; assetsOnly: boolean; commands: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -216,6 +219,7 @@ function skillInstallInvocation(
   ];
   if (opts.force) baseArgs.push("--force");
   if (opts.stableOnly) baseArgs.push("--stable-only");
+  if (!opts.commands) baseArgs.push("--no-commands");
   return {
     command,
     args: [...prefix, ...baseArgs],

@@ -1,4 +1,4 @@
-# Summer: MCP server, CLI and skills for Summer Engine
+# Summer Engine: MCP server, CLI and skills
 
 <div align="center">
 

@@ -66,6 +66,7 @@ async function mcpConfig(agent: SupportedAgent): Promise<{ path: string; text: s
 
 const skillFile = (agent: SupportedAgent, skill: string) => join(resolveInstallLocation(agent, "user").path, skill, "SKILL.md");
 
+// Each test installs every skill for an agent into a scratch HOME: on a busy disk that takes far longer than the 20 s default.
 describe("summer setup --cli: the skills and no MCP server", () => {
   it.each<SupportedAgent>(["claude-code", "codex", "cursor", "github-copilot", "goose", "mistral-vibe"])(
     "%s: writes the skills, summer-cli among them, and no MCP entry",
@@ -151,4 +152,4 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     expect(help).toContain("--cli");
     expect(help).toContain("--no-mcp");
   });
-});
+}, 120_000);

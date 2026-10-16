@@ -4,7 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- **New skill: `make-content`.** Ask your agent for content for your game and it makes a finished, postable video: it picks the format from what changed and the trends in the reference library, captures real gameplay, edits, cuts one version per platform (TikTok, Reels, Shorts, X, YouTube), checks it with a fresh critic against the game's best art, and saves it to the team's Review tab with `content.save_piece`.
+- **New skill: `make-content`.** Ask your agent for content for your game and it makes a finished, postable video: it picks one real reference video from the reference library and copies it beat for beat with your game (same cuts, text pattern and voice structure), captures real gameplay, cuts one version per platform (TikTok, Reels, Shorts, X, YouTube), checks it side by side with the reference and with a fresh critic, and saves it to the team's Review tab with `content.save_piece`. It revises pieces the team asked to change without being told.
 
 ## [4.3.0] - 2026-10-16
 

@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a9312ef0240d688e2754cc88840bca9ffa835156abbaf1c04ff391ca3372679e",
+      "content_hash": "f4c03d506d19aec154c2c3dde2c7f4fb9712200934719aa1368e403588aee587",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -172,7 +172,7 @@
       "id": "reference/product-map",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "7834e717920def6e56cb3c0b67dcc56108f69522c6c2cd8df496877f9e9ab99e",
+      "content_hash": "8f3539b7f42399dded4e3ede0c680f64cfb3e0ac134469da0eb265890a3c786f",
       "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
       "use_when": [
         "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
@@ -388,43 +388,6 @@
       },
       "status": "preview",
       "recommended": true
-    },
-    {
-      "id": "skill/ai-characters-in-games",
-      "kind": "skill",
-      "version": "0.3.0",
-      "content_hash": "91122b658d275dc831a2fee7e993215eb3ba0635f790ee2ce0e41dc388a7ac1a",
-      "summary": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "use_when": [
-        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
-        "about to put a model name, a provider SDK or a provider key into a game project",
-        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
-        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "ai",
-          "npc"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/design-npc",
-          "skill/multiplayer-state"
-        ]
-      },
-      "status": "preview",
-      "recommended": false
     },
     {
       "id": "skill/ambient-bed",
@@ -1470,7 +1433,7 @@
       "id": "skill/design-npc",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "cab447be48c966ee6770dcc01a0b8d316e84fda9066b717e1124d489f44fc1fd",
+      "content_hash": "ada94e5179829216519707a7f22aeda4ec06fef8c22a3fcf5524752826011ad7",
       "summary": "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -4132,6 +4095,51 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-router",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "d87bcf3c78518edcff1b30a2f3b573bd2f582d3b9b1c6facd34d030127be54da",
+      "summary": "Summer Router: AI characters with voice and game tools, speech and images.",
+      "use_when": [
+        "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",
+        "a voice NPC that does things in the game through tool calls, for example opening a gate when the player says the password",
+        "players talk to a character with their own voice and the character talks back",
+        "the player speaks to an NPC through the microphone and the NPC answers out loud",
+        "speech, transcription or image generation while the game runs",
+        "about to put a model name, a provider SDK or an API key into a game project",
+        "running summer router (setup, character add, push, test, limits, logs, doctor) or handling Summer Router errors such as limit_reached, router_disabled or tool_unhandled"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch"
+        ],
+        "domains": [
+          "ai",
+          "npc",
+          "audio"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/voice-and-mic-permissions",
+          "skill/design-npc",
+          "skill/voice-line",
+          "skill/multiplayer-state"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.0.0",
@@ -4992,6 +5000,46 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/voice-and-mic-permissions",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "119b66f0beefb35b7ff6e02fd3003d51c9fe92ce685952ede3291c69c469c903",
+      "summary": "Mic in games: ask from a talk tap, keep a text path, no OS prompts.",
+      "use_when": [
+        "adding a talking AI character the player speaks to",
+        "voice commands, shout or sing mechanics, or a mic level meter",
+        "any AudioStreamMicrophone or AudioEffectCapture use",
+        "\"the mic does not work\", \"the game asks for the mic at launch\", \"players denied the mic\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch"
+        ],
+        "domains": [
+          "audio",
+          "ai"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router",
+          "skill/voice-line",
+          "skill/design-npc",
+          "skill/export-and-ship"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -9193,6 +9241,234 @@
       "status": "stable",
       "mcp_tool_name": "summer_replace_text",
       "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-add-character",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f1f78e71813ac7f669632f2296489263e4e1d415a8f08d8911cb372e1ee183e8",
+      "summary": "Write ai/characters/<id>.json, a Summer Router character, from a template, with the GDScript its tools need.",
+      "use_when": [
+        "adding a talking AI character, voice NPC, shopkeeper or companion to a Summer game",
+        "\"add a guard who opens the gate when the player says the password\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_add_character",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-check",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "a064f08481492741d3d8e43451f49285e76c9329fbfe051ab9dc5fd6a9fcc9a9",
+      "summary": "Check the Summer Router character files against the schema and their client tools against the project's GDScript handlers, offline.",
+      "use_when": [
+        "before router.push, or after editing ai/characters files or tool handlers",
+        "a character's tool is never answered in the game (tool_unhandled)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_check",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-doctor",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "3adeaf2feff50ed549a5aeba4fd75ebb9c4b3111314a8ad2d55c506dd3fc0844",
+      "summary": "Every Summer Router check for this project in one list, with a fix per failed check: sign-in, characters, tool handlers, the game.",
+      "use_when": [
+        "Summer Router does not work and the cause is unclear",
+        "checking that a project is ready before a voice NPC goes live"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_doctor",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-pull",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "845f19032a3f002f833d59e2c9504df058aea4d04913a92abdc99341610d940c",
+      "summary": "Write the Summer Router characters Summer has for the game into ai/characters/, keeping local edits that were never pushed.",
+      "use_when": [
+        "after a character was edited in Studio, or router.push answered studio_changed",
+        "starting on a machine that has no character files yet"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_pull",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-push",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "88585467d97e75fd4abe58ce0109cd4bbdcb1a2baad9266c86e2e9c0288eaf81",
+      "summary": "Check, then save the project's Summer Router characters on Summer; on a live game it returns the person's approval link.",
+      "use_when": [
+        "sending ai/characters files to Summer after creating or editing a character",
+        "\"push the characters\", \"save the guard on Summer\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_push",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/router-setup",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8e3aad849ae20ed2f39db512841983c21707a390e2793cc8bc1383c80fcf37b4",
+      "summary": "Give Claude Code or Codex the summer-engine MCP entry and the Summer Router skills, idempotent; without yes it returns the plan.",
+      "use_when": [
+        "setting up an agent for Summer Router (AI characters, voice NPCs) on this machine",
+        "\"set up summer router\", \"install the router skill\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_router_setup",
+      "remote": true,
       "authority": {
         "filesystem": true,
         "editor_mutation": false,

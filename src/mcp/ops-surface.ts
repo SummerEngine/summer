@@ -3,7 +3,7 @@ import { ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelc
 import { z } from "zod";
 import { localEntries, localInputSchema, localWireForm, missingInput, type CatalogEntry } from "../core/ops/catalog.js";
 import { answerOfHosted, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
+import { answerOfLocalFailure, answerOfLocalSuccess, errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
 import { TAKES_OUT, withOutField, type FileSaver } from "../core/ops/save-files.js";
@@ -125,11 +125,9 @@ function answerOfLocal(result: unknown, op: string, effect: "read" | "write"): A
   if (record.isError) {
     const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
     const message = typeof body.message === "string" ? body.message : typeof body.error === "string" ? body.error : first.slice(0, 500) || "The tool failed.";
-    const details = { tool: payload };
-    if (/not found|does not exist|no such/i.test(message)) return errorAnswer("not_found", message, { details });
-    return errorAnswer("invalid_input", message, { details });
+    return answerOfLocalFailure(payload, message);
   }
-  return { ok: true, status: "done", result: payload };
+  return answerOfLocalSuccess(payload);
 }
 
 /** MCP annotations from an operation's effect (SPEC §4.1); engine operations never need a retry key. */

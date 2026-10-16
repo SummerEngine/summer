@@ -289,6 +289,15 @@ describe("runOpen (web)", () => {
     expect(missing.hint).toMatch(/gameId/);
   });
 
+  it("opens a game's Summer Router tab by id, alias or phrase (the page summer router links to)", async () => {
+    const { d } = deps();
+    const url = `${GATEWAY}/studio/store/g1?view=all&tab=router`;
+    expect((await runOpen({ target: "summer-router", params: { gameId: "g1" }, open: false }, d)).url).toBe(url);
+    expect((await runOpen({ target: "router", params: { gameId: "g1" }, open: false }, d)).url).toBe(url);
+    expect((await runOpen({ target: "summer router", params: { gameId: "g1" }, open: false }, d)).url).toBe(url);
+    expect(await runOpen({ target: "summer-router", open: false }, d)).toMatchObject({ ok: false, action: "invalid_params" });
+  });
+
   it("returns ambiguous with matches and opens nothing", async () => {
     const { d, openUrl } = deps();
     const res = await runOpen({ target: "generator" }, d);

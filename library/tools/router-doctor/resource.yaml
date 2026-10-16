@@ -1,0 +1,48 @@
+id: tool/router-doctor
+kind: tool
+version: 1.0.0
+summary: 'Every Summer Router check for this project in one list, with a fix per failed check: sign-in, characters, tool handlers, the game.'
+use_when:
+- Summer Router does not work and the cause is unclear
+- checking that a project is ready before a voice NPC goes live
+do_not_use_when:
+- one character's schema problems — router.check
+facets:
+  lifecycle:
+  - build
+  domains:
+  - ai
+  - npc
+compatibility:
+  engine: '>=4.6'
+source: official
+license: MIT
+status: preview
+related:
+  skills:
+  - skill/summer-router
+implementation:
+  module: src/core/router/operations.ts
+  export: ROUTER_OPERATIONS
+surfaces:
+  mcp:
+    tool_name: summer_router_doctor
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: 'The game on Summer. Default: SUMMER_GAME_ID, then gameId in summer.build.json.'
+    project:
+      type: string
+      description: 'The folder with project.godot. Default: the MCP''s bound project, then the working directory.'
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+- none

@@ -771,6 +771,36 @@
       "note": "",
       "op": "engine.replace_text"
     },
+    "summer_router_add_character": {
+      "kind": "same",
+      "note": "4.x local: writes ai/characters/<id>.json",
+      "op": "router.add_character"
+    },
+    "summer_router_check": {
+      "kind": "same",
+      "note": "4.x local: character files and GDScript tool handlers, offline",
+      "op": "router.check"
+    },
+    "summer_router_doctor": {
+      "kind": "same",
+      "note": "4.x local: project, sign-in, characters, handlers, the game on Summer",
+      "op": "router.doctor"
+    },
+    "summer_router_pull": {
+      "kind": "same",
+      "note": "4.x local: Summer's characters to the project's files",
+      "op": "router.pull"
+    },
+    "summer_router_push": {
+      "kind": "same",
+      "note": "4.x local: the project's character files to Summer",
+      "op": "router.push"
+    },
+    "summer_router_setup": {
+      "kind": "same",
+      "note": "4.x local: the agent's MCP entry and the Summer Router skills",
+      "op": "router.setup"
+    },
     "summer_run_editor_script": {
       "kind": "keep",
       "note": "",

@@ -1,6 +1,7 @@
 {
   "_generated": "GENERATED — do not edit; run npm run generate:registry",
   "aliases": {
+    "ai-characters-in-games": "skill/summer-router",
     "animate-from-text": "skill/text-to-motion",
     "dissolve": "skill/vfx-dissolve",
     "docs/HEADLESS_ROUTING.md": "reference/headless-routing",
@@ -16,6 +17,7 @@
     "references/mcp-tools-reference.md": "reference/mcp-tools-reference",
     "references/public-surface-language.md": "reference/public-surface-language",
     "references/summer-folder.md": "reference/summer-folder",
+    "skill/ai-characters-in-games": "skill/summer-router",
     "skills/2d-assets/character-portrait": "skill/character-portrait",
     "skills/2d-assets/concept-art": "skill/concept-art",
     "skills/2d-assets/create-asset-sheet": "skill/create-asset-sheet",

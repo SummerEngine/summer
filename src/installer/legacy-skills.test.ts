@@ -18,6 +18,11 @@ describe("retired 2.8.x skills are pruned on --force upgrades (release review P1
     expect(LEGACY_SKILL_SLUGS_2_8_2.length).toBe(79);
   });
 
+  it("also retires v3 skills that were renamed (ai-characters-in-games is now summer-router)", () => {
+    expect(retiredSkillNames(["summer-router"])).toContain("ai-characters-in-games");
+    expect(retiredSkillNames(["ai-characters-in-games"])).not.toContain("ai-characters-in-games");
+  });
+
   it("removes only retired dirs that hold a SKILL.md; keeps current skills and foreign folders", () => {
     dir = mkdtempSync(join(tmpdir(), "summer-prune-"));
     for (const name of ["summer-cloud", "fire", "play"]) {

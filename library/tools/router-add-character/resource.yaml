@@ -1,0 +1,74 @@
+id: tool/router-add-character
+kind: tool
+version: 1.0.0
+summary: 'Write ai/characters/<id>.json, a Summer Router character, from a template, with the GDScript its tools need.'
+use_when:
+- adding a talking AI character, voice NPC, shopkeeper or companion to a Summer game
+- '"add a guard who opens the gate when the player says the password"'
+do_not_use_when:
+- scripted dialogue without AI — skill/design-npc
+facets:
+  lifecycle:
+  - build
+  domains:
+  - ai
+  - npc
+compatibility:
+  engine: '>=4.6'
+source: official
+license: MIT
+status: preview
+related:
+  skills:
+  - skill/summer-router
+implementation:
+  module: src/core/router/operations.ts
+  export: ROUTER_OPERATIONS
+surfaces:
+  mcp:
+    tool_name: summer_router_add_character
+    remote: true
+input_schema:
+  type: object
+  properties:
+    id:
+      type: string
+      description: 'Character id: a lowercase letter, then lowercase letters, digits, _ or -, at most 64 (for example guard).'
+    template:
+      type: string
+      enum:
+      - voice-npc
+      - shopkeeper
+      - companion
+      description: 'Starting point: voice-npc (default), shopkeeper or companion.'
+    name:
+      type: string
+      description: 'Display name. Default: from the id.'
+    voice:
+      type: string
+      description: A voice description, for example "gruff old soldier". Summer makes a pinned voice from it on push.
+    voiceId:
+      type: string
+      description: A Summer voice id instead of a description.
+    tools:
+      type: array
+      items:
+        type: string
+      description: Client tools the character may call (for example open_gate). Each needs a GDScript handler.
+    force:
+      type: boolean
+      description: Replace an existing file.
+    project:
+      type: string
+      description: 'The folder with project.godot. Default: the MCP''s bound project, then the working directory.'
+  required:
+  - id
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+- none

@@ -78,6 +78,56 @@ export function errorAnswer(code: ErrorCode, message: string, options: { next?: 
   };
 }
 
+const ERROR_CODES: ReadonlySet<string> = new Set<ErrorCode>([
+  "invalid_input", "not_signed_in", "forbidden", "not_found", "conflict", "idempotency_conflict", "in_progress", "rate_limited",
+  "no_credits", "over_limit", "engine_not_running", "engine_lacks_op", "unsupported", "not_in_profile", "moved", "outcome_unknown",
+  "unavailable", "internal",
+]);
+
+/**
+ * A failed local (non-engine) tool result as the one answer. A result whose
+ * `code` is a contract error code keeps it (not_signed_in, conflict, ...), its
+ * `studio_url` becomes the next step and its `was` (the feature's own tag)
+ * becomes details.was, as on the cloud operations; any other failure is
+ * invalid_input (not_found when the message says so). The whole result stays
+ * in details.tool.
+ */
+export function answerOfLocalFailure(payload: unknown, message: string): Answer {
+  const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const code: ErrorCode =
+    typeof body.code === "string" && ERROR_CODES.has(body.code)
+      ? (body.code as ErrorCode)
+      : /not found|does not exist|no such/i.test(message)
+        ? "not_found"
+        : "invalid_input";
+  const next: NextStep | undefined = typeof body.studio_url === "string" ? { url: body.studio_url, label: "Open in Studio" } : undefined;
+  const was = typeof body.was === "string" ? { was: body.was } : {};
+  return errorAnswer(code, message, { ...(next ? { next } : {}), details: { ...was, tool: payload } });
+}
+
+/**
+ * A successful local tool result as the one answer: `done` with the result,
+ * or `needs_approval` when the tool handed back a hosted approval (an
+ * `approval` with its url and the `job` to wait on), as router.push does on
+ * a live game.
+ */
+export function answerOfLocalSuccess(payload: unknown): Answer {
+  const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const approval = body.approval as { url?: unknown } | undefined;
+  const job = body.job as { id?: unknown } | undefined;
+  if (typeof approval?.url === "string" && typeof job?.id === "string") {
+    const warnings = Array.isArray(body.warnings) ? body.warnings.filter((item): item is string => typeof item === "string") : [];
+    return {
+      ok: true,
+      status: "needs_approval",
+      approval: approval as Extract<Answer, { status: "needs_approval" }>["approval"],
+      job: job as JobRef,
+      ...(warnings.length ? { warnings } : {}),
+    };
+  }
+  return { ok: true, status: "done", result: payload };
+}
+
 // ── Names ────────────────────────────────────────────────────────────────────
 
 export const OP_NAME = /^(whoami|[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)$/;
@@ -118,10 +168,15 @@ export function resolveOpName(name: string): string {
 /**
  * Operations that run in this package: everything in `engine`, the library
  * (`docs`, apart from the Studio workflows, which are cloud), opening a
- * page or an editor surface, docking an App in the editor, and uploading a
- * local export. Everything else runs on the hosted server.
+ * page or an editor surface, docking an App in the editor, uploading a
+ * local export, and the Summer Router operations on the project's files.
+ * Everything else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file"]);
+const LOCAL_OPS = new Set([
+  "docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file",
+  // Summer Router: the operations on the game project's files (ai/characters, its GDScript); the rest of router.* is cloud.
+  "router.setup", "router.add_character", "router.check", "router.push", "router.pull", "router.doctor",
+]);
 
 /**
  * Local operations a 3.x tool runs although legacy-names.json maps that

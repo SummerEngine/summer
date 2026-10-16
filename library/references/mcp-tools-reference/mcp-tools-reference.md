@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (119 tools)
+## Tool surface (125 tools)
 
 ### Project files (4)
 
@@ -261,6 +261,19 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 | `summer_export_templates` | `list` or `install` export templates from Summer's CDN (`downloads.summer.games/engine-templates/<summerVersion>/manifest.json`) into the engine's user template folder (`<data>/Godot/export_templates/<FULL_CONFIG>/`), sha256-checked. Only download exports need them; store bundles need none. `summerVersion` is read on macOS, passed elsewhere. |
 | `store.upload_file` (3.x `summer_publish_build`; through `summer_call`) | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. Without a shell, `store.upload_begin`, `store.upload_sign_parts` and `store.upload_complete` take the bytes in parts. |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
+
+### Summer Router (6)
+
+The project side of Summer Router (AI characters in the game): the `ai/characters/<id>.json` files and the GDScript that handles their tools. Run them through `summer_call` (or `summer router <action>` in a shell); the `router` toolset, in the full profile. The cloud Router operations are on the hosted server, through `summer_call`: `router.models`, `router.list_characters`, `router.get_character`, `router.character_versions`, `router.save_character`, `router.delete_character`, `router.test_character`, `router.settings`, `router.set_settings`, `router.set_account_limit` and `router.usage`.
+
+| Tool | Use |
+|---|---|
+| `router.setup` (`summer_router_setup`) | The summer-engine MCP entry and the Summer Router skills for Claude Code or Codex; idempotent, `yes` applies the plan. |
+| `router.add_character` (`summer_router_add_character`) | Write `ai/characters/<id>.json` from a template (`voice-npc`, `shopkeeper`, `companion`); returns the GDScript the tools need. |
+| `router.check` (`summer_router_check`) | The character files against the schema, and every client tool against the project's GDScript handlers (`tool_unhandled`). Offline. |
+| `router.push` (`summer_router_push`) | Check, then save the characters on Summer for the game; never overwrites a Studio edit it has not seen (`studio_changed`). |
+| `router.pull` (`summer_router_pull`) | Write Summer's characters into `ai/characters/`; keeps unpushed local edits (`local_changes`). |
+| `router.doctor` (`summer_router_doctor`) | Every Summer Router check for the project, each with a fix. |
 
 ### Hosted store, publishing and Grow tools
 

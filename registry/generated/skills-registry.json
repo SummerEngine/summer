@@ -43,19 +43,6 @@
       ]
     },
     {
-      "id": "skill/ai-characters-in-games",
-      "name": "ai-characters-in-games",
-      "description": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "clients": "all",
-      "recommended": false,
-      "status": "preview",
-      "path": "library/skills/ai-characters-in-games/",
-      "domains": [
-        "ai",
-        "npc"
-      ]
-    },
-    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus.",
@@ -1344,6 +1331,20 @@
       ]
     },
     {
+      "id": "skill/summer-router",
+      "name": "summer-router",
+      "description": "Summer Router: AI characters with voice and game tools, speech and images.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-router/",
+      "domains": [
+        "ai",
+        "npc",
+        "audio"
+      ]
+    },
+    {
       "id": "skill/summer-store",
       "name": "summer-store",
       "description": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
@@ -1629,6 +1630,19 @@
       "domains": [
         "vfx",
         "rendering"
+      ]
+    },
+    {
+      "id": "skill/voice-and-mic-permissions",
+      "name": "voice-and-mic-permissions",
+      "description": "Mic in games: ask from a talk tap, keep a text path, no OS prompts.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/voice-and-mic-permissions/",
+      "domains": [
+        "audio",
+        "ai"
       ]
     },
     {

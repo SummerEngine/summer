@@ -1,7 +1,7 @@
 {
   "_generated": "GENERATED from integrations/factory — do not edit; npm run generate:registry",
   "name": "summer",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 119-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 125-tool MCP bridge to the local desktop app.",
   "version": "4.0.0",
   "author": {
     "name": "Summer Engine",
@@ -22,7 +22,6 @@
     "./library/skills/3d-lighting/",
     "./library/skills/adaptive-music/",
     "./library/skills/agent-playtesting/",
-    "./library/skills/ai-characters-in-games/",
     "./library/skills/ambient-bed/",
     "./library/skills/animated-loop/",
     "./library/skills/animation-tree/",
@@ -110,6 +109,7 @@
     "./library/skills/summer-matchmaking/",
     "./library/skills/summer-parties/",
     "./library/skills/summer-player-data/",
+    "./library/skills/summer-router/",
     "./library/skills/summer-store/",
     "./library/skills/summer-world-chat/",
     "./library/skills/summer-world-saves/",
@@ -132,6 +132,7 @@
     "./library/skills/vfx-muzzle-flash/",
     "./library/skills/vfx-smoke/",
     "./library/skills/vfx-water-ripple/",
+    "./library/skills/voice-and-mic-permissions/",
     "./library/skills/voice-line/",
     "./library/skills/web-and-touch-input/",
     "./library/skills/web-compatibility-look/",

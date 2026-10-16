@@ -251,6 +251,7 @@ import {
   appToolsArgsSchema,
 } from "./apps.js";
 import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "./enable-plugin.js";
+import { ROUTER_OPERATIONS } from "../router/operations.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -2120,6 +2121,21 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       agent_model: optStr(args, "agent_model") ?? "unknown",
     });
   }),
+  // Summer Router (core/router/operations.ts): the project-side operations, the same functions as the MCP face.
+  ...([
+    ["summer_router_setup", "Make Claude Code or Codex ready for Summer Router (MCP entry and skills)"],
+    ["summer_router_add_character", "Write ai/characters/<id>.json from a Summer Router template"],
+    ["summer_router_check", "Check Summer Router characters and their GDScript tool handlers (offline)"],
+    ["summer_router_push", "Check, then save the Summer Router characters on Summer for the game"],
+    ["summer_router_pull", "Write the game's Summer Router characters from Summer into ai/characters/"],
+    ["summer_router_doctor", "Every Summer Router check for this project in one list"],
+  ] as const).map(([name, summary]) =>
+    entry(name, summary, false, async (args) => {
+      const result = await ROUTER_OPERATIONS[name](args);
+      if (result.ok !== true) throw new ToolResultError(result, String(result.message));
+      return result;
+    })
+  ),
 ];
 
 // ---------------------------------------------------------------------------

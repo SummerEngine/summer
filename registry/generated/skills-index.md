@@ -1,6 +1,6 @@
 # Summer skills
 
-> 128 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 129 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -14,7 +14,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (4)
-- [audio](#audio) (6)
+- [audio](#audio) (7)
 - [character-controller](#character-controller) (2)
 - [creator](#creator) (4)
 - [debug](#debug) (1)
@@ -88,8 +88,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*ai-characters-in-games*](./ai-characters-in-games/SKILL.md) (preview) | Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps. | npc |
 | [design-npc](./design-npc/SKILL.md) ★ | Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub. | npc |
+| [*summer-router*](./summer-router/SKILL.md) (preview) | Summer Router: AI characters with voice and game tools, speech and images. | npc, audio |
 
 ## animation
 
@@ -121,6 +121,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [audio-direction](./audio-direction/SKILL.md) ★ | Define the game's sound (music style, SFX vocabulary, dynamic music) as .summer/audio-bible.md. | game-design |
 | [music-track](./music-track/SKILL.md) ★ | Generate a music track: game loops of 30s or more with a loop point, or linear cinematic cues. | assets |
 | [sound-effect](./sound-effect/SKILL.md) ★ | Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them. | assets |
+| [*voice-and-mic-permissions*](./voice-and-mic-permissions/SKILL.md) (preview) | Mic in games: ask from a talk tap, keep a text path, no OS prompts. | ai |
 | [voice-line](./voice-line/SKILL.md) ★ | Generate voice lines (NPC barks, narrator, dialogue) with a character-to-voice choice and multi-line support. | assets |
 
 ## character-controller

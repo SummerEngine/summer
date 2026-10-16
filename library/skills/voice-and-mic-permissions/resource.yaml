@@ -1,0 +1,34 @@
+id: skill/voice-and-mic-permissions
+kind: skill
+version: 0.1.0
+summary: "Mic in games: ask from a talk tap, keep a text path, no OS prompts."
+use_when:
+  - adding a talking AI character the player speaks to
+  - voice commands, shout or sing mechanics, or a mic level meter
+  - any AudioStreamMicrophone or AudioEffectCapture use
+  - '"the mic does not work", "the game asks for the mic at launch", "players denied the mic"'
+do_not_use_when:
+  - speech output only (skill/voice-line)
+  - player-to-player voice chat
+facets:
+  lifecycle:
+    - build
+    - launch
+  domains:
+    - audio
+    - ai
+  modalities:
+    - scripts
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-router
+    - skill/voice-line
+    - skill/design-npc
+    - skill/export-and-ship
+source: official
+license: MIT
+status: preview
+recommended: false

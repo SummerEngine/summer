@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { CLI_AREAS } from "../../core/ops/areas.js";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
 import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
+import { answerOfLocalFailure, answerOfLocalSuccess, errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
@@ -131,11 +131,12 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
     return { ok: true, status: "dry_run", preview: { summary: `${entry?.title ?? op}: the input is valid. Nothing was done.`, changes: [], approval: entry?.approval ?? "none", estimate: null, valid: true } };
   }
   try {
-    return { ok: true, status: "done", result: await deps.dispatch(tool, args) };
+    const result = await deps.dispatch(tool, args);
+    return def ? { ok: true, status: "done", result } : answerOfLocalSuccess(result);
   } catch (error) {
     if (error instanceof EngineUnavailableError) return engineNotRunning();
     if (error instanceof ToolResultError) {
-      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
+      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : answerOfLocalFailure(error.result, error.message);
     }
     return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
   }

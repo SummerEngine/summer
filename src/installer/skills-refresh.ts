@@ -4,6 +4,12 @@ import { getSkillRegistry, resolveSkillDir, type SkillRegistryEntry } from "../c
 import { allAgentSpecs, defaultPathContext, resolveSkillPath } from "./agent-table.js";
 import { compareSemver, parseSemver, readSkillMarker, SKILL_VERSION_MARKER_FILENAME, type SkillVersionMarker } from "./version-check.js";
 
+/** The marker a refresh writes: setup's fields plus the skills it left because someone changed them. */
+interface RefreshMarker extends SkillVersionMarker {
+  /** Kept across releases: a later refresh leaves these until setup --force replaces them. */
+  kept?: string[];
+}
+
 /**
  * After an upgrade, bring the Summer skills already installed on this
  * computer up to this CLI's version. Skills written for 3.x name 3.x tools,
@@ -14,7 +20,10 @@ import { compareSemver, parseSemver, readSkillMarker, SKILL_VERSION_MARKER_FILEN
  * folder that carries Summer's `.summer-version` marker older than this CLI:
  * a real folder (not a link) whose `resource.yaml` says `id: skill/<name>`
  * (every Summer release ships it; other packs reuse names such as
- * `brainstorming`), with no file changed after the marker was written. Each
+ * `brainstorming`), with no file changed after the marker was written, and
+ * not one an earlier refresh already left for that reason (the marker lists
+ * them, so the protection lasts until `summer setup --force`). A copy that
+ * already matches the library counts as current, not as changed. Each
  * replacement is a copy beside it and two renames, so a kill or a copy error
  * leaves the old skill in place. One process per folder (a lock file).
  * Nothing is removed. Missing library skills are added only to a folder that
@@ -66,13 +75,25 @@ export function skillFolderLocations(): string[] {
   return [...dirs];
 }
 
-/** Refresh when the marker is older, or the same release under another name (4.2.0-next.1 -> 4.2.0). */
+const isPrerelease = (version: string) => /^\d+\.\d+\.\d+-/.test(version.trim());
+
+/** Refresh when the marker is older, or a pre-release of this release (4.2.0-next.1 -> 4.2.0, never back). */
 function isBehind(marker: SkillVersionMarker, cliVersion: string): boolean {
   const installed = parseSemver(marker.version);
   const current = parseSemver(cliVersion);
   if (!installed || !current) return false;
   const order = compareSemver(installed, current);
-  return order < 0 || (order === 0 && marker.version.trim() !== cliVersion.trim());
+  return order < 0 || (order === 0 && isPrerelease(marker.version) && !isPrerelease(cliVersion));
+}
+
+/** The names an earlier refresh left; readSkillMarker keeps only setup's fields. */
+function previouslyKept(dir: string): Set<string> {
+  try {
+    const kept = (JSON.parse(readFileSync(join(dir, SKILL_VERSION_MARKER_FILENAME), "utf-8")) as RefreshMarker).kept;
+    return new Set(Array.isArray(kept) ? kept.filter((name): name is string => typeof name === "string") : []);
+  } catch {
+    return new Set();
+  }
 }
 
 const errorCode = (error: unknown): string =>
@@ -89,14 +110,36 @@ function isSummersSkill(dest: string, name: string): boolean {
   }
 }
 
-/** Any file in the folder changed after `since` (ms). Links are not followed. */
+/** The folder, or any file in it, changed after `since` (ms); the folder's own time covers a deleted file. Links are not followed. */
 function changedSince(dir: string, since: number): boolean {
+  if (lstatSync(dir).mtimeMs > since) return true;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (lstatSync(path).mtimeMs > since) return true;
     if (entry.isDirectory() && changedSince(path, since)) return true;
   }
   return false;
+}
+
+/** Relative paths of every file under `dir`. */
+function filesUnder(dir: string, prefix = ""): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? filesUnder(join(dir, entry.name), `${prefix}${entry.name}/`) : [`${prefix}${entry.name}`]
+  );
+}
+
+/** The installed folder holds exactly the library's files with the library's bytes (a refresh a kill interrupted already wrote it). */
+function sameAsLibrary(dest: string, src: string): boolean {
+  try {
+    const installed = filesUnder(dest).sort();
+    const library = filesUnder(src).sort();
+    return (
+      installed.length === library.length &&
+      installed.every((file, index) => file === library[index] && readFileSync(join(dest, file)).equals(readFileSync(join(src, file))))
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Copy beside, rename the old one aside, rename the new one in; the old one comes back on any error. */
@@ -173,9 +216,15 @@ function refreshFolder(
     const installedAt = Date.parse(marker.installedAt);
     const editedAfter = (Number.isFinite(installedAt) ? installedAt : 0) + EDIT_GRACE_MS;
     const folder: RefreshedFolder = { dir, from: marker.version, to: cliVersion, updated: [], added: [], kept: [] };
+    const keptBefore = previouslyKept(dir);
     const owned = registry.filter((entry) => isSummersSkill(join(dir, entry.name), entry.name));
     for (const entry of owned) {
-      if (changedSince(join(dir, entry.name), editedAfter)) {
+      const dest = join(dir, entry.name);
+      if (sameAsLibrary(dest, resolveSkillDir(entry))) {
+        folder.updated.push(entry.name);
+        continue;
+      }
+      if (keptBefore.has(entry.name) || changedSince(dest, editedAfter)) {
         folder.kept.push(entry.name);
         continue;
       }
@@ -200,7 +249,7 @@ function refreshFolder(
     }
 
     // Written last, through a rename: a kill before this leaves the old marker, and the next start finishes.
-    const next: SkillVersionMarker = { version: cliVersion, installedAt: new Date().toISOString() };
+    const next: RefreshMarker = { version: cliVersion, installedAt: new Date().toISOString(), ...(folder.kept.length > 0 ? { kept: folder.kept } : {}) };
     writeFileSync(markerTemp, JSON.stringify(next, null, 2) + "\n", "utf-8");
     renameSync(markerTemp, join(dir, SKILL_VERSION_MARKER_FILENAME));
     return folder;
@@ -233,9 +282,10 @@ const listed = (names: readonly string[]) =>
   names.length > 5 ? `${names.slice(0, 5).join(", ")} and ${names.length - 5} more` : names.join(", ");
 
 /** The one message a person and their agent see after a refresh, or null when nothing changed. */
-export function refreshNotice(refreshed: readonly RefreshedFolder[]): string | null {
+export function refreshNotice(refreshed: readonly RefreshedFolder[], failures: readonly RefreshFailure[] = []): string | null {
   const skills = new Set(refreshed.flatMap((folder) => [...folder.updated, ...folder.added])).size;
   const kept = [...new Set(refreshed.flatMap((folder) => folder.kept))];
+  const failed = [...new Set(failures.flatMap((failure) => (failure.skill ? [failure.skill] : [])))];
   if (skills === 0 && kept.length === 0) return null;
   const changedFolders = refreshed.filter((folder) => folder.updated.length + folder.added.length > 0).length;
   const from = [...new Set(refreshed.map((folder) => folder.from))].join(", ");
@@ -245,6 +295,7 @@ export function refreshNotice(refreshed: readonly RefreshedFolder[]): string | n
     kept.length > 0
       ? `It left ${kept.length} Summer skills you changed as they are (${listed(kept)}); summer setup <agent> --force replaces them.`
       : "",
+    failed.length > 0 ? `${failed.length} could not be updated (${listed(failed)}); summer setup <agent> --force retries them.` : "",
     "3.x tool names still run through summer_call; summer mcp --toolsets legacy lists them again.",
   ]
     .filter(Boolean)

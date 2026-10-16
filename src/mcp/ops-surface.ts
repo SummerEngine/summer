@@ -411,7 +411,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         return toolResult(errorAnswer("invalid_input", "Pass op: the operation name from summer_search, e.g. engine.add_node.", { next: { op: "ops.search" } }));
       }
       if (op !== undefined && opAlias !== undefined && op.trim() !== opAlias.trim()) {
-        return toolResult(errorAnswer("invalid_input", `op ("${op}") and name ("${opAlias}") differ; pass one operation name.`, { details: { path: "name" } }));
+        return toolResult(errorAnswer("invalid_input", `op ("${op}") and name ("${opAlias}") differ; pass one operation name.`, { next: { op: "ops.search" }, details: { path: "name" } }));
       }
       const args = input ?? {};
       // A split operation's own tool name, or a mixed 3.x tool whose action picks the operation.

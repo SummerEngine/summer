@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -87,6 +87,37 @@ describe("refreshInstalledSkills", () => {
     expect(refreshNotice(refreshed)).toContain(`left 1 Summer skills you changed as they are (${second.name})`);
   });
 
+  it("keeps a changed skill at every later release, not just the first, until setup replaces it", () => {
+    const dir = oldInstall();
+    writeFileSync(join(dir, second.name, "my-notes.md"), "mine\n");
+    expect(refreshInstalledSkills("4.2.0", { dirs: [dir], registry: bundled }).refreshed[0]).toMatchObject({ updated: [first.name], kept: [second.name] });
+    // Next release, nothing else changed: the marker remembers the kept skill.
+    const next = refreshInstalledSkills("4.3.0", { dirs: [dir], registry: bundled });
+    expect(next.refreshed[0]).toMatchObject({ kept: [second.name] });
+    expect(installedText(dir, second.name)).toMatch(/old 3\.x/);
+    expect(readFileSync(join(dir, second.name, "my-notes.md"), "utf-8")).toBe("mine\n");
+  });
+
+  it("treats a deleted file as a change", () => {
+    const dir = scratch();
+    summerSkill(dir, first.name);
+    writeFileSync(join(dir, first.name, "notes.md"), "old\n");
+    const at = new Date(Date.now() - 2 * HOUR);
+    utimesSync(join(dir, first.name, "notes.md"), at, at);
+    utimesSync(join(dir, first.name), at, at);
+    marker(dir);
+    rmSync(join(dir, first.name, "notes.md"));
+    expect(refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled }).refreshed[0]).toMatchObject({ kept: [first.name] });
+  });
+
+  it("counts a skill a killed refresh already replaced as current, not as changed by the person", () => {
+    const dir = oldInstall();
+    rmSync(join(dir, first.name), { recursive: true });
+    cpSync(resolveSkillDir(first), join(dir, first.name), { recursive: true });
+    const { refreshed } = refreshInstalledSkills("4.1.1", { dirs: [dir], registry: bundled });
+    expect(refreshed[0]).toMatchObject({ updated: [first.name, second.name], kept: [] });
+  });
+
   it("keeps the old skill when the copy fails, and records why", () => {
     const dir = oldInstall();
     const broken = { ...first, path: "library/skills/no-such-skill/" };
@@ -94,6 +125,7 @@ describe("refreshInstalledSkills", () => {
     expect(failures).toEqual([{ dir, skill: first.name, code: "ENOENT" }]);
     expect(installedText(dir, first.name)).toMatch(/old 3\.x/);
     expect(refreshed[0].updated).toEqual([second.name]);
+    expect(refreshNotice(refreshed, failures)).toContain(`1 could not be updated (${first.name}); summer setup <agent> --force retries them.`);
   });
 
   it("finishes what a killed refresh left: a skill renamed aside comes back, a half copy goes", () => {
@@ -129,6 +161,8 @@ describe("refreshInstalledSkills", () => {
   it("refreshes a pre-release marker for its release, and leaves newer and unmarked folders alone", () => {
     expect(refreshInstalledSkills("4.1.1", { dirs: [oldInstall("4.1.1-next.1")], registry: bundled }).refreshed).toHaveLength(1);
     expect(refreshInstalledSkills("4.1.1", { dirs: [oldInstall("4.2.0")], registry: bundled }).refreshed).toEqual([]);
+    // A pre-release CLI never takes a release's folder back (two pinned agents would flip it every start).
+    expect(refreshInstalledSkills("4.1.1-next.1", { dirs: [oldInstall("4.1.1")], registry: bundled }).refreshed).toEqual([]);
     const unmarked = scratch();
     summerSkill(unmarked, first.name);
     expect(refreshInstalledSkills("4.1.1", { dirs: [unmarked], registry: bundled }).refreshed).toEqual([]);

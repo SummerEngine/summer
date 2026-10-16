@@ -49,6 +49,8 @@ describe("the legacy toolset", () => {
   });
 
   it("is refreshed away on the first v4 server start only, never on v3 or under doctor's probe", () => {
+    // This test deletes ~/.agents/skills: only ever under the faked HOME (src/test-helpers/fake-home.ts).
+    if (!homedir().startsWith(tmpdir())) throw new Error(`HOME is not a test folder: ${homedir()}`);
     const shared = join(homedir(), ".agents", "skills");
     const [skill] = getSkillRegistry();
     mkdirSync(join(shared, skill.name), { recursive: true });

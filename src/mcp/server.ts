@@ -533,7 +533,7 @@ export function refreshSkillsAfterUpgrade(surface: SurfaceVersion): string | nul
   try {
     const { refreshed, failures } = refreshInstalledSkills(version);
     if (failures.length > 0) appendMcpLogEvent("mcp:skills_refresh_failed", { version, failures });
-    const notice = refreshNotice(refreshed);
+    const notice = refreshNotice(refreshed, failures);
     if (notice) {
       appendMcpLogEvent("mcp:skills_refreshed", { version, notice });
       process.stderr.write(`[summer-mcp] ${notice}\n`);

@@ -1,5 +1,5 @@
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PACKAGE_ROOT } from "../core/package-root.js";
@@ -117,6 +117,18 @@ describe("writeAgentInstructions: links, errors, line endings", () => {
     expect(actions()).toEqual(["AGENTS.md unchanged", "CLAUDE.md unchanged"]);
   });
 
+  it.each([
+    ["CLAUDE.md -> AGENTS.md", "AGENTS.md", "CLAUDE.md"],
+    ["AGENTS.md -> CLAUDE.md", "CLAUDE.md", "AGENTS.md"],
+  ])("%s with the target missing: the dry run and the run agree, and the target gets the full block", (_name, target, link) => {
+    symlinkSync(target, join(dir, link));
+    const planned = writeAgentInstructions(dir, { dryRun: true }).map((r) => `${r.file} ${r.action}`);
+    expect(planned).toEqual(["AGENTS.md created", "CLAUDE.md unchanged"]);
+    expect(actions()).toEqual(planned);
+    expect(read(target)).toBe(`${block}\n`);
+    expect(actions()).toEqual(["AGENTS.md unchanged", "CLAUDE.md unchanged"]);
+  });
+
   it("skips a link to a missing file or to a file outside the project, and writes nothing there", () => {
     const outside = join(root, "shared.md");
     symlinkSync(join(root, "missing.md"), join(dir, "AGENTS.md"));
@@ -147,11 +159,14 @@ describe("writeAgentInstructions: links, errors, line endings", () => {
     expect(actions()).toEqual(["AGENTS.md unchanged", "CLAUDE.md unchanged"]);
   });
 
-  it("keeps one block when a file has two, adds only line breaks around the person's text, and gives an empty file the block alone", () => {
-    writeFileSync(join(dir, "AGENTS.md"), `A.\n\n${block}\n\nB.\n\n${block}\n\nC.\n`);
+  it("leaves a file with two blocks as it is and says why, adds only line breaks around the person's text, and gives an empty file the block alone", () => {
+    const two = `A.\n\n${block}\n\nB.\n\n\`\`\`\n${SUMMER_BLOCK_START}\n(an example)\n${SUMMER_BLOCK_END}\n\`\`\`\n`;
+    writeFileSync(join(dir, "AGENTS.md"), two);
     writeFileSync(join(dir, "CLAUDE.md"), "Mine.  ");
-    expect(actions()).toEqual(["AGENTS.md updated", "CLAUDE.md added"]);
-    expect(read("AGENTS.md")).toBe(`A.\n\n${block}\n\nB.\n\nC.\n`);
+    const [agents] = writeAgentInstructions(dir, { dryRun: true });
+    expect(agents).toMatchObject({ action: "skipped", reason: "it has two Summer blocks; delete one and run setup again" });
+    expect(actions()).toEqual(["AGENTS.md skipped", "CLAUDE.md added"]);
+    expect(read("AGENTS.md")).toBe(two);
     expect(read("CLAUDE.md")).toBe(`Mine.  \n\n${SUMMER_BLOCK_START}\n@AGENTS.md\n${SUMMER_BLOCK_END}\n`);
     writeFileSync(join(dir, "AGENTS.md"), "");
     writeAgentInstructions(dir);
@@ -191,6 +206,8 @@ describe("findSetupProjectRoot: where summer setup looks for a project", () => {
 
   it("never takes the home folder", () => {
     const home = homedir();
+    // The fake HOME of vitest.config.ts: this test writes a project.godot there.
+    expect(home).not.toBe(userInfo().homedir);
     writeFileSync(join(home, "project.godot"), "");
     mkdirSync(join(home, "somewhere"), { recursive: true });
     try {

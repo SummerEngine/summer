@@ -4,6 +4,10 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-10-16
+
+Usage counts the `summer` CLI: each signed-in command sends one usage line, like an MCP tool call (never arguments, paths or project content), and a failed tool call names its error code.
+
 - **CLI commands report usage like MCP tool calls.** For a signed-in person, each `summer` command (`create`, `setup`, `skills install`, `engine play`, `tool`, ...) sends one line: the command, or the operation for `summer <area> <action>`, success or its error code, duration, the CLI version and the agent app named in the environment. Never arguments, paths or project content. It goes to the same endpoint and schema as the MCP tool-call lines, marked as the CLI (`surface: "cli"`; an operation reports as `summer_call` with its operation, only when it is a real one: a word typed after `summer engine` that names no operation is never sent). A command that runs on Summer's server (a cloud operation, a hosted `summer tool`) sends no line; the server records it. A detached process sends it when the command exits, so the command prints nothing more and never waits. Nothing is sent when signed out, or with `SUMMER_NO_TELEMETRY` or `DO_NOT_TRACK` set (`1`, and now also `true`, `yes` or `on`, for every report). The background sender never lives past 3 s, and `summer login` says what is sent. `summer mcp` keeps its own session and tool-call lines.
 - **CLI calls to the hosted server say they come from the CLI.** `summer <area> <action>`, `summer ops search` and hosted `summer tool` calls connect as `summer-cli` with `X-Summer-Client-Surface: cli`, so usage can tell them from the MCP server, which still connects as `summer-engine-local`.
 - **A failed MCP tool call's usage line names its error code** (`not_signed_in`, `engine_not_running`, `engine_lacks_op`, ...; `exception` when the tool threw). Only the code is sent, never the message.

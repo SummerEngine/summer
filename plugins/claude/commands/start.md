@@ -17,7 +17,7 @@ $ARGUMENTS
 ## 1. Look before you ask (read-only, a few seconds)
 
 - Tools you already have: the `summer-engine` server (local, drives the Summer Engine desktop app; its tools include `summer_get_project_context`) and the `summer-cloud` server (hosted, Summer's cloud; its tools include `summer_whoami`, `summer_search` and `summer_call` once the user is signed in). A server that needs sign-in shows no tools yet.
-- `npx -y summer-engine@4.2.0 status` tells you whether the CLI is signed in and whether the engine is running. If `npx` is missing, there is no Node: plan it first (3a) and have them install Node 20 or later (nodejs.org) for the build.
+- `npx -y summer-engine@4.3.0 status` tells you whether the CLI is signed in and whether the engine is running. If `npx` is missing, there is no Node: plan it first (3a) and have them install Node 20 or later (nodejs.org) for the build.
 
 Do not run `summer setup claude-code` here: this plugin already brings the MCP servers and the skills, and a second copy of the skills only crowds the list.
 
@@ -35,12 +35,12 @@ A call written `area.action({...})` is the tool `summer_area_action` when your c
 1. **Sign in.** If `summer_call` is not available, the `summer-cloud` server needs the user's Summer account. Tell them: type `/mcp`, pick `summer-cloud`, choose **Authenticate**, and sign in in the browser (a free account works). You cannot do this step for them. When they say done, call `whoami()` (the `summer_whoami` tool) to confirm.
 2. **Start the game.** As soon as there is an idea (one sentence is enough; ask for one if `$ARGUMENTS` is empty), call `projects.create({ idea })`. Summer starts drawing the plan at once; give them the game's link (`url`) to watch it fill in. Keep its `projectId`.
 3. **Shape it, briefly.** Ask at most two short questions, each with two or three concrete options (how it should feel, what the player does). Send each answer with `plans.message({ projectId, text })`. Use `plans.show({ projectId })` to see the cards and their `itemId`s, `plans.edit_card({ projectId, itemId, change })` to change one picture and `plans.choose_look({ projectId, itemId })` when they pick an art style.
-4. **Hand it to the engine.** When the user is happy, call `projects.open_in_engine({ projectId })`. It returns the Summer Engine download, the setup steps and the saved direction. Then follow 3b, using the saved direction instead of a template: create an empty project (`npx -y summer-engine@4.2.0 create empty <folder-name>`), save the direction as `res://.summer/GameSoul.md`, and build its first playable milestone with the `make-game` skill. Never describe a game that is not built yet.
+4. **Hand it to the engine.** When the user is happy, call `projects.open_in_engine({ projectId })`. It returns the Summer Engine download, the setup steps and the saved direction. Then follow 3b, using the saved direction instead of a template: create an empty project (`npx -y summer-engine@4.3.0 create empty <folder-name>`), save the direction as `res://.summer/GameSoul.md`, and build its first playable milestone with the `make-game` skill. Never describe a game that is not built yet.
 
 ## 3b. Build in Summer Engine
 
-1. **Install** (only if the engine is missing). Installing software needs the user's yes: say what you will run and wait. Then `npx -y summer-engine@4.2.0 install`.
-2. **Sign in.** `npx -y summer-engine@4.2.0 login` opens the browser; the user signs in there. Skip it if `status` already shows them signed in.
+1. **Install** (only if the engine is missing). Installing software needs the user's yes: say what you will run and wait. Then `npx -y summer-engine@4.3.0 install`.
+2. **Sign in.** `npx -y summer-engine@4.3.0 login` opens the browser; the user signs in there. Skip it if `status` already shows them signed in.
 3. **Start from a template** that matches the idea, so the first version already plays:
    - platformer: `2d-brario-platformer`
    - survivors or roguelike: `2d-vampire-survivor-roguelike`
@@ -52,8 +52,8 @@ A call written `area.action({...})` is the tool `summer_area_action` when your c
    - third-person or exploring: `3d-third-person-controller`
    - anything else: `3d-basic`
 
-   Run `npx -y summer-engine@4.2.0 list templates` if none fits. Then `npx -y summer-engine@4.2.0 create <template> <folder-name>` in a folder the user agrees to.
-4. **Open it.** Opening the editor puts a window on the user's screen, so say so first. Then `npx -y summer-engine@4.2.0 run <folder-name>`.
+   Run `npx -y summer-engine@4.3.0 list templates` if none fits. Then `npx -y summer-engine@4.3.0 create <template> <folder-name>` in a folder the user agrees to.
+4. **Open it.** Opening the editor puts a window on the user's screen, so say so first. Then `npx -y summer-engine@4.3.0 run <folder-name>`.
 5. **Make it theirs, then play.** Activate the `using-summer` skill. Call `summer_get_project_context`, make one small change that matches the idea (the title, the player's colour or speed, one enemy), then verify it: `summer_play`, `summer_screenshot` with `target: "game"`, `summer_get_diagnostics`, `summer_stop`. Show what you saw; tell them to press Play in the editor.
 
 ## 4. Hand over

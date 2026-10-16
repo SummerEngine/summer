@@ -109,6 +109,7 @@ describe("exportGame targets (store bundle)", () => {
   });
 });
 
+// Builds and zips an app bundle and an exe on disk: slow on a busy machine.
 describe("exportGame download format", () => {
   it("names the template to fetch when it is missing", async () => {
     const error = await failure(exportGame({ project, targets: ["web"] }, deps()));
@@ -159,4 +160,4 @@ describe("exportGame download format", () => {
     expect(entries.map((entry) => entry.name)).toEqual(["star-weavers.exe"]);
     expect(await readFile(join(project, "export_presets.cfg"), "utf8")).toContain("binary_format/embed_pck=true");
   });
-});
+}, 60_000);

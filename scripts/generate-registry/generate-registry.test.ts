@@ -11,6 +11,7 @@ import {
   GENERATED_BANNER,
 } from "./index.ts";
 import { applyManifests } from "./apply.ts";
+import { applyMirrors, CLAUDE_DIRECTORY_MANIFEST, mirrorFiles, mirrorsOf } from "./mirrors.ts";
 import { manifestBanner } from "./shared.ts";
 import { checkRegistry } from "./check.ts";
 import { checkCountClaims, collectCountClaimFiles, CLAIM_PATTERN } from "./count-claims.ts";
@@ -57,6 +58,7 @@ describe("generateRegistry: catalog outputs", () => {
       "index.json",
       "marketplace.claude.json",
       "mcp.json",
+      "plugin.claude-directory.json",
       "plugin.claude.json",
       "plugin.codex.json",
       "plugin.cursor.json",
@@ -411,6 +413,7 @@ describe("apply + check: the parity gate", () => {
     const result = gen(root);
     writeGenerated(path.join(root, "registry", "generated"), result);
     applyManifests(root);
+    applyMirrors(root, mirrorsOf(root, result.resources));
     return result;
   }
 
@@ -464,6 +467,42 @@ describe("apply + check: the parity gate", () => {
     expect(check.ok).toBe(false);
     expect(check.drift.some((d) => d.includes('"58-tool" says 58 but counts.json has 1 tools'))).toBe(true);
     expect(check.drift.some((d) => d.includes('"79 skills" says 79 but counts.json has 2 skills'))).toBe(true);
+  });
+});
+
+describe("plugins/claude/: the Claude plugin for Anthropic's directory", () => {
+  it("check flags a hand edit and a stray file; apply puts both right", () => {
+    const root = copyBasicFixture();
+    const result = gen(root);
+    writeGenerated(path.join(root, "registry", "generated"), result);
+    applyManifests(root);
+    applyMirrors(root, mirrorsOf(root, result.resources));
+    expect(checkRegistry(root, { schemasDir }).drift).toEqual([]);
+    fs.appendFileSync(path.join(root, "plugins", "claude", "skills", "alpha-skill", "SKILL.md"), "\nhand edit\n");
+    fs.writeFileSync(path.join(root, "plugins", "claude", "skills", "stray.md"), "x");
+    const drift = checkRegistry(root, { schemasDir }).drift.join("\n");
+    expect(drift).toContain("plugins/claude/skills/alpha-skill/SKILL.md: stale copy");
+    expect(drift).toContain("plugins/claude/skills/stray.md: not a copy");
+    expect(applyMirrors(root, mirrorsOf(root, result.resources)).removed).toEqual(["plugins/claude/skills/stray.md"]);
+    expect(checkRegistry(root, { schemasDir }).drift).toEqual([]);
+  });
+
+  it("the repo's Claude directory plugin: under 512 files, none over 256 KiB, every launcher pinned", () => {
+    const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version as string;
+    const skills = fs.readdirSync(path.join(repoRoot, "plugins", "claude", "skills"));
+    const files = mirrorFiles(repoRoot, skills, version);
+    const plugin = [...files].filter(([rel]) => rel.startsWith("plugins/claude/"));
+    expect(plugin.length + 1).toBeLessThanOrEqual(512);
+    for (const [rel, content] of plugin) {
+      expect(content.length, rel).toBeLessThanOrEqual(256 * 1024);
+      if (!rel.endsWith(".png")) expect(content.toString("utf8"), rel).not.toContain("summer-engine@latest");
+    }
+    expect(files.has("plugins/claude/commands/start.md")).toBe(true);
+    expect(files.has("plugins/claude/commands/summer.md")).toBe(true);
+    expect(files.get("plugins/claude/skills/summer-cli/SKILL.md")?.toString("utf8")).toContain(`summer-engine@${version}`);
+    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, CLAUDE_DIRECTORY_MANIFEST), "utf8"));
+    expect(manifest.mcpServers["summer-engine"].args).toEqual(["-y", `summer-engine@${version}`, "mcp"]);
+    expect(manifest.skills).toContain("./skills/summer-cli/");
   });
 });
 

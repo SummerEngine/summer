@@ -24,7 +24,7 @@
 - **Homebrew:** `brew install summerengine/tap/summer`
 - **npm** (Node 20+): `npm install -g summer-engine`
 
-**CLI only**, no MCP server: `summer setup --cli`. `summer ops search "publish my game"` finds any operation, signed in or not.
+**CLI only** (summer-engine 4.1.0 or newer), no MCP server: `summer setup --cli`. `summer ops search "publish my game"` finds any operation, signed in or not.
 
 ## Connect
 

@@ -26,6 +26,8 @@ export const MANIFEST_TARGETS: Record<string, ManifestTarget[]> = {
     // Root .mcp.json is the MCP pointer shared by the claude, codex, cursor
     // (and factory, via its mcp.json convention) manifests; owned here once.
     { generated: "mcp.json", destination: ".mcp.json" },
+    // The same plugin for Anthropic's directory, from its own small folder (mirrors.ts).
+    { generated: "plugin.claude-directory.json", destination: "plugins/claude/.claude-plugin/plugin.json" },
   ],
   codex: [{ generated: "plugin.codex.json", destination: ".codex-plugin/plugin.json" }],
   cursor: [{ generated: "plugin.cursor.json", destination: ".cursor-plugin/plugin.json" }],

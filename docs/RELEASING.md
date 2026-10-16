@@ -13,7 +13,7 @@ For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 6. Point the `next` dist-tag at the same version, so `next` is never older than `latest`.
 7. Create the `v<version>` tag and GitHub Release from that version's CHANGELOG section.
-8. Publishing the GitHub Release lists `server.json` in the official MCP Registry (`.github/workflows/publish-mcp-registry.yml`). Homebrew (`brew install summerengine/tap/summer`) follows npm `latest` by itself: SummerEngine/homebrew-tap checks every hour and bumps its formula.
+8. Publishing the GitHub Release lists `server.json` in the official MCP Registry (`.github/workflows/publish-mcp-registry.yml`) and attaches the Gemini extension, `summer-gemini-extension.tar.gz`, as the release's only asset (`.github/workflows/gemini-extension.yml`). `plugins/claude/` (the plugin for Anthropic's directory) pins the new version once `npm run generate:registry` runs after the bump. Homebrew (`brew install summerengine/tap/summer`) follows npm `latest` by itself: SummerEngine/homebrew-tap checks every hour and bumps its formula.
 
 Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 

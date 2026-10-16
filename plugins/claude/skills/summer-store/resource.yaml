@@ -1,0 +1,29 @@
+id: skill/summer-store
+kind: skill
+version: 1.0.0
+summary: "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks."
+use_when:
+  - "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game"
+  - "checking on the authority that a player really owns an item before letting them use or equip it"
+  - "checkout shows pending, manual_review, insufficient_funds or unavailable, or bought items don't appear"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - gameplay
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/summer-player-data
+    - skill/summer-analytics
+source: official
+license: MIT
+status: preview
+recommended: false

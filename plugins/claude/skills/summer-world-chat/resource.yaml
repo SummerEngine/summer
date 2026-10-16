@@ -1,0 +1,30 @@
+id: skill/summer-world-chat
+kind: skill
+version: 1.0.0
+summary: "Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only."
+use_when:
+  - "adding in-game text chat, match chat or a chat box to a multiplayer Summer game"
+  - "chat messages fail with text_not_allowed, rate_limited or unavailable, or chat history looks incomplete"
+  - "deciding where player chat should live instead of sending it through Commands or State"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - ui
+  modalities:
+    - scripts
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/summer-friends
+    - skill/summer-parties
+source: official
+license: MIT
+status: preview
+recommended: false

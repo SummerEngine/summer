@@ -13,6 +13,16 @@ Use this skill when the session has no `summer_*` MCP tools (Summer was set up w
 
 First run `summer --version`. If the shell does not find `summer`, or the version is below 4.0 (an old global install, which has no `summer <area> <action>` commands), put `npx -y summer-engine@latest` in place of `summer`, with the same arguments. In Windows PowerShell, write `npx.cmd`.
 
+## The five commands in a game project
+
+<!-- project-commands: the AGENTS.md that summer create and summer setup write copies this list -->
+1. `summer run .` opens the project in Summer Engine. An agent's run stays in the background.
+2. `summer engine get-project-context` (MCP: `summer_get_project_context`) reads the project, its main scene and the engine version. Run it first.
+3. `summer engine play`, then `summer engine get-diagnostics` (MCP: `summer_play`, `summer_get_diagnostics`), runs the game and reads its errors. `summer engine stop` (`summer_stop`) ends it.
+4. `summer engine screenshot` (MCP: `summer_screenshot`) saves an image of the editor or the running game. Open its `localPath` to look.
+5. `summer ops search "<what you want>"` (MCP: `summer_search`) finds any other operation. Run it as `summer <area> <action>` (MCP: `summer_call`), with `--dry-run` first for a change.
+<!-- /project-commands -->
+
 ## 1. Sign in once
 
 ```bash
@@ -38,7 +48,7 @@ Each Summer skill ends with a **From a shell** table: the command for each MCP t
 ## 3. Run it
 
 ```bash
-summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9 --dry-run
+summer assets generate-image --dry-run --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9
 summer engine set-prop --scene-path res://main.tscn --path Player --key position --value "Vector3(0, 1, 0)"
 summer store status --game-id <id> --json
 ```
@@ -46,7 +56,7 @@ summer store status --game-id <id> --json
 - Actions and fields are kebab-case: `aspectRatio` is `--aspect-ratio`, `look_at` is `--look-at`.
 - `--<field>` alone sets a boolean field to true; `--no-<field>` sets it to false. Repeat a flag to give a list.
 - Objects, and anything hard to quote, go in `--input '<json>'`. A flag wins over the same key in `--input`.
-- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
+- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Put it right after the action: after `summer setup <agent> --cli --allow-rules --yes` (run that only when the person asks for it), Claude Code and Codex run it without asking (and the reads). Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
 - `--idempotency-key <key>` makes a retry safe: Summer runs a change once per key.
 - `--json` prints only the answer: `{"ok":true,"status":"done","result":{...}}`. The exit code is 0 for every `ok` answer and 1 for an error.
 

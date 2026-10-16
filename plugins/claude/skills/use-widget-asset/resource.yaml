@@ -1,0 +1,29 @@
+id: skill/use-widget-asset
+kind: skill
+version: 1.0.3
+summary: "Wire a widget slice from an asset pack (panel, button, bar, toggle) into NinePatchRect or TextureRect."
+use_when:
+  - consuming a widget slice (panel, button, slider, progress bar, toggle pair) from a create-asset-sheet pack so it behaves like a real UI control
+  - turning a panel, button, slider, or bar slice from a generated UI kit into a working NinePatchRect or TextureProgressBar
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - scenes
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/create-asset-sheet
+    - skill/instantiate-asset-pack
+    - skill/sprite-sheet
+    - skill/tileable-texture
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/2d-assets/use-widget-asset

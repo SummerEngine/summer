@@ -158,6 +158,8 @@ export interface AgentSpec {
     project: ((ctx: PathContext) => string) | null;
     /** Extra warning printed when project scope is requested (also when it is honoured). */
     projectNote?: string;
+    /** The user file the agent read before it moved: setup names an earlier summer-engine entry left there. */
+    movedFrom?: (ctx: PathContext) => string;
   };
   /** What to do after the config is written. */
   restart: string;
@@ -173,7 +175,8 @@ function appData(ctx: PathContext): string {
 }
 
 function xdgConfig(ctx: PathContext): string {
-  return ctx.env.XDG_CONFIG_HOME ?? join(ctx.home, ".config");
+  // An empty XDG_CONFIG_HOME counts as unset (XDG Base Directory spec).
+  return ctx.env.XDG_CONFIG_HOME || join(ctx.home, ".config");
 }
 
 /** ~/.config on Linux, %APPDATA% on Windows, ~/Library/Application Support on macOS. */
@@ -312,8 +315,10 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Devin Desktop opens summer.games in your browser the first time ${name} connects; sign in there.`,
     },
     mcp: {
-      user: home(".codeium", "windsurf", "mcp_config.json"),
+      // docs.devin.ai/desktop/cascade/mcp (2026-10-16): ~/.config/devin (or $XDG_CONFIG_HOME/devin), %APPDATA%\devin on Windows.
+      user: (ctx) => join(xdgOrAppData(ctx), "devin", "mcp_config.json"),
       project: null,
+      movedFrom: home(".codeium", "windsurf", "mcp_config.json"),
     },
     restart: "Restart Devin Desktop (formerly Windsurf) and refresh MCP servers from the agent settings. Devin's docs say mcp_config.json configures the Cascade agent; for the Devin agent add the server in the app's MCP settings with the same command.",
     skills: sharedSkills({ legacyDirs: { user: home(".codeium", "windsurf", "skills"), project: project(".windsurf", "skills") } }),

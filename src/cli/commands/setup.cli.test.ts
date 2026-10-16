@@ -1,12 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
 import { configureAgentMcp, type SupportedAgent } from "../../installer/agent-config.js";
 import { resolveInstallLocation } from "../../installer/skill-locations.js";
 import { readRecordedMcpServer } from "../../installer/version-check.js";
-import { setupCommand } from "./setup.js";
+import { notGitIgnored, setupCommand } from "./setup.js";
 import { skillsCommand } from "./skills.js";
 
 // `summer setup` ends with a doctor pass (network + engine probes): stub it.
@@ -72,7 +73,7 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     "%s: writes the skills, summer-cli among them, and no MCP entry",
     async (agent) => {
       const { json } = await setup([agent, "--cli", "--yes", "--json"]);
-      expect(json).toMatchObject({ ok: true, mcp: false, agent, config: null, games: null, existingMcpEntry: null });
+      expect(json).toMatchObject({ ok: true, mcp: false, agent, config: null, games: null, existingMcpEntry: null, projectFiles: null });
       expect(existsSync(skillFile(agent, "summer-cli"))).toBe(true);
       expect(existsSync(skillFile(agent, "using-summer"))).toBe(true);
       // The slash commands start work through the MCP tools, so a CLI-only Claude Code gets none.
@@ -83,6 +84,54 @@ describe("summer setup --cli: the skills and no MCP server", () => {
       expect(config.text).not.toContain("mcp.summer.games");
     }
   );
+
+  it("adds Claude Code and Codex allow rules only with --allow-rules, and --remove-allow-rules takes them out", async () => {
+    const settings = join(homedir(), ".claude", "settings.json");
+    const summerRules = () => (existsSync(settings) ? (JSON.parse(readFileSync(settings, "utf-8")).permissions?.allow ?? []) : []).filter((rule: string) => /^Bash\((summer|npx -y summer-engine@latest) /.test(rule));
+
+    const plain = await setup(["claude-code", "--cli", "--yes"]);
+    expect(plain.lines.join("\n")).toContain("summer setup claude-code --cli --allow-rules --yes");
+    expect(summerRules()).toEqual([]);
+
+    const planned = await setup(["claude-code", "--cli", "--allow-rules", "--json", "--scope", "project"]);
+    expect(planned.json.allowRules).toMatchObject({ wrote: false });
+    expect(existsSync((planned.json.allowRules as { path: string }).path)).toBe(false);
+
+    const claude = await setup(["claude-code", "--cli", "--allow-rules", "--yes", "--json"]);
+    expect(claude.json.allowRules).toMatchObject({ path: settings, wrote: true });
+    expect(summerRules()).toContain("Bash(summer jobs wait *)");
+    expect(summerRules().some((rule: string) => rule.includes(" store publish") || rule.includes("capture-gameplay"))).toBe(false);
+    const codex = await setup(["codex", "--cli", "--allow-rules", "--yes", "--json"]);
+    const codexFile = (codex.json.allowRules as { path: string }).path;
+    expect(readFileSync(codexFile, "utf-8")).toContain("prefix_rule(");
+
+    expect((await setup(["claude-code", "--remove-allow-rules", "--json"])).json.allowRules).toMatchObject({ wrote: true });
+    expect(summerRules()).toEqual([]);
+    await setup(["codex", "--remove-allow-rules"]);
+    expect(existsSync(codexFile)).toBe(false);
+  });
+
+  it("says --allow-rules needs --cli instead of ignoring it", async () => {
+    const errors: string[] = [];
+    const error = vi.spyOn(console, "error").mockImplementation((line: unknown) => void errors.push(String(line)));
+    try {
+      await setup(["claude-code", "--allow-rules", "--yes", "--json"]);
+    } finally {
+      error.mockRestore();
+    }
+    expect(errors.join("\n")).toContain("--allow-rules works with --cli only");
+  });
+
+  it("knows when git would share a project's settings.local.json", () => {
+    const repo = mkdtempSync(join(tmpdir(), "summer-gitignore-"));
+    const git = (...args: string[]) => execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    const file = join(repo, ".claude", "settings.local.json");
+    expect(notGitIgnored(file, repo)).toBe(true);
+    writeFileSync(join(repo, ".gitignore"), ".claude/settings.local.json\n");
+    expect(notGitIgnored(file, repo)).toBe(false);
+    expect(notGitIgnored(file, mkdtempSync(join(tmpdir(), "summer-no-git-")))).toBe(false);
+  });
 
   it("--no-mcp is the same as --cli", async () => {
     const { json } = await setup(["kimi-code", "--no-mcp", "--yes", "--json"]);
@@ -153,3 +202,71 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     expect(help).toContain("--no-mcp");
   });
 }, 120_000);
+
+describe("summer setup inside a Summer project", () => {
+  type ProjectFilesJson = { root: string; written: boolean; dryRun: boolean; files: Array<{ file: string; action: string }> } | null;
+  const files = (json: Record<string, unknown>) => (json.projectFiles as ProjectFilesJson)?.files.map((f) => `${f.file} ${f.action}`);
+
+  async function inProject(run: (project: string) => Promise<void>, layout: { gitAt?: "project" | "scenes" } = {}): Promise<void> {
+    const project = mkdtempSync(join(tmpdir(), "summer-setup-project-"));
+    writeFileSync(join(project, "project.godot"), "");
+    mkdirSync(join(project, "scenes"));
+    if (layout.gitAt) mkdirSync(join(project, ...(layout.gitAt === "scenes" ? ["scenes"] : []), ".git"));
+    const cwd = process.cwd();
+    process.chdir(join(project, "scenes"));
+    try {
+      await run(project);
+    } finally {
+      process.chdir(cwd);
+      rmSync(project, { recursive: true, force: true });
+    }
+  }
+
+  it("with --yes adds AGENTS.md and CLAUDE.md at the project root, and keeps a project's own AGENTS.md text", async () => {
+    await inProject(async (project) => {
+      writeFileSync(join(project, "AGENTS.md"), "# Our rules\n");
+      const { json } = await setup(["amp", "--cli", "--yes", "--json"]);
+      expect(json.projectFiles).toMatchObject({ written: true });
+      expect(files(json)).toEqual(["AGENTS.md added", "CLAUDE.md created"]);
+      expect(readFileSync(join(project, "AGENTS.md"), "utf-8")).toMatch(/^# Our rules\n\n<!-- summer-engine:start/);
+      expect(readFileSync(join(project, "CLAUDE.md"), "utf-8")).toBe("@AGENTS.md\n");
+      expect(files((await setup(["amp", "--cli", "--yes", "--json"])).json)).toEqual(["AGENTS.md unchanged", "CLAUDE.md unchanged"]);
+    }, { gitAt: "project" });
+  });
+
+  it("without --yes only plans them, like the skills, and says how to add them", async () => {
+    await inProject(async (project) => {
+      const { json } = await setup(["amp", "--cli", "--json"]);
+      expect(json.projectFiles).toMatchObject({ written: false, dryRun: false });
+      expect(files(json)).toEqual(["AGENTS.md created", "CLAUDE.md created"]);
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+      const { lines } = await setup(["amp", "--cli"]);
+      expect(lines.join("\n")).toContain("Run the same setup command again with --yes to add them");
+    });
+  });
+
+  it("the MCP setup does the same, and a dry run writes nothing", async () => {
+    await inProject(async (project) => {
+      const { json } = await setup(["claude-code", "--dry-run", "--yes", "--json"]);
+      expect(json.projectFiles).toMatchObject({ written: false, dryRun: true });
+      expect(files(json)).toEqual(["AGENTS.md created", "CLAUDE.md created"]);
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+      expect(existsSync(join(project, "CLAUDE.md"))).toBe(false);
+    });
+  });
+
+  it("leaves the project alone with --no-project-files and with --assets-only", async () => {
+    await inProject(async (project) => {
+      expect((await setup(["amp", "--cli", "--yes", "--no-project-files", "--json"])).json.projectFiles).toBeNull();
+      expect((await setup(["amp", "--cli", "--assets-only", "--yes", "--json"])).json.projectFiles).toBeNull();
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+    });
+  });
+
+  it("does not look above the git top level for project.godot", async () => {
+    await inProject(async (project) => {
+      expect((await setup(["amp", "--cli", "--yes", "--json"])).json.projectFiles).toBeNull();
+      expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+    }, { gitAt: "scenes" });
+  });
+});

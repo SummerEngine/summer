@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * npm run generate:registry            — generate registry/generated/ + apply
- *                                        manifests to their root destinations,
+ *                                        manifests to their root destinations
+ *                                        and the plugins/claude/ copy
+ *                                        (mirrors.ts),
  *                                        after rewriting each skill's "From a
  *                                        shell" section from the operation
  *                                        catalog (validate-library/shell-commands.ts).
@@ -32,6 +34,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { generateRegistry, writeGenerated, GenerateError } from "./index.ts";
 import { applyManifests } from "./apply.ts";
+import { applyMirrors, mirrorsOf } from "./mirrors.ts";
 import { checkRegistry } from "./check.ts";
 import { createProviderFromEnvironment, embedRegistry } from "./embed.ts";
 import { writeShellSections } from "../validate-library/shell-commands.ts";
@@ -98,6 +101,8 @@ try {
   if (!flags.has("--no-apply")) {
     const applied = applyManifests(rootDir, outDir);
     for (const { to } of applied.copied) console.log(`generate-registry: applied ${to}`);
+    const mirrored = applyMirrors(rootDir, mirrorsOf(rootDir, result.resources));
+    console.log(`generate-registry: mirrored plugins/claude/ (${mirrored.written} written, ${mirrored.removed.length} removed)`);
   }
 
   if (embed) {

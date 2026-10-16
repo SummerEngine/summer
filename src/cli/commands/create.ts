@@ -12,6 +12,7 @@ import {
   type TemplateEntry,
 } from "../../core/templates.js";
 import { PROJECT_MANIFEST_RELPATH, writeProjectManifest } from "../../project-memory/project-manifest.js";
+import { writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
 
 import { TOOLKIT_VERSION as toolkitVersion } from "../../core/version.js";
 
@@ -68,9 +69,15 @@ export function scaffoldAutopilot(projectDir: string): boolean {
 export const AUTOPILOT_NEXT_STEP_HINT =
   "first run imports assets once, then verifies the game boots; no editor needed";
 
-function printNextSteps(fullPath: string, dirName: string, scaffolded: boolean): void {
+function printNextSteps(fullPath: string, dirName: string, scaffolded: boolean, instructions: InstructionFileResult[]): void {
   console.log(`\nProject created at ${fullPath}`);
   console.log(`Recorded template pin in ${join(dirName, PROJECT_MANIFEST_RELPATH)}`);
+  // AGENTS.md (read by most agents) and CLAUDE.md (`@AGENTS.md`): each file says what happened to it.
+  const changed = instructions.filter((file) => file.action === "created" || file.action === "added" || file.action === "updated").map((file) => file.file);
+  if (changed.length) console.log(`Wrote the Summer instructions for your agent in ${changed.join(" and ")}`);
+  for (const file of instructions) {
+    if (file.reason) console.log(`${file.file} ${file.action === "skipped" ? "not written" : "left as it is"}: ${file.reason}`);
+  }
   console.log("\nNext steps:");
   console.log(`  summer run ${dirName}`);
   if (scaffolded) {
@@ -152,7 +159,7 @@ export const createCommand = new Command("create")
         toolkit_version: toolkitVersion,
         engine_version: await detectEngineVersion(),
       });
-      printNextSteps(fullPath, dirName, scaffolded);
+      printNextSteps(fullPath, dirName, scaffolded, writeAgentInstructions(fullPath));
       return;
     }
 
@@ -183,7 +190,7 @@ export const createCommand = new Command("create")
     });
 
     console.log(`Source: ${pin.repo} @ ${materialized.commit.slice(0, 12)} (tree digest verified)`);
-    printNextSteps(fullPath, dirName, scaffolded);
+    printNextSteps(fullPath, dirName, scaffolded, writeAgentInstructions(fullPath));
   });
 
 /**

@@ -1,4 +1,6 @@
+import { spawnSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
+import { relative } from "path";
 import { Command, Option } from "commander";
 import {
   ConfigScope,
@@ -15,8 +17,10 @@ import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
-import { agentLabel, agentSpec, cliSetupRefusal } from "../../installer/agent-table.js";
+import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
+import { addAllowRules, allowRulesPath, removeAllowRules, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
+import { findSetupProjectRoot, writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
 
 const PROFILE_NOTES: Record<Profile, string> = {
   full: "Every Summer tool.",
@@ -46,6 +50,21 @@ interface SetupCommandOptions {
   cli?: boolean;
   /** false with --no-mcp, the same as --cli. */
   mcp?: boolean;
+  /** --allow-rules (with --cli): let Claude Code or Codex run read-only and dry-run summer commands without asking. */
+  allowRules?: boolean;
+  /** --remove-allow-rules: take exactly those rules out again. */
+  removeAllowRules?: boolean;
+  /** false with --no-project-files: leave the project's AGENTS.md and CLAUDE.md alone. */
+  projectFiles?: boolean;
+}
+
+/** The project's AGENTS.md and CLAUDE.md: what setup did, or would do without --yes. */
+interface ProjectFiles {
+  root: string;
+  /** false: planned only (no --yes, or --dry-run). */
+  written: boolean;
+  dryRun: boolean;
+  files: InstructionFileResult[];
 }
 
 /** The options that only shape the MCP entry, which --cli does not write. */
@@ -91,6 +110,15 @@ export const setupCommand = new Command("setup")
     "CLI only: install the skills and no MCP server (and no Summer Games). The agent runs Summer as summer <area> <action> commands in its shell; the summer-cli skill teaches it"
   )
   .option("--no-mcp", "Same as --cli")
+  .option(
+    "--allow-rules",
+    "With --cli, for Claude Code and Codex: let the agent run read-only summer commands, and dry runs of spends, without asking. Prints every rule; written only with --yes"
+  )
+  .option("--remove-allow-rules", "Remove the allow rules --allow-rules added (Claude Code, Codex), and nothing else")
+  .option(
+    "--no-project-files",
+    "Inside a Summer project, do not add the Summer instructions to its AGENTS.md and CLAUDE.md (added with --yes by default)"
+  )
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -109,10 +137,16 @@ export const setupCommand = new Command("setup")
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
+    if (opts.removeAllowRules) {
+      await removeCliAllowRules(agent, scope, opts);
+      return;
+    }
     if (opts.cli || opts.mcp === false) {
       await setupCliOnly(agent, scope, opts);
       return;
     }
+    // On stderr, so --json output stays one JSON document.
+    if (opts.allowRules) console.error(`  ${sym.warn()}  ${c.yellow("--allow-rules works with --cli only (the MCP server asks through the agent's own tool approvals); no rules were added.")}`);
     const profile = resolveSetupProfile(opts);
 
     const defaultChannel = await resolveDefaultChannel(cliVersion);
@@ -142,6 +176,7 @@ export const setupCommand = new Command("setup")
       stableOnly: Boolean(opts.stableOnly),
       assetsOnly: Boolean(opts.assetsOnly),
     });
+    const projectFiles = setupProjectInstructions(opts);
 
     const doctor = await runDoctor({ quiet: true });
 
@@ -153,6 +188,7 @@ export const setupCommand = new Command("setup")
             config,
             games,
             skills,
+            projectFiles,
             doctor,
           },
           null,
@@ -160,7 +196,7 @@ export const setupCommand = new Command("setup")
         )
       );
     } else {
-      printSetupResult(config, games, skills, doctor);
+      printSetupResult(config, games, skills, doctor, projectFiles);
     }
 
     if (!doctor.ok || skills.status === "failed") {
@@ -200,11 +236,26 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     assetsOnly: Boolean(opts.assetsOnly),
     commands: false,
   });
+  // Read-only and dry-run summer commands run without asking, where the agent has clean allow rules.
+  // Opt-in: the flag is in the command the person approves.
+  let allowRules: AllowRulesResult | null = null;
+  if (opts.allowRules && !supportsAllowRules(agent)) {
+    warnings.push(`--allow-rules is for Claude Code and Codex; ${agentLabel(agent)} manages command approvals in its own settings.`);
+  } else if (opts.allowRules) {
+    try {
+      allowRules = await addAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), Boolean(opts.yes) && !dryRun);
+      const shared = agent === "claude-code" && scope === "project" ? notGitIgnored(allowRules.path) : false;
+      if (shared) warnings.push(`${tildeify(allowRules.path)} is not in .gitignore, so git would share these personal allow rules. Add .claude/settings.local.json to .gitignore.`);
+    } catch (error) {
+      warnings.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  const projectFiles = setupProjectInstructions(opts);
   const doctor = await runDoctor({ quiet: true });
   const ok = doctor.ok && skills.status !== "failed";
 
   if (opts.json) {
-    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, doctor, warnings }, null, 2));
+    console.log(JSON.stringify({ ok, mcp: false, agent, scope, config: null, games: null, existingMcpEntry: existing, skills, allowRules, projectFiles, doctor, warnings }, null, 2));
   } else {
     const label = agentLabel(agent);
     console.log("");
@@ -213,12 +264,85 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
     console.log(`  ${dryRun ? c.dim("(dry run)") : sym.ok()}  ${c.bold(`CLI only for ${label}`)}: no MCP server`);
     console.log(`     ${c.dim("The agent runs Summer in its shell: summer <area> <action>, or npx -y summer-engine@latest <area> <action>. The summer-cli skill teaches it.")}`);
     printSkillsLine(skills, dryRun);
+    if (allowRules) printAllowRules(allowRules, label, Boolean(opts.yes) && !dryRun);
+    else if (supportsAllowRules(agent) && !opts.allowRules) {
+      console.log(`  ${sym.arrow()}  ${c.dim(`${label} asks before each summer command. To run read-only and dry-run ones without asking: summer setup ${agent} --cli --allow-rules --yes (it prints every rule).`)}`);
+    }
+    printProjectFiles(projectFiles);
     for (const warning of warnings) console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
     console.log("");
     printDoctorResult(doctor);
     if (ok && !dryRun) printTryIt(label, Boolean(opts.assetsOnly));
   }
   if (!ok) process.exit(1);
+}
+
+/** The allow rules, each on its line: what the agent now runs without asking, or would with --yes. */
+function printAllowRules(result: AllowRulesResult, label: string, write: boolean): void {
+  const where = c.dim(tildeify(result.path));
+  if (!write) {
+    console.log(`  ${sym.arrow()}  ${label} would run these summer commands without asking. Add them: run the same command with --yes.  ${where}`);
+  } else if (result.changed.length === 0) {
+    console.log(`  ${sym.ok()}  ${label} already runs read-only and dry-run summer commands without asking  ${where}`);
+    return;
+  } else {
+    console.log(`  ${sym.ok()}  ${label} runs these summer commands without asking (${result.changed.length} rules added)  ${where}`);
+  }
+  for (const rule of result.rules) console.log(`     ${c.dim(rule)}`);
+  console.log(`     ${c.dim("Changes, publishing, prices, deletes and messages still ask. jobs wait and assets get save the files they name. Put --dry-run right after the action: summer assets generate-image --dry-run --prompt ... Undo: --remove-allow-rules")}`);
+}
+
+/** True when `path` sits in a git repository that does not ignore it (false outside git, or without git). */
+export function notGitIgnored(path: string, cwd: string = process.cwd()): boolean {
+  const run = (args: string[]) => spawnSync("git", args, { cwd, stdio: "ignore" }).status;
+  if (run(["rev-parse", "--is-inside-work-tree"]) !== 0) return false;
+  return run(["check-ignore", "-q", relative(cwd, path)]) === 1;
+}
+
+/** `summer setup <agent> --remove-allow-rules`: take out exactly the rules --allow-rules added. */
+async function removeCliAllowRules(agent: SupportedAgent, scope: ConfigScope, opts: SetupCommandOptions): Promise<void> {
+  if (!supportsAllowRules(agent)) throw new Error(`--remove-allow-rules is for Claude Code and Codex; Summer adds no allow rules for ${agentLabel(agent)}.`);
+  const result = await removeAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), !opts.dryRun);
+  if (opts.json) {
+    console.log(JSON.stringify({ ok: true, agent, scope, allowRules: result }, null, 2));
+    return;
+  }
+  const where = c.dim(tildeify(result.path));
+  if (result.changed.length === 0) console.log(`  ${sym.ok()}  No Summer allow rules for ${agentLabel(agent)}  ${where}`);
+  else console.log(`  ${opts.dryRun ? c.dim("(dry run)") : sym.ok()}  ${opts.dryRun ? "Would remove" : "Removed"} ${result.changed.length} Summer allow rules for ${agentLabel(agent)}  ${where}`);
+}
+
+/**
+ * Inside a Summer project (findSetupProjectRoot: project.godot at or above the
+ * working directory, no higher than the git top level, never home): its
+ * AGENTS.md and CLAUDE.md, added when missing and never overwritten
+ * (project-memory/agent-instructions.ts). Like the skills, they are only
+ * planned without --yes. Null outside a project, with --no-project-files,
+ * --print, and --assets-only (the block is about building in Summer Engine).
+ */
+function setupProjectInstructions(opts: SetupCommandOptions): ProjectFiles | null {
+  if (opts.projectFiles === false || opts.print || opts.assetsOnly) return null;
+  const root = findSetupProjectRoot();
+  if (!root) return null;
+  const dryRun = Boolean(opts.dryRun);
+  const written = Boolean(opts.yes) && !dryRun;
+  return { root, written, dryRun, files: writeAgentInstructions(root, { dryRun: !written }) };
+}
+
+function printProjectFiles(project: ProjectFiles | null): void {
+  if (!project) return;
+  const changed = project.files.filter((file) => file.action === "created" || file.action === "added" || file.action === "updated");
+  if (changed.length) {
+    const where = c.dim(changed.map((file) => tildeify(file.path)).join(", "));
+    if (project.written) console.log(`  ${sym.ok()}  Added the Summer instructions for agents  ${where}`);
+    else if (project.dryRun) console.log(`  ${c.dim("(dry run)")}  Would add the Summer instructions for agents  ${where}`);
+    else console.log(`  ${sym.warn()}  Instructions for agents not added. Run the same setup command again with --yes to add them  ${where}`);
+  }
+  for (const file of project.files) {
+    if (!file.reason) continue;
+    const what = file.action === "skipped" ? "not written" : "left as it is";
+    console.log(`  ${sym.warn()}  ${c.yellow(`${tildeify(file.path)} ${what}: ${file.reason}`)}`);
+  }
 }
 
 /** The config file that already lists summer-engine for this agent and scope, or null. */
@@ -249,7 +373,8 @@ function printSetupResult(
   config: Awaited<ReturnType<typeof configureAgentMcp>>,
   games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
-  doctor: DoctorResult
+  doctor: DoctorResult,
+  projectFiles: ProjectFiles | null
 ): void {
   if (config.print) {
     console.log(config.snippet.trimEnd());
@@ -296,6 +421,7 @@ function printSetupResult(
   }
 
   printSkillsLine(skills, config.dryRun);
+  printProjectFiles(projectFiles);
 
   for (const warning of config.warnings) {
     console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);

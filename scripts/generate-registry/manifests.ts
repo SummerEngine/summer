@@ -123,6 +123,29 @@ function buildClaudePlugin(i: ManifestInputs): string {
   });
 }
 
+/** The bundled server at this exact version: Anthropic's plugin directory refuses `@latest` and ranges. */
+export function pinnedMcpServer(version: string): { command: string; args: string[] } {
+  return { command: "npx", args: ["-y", `summer-engine@${version}`, "mcp"] };
+}
+
+/**
+ * plugins/claude/.claude-plugin/plugin.json: the same plugin for Anthropic's
+ * directory, from its own small folder (mirrors.ts) with the server pinned
+ * to this version. Paths are relative to that folder.
+ */
+function buildClaudeDirectoryPlugin(i: ManifestInputs): string {
+  const full = JSON.parse(buildClaudePlugin(i)) as Record<string, unknown>;
+  return stableJson({
+    ...full,
+    repository: "https://github.com/summerengine/summer/tree/main/plugins/claude",
+    skills: [...i.skillSlugs].sort().map((slug) => `./skills/${slug}/`),
+    mcpServers: {
+      "summer-engine": pinnedMcpServer(i.version),
+      "summer-cloud": { type: "http", url: HOSTED_MCP_URL },
+    },
+  });
+}
+
 function buildClaudeMarketplace(i: ManifestInputs): string {
   return stableJson({
     $schema: "https://json.schemastore.org/claude-code-marketplace.json",
@@ -254,7 +277,7 @@ function buildGeminiExtension(i: ManifestInputs): string {
     _generated: manifestBanner("gemini"),
     name: "summer",
     version: i.version,
-    description: `${PRODUCT_LINE} The Summer Engine MCP server and context primer; run the summer-engine CLI for the game-dev skills.`,
+    description: `${PRODUCT_LINE} The Summer Engine MCP server, context primer and game-dev skills.`,
     contextFileName: "GEMINI.md",
     mcpServers: {
       "summer-engine": {
@@ -311,6 +334,7 @@ function buildMcpRegistryServer(i: ManifestInputs): string {
 export function buildManifests(i: ManifestInputs): Map<string, string> {
   const out = new Map<string, string>();
   out.set("plugin.claude.json", buildClaudePlugin(i));
+  out.set("plugin.claude-directory.json", buildClaudeDirectoryPlugin(i));
   out.set("marketplace.claude.json", buildClaudeMarketplace(i));
   out.set("plugin.codex.json", buildCodexPlugin(i));
   out.set("plugin.cursor.json", buildCursorPlugin(i));

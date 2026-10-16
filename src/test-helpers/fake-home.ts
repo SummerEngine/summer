@@ -18,6 +18,9 @@ process.env.HOME = fakeHome;
 process.env.USERPROFILE = fakeHome;
 process.env.HOMEDRIVE = "";
 process.env.HOMEPATH = fakeHome;
+// Agent config locations that would otherwise point outside the fake home.
+process.env.APPDATA = join(fakeHome, "AppData", "Roaming");
+for (const name of ["CODEX_HOME", "XDG_CONFIG_HOME", "SUMMER_CODEX_RULES_FILE", "SUMMER_CLAUDE_SETTINGS_FILE"]) delete process.env[name];
 
 afterAll(() => {
   rmSync(fakeHome, { recursive: true, force: true });

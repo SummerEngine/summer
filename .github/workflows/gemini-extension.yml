@@ -16,35 +16,55 @@ on:
         description: "Release tag to attach the extension to (for example v4.1.0)"
         required: true
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   attach:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      # The script from this workflow's commit, the content from the tag: a release
-      # made before the script existed can be packaged by hand.
+      # Gemini takes a release's asset only when it is the only one: a release that
+      # already has it is left alone, one with other assets is an error.
+      - name: Check the release
+        id: release
+        run: |
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          if printf '%s\n' "$assets" | grep -qx "summer-gemini-extension.tar.gz"; then
+            echo "$TAG already has summer-gemini-extension.tar.gz; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$assets" ]; then
+            echo "::error::$TAG has other assets ($assets). Gemini installs a release asset only when it is the only one."
+            exit 1
+          fi
+
+      # The script from this workflow's commit, every packaged file from the tag
+      # itself, so a release made before the script existed packages as it was.
       - name: Checkout the script
+        if: steps.release.outputs.skip != 'true'
         uses: actions/checkout@v5
         with:
           path: tools
 
       - name: Checkout the release tag
+        if: steps.release.outputs.skip != 'true'
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ env.TAG }}
           path: release
 
       - uses: actions/setup-node@v4
+        if: steps.release.outputs.skip != 'true'
         with:
           node-version: 22
 
       - name: Build the extension
+        if: steps.release.outputs.skip != 'true'
         run: node tools/scripts/build-gemini-extension.ts "$RUNNER_TEMP/gemini" release
 
       - name: Attach it to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
-        run: gh release upload "$TAG" "$RUNNER_TEMP/gemini/summer-gemini-extension.tar.gz" --clobber --repo "$GITHUB_REPOSITORY"
+        if: steps.release.outputs.skip != 'true'
+        run: gh release upload "$TAG" "$RUNNER_TEMP/gemini/summer-gemini-extension.tar.gz" --repo "$GITHUB_REPOSITORY"

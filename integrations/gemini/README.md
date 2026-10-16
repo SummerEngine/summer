@@ -27,7 +27,10 @@ Gemini CLI gallery) installs a GitHub Release's only asset when it has one.
 to every release (`scripts/build-gemini-extension.ts`): the manifest without
 `skills`, `GEMINI.md`, `AGENTS.md` and `skills/<slug>/` for every bundled skill.
 Keep it the release's only asset, or Gemini falls back to the source tarball,
-which has no `skills/` folder.
+which has no `skills/` folder: the workflow leaves a release that already has it
+alone and stops with an error on one that has other assets. Every packaged file
+comes from the tag itself (only the script comes from the workflow's commit), so
+dispatching it for an older tag packages that release as it was.
 
 Never edit the destination file by hand — edit `library/` resources or
 `scripts/generate-registry/manifests.ts`, then run

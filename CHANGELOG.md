@@ -10,6 +10,7 @@ Summer Router (early access): talking characters, speech, transcription and imag
 - **A local tool's failure keeps its error code.** On the v4 surface and in `summer <area> <action>`, a failed local tool whose `code` is a contract error code (`not_signed_in`, `conflict`, `forbidden`, ...) answers with that code, its `studio_url` becomes the next step and its `was` becomes `details.was`. Before, every one was `invalid_input`. A local tool that hands back a hosted approval (`approval` and `job`) answers `needs_approval`.
 - **`summer login` for agents.** With no terminal on stdin (or `--non-interactive`) it prints `{status: "pending", browser_url, verification_code, next_step}` and exits instead of waiting. `summer login --complete` waits for the person to sign in, then connects the store. A person at a terminal sees no change.
 - **Skills.** `ai-characters-in-games` is now `summer-router` (the GDScript surface, the operations, errors and fallbacks; no billing amounts). New `voice-and-mic-permissions`: ask for the microphone only from a talk tap, always keep a text path, never touch OS permissions. `summer skills install --all --force` removes the old `ai-characters-in-games` copy.
+- `npm publish` no longer fails on a busy machine when it runs the tests again (`prepublishOnly`). Three slow tests have realistic time limits: the first import of the built package, the template fetch timeout, and the trajectory log rotation.
 
 ## [4.0.0] - 2026-10-15
 

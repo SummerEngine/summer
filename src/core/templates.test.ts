@@ -337,5 +337,5 @@ describe.skipIf(process.platform === "win32")("materializePinnedTemplate fetch t
     while (processIsAlive(pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
     expect(processIsAlive(pid)).toBe(false);
     expect(readFileSync(envFile, "utf8")).toContain("GIT_TERMINAL_PROMPT=0");
-  });
+  }, 30_000); // a 1 s bound plus killing the child and a 3 s check: more than the 5 s default on a busy machine
 });

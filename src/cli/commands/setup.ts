@@ -1,4 +1,6 @@
+import { spawnSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
+import { relative } from "path";
 import { Command, Option } from "commander";
 import {
   ConfigScope,
@@ -143,6 +145,8 @@ export const setupCommand = new Command("setup")
       await setupCliOnly(agent, scope, opts);
       return;
     }
+    // On stderr, so --json output stays one JSON document.
+    if (opts.allowRules) console.error(`  ${sym.warn()}  ${c.yellow("--allow-rules works with --cli only (the MCP server asks through the agent's own tool approvals); no rules were added.")}`);
     const profile = resolveSetupProfile(opts);
 
     const defaultChannel = await resolveDefaultChannel(cliVersion);
@@ -240,6 +244,8 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
   } else if (opts.allowRules) {
     try {
       allowRules = await addAllowRules(agent, allowRulesPath(agent, scope, defaultPathContext()), Boolean(opts.yes) && !dryRun);
+      const shared = agent === "claude-code" && scope === "project" ? notGitIgnored(allowRules.path) : false;
+      if (shared) warnings.push(`${tildeify(allowRules.path)} is not in .gitignore, so git would share these personal allow rules. Add .claude/settings.local.json to .gitignore.`);
     } catch (error) {
       warnings.push(error instanceof Error ? error.message : String(error));
     }
@@ -284,6 +290,13 @@ function printAllowRules(result: AllowRulesResult, label: string, write: boolean
   }
   for (const rule of result.rules) console.log(`     ${c.dim(rule)}`);
   console.log(`     ${c.dim("Changes, publishing, prices, deletes and messages still ask. jobs wait and assets get save the files they name. Put --dry-run right after the action: summer assets generate-image --dry-run --prompt ... Undo: --remove-allow-rules")}`);
+}
+
+/** True when `path` sits in a git repository that does not ignore it (false outside git, or without git). */
+export function notGitIgnored(path: string, cwd: string = process.cwd()): boolean {
+  const run = (args: string[]) => spawnSync("git", args, { cwd, stdio: "ignore" }).status;
+  if (run(["rev-parse", "--is-inside-work-tree"]) !== 0) return false;
+  return run(["check-ignore", "-q", relative(cwd, path)]) === 1;
 }
 
 /** `summer setup <agent> --remove-allow-rules`: take out exactly the rules --allow-rules added. */

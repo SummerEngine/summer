@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { configureAgentMcp, type SupportedAgent } from "../../installer/agent-config.js";
 import { resolveInstallLocation } from "../../installer/skill-locations.js";
 import { readRecordedMcpServer } from "../../installer/version-check.js";
-import { setupCommand } from "./setup.js";
+import { notGitIgnored, setupCommand } from "./setup.js";
 import { skillsCommand } from "./skills.js";
 
 // `summer setup` ends with a doctor pass (network + engine probes): stub it.
@@ -108,6 +109,28 @@ describe("summer setup --cli: the skills and no MCP server", () => {
     expect(summerRules()).toEqual([]);
     await setup(["codex", "--remove-allow-rules"]);
     expect(existsSync(codexFile)).toBe(false);
+  });
+
+  it("says --allow-rules needs --cli instead of ignoring it", async () => {
+    const errors: string[] = [];
+    const error = vi.spyOn(console, "error").mockImplementation((line: unknown) => void errors.push(String(line)));
+    try {
+      await setup(["claude-code", "--allow-rules", "--yes", "--json"]);
+    } finally {
+      error.mockRestore();
+    }
+    expect(errors.join("\n")).toContain("--allow-rules works with --cli only");
+  });
+
+  it("knows when git would share a project's settings.local.json", () => {
+    const repo = mkdtempSync(join(tmpdir(), "summer-gitignore-"));
+    const git = (...args: string[]) => execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    const file = join(repo, ".claude", "settings.local.json");
+    expect(notGitIgnored(file, repo)).toBe(true);
+    writeFileSync(join(repo, ".gitignore"), ".claude/settings.local.json\n");
+    expect(notGitIgnored(file, repo)).toBe(false);
+    expect(notGitIgnored(file, mkdtempSync(join(tmpdir(), "summer-no-git-")))).toBe(false);
   });
 
   it("--no-mcp is the same as --cli", async () => {

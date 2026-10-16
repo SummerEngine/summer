@@ -16,11 +16,6 @@ Step 5 of the multiplayer sequence. It assumes the layout from
 `runtime-manifest.json`, `source-domains.json`, and the `client/`,
 `authority/` and `network/` folders.
 
-**Status:** the summer.games export is in Summer's editor. Bundle upload in
-Studio is rolling out: if the game's Builds page doesn't accept a `.zip`
-bundle yet, stop after step 4 and tell the user the bundle is ready to
-upload.
-
 ## 1. What gets built
 
 **Project > Export**, preset **summer.games**, **Export Project** to a `.zip`

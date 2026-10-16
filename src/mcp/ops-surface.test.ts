@@ -92,6 +92,13 @@ describe("v4, engine profile", () => {
       expect(byOp).toMatchObject({ ok: true, status: "done", result: expect.objectContaining({ results: expect.any(Array) }) });
       const byOld = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "summer_search_library", input: { query: "multiplayer lobby" } } }));
       expect(byOld.ok).toBe(true);
+      // `name` is an alias of `op` (agents copy the field summer_search answers with).
+      const byName = answerOf(await client.callTool({ name: "summer_call", arguments: { name: "docs.search", input: { query: "multiplayer lobby" } } }));
+      expect(byName).toMatchObject({ ok: true, status: "done" });
+      const neither = answerOf(await client.callTool({ name: "summer_call", arguments: { input: { query: "multiplayer lobby" } } }));
+      expect(neither).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+      const both = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.search", name: "docs.read", input: { query: "multiplayer lobby" } } }));
+      expect(both).toMatchObject({ ok: false, error: { code: "invalid_input" } });
     } finally {
       await close();
     }

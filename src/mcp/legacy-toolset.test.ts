@@ -1,9 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { writeSkillMarker } from "../installer/version-check.js";
+import { getSkillRegistry } from "../core/skills-registry.js";
+import { refreshInstalledSkills } from "../installer/skills-refresh.js";
+import { readSkillMarker, writeSkillMarker } from "../installer/version-check.js";
+import { TOOLKIT_VERSION } from "../core/version.js";
 import { installedSkillsBefore4, legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
+import { refreshSkillsAfterUpgrade } from "./server.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -31,6 +35,41 @@ describe("the legacy toolset", () => {
     expect(installedSkillsBefore4([skillsDir("4.0.0"), skillsDir(null)])).toBe(false);
     expect(installedSkillsBefore4([skillsDir("4.1.0"), skillsDir("3.2.0")])).toBe(true);
     expect(installedSkillsBefore4([])).toBe(false);
+  });
+
+  it("turns off for upgraded skills once the first 4.x start refreshed them", () => {
+    const old = skillsDir("3.9.1");
+    const [skill] = getSkillRegistry();
+    mkdirSync(join(old.dir, skill.name));
+    writeFileSync(join(old.dir, skill.name, "SKILL.md"), "3.x text\n");
+    writeFileSync(join(old.dir, skill.name, "resource.yaml"), `id: skill/${skill.name}\n`);
+    expect(installedSkillsBefore4([old])).toBe(true);
+    refreshInstalledSkills("4.1.1", { dirs: [old.dir] });
+    expect(installedSkillsBefore4([old])).toBe(false);
+  });
+
+  it("is refreshed away on the first v4 server start only, never on v3 or under doctor's probe", () => {
+    // This test deletes ~/.agents/skills: only ever under the faked HOME (src/test-helpers/fake-home.ts).
+    if (!homedir().startsWith(tmpdir())) throw new Error(`HOME is not a test folder: ${homedir()}`);
+    const shared = join(homedir(), ".agents", "skills");
+    const [skill] = getSkillRegistry();
+    mkdirSync(join(shared, skill.name), { recursive: true });
+    writeFileSync(join(shared, skill.name, "SKILL.md"), "3.x text\n");
+    writeFileSync(join(shared, skill.name, "resource.yaml"), `id: skill/${skill.name}\n`);
+    writeSkillMarker(shared, "3.9.1");
+    try {
+      expect(refreshSkillsAfterUpgrade("v3")).toBeNull();
+      process.env.SUMMER_MCP_DOCTOR = "1";
+      expect(refreshSkillsAfterUpgrade("v4")).toBeNull();
+      delete process.env.SUMMER_MCP_DOCTOR;
+      expect(readSkillMarker(shared)?.version).toBe("3.9.1");
+      expect(refreshSkillsAfterUpgrade("v4")).toMatch(/^Summer updated its 1 installed skills \(1 folder\) from 3\.9\.1 to /);
+      expect(readSkillMarker(shared)?.version).toBe(TOOLKIT_VERSION);
+      expect(readFileSync(join(shared, skill.name, "SKILL.md"), "utf-8")).not.toBe("3.x text\n");
+    } finally {
+      delete process.env.SUMMER_MCP_DOCTOR;
+      rmSync(shared, { recursive: true, force: true });
+    }
   });
 
   it("follows --toolsets first, then SUMMER_LEGACY_TOOLS, then the skills", () => {

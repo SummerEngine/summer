@@ -333,6 +333,7 @@ describe("validate-library: capability lint", () => {
   });
 });
 
+// "the shipped library fits the budget" validates the whole library: slow on a busy machine.
 describe("validate-library: skills as installed (budget, links, call examples)", () => {
   function withSkillBody(body: string) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-skill-body-"));
@@ -382,7 +383,7 @@ describe("validate-library: skills as installed (budget, links, call examples)",
     expect(marked.errors).toEqual([]);
     expect(marked.sceneEditBlocks).toBeGreaterThan(0);
   });
-});
+}, 60_000);
 
 describe("scene-edit examples: one script, not a chain", () => {
   const chain = (n: number) =>

@@ -17,6 +17,7 @@ const scratch = () => {
   return dir;
 };
 
+// Each test copies every bundled skill and packs them with tar: on a busy machine that takes far longer than the 20 s default.
 describe("the Gemini extension release asset", () => {
   it("has every bundled skill where Gemini reads skills: skills/<name>/SKILL.md with a name and a description", () => {
     const out = scratch();
@@ -56,4 +57,4 @@ describe("the Gemini extension release asset", () => {
     expect(listing).toContain("summer/gemini-extension.json");
     expect(listing).toContain("summer/skills/using-summer/SKILL.md");
   });
-});
+}, 120_000);

@@ -14,9 +14,11 @@ import { runCommand } from "./run.js";
 import { setupCommand } from "./setup.js";
 import { statusCommand } from "./status.js";
 import { toolCommand } from "./tool.js";
+import { renderAgentsBlock } from "../../project-memory/agent-instructions.js";
 
 /**
- * The summer-cli skill teaches real commands only: every `summer …` it writes
+ * The summer-cli skill, and the AGENTS.md block summer create writes from it,
+ * teach real commands only: every `summer …` it writes
  * names a command summer has, with options that command takes, and every
  * operation it runs is in the catalog and passes a dry run here (engine and
  * library operations check their input against the real descriptors; cloud
@@ -70,9 +72,9 @@ function stubDeps(): OpsCliDeps & { out: string[]; err: string[] } {
   };
 }
 
-describe("the summer-cli skill teaches real commands", () => {
+describe("the summer-cli skill and a project's AGENTS.md teach real commands", () => {
   // `summer <area> <action>` and `summer engine …` name the pattern, not one command.
-  const taught = taughtCommands(skill).filter((command) => !command.startsWith("summer <area>") && !command.includes("…"));
+  const taught = taughtCommands(`${skill}\n${renderAgentsBlock()}`).filter((command) => !command.startsWith("summer <area>") && !command.includes("…"));
 
   it("teaches the sign-in, search, describe, run, wait, files and engine commands", () => {
     for (const expected of ["summer login", "summer ops search", "summer ops describe", "summer jobs wait", "summer engine run-script", "summer run", "summer status"]) {

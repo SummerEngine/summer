@@ -1,0 +1,117 @@
+---
+name: summer-cli
+description: "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine."
+license: MIT
+compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
+category: _meta
+allowed-tools: Bash Read
+---
+
+# Summer from the shell
+
+Use this skill when the session has no `summer_*` MCP tools (Summer was set up with `summer setup <agent> --cli`), or when a script or CI job runs Summer. Every Summer capability is an operation named `area.action`, and every operation is one command: `summer <area> <action>`. The commands run the same code as the MCP tools and give the same answers.
+
+If the shell does not find `summer`, put `npx -y summer-engine@latest` in its place, with the same arguments. In Windows PowerShell, write `npx.cmd`.
+
+## 1. Sign in once
+
+```bash
+summer login     # opens the browser: the Summer account, then the store and cloud operations
+summer whoami    # who is signed in, and their credits
+```
+
+Cloud operations (generation, the asset library, the store, publishing, analytics) need the sign-in. Engine commands do not. Run `summer login` in the foreground, once. Tell the person that their browser opens, and wait for them.
+
+## 2. Find the operation
+
+```bash
+summer ops search "make a sound effect"       # the best matches: name, effect, title
+summer ops describe assets.generate_audio     # the exact input: fields, types, which are required
+```
+
+Describe the job in plain words. `--area assets` keeps one area. Without a sign-in, search finds only the engine and library operations, and says so.
+
+For a guide instead of an operation, search the library: `summer docs search --query "<the task>"`, then `summer docs read --id <id>`. Both work offline. Then follow the skill it names.
+
+Each Summer skill ends with a **From a shell** table: the command for each MCP tool and operation the skill names. A skill that says `summer_play` or `assets.generate_image` means `summer engine play` or `summer assets generate-image`.
+
+## 3. Run it
+
+```bash
+summer assets generate-image --prompt "a cozy pixel-art tavern" --aspect-ratio 16:9 --dry-run
+summer engine set-prop --scene-path res://main.tscn --path Player --key position --value "Vector3(0, 1, 0)"
+summer store status --game-id <id> --json
+```
+
+- Actions and fields are kebab-case: `aspectRatio` is `--aspect-ratio`, `look_at` is `--look-at`.
+- `--<field>` alone sets a boolean field to true; `--no-<field>` sets it to false. Repeat a flag to give a list.
+- Objects, and anything hard to quote, go in `--input '<json>'`. A flag wins over the same key in `--input`.
+- `--dry-run` checks the input and changes nothing. For a spend it shows the estimate in credits. Before each generation or other spend: dry-run it, tell the person what you will make, and wait for a yes.
+- `--idempotency-key <key>` makes a retry safe: Summer runs a change once per key.
+- `--json` prints only the answer: `{"ok":true,"status":"done","result":{...}}`. The exit code is 0 for every `ok` answer and 1 for an error.
+
+## 4. Long jobs
+
+3D, video, animation, builds and uploads answer `Started: job <id>` with the command that follows the job.
+
+```bash
+summer assets generate-3d --prompt "a wooden barrel" --wait          # runs, then follows the job to the end
+summer jobs wait --job-id <id> --timeout-seconds 50                  # run it again until finished is true
+```
+
+Do not run the same change again to get its result. Wait on the job.
+
+## 5. Approvals
+
+A publish or another live change can answer `Needs approval` with a link. Give the person that link: nothing changes until they approve. Follow it with `summer jobs wait --job-id <id>` (or `--wait` on the call) until it ends: `done`, `declined`, `expired` or `stale`. Never approve for the person.
+
+## 6. Files
+
+- `--out <folder or file>` on a generate command, on `summer jobs wait` or on `summer assets get` saves the file there. In a Godot project, `res://` paths work. The answer adds `localPath`.
+- Without `--out`, a generation run inside a game project saves into its asset folder: Godot `assets/`, Unity `Assets/Summer`, Unreal `Content/Summer`, three.js `public/assets`. Outside a project, give `--out`.
+- `summer assets get --asset-id <id>` saves only with `--out`.
+- A save never overwrites a file. Tell the person the `localPath`.
+
+## 7. The engine
+
+Engine commands (`summer engine …`) drive the Summer Engine app on this machine. The app must run with the project open.
+
+```bash
+summer status                                              # is the engine up, and the sign-in
+summer run ./my-game                                       # opens the project; for an agent, in the background
+summer engine get-project-context                          # first call: project, main scene, engine version
+summer engine get-scene-tree --scene-path res://main.tscn --depth 2
+summer engine screenshot                                   # the answer's localPath is an image: open it to look
+```
+
+- Values are engine value strings, not JSON: `"Vector3(0, 10, 0)"`, `"Color(1, 0.5, 0, 1)"`. A resource is its class name: `"BoxMesh"`.
+- Name the scene in every change: `--scene-path res://<scene>.tscn`.
+- 3 or more scene edits are one script, not a chain of commands. Write a `func run(ctx):` that ends with `ctx.save_scene()` to a file, then run `summer engine run-script --scene-path res://main.tscn --source "$(cat build.gd)"`. The `scene-scripting` skill has the script API.
+- With more than one editor open, set `SUMMER_ENGINE_PROJECT` to the project folder so the command picks the right one.
+- `summer tool <slug> --args '<json>'` runs an engine tool by its 3.x name too. `summer tool --list` lists them.
+
+## Without Summer Engine
+
+Everything except section 7 works without the app: the sign-in, the library, generation, assets and files, the store and analytics. Skip the `summer engine …` commands; there they answer `engine_not_running`. For assets for another engine or a web app, follow the `summer-assets` skill and stop at the file.
+
+## 8. Errors
+
+An error prints `Error (<code>): <message>` and one `Next:` step, and exits 1. Do the next step. Retry only when the table says so.
+
+| Code | Do this |
+|---|---|
+| `not_signed_in` | Run the command in `Next` (`summer login`), then the same command again. |
+| `engine_not_running` | Open the project in Summer Engine, or `summer run <project-path>`. Then run it again. |
+| `engine_lacks_op` | This engine build is too old for the command. Use the fallback the message names, or ask the person to update Summer Engine. |
+| `invalid_input` | `summer ops describe <op>`, fix the flags, run it again. |
+| `no_credits` | Give the person the link in `Next`. Do not run it again until they say they added credits. |
+| `forbidden` | Summer refused this account. The person checks it in Summer Studio. |
+| `not_found` | Check the id (the area's `list` command), or find the right operation with `summer ops search`. |
+| `rate_limited`, `unavailable` | Nothing ran. Wait a minute and run it again. If it repeats, tell the person the message. |
+| `outcome_unknown` | The change may have run. Run it again only with the same `--idempotency-key`, or check first. |
+
+## Done means
+
+- You ran each command and read its answer. Do not report an answer you did not get.
+- Every spend had a dry run and a yes from the person first.
+- Every file you made is saved, and you told the person its `localPath`.

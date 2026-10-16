@@ -1,0 +1,31 @@
+id: skill/summer-cli
+kind: skill
+version: 1.0.0
+summary: "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine."
+use_when:
+  - the session has no summer_* MCP tools, or Summer was set up with summer setup <agent> --cli
+  - running a Summer operation, a generation or an engine change from a shell, a script or CI
+  - a skill names an MCP tool or an operation and you need the summer command that runs it
+do_not_use_when:
+  - the session lists Summer's MCP tools; call them directly (the using-summer skill)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - assets
+    - tools
+  modalities:
+    - docs
+related:
+  tools:
+    - tool/search-library
+    - tool/read-library
+  skills:
+    - skill/using-summer
+    - skill/summer-assets
+    - skill/scene-scripting
+source: official
+license: MIT
+status: preview
+recommended: true

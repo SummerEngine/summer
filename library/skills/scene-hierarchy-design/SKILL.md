@@ -100,3 +100,27 @@ Follow the canonical scene loop from the Summer MCP reference: route → orient 
 3. Deleting a wrapper parent (`summer_remove_node`) removes exactly its subtree — the recursive-despawn feature works.
 4. No script references a path deeper than one or two segments; group/signal/NodePath used instead.
 5. `summer_get_script_errors` and (if played) `summer_get_debugger_errors` are clean; `summer_screenshot` matches the intended layout.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `docs.plan` | `summer docs plan` |
+| `summer_get_agent_playbook` | `summer docs read --id reference/agent-playbook` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_remove_node` | `summer engine remove-node` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

@@ -275,6 +275,8 @@ queries:
     expected: [skill/trailer-shot]
   - query: "animated looping background for the splash screen"
     expected: [skill/animated-loop]
+  - query: "I don't have the MCP tools, how do I run Summer commands from the terminal"
+    expected: [skill/summer-cli]
 
   # ── Tool intent (engine/editor actions a single tool performs) ─────────
   - query: "take a screenshot of the running game"

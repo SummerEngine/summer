@@ -172,3 +172,17 @@ text = "Start Game"
 ## Collaborative protocol
 
 This skill writes UI scene nodes and wires button signals. Always ask before applying: "May I add the MainMenu (Control + Margin + VBox + Title + Start/Quit buttons) and connect Start.pressed to `_on_start_pressed`?".
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

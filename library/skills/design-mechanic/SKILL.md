@@ -271,3 +271,20 @@ This skill is a workflow that designs and scaffolds — the templates are runnab
 - `fps-controller` — FPS movement scaffolding
 - `gdscript-patterns` — state machines and other script patterns for complex mechanics
 - `audio-direction` — defines the SFX vocabulary the mechanic draws from
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

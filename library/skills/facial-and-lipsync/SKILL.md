@@ -308,3 +308,25 @@ production speech recognition or photoreal lip sync.
 - `animation-tree` — wire the lipsync OneShot into the character's tree.
 - `procedural-animation` — eye blinks, saccades, head idle.
 - Rhubarb Lip Sync — https://github.com/DanielSWolf/rhubarb-lip-sync (external tool; phoneme extraction).
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_audio`, `summer_assets_generate_audio` | `summer assets generate-audio` |
+| `summer_assets_generate_motion` | `summer assets generate-motion` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_jobs_wait` | `summer jobs wait` |
+<!-- /shell-commands -->

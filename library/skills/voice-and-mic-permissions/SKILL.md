@@ -1,6 +1,6 @@
 ---
 name: voice-and-mic-permissions
-description: "Use the microphone in a Summer game safely: ask only from a talk tap, keep a text path, never touch OS permissions."
+description: "Mic in games: ask from a talk tap, keep a text path, no OS prompts."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -267,3 +267,23 @@ features in Studio.
 - `summer-router`: talking characters, tools and the summer router CLI.
 - `design-npc`: the character's behavior around the conversation.
 - `export-and-ship`: export presets per platform.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_game_input` | `summer engine game-input` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

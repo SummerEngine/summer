@@ -1,6 +1,6 @@
 ---
 name: summer-router
-description: "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images."
+description: "Summer Router: AI characters with voice and game tools, speech and images."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs
@@ -318,3 +318,31 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 - Treating `limit_reached` as a bug and retrying. The cap is the product working.
 - Putting the password or the persona in GDScript. It ships in the build.
 - Pushing over a Studio edit with `force` without a `router.pull` first.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_game_input` | `summer engine game-input` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_play` | `summer engine play` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+| `jobs.wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+| `router.add_character` | `summer router add-character` |
+| `router.check` | `summer router check` |
+| `router.doctor` | `summer router doctor` |
+| `router.pull` | `summer router pull` |
+| `router.push` | `summer router push` |
+| `router.setup` | `summer router setup` |
+<!-- /shell-commands -->

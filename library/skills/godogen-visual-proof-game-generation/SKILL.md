@@ -203,3 +203,20 @@ Not yet verified in Summer Engine. To validate an implementation:
 ## Confidence
 
 `extracted`. The architecture (thin runtime, manifest, engine guide, asset-gen), proof over claims, self-verification from captured frames, the dropped verifier model, the C# rationale, the capture tooling and the two involvement modes come from Godogen's public README, CHANGELOG and setup notes. The `ProofCapture` script, the QC-loop JSON protocol and the Summer mapping are adaptations; Godogen's internal prompt and guide files are not public.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_image` | `summer assets generate-image` |
+| `assets.generate_video` | `summer assets generate-video` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_play` | `summer engine play` |
+| `summer_screenshot` | `summer engine screenshot` |
+<!-- /shell-commands -->

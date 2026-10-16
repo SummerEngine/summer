@@ -247,3 +247,27 @@ Method tracks raw: `anim.add_track(Animation.TYPE_METHOD)` + `track_set_path(idx
 
 - `scene-scripting` — the ctx stdlib contract, owner rules, budgets, undo/rollback.
 - `verifying-scenes` — snapshot/diff/screenshot/runtime-read discipline this skill leans on.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_motion` | `summer assets generate-motion` |
+| `summer_api_docs` | `summer docs engine-api` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+| `summer_play` | `summer engine play` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_stop` | `summer engine stop` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+<!-- /shell-commands -->

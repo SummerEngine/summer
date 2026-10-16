@@ -1,11 +1,12 @@
 id: skill/summer-router
 kind: skill
 version: 1.0.0
-summary: "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images."
+summary: "Summer Router: AI characters with voice and game tools, speech and images."
 use_when:
   - "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)"
   - "a voice NPC that does things in the game through tool calls, for example opening a gate when the player says the password"
   - "players talk to a character with their own voice and the character talks back"
+  - "the player speaks to an NPC through the microphone and the NPC answers out loud"
   - "speech, transcription or image generation while the game runs"
   - "about to put a model name, a provider SDK or an API key into a game project"
   - "running summer router (setup, character add, push, test, limits, logs, doctor) or handling Summer Router errors such as limit_reached, router_disabled or tool_unhandled"

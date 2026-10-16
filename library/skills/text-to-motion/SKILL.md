@@ -104,3 +104,18 @@ In a session without Summer Engine tools (the assets profile; the `summer-assets
 Done means the chosen clips are imported and playing on the model in the scene. For a
 playable character continue with `character-animation-wiring`; for state machines,
 `animation-tree`.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_motion`, `summer_assets_generate_motion` | `summer assets generate-motion` |
+| `assets.get`, `summer_assets_get` | `summer assets get` |
+| `assets.search`, `summer_assets_search` | `summer assets search` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+<!-- /shell-commands -->

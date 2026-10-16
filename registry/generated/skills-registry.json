@@ -1239,6 +1239,20 @@
       ]
     },
     {
+      "id": "skill/summer-cli",
+      "name": "summer-cli",
+      "description": "Summer from the shell without MCP: sign in, find and run operations as summer commands, follow jobs, save files, drive the engine.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/summer-cli/",
+      "domains": [
+        "agent-workflow",
+        "assets",
+        "tools"
+      ]
+    },
+    {
       "id": "skill/summer-friends",
       "name": "summer-friends",
       "description": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",
@@ -1319,7 +1333,7 @@
     {
       "id": "skill/summer-router",
       "name": "summer-router",
-      "description": "In-game AI with Summer Router: voice and text characters that call game tools, speech, transcription and images.",
+      "description": "Summer Router: AI characters with voice and game tools, speech and images.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1621,7 +1635,7 @@
     {
       "id": "skill/voice-and-mic-permissions",
       "name": "voice-and-mic-permissions",
-      "description": "Use the microphone in a Summer game safely: ask only from a talk tap, keep a text path, never touch OS permissions.",
+      "description": "Mic in games: ask from a talk tap, keep a text path, no OS prompts.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

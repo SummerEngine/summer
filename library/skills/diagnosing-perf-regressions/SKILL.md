@@ -208,3 +208,15 @@ If the MCP tools report the engine isn't running:
 - `investigating-bugs` — when the slow path turns out to be a logic bug (errors in a tight loop).
 - `debug` — when the perf issue is actually a crash or freeze.
 - `verification-before-completion` — to claim the fix worked, with numbers.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_batch` | `summer engine batch` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+<!-- /shell-commands -->

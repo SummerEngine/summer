@@ -250,3 +250,24 @@ Once the cutscene is generated and wired:
 - `concept-art` — generate the reference image axis if no character reference exists yet.
 - `character-portrait` — produce a high-fidelity locked character portrait for use as `imageUrl`.
 - `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command, with the same fields as flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`. `summer ops describe <op>` prints the exact input; the `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_audio`, `summer_assets_generate_audio` | `summer assets generate-audio` |
+| `assets.generate_image`, `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.generate_video`, `summer_assets_generate_video` | `summer assets generate-video` |
+| `assets.search`, `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

@@ -2,7 +2,7 @@
   "_generated": "GENERATED from integrations/gemini — do not edit; npm run generate:registry",
   "name": "summer",
   "version": "4.0.0",
-  "description": "Agent tooling for Summer Engine: MCP bridge, context primer, and game-dev skills. Use with the npm CLI for skill files on disk.",
+  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. The Summer Engine MCP server and context primer; run the summer-engine CLI for the game-dev skills.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "summer-engine": {

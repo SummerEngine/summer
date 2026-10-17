@@ -20,13 +20,13 @@ describe("the commands an agent may run without asking", () => {
     for (const op of AUTO_ALLOWED_READS) expect(effects.get(op), op).toBe("read");
   });
 
-  it("give every catalog operation exactly its rule: a reviewed read as it is, a spend only as a dry run, anything else none", () => {
+  it("give every catalog operation exactly its rule: a reviewed read as it is, a current spend only as a dry run, anything else none", () => {
     const rules = claudeAllowRules();
     for (const entry of catalog()) {
       for (const launcher of LAUNCHERS) {
         const prefix = `Bash(${[...launcher, words(entry.name)].join(" ")} `;
         const mine = rules.filter((rule) => rule.startsWith(prefix));
-        const want = entry.effect === "spend" ? [`${prefix}--dry-run *)`] : AUTO_ALLOWED_READS.includes(entry.name) ? [`${prefix}*)`] : [];
+        const want = entry.effect === "spend" && entry.status !== "deprecated" ? [`${prefix}--dry-run *)`] : AUTO_ALLOWED_READS.includes(entry.name) ? [`${prefix}*)`] : [];
         expect(mine, `${launcher.join(" ")} ${entry.name} (${entry.effect})`).toEqual(want);
       }
     }

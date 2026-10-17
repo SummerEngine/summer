@@ -966,6 +966,16 @@
       "note": "",
       "op": "store.set_art"
     },
+    "summer_store_set_bundles": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_bundles"
+    },
+    "summer_store_set_sales": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_sales"
+    },
     "summer_store_set_sound": {
       "kind": "same",
       "note": "",

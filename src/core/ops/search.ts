@@ -19,7 +19,9 @@ import type { Effect } from "./contract.js";
  *   action the query names gains a quarter: "publish" is store.publish
  *   before store.cancel_publish.
  * - A title or tag the query says nearly word for word, articles aside
- *   ("how is my game doing" for "how did my game do"), adds 2 per word.
+ *   ("how is my game doing" for "how did my game do"), adds 2 per word, and
+ *   4 when the query is the title exactly: "list my games" is games.list
+ *   ("List my games") before content.list_games ("List the team's games").
  */
 
 const STOP = new Set([
@@ -150,6 +152,12 @@ function phraseBonus(entry: CatalogEntry, all: Word[]): number {
   return bonus;
 }
 
+/** The query is the row's title word for word, articles included: "list my games" for "List my games". */
+function saysTitle(entry: CatalogEntry, all: Word[]): boolean {
+  const title = tokens(entry.title);
+  return title.length === all.length && title.every((word, index) => word.normed === all[index]!.normed);
+}
+
 /**
  * The query names the row's whole action, and its area too when the action
  * is only an everyday verb: "list my games" names games.list, "run my game"
@@ -183,7 +191,7 @@ function scoreAll(entries: readonly CatalogEntry[], query: string): number[] {
       if (hit.score === 0) missed = true;
     });
     if (total === 0) return 0;
-    return total * (0.5 + (0.5 * strong) / terms.length) * (!missed && namesAction(entry, terms) ? 1.25 : 1) + phraseBonus(entry, all);
+    return total * (0.5 + (0.5 * strong) / terms.length) * (!missed && namesAction(entry, terms) ? 1.25 : 1) + phraseBonus(entry, all) * (saysTitle(entry, all) ? 2 : 1);
   });
 }
 

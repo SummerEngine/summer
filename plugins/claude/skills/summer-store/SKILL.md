@@ -361,14 +361,9 @@ once the owner publishes the store page again (`store.publish`, owner-approved).
 - **Sales** card: **Add sale**, pick an Item or a bundle, the percent off and the start and end dates; it shows the result ("400 → 280 Sparks"). **Save sales**. A sale that has ended is dropped on save.
 - **Sold only in bundles:** the checkbox on an Item's row in a bundle, or the toggle on the Item's page. A refusal shows at the field to fix.
 
-**As an agent:** ask the owner before saving, then use `store.set_bundles` and
-`store.set_sales`. `store.get_listing` returns `itemStore`: the bundles with
-`itemsTotalSparks` and `savePercent`, the sales with `listSparks` and
-`saleSparks`, `bundleOnlyItemIds`, and the Game's Items with ids and Sparks
-prices. Each call **replaces the whole list**, so send every bundle or sale to
-keep; `[]` clears it. A bundle without a key keeps the saved key of the same
-name; `bundleOnlyItemIds` on `store.set_bundles` sets the bundle-only Items.
-A refusal names the field, e.g. `storeBundles[0].priceSparks`.
+**As an agent:** ask the owner before saving, then use `store.set_bundles` and `store.set_sales`.
+`store.get_listing` returns `itemStore`: the bundles with `itemsTotalSparks` and `savePercent`, the sales with `listSparks` and `saleSparks`, `bundleOnlyItemIds`, and the Game's Items with ids and Sparks prices.
+Each call **replaces the whole list**, so send every bundle or sale to keep; `[]` clears it. A bundle without a key keeps the saved key of the same name; `bundleOnlyItemIds` on `store.set_bundles` sets the bundle-only Items. A refusal names the field, e.g. `storeBundles[0].priceSparks`.
 
 | | Rules |
 | --- | --- |
@@ -495,5 +490,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_stop` | `summer engine stop` |
 | `store.get_listing` | `summer store get-listing` |
 | `store.publish` | `summer store publish` |
+| `store.set_bundles` | `summer store set-bundles` |
+| `store.set_sales` | `summer store set-sales` |
 | `studio.open` | `summer studio open` |
 <!-- /shell-commands -->

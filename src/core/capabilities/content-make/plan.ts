@@ -8,7 +8,8 @@ import type { CaptionItem, CaptionStyle, Check, FootageClip, Plan, RefBeat, Refe
  */
 
 const STOP = new Set(
-  "the and for with you your this that from into over then than they them their there what when where which while will just like have has had are was were been being its it's our out off one two all any can not but get got lot new now very more most some such only also each other about after before again under onto upon here how why who too own same so if or of on in at to by an a as is be do".split(" ")
+  ("game games play plays player players playing make makes made keep show shows clip clips video videos shot shots thing things way time first last every still much many need needs want using use used "+
+  "the and for with you your this that from into over then than they them their there what when where which while will just like have has had are was were been being its it's our out off one two all any can not but get got lot new now very more most some such only also each other about after before again under onto upon here how why who too own same so if or of on in at to by an a as is be do").split(" ")
 );
 
 /** Search words of a text: lowercase, letters and digits, three or more characters, no filler. */
@@ -253,23 +254,25 @@ function meanOf(values: readonly number[]): number {
 }
 
 /** The window of a clip with the most motion, outside the ranges already used, not too dark. */
-export function bestWindow(clip: FootageClip, seconds: number, used: ReadonlyArray<[number, number]>, after = 0): { t: number; motion: number } {
-  if (clip.kind === "image" || !clip.motion.length) return { t: 0, motion: 0 };
+export function bestWindow(clip: FootageClip, seconds: number, used: ReadonlyArray<[number, number]>, after = 0): { t: number; motion: number; clean: boolean } {
+  if (clip.kind === "image" || !clip.motion.length) return { t: 0, motion: 0, clean: true };
   const half = 0.5;
   const span = Math.max(1, Math.ceil(seconds / half));
   const positions = Math.max(1, Math.floor((clip.duration - seconds) / half + 1e-6) + 1);
-  let best = { t: 0, score: -Infinity, motion: 0 };
+  let best = { t: 0, score: -Infinity, motion: 0, clean: false };
   for (let i = 0; i < positions; i++) {
     const t = i * half;
     const overlaps = used.some(([a, b]) => t < b - 0.05 && t + seconds > a + 0.05);
     const motion = meanOf(clip.motion.slice(i, i + span));
-    const dark = meanOf(clip.luma.slice(i, i + span)) < 12;
+    const light = clip.luma.slice(i, i + span);
+    // black screens and white flashes (loading, a burst filling the frame) are not shots
+    const dark = meanOf(light) < 12 || Math.max(...light, 0) > 140;
     // a frozen half second (a capture hitch, an idle tail) reads as a still frame on screen
     const frozen = clip.motion.slice(i, i + span).filter((value) => value < 0.4).length;
-    const score = motion - (overlaps ? 100 : 0) - (dark ? 5 : 0) - frozen * 1.5 - (t + 0.01 < after ? 1.5 : 0);
-    if (score > best.score) best = { t, score, motion };
+    const score = motion - (overlaps ? 100 : 0) - (dark ? 50 : 0) - frozen * 1.5 - (t + 0.01 < after ? 1.5 : 0);
+    if (score > best.score) best = { t, score, motion, clean: !overlaps && !dark && frozen === 0 };
   }
-  return { t: best.t, motion: best.motion };
+  return { t: best.t, motion: best.motion, clean: best.clean };
 }
 
 export interface BeatMapInput {

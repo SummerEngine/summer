@@ -166,15 +166,18 @@ export function onsetTimes(samples: Float32Array, rate: number): number[] {
     energy.push(Math.log10(1e-9 + sum / hop));
   }
   const flux = energy.map((value, index) => Math.max(0, value - (energy[index - 1] ?? value)));
-  const out: number[] = [];
+  const peaks: Array<{ t: number; strength: number }> = [];
   const window = 50;
   for (let i = 1; i < flux.length - 1; i++) {
     if (flux[i] <= flux[i - 1] || flux[i] < flux[i + 1]) continue;
     const around = flux.slice(Math.max(0, i - window), i + window);
     const mean = around.reduce((sum, value) => sum + value, 0) / around.length;
-    if (flux[i] > mean * 2.2 && flux[i] > 0.15 && (!out.length || i * 0.01 - out[out.length - 1] >= 0.12)) out.push(round2(i * 0.01));
+    if (flux[i] > mean * 2.2 && flux[i] > 0.15 && (!peaks.length || i * 0.01 - peaks[peaks.length - 1].t >= 0.12)) peaks.push({ t: round2(i * 0.01), strength: flux[i] });
   }
-  return out;
+  // a busy song has an onset every few frames; cuts belong on its accents, the stronger 40%
+  const sorted = peaks.map((peak) => peak.strength).sort((a, b) => a - b);
+  const floor = peaks.length > 20 ? sorted[Math.floor(sorted.length * 0.6)] : 0;
+  return peaks.filter((peak) => peak.strength >= floor).map((peak) => peak.t);
 }
 
 function runBinary(command: string, args: readonly string[]): Promise<Buffer> {

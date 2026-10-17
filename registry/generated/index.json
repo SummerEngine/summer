@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "300498a84e9da1d55d1962edc29a80a766e6af4aad96ed3deb1118501c467ddb",
+      "content_hash": "780278ed5c212a095fca65af14861ee936acc75b69de7dd9b0d859e90c21e7c5",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -6653,8 +6653,8 @@
       "id": "tool/content-make",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "27214cec280995f304b43baa5f82c80488151e4ca0534df7ce840da922a75681",
-      "summary": "Make one finished piece for a game on this computer - a library reference copied beat for beat with the team's footage, checked, saved to Review.",
+      "content_hash": "cbf8c08b435086dc2a1234675a12a039fd759724e16b490506abf12ea5fecd9d",
+      "summary": "Make a piece of content for a game. Copies a library reference beat for beat with footage on this computer, checks it, saves it to Review.",
       "use_when": [
         "\"make a piece of content for this\"",
         "\"clip what we just built\"",

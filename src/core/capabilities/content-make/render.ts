@@ -138,17 +138,31 @@ function styled(text: string, style: CaptionStyle): string {
   return style.quoted ? `“${out}”` : out;
 }
 
-/** Splits a caption into at most two lines when it is wider than the safe area. */
+async function textWidth(text: string, font: string, size: number): Promise<number> {
+  const { stdout } = await magick(["-font", font, "-pointsize", String(size), `label:${text}`, "-format", "%w", "info:"]);
+  return Number(stdout);
+}
+
+/** Breaks a caption into as few balanced lines as keep every line inside the safe width (at most four). */
 async function wrap(text: string, font: string, size: number, maxWidth: number): Promise<string> {
   const words = text.split(" ");
-  if (words.length < 2) return text;
-  const { stdout } = await magick(["-font", font, "-pointsize", String(size), `label:${text}`, "-format", "%w", "info:"]);
-  if (Number(stdout) <= maxWidth) return text;
-  const lines = Math.min(3, Math.ceil(Number(stdout) / maxWidth));
-  const per = Math.ceil(words.length / lines);
-  const out: string[] = [];
-  for (let i = 0; i < words.length; i += per) out.push(words.slice(i, i + per).join(" "));
-  return out.join("\n");
+  if (words.length < 2 || (await textWidth(text, font, size)) <= maxWidth) return text;
+  for (let count = 2; count <= Math.min(4, words.length); count++) {
+    const target = text.length / count;
+    const lines: string[] = [];
+    let current: string[] = [];
+    for (const word of words) {
+      if (current.length && [...current, word].join(" ").length > target * 1.15 && lines.length < count - 1) {
+        lines.push(current.join(" "));
+        current = [];
+      }
+      current.push(word);
+    }
+    lines.push(current.join(" "));
+    const widths = await Promise.all(lines.map((line) => textWidth(line, font, size)));
+    if (widths.every((width) => width <= maxWidth)) return lines.join("\n");
+  }
+  return words.reduce<string[]>((rows, word, index) => (index % 2 ? [...rows.slice(0, -1), `${rows[rows.length - 1]} ${word}`] : [...rows, word]), []).join("\n");
 }
 
 export interface CaptionBox {
@@ -165,13 +179,14 @@ export interface CaptionBox {
  */
 export async function captionPng(text: string, style: CaptionStyle, font: string, out: string): Promise<CaptionBox> {
   const label = styled(text, style);
-  const size = style.size;
+  // a long held line sets smaller, as the references do, so it stays two or three lines
+  const size = style.mode === "words" ? style.size : Math.round(Math.max(56, Math.min(style.size, style.size * Math.sqrt(30 / Math.max(30, label.length)))));
   const stroke = style.outline ? Math.max(4, Math.round(size / 8)) : 0;
   // centred text stays inside the safe area (0.06-0.86 of the width) with room for the outline
   const maxWidth = W * 0.68;
   const tmp = `${out}.label.png`;
   const words = label.split(" ");
-  const fits = Number((await magick(["-font", font, "-pointsize", String(size), `label:${label}`, "-format", "%w", "info:"])).stdout) <= maxWidth;
+  const fits = (await textWidth(label, font, size)) <= maxWidth;
   const hi = fits && style.highlight && style.mode === "words" && words.length > 1 ? words.reduce((best, word, index) => (word.replace(/\W/g, "").length > words[best].replace(/\W/g, "").length ? index : best), 0) : -1;
   if (hi >= 0) {
     // word by word so one word can take the highlight colour

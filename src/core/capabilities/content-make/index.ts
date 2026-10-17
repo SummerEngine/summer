@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { BuildToolError } from "../summer-bundle.js";
 import { loudness, onsets, probe, requireTools, run } from "./media.js";
-import { alignScript, beatCaptions, beatMap, bestWindow, chunkWords, evaluateChecks, FREEZE_LIMIT, lineStarts, mapTimes, musicStart, pickReference, snapCuts, unwrittenLines, voiceAnchors, type PickContext } from "./plan.js";
+import { alignScript, beatCaptions, beatMap, bestWindow, chunkWords, evaluateChecks, FREEZE_LIMIT, lineStarts, mapTimes, musicStart, pickReference, scoreReference, snapCuts, unwrittenLines, voiceAnchors, type PickContext } from "./plan.js";
 import { buildBase, captionTrack, contactSheet, cover, fontFile, mix, motionReport, pictureTrack, sideBySide, wordCaptionItems, type CaptionBox } from "./render.js";
 import { defaultContentRoot, indexFootage, referenceVideo, studyReference } from "./study.js";
 import type { Check, FootageClip, FootageIndex, Plan, Reference, Study } from "./types.js";
@@ -182,6 +182,9 @@ interface Request {
   root: string;
   /** The footage folders, kept so a run with the same workDir needs none. */
   footage: string[];
+  /** Files given once that later runs keep using. */
+  music?: string;
+  font?: string;
   contentGameId: string;
   referenceId: string;
   requestId: string | null;
@@ -247,21 +250,22 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   let ref: Reference | undefined;
   let fitReason = request?.fitReason ?? "";
   const wanted = input.referenceId ?? request?.referenceId;
+  if (!wanted) deps.progress("pick", "Choosing today's reference");
+  // what the game has made already and what changed today: the pick, and the "why" of a chosen reference too
+  const pieces = request ? [] : await allPages<{ referenceId?: string; format?: string }>(deps.cloud, "content.list_pieces", { ...team, contentGameId }, 6).catch(() => []);
+  const byId = new Map(refs.map((candidate) => [candidate.referenceId, candidate]));
+  const usedReferenceIds = new Set(pieces.map((piece) => piece.referenceId).filter((id): id is string => Boolean(id)));
+  const usedFormats = new Set(pieces.flatMap((piece) => [piece.format, piece.referenceId ? byId.get(piece.referenceId)?.formatType : undefined]).filter((format): format is string => Boolean(format)));
+  const commits = request ? [] : [...(input.note ? [input.note] : []), ...(await recentCommits(resolve(input.repo ?? deps.cwd)))];
+  const ctx: PickContext = { usedReferenceIds, usedFormats, niches: kit.niches ?? [], commits, voiceReady: Boolean(input.voiceFile), today };
   if (wanted) {
     ref = refs.find((candidate) => candidate.referenceId === wanted);
     if (!ref) {
       const got = await cloudResult<{ reference?: Reference } & Reference>(deps.cloud, "content.get_reference", { ...team, contentGameId, referenceId: wanted });
       ref = got.reference ?? got;
     }
-    if (!fitReason) fitReason = "chosen for this piece";
+    if (!fitReason) fitReason = scoreReference({ ...ref, locked: false }, { ...ctx, usedReferenceIds: new Set() })?.fitReason ?? "chosen for this piece";
   } else {
-    deps.progress("pick", "Choosing today's reference");
-    const pieces = await allPages<{ referenceId?: string; format?: string }>(deps.cloud, "content.list_pieces", { ...team, contentGameId }, 6).catch(() => []);
-    const byId = new Map(refs.map((candidate) => [candidate.referenceId, candidate]));
-    const usedReferenceIds = new Set(pieces.map((piece) => piece.referenceId).filter((id): id is string => Boolean(id)));
-    const usedFormats = new Set(pieces.flatMap((piece) => [piece.format, piece.referenceId ? byId.get(piece.referenceId)?.formatType : undefined]).filter((format): format is string => Boolean(format)));
-    const commits = [...(input.note ? [input.note] : []), ...(await recentCommits(resolve(input.repo ?? deps.cwd)))];
-    const ctx: PickContext = { usedReferenceIds, usedFormats, niches: kit.niches ?? [], commits, voiceReady: Boolean(input.voiceFile), today };
     const pick = pickReference(refs, ctx);
     if (!pick) {
       await make.stage("pick", "failed", { missing: "a reference this game has not used yet" });
@@ -278,7 +282,9 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   mkdirSync(workDir, { recursive: true });
   const requestId = await make.open({ contentGameId, referenceId: ref.referenceId, note: input.note }, request?.requestId ?? null);
   const footagePaths = (input.footage?.length ? input.footage.map((path) => resolve(path)) : request?.footage ?? [join(deps.cwd, "content", "footage")]).filter((path) => existsSync(path));
-  request = { ...(teamId ? { teamId } : {}), root, footage: footagePaths, contentGameId, referenceId: ref.referenceId, requestId, fitReason, createdAt: request?.createdAt ?? deps.now().toISOString() };
+  const music = input.music ? resolve(input.music) : request?.music;
+  const font = input.font ? resolve(input.font) : request?.font;
+  request = { ...(teamId ? { teamId } : {}), root, footage: footagePaths, ...(music ? { music } : {}), ...(font ? { font } : {}), contentGameId, referenceId: ref.referenceId, requestId, fitReason, createdAt: request?.createdAt ?? deps.now().toISOString() };
   writeJson(join(workDir, "request.json"), request);
   writeJson(join(workDir, "reference.json"), ref);
   await make.stage("pick", "done", { message: `${ref.title} (${fitReason})` });
@@ -324,7 +330,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     deps.progress("plan", "Mapping the reference's shots to the footage");
     // a beat that repeats the beat before (a held caption) keeps that line: only the first needs words
     const lines = refLines.map((line, index) => (line && line !== refLines[index - 1] ? `TODO: our words for "${line.replace(/\[[^\]]*\]/g, "…")}"` : ""));
-    const music = input.music ?? (study.music && !study.hasVoice ? footage.music[0] ?? null : null);
+    const song = music ?? (study.music && !study.hasVoice ? footage.music[0] ?? null : null);
     plan = {
       version: 1,
       referenceId: ref.referenceId,
@@ -338,7 +344,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       caption: study.caption,
       captions: [],
       voice: { file: input.voiceFile ?? null, needed: study.hasVoice },
-      audio: { music, bedDb: study.hasVoice ? -20 : music ? -18 : 0 },
+      audio: { music: song, bedDb: study.hasVoice ? -20 : song ? -18 : 0 },
       post: { caption: input.caption ?? "", hashtags: input.hashtags ?? kit.hashtags?.core ?? [], ...(input.title ? { title: input.title } : {}) },
       why: { referenceId: ref.referenceId, fitReason, refStats: { views: ref.stats?.views, likes: ref.stats?.likes, breakoutRatio: ref.breakoutRatio, postedAt: ref.stats?.postedAt } },
       overlays: [],
@@ -354,7 +360,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   if (input.caption) plan.post.caption = input.caption;
   if (input.hashtags) plan.post.hashtags = input.hashtags;
   if (input.voiceFile) plan.voice.file = resolve(input.voiceFile);
-  if (input.music) plan.audio.music = resolve(input.music);
+  if (input.music) plan.audio.music = music ?? null;
   writeJson(planFile, plan);
   // a title nobody gave: the game and our first line
   const title = plan.title || `${kit.gameName ?? contentGameId}: ${plan.lines.find((line) => line && !/^TODO\b/.test(line)) ?? plan.format}`.slice(0, 100);
@@ -439,7 +445,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       built = await buildBase(plan.shots, cuts, renderDir, (done, total) => deps.progress("render", `shot ${done}/${total}`));
       motion = await motionReport(built.base, built.frameCuts);
       const still = motion.shots.map((value, index) => ((value < 2 || motion.freeze[index] > FREEZE_LIMIT) && plan!.shots[index].src && clipsByPath.get(plan!.shots[index].src!)?.kind === "video" ? index : -1)).filter((index) => index >= 0);
-      if (!still.length || round >= 2) break;
+      if (!still.length || round >= 3) break;
       for (const index of still) {
         const shot = plan.shots[index];
         const clip = clipsByPath.get(shot.src!) as FootageClip;
@@ -447,10 +453,15 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
         const used = plan.shots.filter((other, j) => j !== index && other.src === clip.path).map((other, j): [number, number] => [other.t ?? 0, (other.t ?? 0) + (cuts[j + 1] - cuts[j])]);
         used.push([shot.t ?? 0, (shot.t ?? 0) + seconds]);
         const better = bestWindow(clip, seconds, used);
-        if (better.motion >= 2) shot.t = better.t;
+        // short shots measure noisily: ask for clear motion before keeping the clip
+        if (better.clean && better.motion >= (seconds < 0.7 ? 3 : 2)) shot.t = better.t;
         else {
           // another clip with motion where this one has none
-          const alt = footage.clips.filter((other) => other.kind === "video" && other !== clip).map((other) => ({ other, window: bestWindow(other, seconds, []) })).sort((a, b) => b.window.motion - a.window.motion)[0];
+          const alt = footage.clips
+            .filter((other) => other.kind === "video" && other !== clip)
+            .map((other) => ({ other, window: bestWindow(other, seconds, plan!.shots.filter((s2, j) => s2.src === other.path).map((s2, j): [number, number] => [s2.t ?? 0, (s2.t ?? 0) + seconds])) }))
+            .filter((candidate) => candidate.window.clean)
+            .sort((a, b) => b.window.motion - a.window.motion || a.other.path.localeCompare(b.other.path))[0];
           if (alt && alt.window.motion >= 2) {
             shot.src = alt.other.path;
             shot.t = alt.window.t;
@@ -462,13 +473,13 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     }
 
     const style = plan.caption;
-    const font = fontFile(style.font, input.font);
+    const fontPath = fontFile(style.font, font);
     const captionItems = plan.captions.length
       ? plan.captions
       : style.mode === "words" && words.length
         ? wordCaptionItems(chunkWords(words, style.chunk), end)
         : beatCaptions(beats, plan.lines, cuts, refBounds, style.mode === "words" ? "beats" : style.mode);
-    const captions = await captionTrack(captionItems, end, style, font, renderDir);
+    const captions = await captionTrack(captionItems, end, style, fontPath, renderDir);
     const overlays: string[] = [];
     for (const [index, overlay] of plan.overlays.entries()) overlays.push(await pictureTrack(resolve(workDir, overlay.file), overlay.from, overlay.to, end, join(renderDir, `overlay${index}.mov`)));
     if (captions) overlays.push(captions.track);
@@ -479,7 +490,8 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     // checks
     stage = "checks";
     deps.progress("checks", "Measuring the piece");
-    const final = await motionReport(piece, built!.frameCuts);
+    // motion is the footage's (the cut before captions): a held caption covers part of the frame and would read as stillness
+    const final = motion!;
     const firstCaption = captionItems.length ? captionItems[0].from : null;
     const firstVoice = words.length ? words[0].s : null;
     const firstWords = [firstCaption, firstVoice].filter((value): value is number => value !== null).sort((a, b) => a - b)[0] ?? null;
@@ -527,10 +539,17 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       return { ok: true, status: "saved", workDir, referenceId: ref.referenceId, pieceId: delivered.pieceId, reviewUrl: delivered.reviewUrl, ...summary };
     }
     const folder = `pieces/${slug(title).slice(0, 50) || ref.referenceId}`;
+    // each file goes up once: a run that stopped after some uploads reuses their items
+    const uploadsFile = join(workDir, "uploads.json");
+    const uploaded = readJson<Record<string, string>>(uploadsFile) ?? {};
     const upload = async (file: string, contentType: string, title: string, description: string, tags: string[]): Promise<string> => {
+      const fileSha = createHash("sha1").update(readFileSync(file)).digest("hex");
+      if (uploaded[fileSha]) return uploaded[fileSha];
       const begun = await cloudResult<{ uploadId: string; uploadUrl: string; headers: { "content-type": string } }>(deps.cloud, "content.upload_begin", { ...team, fileName: basename(file), contentType, size: statSync(file).size });
       await deps.put(begun.uploadUrl, file, begun.headers["content-type"] ?? contentType);
       const done = await cloudResult<{ item: { itemId: string } }>(deps.cloud, "content.upload_complete", { ...team, uploadId: begun.uploadId, title, description, tags, folder });
+      uploaded[fileSha] = done.item.itemId;
+      writeJson(uploadsFile, uploaded);
       return done.item.itemId;
     };
     const videoItem = await upload(piece, "video/mp4", title, `9:16 render, beat for beat on reference ${ref.referenceId}.`, ["render", plan.format].filter(Boolean));
@@ -564,7 +583,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     };
     const saved = delivered?.pieceId
       ? await save("content.update_piece", { ...base, pieceId: delivered.pieceId })
-      : await save("content.save_piece", { ...base, contentGameId, idempotencyKey: `content-make:${request.requestId ?? workDir}:${sha.slice(0, 12)}` });
+      : await save("content.save_piece", { ...base, contentGameId, idempotencyKey: `content-make:${createHash("sha1").update(request.requestId ?? workDir).digest("hex").slice(0, 16)}:${sha.slice(0, 16)}` });
     writeJson(join(workDir, "delivered.json"), { pieceId: saved.piece.pieceId, sha, reviewUrl: saved.piece.reviewUrl });
     await make.stage("upload", "done", { pieceId: saved.piece.pieceId });
     return {

@@ -24,6 +24,9 @@ facets:
     - deployment
 compatibility:
   engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-store
 source: official
 license: MIT
 status: preview

@@ -1346,7 +1346,7 @@
     {
       "id": "skill/summer-store",
       "name": "summer-store",
-      "description": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "description": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

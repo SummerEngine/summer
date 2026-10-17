@@ -6690,7 +6690,7 @@
       "id": "tool/content-make",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "e5058d60f2cc5e07f2d814636f58688c07fe6082f0d8ae0280555f65befa274a",
+      "content_hash": "9b6a5c761b4e6a429218b7937386c26a25aca825047323aa3dab9e8fc112148a",
       "summary": "Make a piece of content for a game. Copies a library reference beat for beat with footage on this computer, checks it, saves it to Review.",
       "use_when": [
         "\"make a piece of content for this\"",

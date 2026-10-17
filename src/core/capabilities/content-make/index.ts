@@ -16,8 +16,7 @@ import { transcribeWords } from "./voice.js";
  * copied beat for beat from a reference in Summer's library, from the
  * team's own footage, into the team's Review.
  *
- *   picking_reference -> studying_reference -> indexing_footage -> mapping_beats
- *   -> voice_over -> rendering -> checking -> side_by_side -> uploading -> saving
+ *   pick -> study -> footage -> plan -> voice -> render -> checks -> compare -> upload
  *
  * It runs directly (an agent's "clip what we just built"), or it claims the
  * oldest make request Summer's server queued for the team (the daily
@@ -32,7 +31,7 @@ import { transcribeWords } from "./voice.js";
  */
 
 /** The stage names Summer's server shows live on Today (content.update_make). */
-export type Stage = "picking_reference" | "studying_reference" | "indexing_footage" | "mapping_beats" | "voice_over" | "rendering" | "checking" | "side_by_side" | "uploading" | "saving";
+export type Stage = "pick" | "study" | "footage" | "plan" | "voice" | "render" | "checks" | "compare" | "upload";
 
 export interface ContentMakeInput {
   teamId?: string;
@@ -40,14 +39,11 @@ export interface ContentMakeInput {
   referenceId?: string;
   referenceFile?: string;
   /** What to make it about (the commits since the last piece, "the new boss"): weighs the pick. */
-  brief?: string;
-  /** The make request's key: one make per game, UTC day and key (default: this piece's own). */
-  key?: string;
-  source?: "scheduler" | "agent" | "person";
-  /** Claim the oldest queued make request for the team (or game) and make it. */
+  note?: string;
+  /** Claim a queued make request (the named one, else the team's oldest) and make it. */
   claim?: boolean;
-  /** This computer's name on the claim. */
-  worker?: string;
+  /** The make request to claim, from content.make. */
+  requestId?: string;
   /** The kit learnings (content.get_kit) the words and choices applied. */
   learningIds?: string[];
   footage?: string[];
@@ -126,72 +122,75 @@ const readJson = <T>(file: string): T | null => {
 const writeJson = (file: string, value: unknown) => writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
 interface Make {
-  makeId: string;
+  requestId: string;
   contentGameId: string;
-  key: string;
-  brief?: string;
   referenceId?: string;
+  note?: string;
   revisePieceId?: string;
   footage?: string[];
-  status: string;
 }
 
 /**
  * The make request this run reports to (content.make, content.claim_make,
- * content.update_make). Every update renews the claim. A server without make
- * requests (not_found) or a finished one (conflict) stops the reports; the
- * piece is still made and saved.
+ * content.update_make): each stage running when it starts and done when the
+ * next one starts, done on upload with the piece, or failed with the one
+ * missing thing. Every update renews the claim. A server without make
+ * requests (not_found) or one that refuses an update (conflict) stops the
+ * reports; the piece is still made and saved.
  */
 class MakeRequest {
-  makeId: string | null = null;
+  requestId: string | null = null;
   private live = true;
+  private current: Stage | null = null;
   constructor(private readonly cloud: CloudCall, private readonly teamId: string | undefined) {}
 
-  /** Opens (or reopens) this run's own make: one per game, day and key. */
-  async open(input: { contentGameId: string; key: string; brief?: string; referenceId?: string; footage: string[]; source: string }, existing: string | null): Promise<string | null> {
-    if (existing) return (this.makeId = existing);
+  /** Opens this run's own request (one per game, UTC day, reference and note) and claims it; reopens a known one. */
+  async open(input: { contentGameId: string; note?: string; referenceId?: string; footage: string[] }, existing: string | null): Promise<string | null> {
+    if (existing) return (this.requestId = existing);
     const made = await this.call("content.make", {
       contentGameId: input.contentGameId,
-      key: input.key.slice(0, 80),
-      source: input.source,
-      ...(input.brief ? { brief: input.brief.slice(0, 2000) } : {}),
+      ...(input.note ? { note: input.note.slice(0, 2000) } : {}),
       ...(input.referenceId ? { referenceId: input.referenceId } : {}),
       ...(input.footage.length ? { footage: input.footage.slice(0, 10) } : {}),
     });
-    const make = made?.make as Make | undefined;
-    if (!make || ["done", "failed", "cannot_make"].includes(make.status)) return null;
-    return (this.makeId = make.makeId);
+    const requestId = made?.requestId as string | undefined;
+    if (!requestId) return null;
+    // claimed already (a finished request, or another computer on it): no reports from here
+    const claimed = await this.call("content.claim_make", { contentGameId: input.contentGameId, requestId });
+    return (this.requestId = (claimed?.request as Make | null | undefined)?.requestId ?? null);
   }
 
-  /** Claims the oldest queued make for the team (or one game). */
-  async claim(contentGameId: string | undefined, worker: string): Promise<Make | null> {
-    const claimed = await this.call("content.claim_make", { ...(contentGameId ? { contentGameId } : {}), worker: worker.slice(0, 80) });
-    const make = (claimed?.make as Make | null | undefined) ?? null;
-    this.makeId = make?.makeId ?? null;
+  /** Claims the named request, else the oldest open one for the team (or one game). */
+  async claim(contentGameId: string | undefined, requestId: string | undefined): Promise<Make | null> {
+    const claimed = await this.call("content.claim_make", { ...(contentGameId ? { contentGameId } : {}), ...(requestId ? { requestId } : {}) });
+    const make = (claimed?.request as Make | null | undefined) ?? null;
+    this.requestId = make?.requestId ?? null;
     return make;
   }
 
-  async stage(stage: Stage, detail?: string): Promise<void> {
-    await this.update({ stage, status: "running", ...(detail ? { detail: detail.slice(0, 200) } : {}) });
+  async stage(stage: Stage, message?: string): Promise<void> {
+    if (this.current && this.current !== stage) await this.update({ stage: this.current, state: "done" });
+    this.current = stage;
+    await this.update({ stage, state: "running", ...(message ? { message: message.slice(0, 300) } : {}) });
   }
 
   async done(pieceId: string): Promise<void> {
-    await this.update({ stage: "saving", status: "done", pieceId });
+    if (this.current && this.current !== "upload") await this.update({ stage: this.current, state: "done" });
+    await this.update({ stage: "upload", state: "done", pieceId });
   }
 
   async failed(stage: Stage, error: string): Promise<void> {
-    await this.update({ stage, status: "failed", error: error.slice(0, 400) });
+    await this.update({ stage, state: "failed", message: error.slice(0, 300) });
   }
 
   async cannotMake(stage: Stage, what: string, fix: string): Promise<void> {
-    await this.update({ stage, status: "cannot_make", missing: { what: what.slice(0, 160), fix: fix.slice(0, 200) } });
+    await this.update({ stage, state: "failed", missing: what.slice(0, 160), ...(fix ? { message: fix.slice(0, 300) } : {}) });
   }
 
   private async update(body: Record<string, unknown>): Promise<void> {
-    if (!this.makeId) return;
-    const answer = await this.callAnswer("content.update_make", { makeId: this.makeId, ...body });
-    // a make that is finished takes no more reports
-    if (answer && !answer.ok && answer.error?.code === "conflict") this.makeId = null;
+    if (!this.requestId) return;
+    const answer = await this.callAnswer("content.update_make", { requestId: this.requestId, ...body });
+    if (answer && !answer.ok && answer.error?.code === "conflict") this.requestId = null;
   }
 
   private async call(op: string, input: Record<string, unknown>): Promise<Record<string, unknown> | null> {
@@ -202,7 +201,7 @@ class MakeRequest {
   private async callAnswer(op: string, input: Record<string, unknown>) {
     if (!this.live) return null;
     const answer = await this.cloud(op, { ...(this.teamId ? { teamId: this.teamId } : {}), ...input });
-    if (!answer.ok && (answer.error?.code === "not_found" && /operation|not named|unknown/i.test(answer.error.message) || answer.error?.code === "unavailable")) this.live = false;
+    if (!answer.ok && ((answer.error?.code === "not_found" && /operation|not named|unknown/i.test(answer.error.message)) || answer.error?.code === "unavailable")) this.live = false;
     return answer;
   }
 }
@@ -242,15 +241,6 @@ async function recentCommits(repo: string): Promise<Array<{ sha: string; title: 
   }
 }
 
-async function headSha(repo: string): Promise<string | null> {
-  if (!existsSync(join(repo, ".git"))) return null;
-  try {
-    return (await run("git", ["-C", repo, "rev-parse", "--short=12", "HEAD"])).stdout.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
 /** A new piece's work folder: the plain name, or name-2, name-3... when an earlier piece already started there. */
 function freshWorkDir(base: string): string {
   for (let n = 1; ; n++) {
@@ -283,10 +273,8 @@ interface Request {
   font?: string;
   contentGameId: string;
   referenceId: string;
-  makeId: string | null;
-  /** The make request's key (one make per game, day and key). */
-  key?: string;
-  brief?: string;
+  requestId: string | null;
+  note?: string;
   learningIds?: string[];
   fitReason: string;
   commit?: { sha: string; title: string };
@@ -315,11 +303,9 @@ export function contentMakeInput(args: Record<string, unknown>): ContentMakeInpu
     contentGameId: text(args.contentGameId),
     referenceId: text(args.referenceId),
     referenceFile: text(args.referenceFile),
-    brief: text(args.brief),
-    key: text(args.key),
-    ...(args.source === "scheduler" || args.source === "agent" || args.source === "person" ? { source: args.source } : {}),
-    claim: args.claim === true,
-    worker: text(args.worker),
+    note: text(args.note),
+    claim: args.claim === true || typeof args.requestId === "string",
+    requestId: text(args.requestId),
     learningIds: strings(args.learningIds),
     footage: strings(args.footage),
     voiceFile: text(args.voiceFile),
@@ -362,22 +348,22 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   const make = new MakeRequest(deps.cloud, teamId);
   const root = request?.root ?? resolve(input.out ?? defaultContentRoot());
   const cacheDir = join(root, ".cache");
-  const worker = input.worker ?? hostname().split(".")[0];
+  const worker = hostname().split(".")[0];
 
   // a queued make request: the scheduler's daily one, or a Change pressed on Today
   let claimed: Make | null = null;
   if (input.claim && !request) {
-    claimed = await make.claim(input.contentGameId, worker);
+    claimed = await make.claim(input.contentGameId, input.requestId);
     if (!claimed) return { ok: true, status: "nothing_queued", next: "No make request is waiting for this team. Run it again later, or make one now without claim." };
   }
   const contentGameId = input.contentGameId ?? claimed?.contentGameId ?? request?.contentGameId;
   if (!contentGameId) throw new BuildToolError("content_game_required", "Which game? contentGameId is required.", "Get it from content.list_games.");
-  const brief = input.brief ?? claimed?.brief ?? request?.brief;
+  const brief = input.note ?? claimed?.note ?? request?.note;
   try {
     requireTools(["ffmpeg", "ffprobe", "magick"]);
   } catch (error) {
     const missing = error instanceof BuildToolError ? String(error.detail?.missing ?? error.message) : String(error);
-    await make.cannotMake("picking_reference", `${missing} (${worker})`.slice(0, 160), error instanceof BuildToolError ? error.recovery : "Install it, then run it again.");
+    await make.cannotMake("pick", `${missing} (${worker})`.slice(0, 160), error instanceof BuildToolError ? error.recovery : "Install it, then run it again.");
     throw error;
   }
 
@@ -401,8 +387,8 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   let fitReason = request?.fitReason ?? "";
   let commit = request?.commit;
   const wanted = input.referenceId ?? claimed?.referenceId ?? revise?.referenceId ?? request?.referenceId;
-  deps.progress("picking_reference", wanted ? `Reading reference ${wanted}` : "Choosing today's reference");
-  await make.stage("picking_reference", wanted ? "Reading the reference" : "Choosing today's reference");
+  deps.progress("pick", wanted ? `Reading reference ${wanted}` : "Choosing today's reference");
+  await make.stage("pick", wanted ? "Reading the reference" : "Choosing today's reference");
   const pieces = await allPages<{ referenceId?: string; format?: string }>(deps.cloud, "content.list_pieces", { ...team, contentGameId }, 6).catch(() => []);
   const byId = new Map(refs.map((candidate) => [candidate.referenceId, candidate]));
   const usedReferenceIds = new Set(pieces.map((piece) => piece.referenceId).filter((id): id is string => Boolean(id)));
@@ -423,7 +409,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   } else {
     const pick = pickReference(refs, ctx);
     if (!pick) {
-      await make.cannotMake("picking_reference", "No open reference this game has not used yet", "Unlock the full reference library in Grow > Content, or pick a reference to make again");
+      await make.cannotMake("pick", "No open reference this game has not used yet", "Unlock the full reference library in Grow > Content, or pick a reference to make again");
       throw new BuildToolError("content_no_reference", "Every open reference for this game is used, locked or has no beats.", "Pass referenceId, or unlock the full reference library in Studio > Grow > Content.", undefined, { missing: "a reference this game has not used yet" });
     }
     ref = pick.ref;
@@ -439,12 +425,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   const music = input.music ? resolve(input.music) : request?.music;
   const font = input.font ? resolve(input.font) : request?.font;
   const learningIds = input.learningIds ?? request?.learningIds ?? [];
-  if (!make.makeId) {
-    const head = await headSha(resolve(input.repo ?? deps.cwd));
-    const key = input.key ?? request?.key ?? `agent-${head ? `${head.slice(0, 8)}-` : ""}${slug(ref.referenceId).slice(0, 50)}`;
-    await make.open({ contentGameId, key, brief, referenceId: ref.referenceId, footage: footagePaths, source: input.source ?? "agent" }, request?.makeId ?? null);
-    request = { ...(request ?? ({} as Request)), key };
-  }
+  if (!make.requestId) await make.open({ contentGameId, note: brief, referenceId: ref.referenceId, footage: footagePaths }, request?.requestId ?? null);
   request = {
     ...(request ?? {}),
     ...(teamId ? { teamId } : {}),
@@ -452,11 +433,11 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     footage: footagePaths,
     ...(music ? { music } : {}),
     ...(font ? { font } : {}),
-    ...(brief ? { brief } : {}),
+    ...(brief ? { note: brief } : {}),
     learningIds,
     contentGameId,
     referenceId: ref.referenceId,
-    makeId: make.makeId,
+    requestId: make.requestId,
     fitReason,
     ...(commit ? { commit } : {}),
     ...(revise ? { revisePieceId: revise.pieceId } : {}),
@@ -464,7 +445,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   } as Request;
   writeJson(join(workDir, "request.json"), request);
   writeJson(join(workDir, "reference.json"), ref);
-  await make.stage("picking_reference", `${ref.formatType ?? ref.format ?? "Reference"}: ${fitReason}`);
+  await make.stage("pick", `${ref.formatType ?? ref.format ?? "Reference"}: ${fitReason}`);
 
   const fail = async (stage: Stage, error: unknown): Promise<never> => {
     const missing = error instanceof BuildToolError ? (error.detail?.missing as string | undefined) : undefined;
@@ -478,32 +459,32 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   const studyCache = join(cacheDir, "references", `${ref.referenceId}.study.json`);
   let study = input.replan ? null : readJson<Study>(join(workDir, "study.json")) ?? readJson<Study>(studyCache);
   if (!study || study.referenceId !== ref.referenceId || !existsSync(study.file)) {
-    deps.progress("studying_reference", `Studying the reference: ${ref.title}`);
-    await make.stage("studying_reference", "Cutting the reference into its shots");
+    deps.progress("study", `Studying the reference: ${ref.title}`);
+    await make.stage("study", "Cutting the reference into its shots");
     try {
       study = await studyReference(ref, await referenceVideo(ref, cacheDir, input.referenceFile));
     } catch (error) {
-      return fail("studying_reference", error);
+      return fail("study", error);
     }
     mkdirSync(join(cacheDir, "references"), { recursive: true });
     writeJson(studyCache, study);
   }
   writeJson(join(workDir, "study.json"), study);
-  await make.stage("studying_reference", `${study.cuts.length + 1} shots in ${study.duration} s, ${study.hasVoice ? "a voice-over" : "no voice"}`);
+  await make.stage("study", `${study.cuts.length + 1} shots in ${study.duration} s, ${study.hasVoice ? "a voice-over" : "no voice"}`);
   const refBounds = [0, ...study.cuts, study.duration];
 
   // indexing_footage
-  deps.progress("indexing_footage", `Measuring footage in ${footagePaths.length} folder(s)`);
-  await make.stage("indexing_footage", `Measuring the footage in ${footagePaths.length} folder(s)`);
-  const footage: FootageIndex = await indexFootage(footagePaths, cacheDir, (done, total) => deps.progress("indexing_footage", `${done}/${total} clips`));
+  deps.progress("footage", `Measuring footage in ${footagePaths.length} folder(s)`);
+  await make.stage("footage", `Measuring the footage in ${footagePaths.length} folder(s)`);
+  const footage: FootageIndex = await indexFootage(footagePaths, cacheDir, (done, total) => deps.progress("footage", `${done}/${total} clips`));
   writeJson(join(workDir, "footage.json"), footage);
   if (!footage.clips.length) {
     return fail(
-      "indexing_footage",
+      "footage",
       new BuildToolError("content_no_footage", "No gameplay footage to cut.", "Record a 2-minute match (capture mode or a screen recording) and pass its folder as footage.", undefined, { missing: `No gameplay footage on ${worker}` })
     );
   }
-  await make.stage("indexing_footage", `${footage.clips.length} clips measured`);
+  await make.stage("footage", `${footage.clips.length} clips measured`);
 
   // mapping_beats: plan.json is the place to change anything; never overwritten unless replan
   const beats = ref.beats;
@@ -511,7 +492,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   const planFile = join(workDir, "plan.json");
   let plan = input.replan ? null : readJson<Plan>(planFile);
   if (!plan) {
-    deps.progress("mapping_beats", "Mapping the reference's shots to the footage");
+    deps.progress("plan", "Mapping the reference's shots to the footage");
     // a beat that repeats the beat before (a held caption) keeps that line: only the first needs words
     const lines = refLines.map((line, index) => (line && line !== refLines[index - 1] ? `TODO: our words for "${line.replace(/\[[^\]]*\]/g, "…")}"` : ""));
     const song = music ?? (study.music && !study.hasVoice ? footage.music[0] ?? null : null);
@@ -552,15 +533,15 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
 
   const todo = unwrittenLines(plan);
   const beatList = beats.map((beat, index) => ({ index, t: beat.t, shot: beat.shot, refWords: refLines[index], ours: plan!.lines[index] }));
-  const asked = { learnings, ...(brief ? { brief } : {}), ...(revise ? { revisePieceId: revise.pieceId, whatToChange: revise.whatToChange } : {}) };
+  const asked = { learnings, ...(brief ? { note: brief } : {}), ...(revise ? { revisePieceId: revise.pieceId, whatToChange: revise.whatToChange } : {}) };
   if (claimed && revise) {
-    await make.stage("mapping_beats", "Waiting for the change the team asked for");
+    await make.stage("plan", "Waiting for the change the team asked for");
     return {
       ok: true,
       status: "needs_changes",
       workDir,
       referenceId: ref.referenceId,
-      makeId: make.makeId,
+      requestId: make.requestId,
       plan: planFile,
       beats: beatList,
       ...asked,
@@ -568,13 +549,13 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     };
   }
   if (input.stage === "plan" || todo.length) {
-    await make.stage("mapping_beats", todo.length ? `${plan.shots.length} shots mapped; writing the words` : `${plan.shots.length} shots mapped`);
+    await make.stage("plan", todo.length ? `${plan.shots.length} shots mapped; writing the words` : `${plan.shots.length} shots mapped`);
     return {
       ok: true,
       status: todo.length ? "needs_words" : "planned",
       workDir,
       referenceId: ref.referenceId,
-      makeId: make.makeId,
+      requestId: make.requestId,
       reference: { title: ref.title, url: ref.url, formatType: ref.formatType, captionStyle: ref.captionStyle, voPattern: ref.voPattern, howGamesCanUseIt: ref.howGamesCanUseIt, ideas: ref.ideas },
       fitReason,
       plan: planFile,
@@ -585,7 +566,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
         : `The plan is ready. Change anything in ${planFile}, then call content.make again with workDir.`,
     };
   }
-  await make.stage("mapping_beats", `${plan.shots.length} shots mapped to the footage`);
+  await make.stage("plan", `${plan.shots.length} shots mapped to the footage`);
 
   // voice_over
   let cuts = plan.cuts;
@@ -594,19 +575,19 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     if (!plan.voice.file || !existsSync(plan.voice.file)) {
       const script = join(workDir, "script.txt");
       writeFileSync(script, `${plan.lines.filter(Boolean).join("\n")}\n`);
-      await make.stage("voice_over", "Waiting for the voice-over in the team's voice");
+      await make.stage("voice", "Waiting for the voice-over in the team's voice");
       return {
         ok: true,
         status: "needs_voice",
         workDir,
         referenceId: ref.referenceId,
-        makeId: make.makeId,
+        requestId: make.requestId,
         script,
         next: `This reference speaks. Record the lines in ${script} in the team's own voice (one take, the reference's pace) and call content.make again with workDir and voiceFile.`,
       };
     }
-    deps.progress("voice_over", "Timing the voice-over");
-    await make.stage("voice_over", "Timing the voice-over word by word");
+    deps.progress("voice", "Timing the voice-over");
+    await make.stage("voice", "Timing the voice-over word by word");
     try {
       const heard = await transcribeWords(plan.voice.file, workDir);
       const script = plan.lines.flatMap((line) => line.split(/\s+/).filter(Boolean));
@@ -616,7 +597,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       const anchors = voiceAnchors(beats, starts, study.duration, end);
       cuts = mapTimes(refBounds, anchors.ref, anchors.ours);
     } catch (error) {
-      return fail("voice_over", error);
+      return fail("voice", error);
     }
   }
 
@@ -627,25 +608,25 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       const fit = musicStart(beatsOfSong, cuts, (await probe(plan.audio.music)).duration);
       plan.audio.musicStart = fit.start;
       cuts = snapCuts(cuts, beatsOfSong, fit.start);
-      deps.progress("rendering", `Song from ${fit.start} s: ${fit.hits} of ${cuts.length - 2} cuts on its beats`);
+      deps.progress("render", `Song from ${fit.start} s: ${fit.hits} of ${cuts.length - 2} cuts on its beats`);
     } catch {
       plan.audio.musicStart = 0;
     }
   }
 
   // rendering, then swap any shot that does not move for a better window (three times at most)
-  deps.progress("rendering", `Cutting ${plan.shots.length} shots`);
-  await make.stage("rendering", `Cutting ${plan.shots.length} shots to the reference's timing`);
+  deps.progress("render", `Cutting ${plan.shots.length} shots`);
+  await make.stage("render", `Cutting ${plan.shots.length} shots to the reference's timing`);
   const renderDir = join(workDir, "render");
   mkdirSync(renderDir, { recursive: true });
   const end = cuts[cuts.length - 1];
   const clipsByPath = new Map(footage.clips.map((clip) => [clip.path, clip]));
-  let stage: Stage = "rendering";
+  let stage: Stage = "render";
   let built: Awaited<ReturnType<typeof buildBase>>;
   let motion: Awaited<ReturnType<typeof motionReport>>;
   try {
     for (let round = 0; ; round++) {
-      built = await buildBase(plan.shots, cuts, renderDir, (done, total) => deps.progress("rendering", `shot ${done}/${total}`));
+      built = await buildBase(plan.shots, cuts, renderDir, (done, total) => deps.progress("render", `shot ${done}/${total}`));
       motion = await motionReport(built.base, built.frameCuts);
       const still = motion.shots.map((value, index) => ((value < 2 || motion.freeze[index] > FREEZE_LIMIT) && plan!.shots[index].src && clipsByPath.get(plan!.shots[index].src!)?.kind === "video" ? index : -1)).filter((index) => index >= 0);
       if (!still.length || round >= 3) break;
@@ -672,8 +653,8 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
         }
       }
       writeJson(planFile, plan);
-      deps.progress("rendering", `Swapped ${still.length} still shot(s) for moving ones`);
-      await make.stage("rendering", `Swapped ${still.length} still shot(s) for moving ones`);
+      deps.progress("render", `Swapped ${still.length} still shot(s) for moving ones`);
+      await make.stage("render", `Swapped ${still.length} still shot(s) for moving ones`);
     }
 
     const style = plan.caption;
@@ -691,9 +672,9 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     await mix({ base: built!.base, overlays, voice: plan.voice.needed ? plan.voice.file : null, music: plan.voice.needed ? null : plan.audio.music, musicStart: plan.audio.musicStart, bed: built!.bed, bedDb: plan.audio.bedDb, out: piece, duration: end });
 
     // checking
-    stage = "checking";
-    deps.progress("checking", "Measuring the piece");
-    await make.stage("checking", "Measuring hook, motion, safe zones, length and loudness");
+    stage = "checks";
+    deps.progress("checks", "Measuring the piece");
+    await make.stage("checks", "Measuring hook, motion, safe zones, length and loudness");
     // motion is the footage's (the cut before captions): a held caption covers part of the frame and would read as stillness
     const final = motion!;
     const firstCaption = captionItems.length ? captionItems[0].from : null;
@@ -718,9 +699,9 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     writeJson(join(workDir, "checks.json"), checks);
 
     // side_by_side
-    stage = "side_by_side";
-    deps.progress("side_by_side", "Side by side with the reference");
-    await make.stage("side_by_side", "Rendering the reference and ours side by side");
+    stage = "compare";
+    deps.progress("compare", "Side by side with the reference");
+    await make.stage("compare", "Rendering the reference and ours side by side");
     const sbs = await sideBySide(study.file, refBounds, piece, cuts, renderDir, join(workDir, "side_by_side.mp4"));
     const sheet = await contactSheet(study.file, refBounds, piece, cuts, renderDir, join(workDir, "contact_sheet.jpg"));
     const coverAt = Math.min(end / 2, Math.max(0.4, (cuts[1] ?? 1) / 2));
@@ -732,12 +713,12 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     const next = pickReference(refs, { ...ctx, usedReferenceIds: new Set([...usedReferenceIds, ref.referenceId]), usedFormats: new Set([...usedFormats, plan.format]) });
     const tomorrow = next ? { ...(next.ref.formatType ? { formatType: next.ref.formatType } : {}), about: `Copy "${next.ref.title}"`.slice(0, 200) } : undefined;
     const summary = { piece, sideBySide: sbs, contactSheet: sheet, cover: coverFile, checks, why: plan.why, title, ...(tomorrow ? { tomorrow } : {}) };
-    if (input.upload === false) return { ok: true, status: "rendered", workDir, referenceId: ref.referenceId, makeId: make.makeId, ...summary };
+    if (input.upload === false) return { ok: true, status: "rendered", workDir, referenceId: ref.referenceId, requestId: make.requestId, ...summary };
 
     // uploading
-    stage = "uploading";
-    deps.progress("uploading", "Uploading to the team's library");
-    await make.stage("uploading", "Uploading the render, cover, side by side and contact sheet");
+    stage = "upload";
+    deps.progress("upload", "Uploading to the team's library");
+    await make.stage("upload", "Uploading the render, cover, side by side and contact sheet");
     const sha = createHash("sha1").update(readFileSync(piece)).digest("hex");
     const delivered = readJson<{ pieceId: string; sha: string; reviewUrl?: string }>(join(workDir, "delivered.json"));
     if (delivered && delivered.sha === sha) {
@@ -764,8 +745,8 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     const sheetItem = await upload(sheet, "image/jpeg", `${title} (contact sheet)`, "Reference | ours at the middle of every shot.", ["contact-sheet"]);
 
     // saving
-    stage = "saving";
-    await make.stage("saving", revise || delivered?.pieceId ? "Updating the piece in Review" : "Saving the piece to Review");
+    stage = "upload";
+    await make.stage("upload", revise || delivered?.pieceId ? "Updating the piece in Review" : "Saving the piece to Review");
     const caption = plan.post.caption || title;
     const variants = (["tiktok", "instagram", "youtube"] as const).map((platform) => ({
       platform,
@@ -791,7 +772,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       sideBySideItemId: sbsItem,
       contactSheetItemId: sheetItem,
       ...(learningIds.length ? { learningIds: learningIds.slice(0, 20) } : {}),
-      ...(make.makeId ? { makeId: make.makeId } : {}),
+      ...(make.requestId ? { makeId: make.requestId } : {}),
       ...(tomorrow ? { tomorrow } : {}),
     };
     let saved: { piece: { pieceId: string; reviewUrl: string } };
@@ -799,7 +780,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       const current = await cloudResult<{ piece: { revision: number } }>(deps.cloud, "content.get_piece", { ...team, pieceId: delivered.pieceId });
       saved = await cloudResult(deps.cloud, "content.update_piece", { ...fields, pieceId: delivered.pieceId, expectedRevision: current.piece.revision, format: undefined, referenceId: undefined });
     } else {
-      saved = await cloudResult(deps.cloud, "content.save_piece", { ...fields, contentGameId, idempotencyKey: `content-make:${createHash("sha1").update(make.makeId ?? workDir).digest("hex").slice(0, 16)}:${sha.slice(0, 16)}` });
+      saved = await cloudResult(deps.cloud, "content.save_piece", { ...fields, contentGameId, idempotencyKey: `content-make:${createHash("sha1").update(make.requestId ?? workDir).digest("hex").slice(0, 16)}:${sha.slice(0, 16)}` });
     }
     writeJson(join(workDir, "delivered.json"), { pieceId: saved.piece.pieceId, sha, reviewUrl: saved.piece.reviewUrl });
     await make.done(saved.piece.pieceId);
@@ -808,7 +789,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       status: "saved",
       workDir,
       referenceId: ref.referenceId,
-      makeId: make.makeId,
+      requestId: make.requestId,
       pieceId: saved.piece.pieceId,
       reviewUrl: saved.piece.reviewUrl,
       pieceStatus: status,

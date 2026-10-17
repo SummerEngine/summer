@@ -2193,6 +2193,43 @@
       "recommended": false
     },
     {
+      "id": "skill/make-content",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b769fa952be55d027b6768e7afbd5b7de7e07980c36b2d6099cc6a1f376c2d80",
+      "summary": "Make a finished, postable video of your game, cut per platform and saved for review.",
+      "use_when": [
+        "a developer asks for content for their game: a TikTok, Reels or Shorts clip, an X video, a trailer cut or a devlog",
+        "a visible change just landed (a boss, a skin, a level, a rare drop) and a short clip of it would do well on social",
+        "a piece of content came back with a Change note on the team's Today view"
+      ],
+      "facets": {
+        "lifecycle": [
+          "grow",
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "video"
+        ],
+        "modalities": [
+          "video"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/trailer-shot",
+          "skill/cinematic-cutscene",
+          "skill/store-art"
+        ],
+        "tools": [
+          "tool/capture-gameplay"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.1.0",

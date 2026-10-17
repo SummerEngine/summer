@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ffmpeg, FPS, frames, H, magick, probe, run, signalStats, W } from "./media.js";
+import { ffmpeg, FPS, frames, H, loudness, magick, probe, run, signalStats, W } from "./media.js";
 import type { Word } from "./plan.js";
 import type { CaptionItem, CaptionStyle, ShotSpec } from "./types.js";
 
@@ -290,6 +290,13 @@ export async function mix(opts: { base: string; overlays: readonly string[]; voi
     "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-profile:v", "high", "-pix_fmt", "yuv420p",
     "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", opts.out,
   ]);
+  // one-pass loudnorm lands within a couple of LU on spiky game sound: measure, then trim the gain under a -1.5 dBTP limiter
+  const measured = await loudness(opts.out);
+  if (measured && Math.abs(measured.lufs + 14) > 0.5) {
+    const fixed = `${opts.out}.gain.mp4`;
+    await ffmpeg(["-i", opts.out, "-af", `volume=${(-14 - measured.lufs).toFixed(2)}dB,alimiter=limit=0.84:level=disabled`, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", fixed]);
+    renameSync(fixed, opts.out);
+  }
 }
 
 /** Mean motion per shot (the first frame of each shot, the cut itself, left out) and over the first second. */

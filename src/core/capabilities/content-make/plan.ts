@@ -28,8 +28,8 @@ export interface PickContext {
   usedReferenceIds: ReadonlySet<string>;
   usedFormats: ReadonlySet<string>;
   niches: readonly string[];
-  /** Subjects of the game's recent commits (what changed today). */
-  commits: readonly string[];
+  /** The game's recent commits (what changed today); a brief from the caller comes first, without a sha. */
+  commits: ReadonlyArray<{ sha?: string; title: string }>;
   /** A voice-over in the team's voice is at hand (voiceFile). */
   voiceReady: boolean;
   today: string;
@@ -38,7 +38,10 @@ export interface PickContext {
 export interface RefPick {
   ref: Reference;
   score: number;
+  /** One line on why it fits today, for the person ("You shipped ... today (commit 3f2a1c)"). */
   fitReason: string;
+  /** The change it fits, when one does. */
+  commit?: { sha: string; title: string };
 }
 
 /** Scores one reference for today; null when it cannot be used (locked, expired, no beats, already made). */
@@ -61,18 +64,24 @@ export function scoreReference(ref: Reference, ctx: PickContext): RefPick | null
     if (days <= 30) score += 1;
   }
   const refWords = new Set(wordsOf([ref.title, ref.howGamesCanUseIt, ref.idea, ...(ref.ideas ?? []).map((idea) => idea.idea)].join(" ")));
-  let best: { commit: string; hits: string[] } | null = null;
+  let best: { commit: { sha?: string; title: string }; hits: string[] } | null = null;
   for (const commit of ctx.commits) {
-    const hits = wordsOf(commit).filter((word) => refWords.has(word));
+    const hits = wordsOf(commit.title).filter((word) => refWords.has(word));
     if (hits.length && (!best || hits.length > best.hits.length)) best = { commit, hits };
   }
   if (best) {
     score += Math.min(2, best.hits.length * 0.5);
-    reasons.unshift(`today's change "${best.commit}" fits it (${best.hits.slice(0, 3).join(", ")})`);
+    reasons.unshift(best.commit.sha ? `You shipped "${best.commit.title}" today (commit ${best.commit.sha.slice(0, 7)})` : `It fits what you asked for: "${best.commit.title}"`);
   }
   if (refHasVoice(ref) && !ctx.voiceReady) score -= 2;
-  if (ref.breakoutRatio) reasons.push(`${Math.round(ref.breakoutRatio)}x its account's usual views`);
-  return { ref, score: Math.round(score * 100) / 100, fitReason: reasons.join("; ") || "the best fit in today's references" };
+  if (ref.breakoutRatio) reasons.push(`it got ${Math.round(ref.breakoutRatio)}x its account's usual views`);
+  const fitReason = (reasons.join("; ") || "The best fit in today's references").replace(/^./, (c) => c.toUpperCase()).slice(0, 300);
+  return {
+    ref,
+    score: Math.round(score * 100) / 100,
+    fitReason,
+    ...(best?.commit.sha ? { commit: { sha: best.commit.sha, title: best.commit.title } } : {}),
+  };
 }
 
 /** The best reference for today, ties broken by id so the same inputs give the same pick. */
@@ -282,6 +291,8 @@ export interface BeatMapInput {
   clips: readonly FootageClip[];
   /** Our cut times (the reference's, or mapped under our voice). */
   cuts: readonly number[];
+  /** What the piece is about (the make's brief): weighs every beat's clip choice. */
+  brief?: string;
 }
 
 /**
@@ -296,7 +307,7 @@ export function beatMap(input: BeatMapInput): ShotSpec[] {
   if (!clips.length) return [];
   const bounds = [0, ...study.cuts, study.duration];
   const beatOf = (t: number) => Math.max(0, beats.findIndex((beat) => t >= beat.t[0] && t < beat.t[1]));
-  const beatWords = beats.map((beat, index) => wordsOf(`${beat.shot} ${lines[index] ?? ""}`));
+  const beatWords = beats.map((beat, index) => wordsOf(`${beat.shot} ${lines[index] ?? ""} ${input.brief ?? ""}`));
   const total = cuts[cuts.length - 1];
   const lead = [...clips]
     .filter((clip) => clip.kind === "video")
@@ -415,21 +426,22 @@ export function evaluateChecks(input: CheckInput): Check[] {
   const lengthOk = Math.abs(input.length - input.refLength) <= Math.max(1, input.refLength * 0.12);
   const gameplay = input.shotSeconds.reduce((sum, seconds, index) => sum + (input.shotKinds[index] === "video" ? seconds : 0), 0);
   const round = (value: number) => Math.round(value * 100) / 100;
+  const seconds = (value: number) => `${value.toFixed(1)} s`;
   const checks: Check[] = [
     {
-      name: "hook_seconds",
-      value: input.firstWords === null ? "no words" : round(input.firstWords),
+      name: "hook_time",
+      value: input.firstWords === null ? "no words" : seconds(input.firstWords),
       pass: hookOk,
       note: `motion ${round(input.firstSecondMotion)} in the first second${input.refFirstWords === null ? "" : `; the reference's words start at ${round(input.refFirstWords)} s`}`,
     },
-    { name: "min_shot_motion", value: round(minMotion), pass: lowShots.length === 0, note: lowShots.length ? `still or frozen shots: ${lowShots.join(", ")}` : `every shot moves (YDIF >= 2, no freeze over ${FREEZE_LIMIT} s)` },
-    { name: "safe_zone", value: outside ? `${outside} outside` : "inside", pass: outside === 0 },
-    { name: "length_seconds", value: round(input.length), pass: lengthOk, note: `the reference runs ${round(input.refLength)} s` },
-    { name: "gameplay_seconds", value: round(gameplay), pass: gameplay >= 2 },
+    { name: "lowest_motion", value: `${round(minMotion)} YDIF`, pass: lowShots.length === 0, note: lowShots.length ? `still or frozen shots: ${lowShots.join(", ")}` : `every shot moves (YDIF >= 2, no freeze over ${FREEZE_LIMIT} s)` },
+    { name: "safe_zones", value: outside ? `${outside} outside` : "inside", pass: outside === 0 },
+    { name: "length", value: seconds(input.length), pass: lengthOk, note: `the reference runs ${seconds(input.refLength)}` },
+    { name: "gameplay_seconds", value: seconds(gameplay), pass: gameplay >= 2 },
   ];
   if (input.loudness) {
-    checks.push({ name: "loudness_lufs", value: round(input.loudness.lufs), pass: input.loudness.lufs >= -15.5 && input.loudness.lufs <= -12.5 });
-    checks.push({ name: "true_peak_db", value: round(input.loudness.truePeak), pass: input.loudness.truePeak <= -0.5 });
+    const { lufs, truePeak } = input.loudness;
+    checks.push({ name: "loudness", value: `${lufs.toFixed(1)} LUFS, ${truePeak.toFixed(1)} dBTP`, pass: lufs >= -15.5 && lufs <= -12.5 && truePeak <= -0.5 });
   }
   return checks;
 }

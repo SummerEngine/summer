@@ -6653,14 +6653,15 @@
       "id": "tool/content-make",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "cbf8c08b435086dc2a1234675a12a039fd759724e16b490506abf12ea5fecd9d",
+      "content_hash": "e5058d60f2cc5e07f2d814636f58688c07fe6082f0d8ae0280555f65befa274a",
       "summary": "Make a piece of content for a game. Copies a library reference beat for beat with footage on this computer, checks it, saves it to Review.",
       "use_when": [
         "\"make a piece of content for this\"",
         "\"clip what we just built\"",
         "\"make today's TikTok for my game\"",
         "\"copy this reference with our footage\"",
-        "a daily run that puts one finished piece per game in Review",
+        "a daily run that puts one finished piece per game in Review (claim the queued make request)",
+        "a Change the team pressed on Today (claim; it answers needs_changes)",
         "revising a piece after the team asked for changes (same workDir)"
       ],
       "facets": {

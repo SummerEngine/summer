@@ -7,7 +7,8 @@ use_when:
   - '"clip what we just built"'
   - '"make today''s TikTok for my game"'
   - '"copy this reference with our footage"'
-  - a daily run that puts one finished piece per game in Review
+  - a daily run that puts one finished piece per game in Review (claim the queued make request)
+  - a Change the team pressed on Today (claim; it answers needs_changes)
   - revising a piece after the team asked for changes (same workDir)
 do_not_use_when:
   - posting - the team posts from Review; nothing is posted from here
@@ -70,9 +71,30 @@ input_schema:
       items:
         type: string
       description: 3-5 tags, the game's tag first. Default the kit's core tags.
-    note:
+    brief:
       type: string
-      description: What to clip ("the new boss"); weighs the reference pick.
+      description: What to make it about ("the new boss", or commit lines like "3f2a1c9 Add waiting room"); weighs the reference pick and becomes the why.
+    claim:
+      type: boolean
+      description: Make the oldest queued make request for the team (the daily scheduler's, or a Change pressed on Today) and report every stage to it; nothing_queued when none, needs_changes for a revision.
+    worker:
+      type: string
+      description: This computer's name on a claim. Default its host name.
+    key:
+      type: string
+      description: The make request's key - one make per game, UTC day and key. Default this piece's own (HEAD and reference); "clip what we just built" passes the commit sha.
+    source:
+      type: string
+      enum:
+        - scheduler
+        - agent
+        - person
+      description: Who asked for it. Default agent.
+    learningIds:
+      type: array
+      items:
+        type: string
+      description: The kit learnings (content.get_kit learnings, listed in needs_words) the words and choices applied.
     workDir:
       type: string
       description: The work folder an earlier call answered - continues that piece where it stopped.

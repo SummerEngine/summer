@@ -134,14 +134,16 @@ export interface Plan {
   audio: { music: string | null; musicStart?: number; bedDb: number };
   /** Post caption per platform. */
   post: { caption: string; hashtags: string[]; title?: string };
-  why: { referenceId: string; fitReason: string; refStats: { views?: number; likes?: number; breakoutRatio?: number; postedAt?: string } };
+  /** Shown under the player on Today (content.save_piece why). */
+  why: { referenceId: string; fitReason: string; refStats: { views?: number; likes?: number; postedAt?: string }; commit?: { sha: string; title: string } };
   /** Pictures over the cut: a PNG (1080x1920, transparent) from one time to another. */
   overlays: Array<{ file: string; from: number; to: number }>;
 }
 
 export interface Check {
-  name: "hook_seconds" | "min_shot_motion" | "safe_zone" | "loudness_lufs" | "true_peak_db" | "length_seconds" | "gameplay_seconds";
-  value: number | string;
+  /** The names Studio labels (content.save_piece checks). */
+  name: "hook_time" | "lowest_motion" | "safe_zones" | "loudness" | "length" | "gameplay_seconds";
+  value: string;
   pass: boolean;
   note?: string;
 }

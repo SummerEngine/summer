@@ -43,7 +43,8 @@ export async function studyReference(ref: Reference, file: string): Promise<Stud
   // say there are many more shots than it found, look again finer, one cut per 0.2 s at most
   if (cuts.length < ((ref.beats?.length ?? 1) - 1) / 2) {
     const finer = (await sceneCuts(file, 0.15, 0.2)).filter((cut) => cut < info.duration - 0.1);
-    if (finer.length > cuts.length) cuts = finer;
+    // only when the finer look really finds that rhythm; a long take's camera swing is not a cut
+    if (finer.length >= ((ref.beats?.length ?? 1) - 1) / 2) cuts = finer;
   }
   const { yavg } = await signalStats(file, 10);
   const bounds = [0, ...cuts, info.duration];

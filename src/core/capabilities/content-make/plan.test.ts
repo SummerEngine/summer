@@ -67,14 +67,15 @@ describe("reference pick", () => {
     ];
     const pick = pickReference(refs, ctx({ usedFormats: new Set(["feature-drop-devlog"]), usedReferenceIds: new Set(["made-already"]) }));
     expect(pick?.ref.referenceId).toBe("fresh-format");
-    expect(pick?.fitReason).toContain("has not posted yet");
+    expect(pick?.fitReason).toMatch(/^A format this game has not posted yet/);
   });
 
   it("weighs what changed today and names the commit", () => {
     const refs = [caption("a", "x", { title: "rank every skin" }), caption("b", "y", { title: "boss fight reveal", howGamesCanUseIt: "show the new boss" })];
-    const pick = pickReference(refs, ctx({ commits: ["Add the frost boss to the arena"] }));
+    const pick = pickReference(refs, ctx({ commits: [{ sha: "3f2a1c9d", title: "Add the frost boss to the arena" }] }));
     expect(pick?.ref.referenceId).toBe("b");
-    expect(pick?.fitReason).toContain('today\'s change "Add the frost boss to the arena"');
+    expect(pick?.fitReason).toBe('You shipped "Add the frost boss to the arena" today (commit 3f2a1c9); a format this game has not posted yet (y); it got 100x its account\'s usual views');
+    expect(pick?.commit).toEqual({ sha: "3f2a1c9d", title: "Add the frost boss to the arena" });
   });
 
   it("ranks a speaking reference down until a voice-over is at hand, and is deterministic on ties", () => {
@@ -234,15 +235,25 @@ describe("checks", () => {
     captionBoxes: [[0.2, 0.2, 0.8, 0.3]] as Array<[number, number, number, number]>,
   };
 
-  it("passes a good piece", () => {
-    expect(evaluateChecks(base).every((check) => check.pass)).toBe(true);
+  it("passes a good piece and shows each value with its unit", () => {
+    const checks = evaluateChecks(base);
+    expect(checks.every((check) => check.pass)).toBe(true);
+    expect(checks.map((check) => [check.name, check.value])).toEqual([
+      ["hook_time", "0.0 s"],
+      ["lowest_motion", "3 YDIF"],
+      ["safe_zones", "inside"],
+      ["length", "5.0 s"],
+      ["gameplay_seconds", "5.0 s"],
+      ["loudness", "-14.2 LUFS, -1.5 dBTP"],
+    ]);
   });
 
   it("fails a still shot, a frozen stretch, text outside the safe area and a late hook", () => {
     const checks = evaluateChecks({ ...base, shotMotion: [5, 1], shotFreeze: [1.2, 0], captionBoxes: [[0.2, 0.7, 0.8, 0.85]], firstWords: 1.4 });
     const failed = checks.filter((check) => !check.pass).map((check) => check.name);
-    expect(failed).toEqual(["hook_seconds", "min_shot_motion", "safe_zone"]);
-    expect(checks.find((check) => check.name === "min_shot_motion")?.note).toContain("0, 1");
+    expect(failed).toEqual(["hook_time", "lowest_motion", "safe_zones"]);
+    expect(checks.find((check) => check.name === "lowest_motion")?.note).toContain("0, 1");
+    expect(checks.find((check) => check.name === "hook_time")?.value).toBe("1.4 s");
   });
 });
 

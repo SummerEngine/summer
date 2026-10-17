@@ -57,7 +57,8 @@ them and Summer reviews each one before players can buy it. Two ways in:
 | `summer.items.json` | A file in the project root, synced with `summer_sync_items` (CLI `summer economy sync-items`) | An agent **proposes**; the owner approves in Studio, and Studio applies it |
 
 An agent never writes an item or a price itself. Bundles and sales (step 5)
-are not in the file; they belong to the store page in Studio.
+are not in the file; they belong to the store page draft, which the owner
+publishes.
 
 ### `summer.items.json`
 
@@ -351,9 +352,23 @@ instead of Buy; in your own shop, set `owned` from the inventory and disable Buy
 
 ### 5. Bundles and timed sales
 
-The owner sets them on the Game's store page in Studio, and they publish with
-the store listing. No agent tool or items file sets them. If the store page
-has no Bundles or Sales card yet, Studio cannot set them for that Game yet.
+They live on the store page draft; saving never publishes. Players see them
+once the owner publishes the store page again (`store.publish`, owner-approved).
+
+**In Studio** (`studio.open` target `/studio/store/:gameId`, the **Store page** tab):
+
+- **Bundles** card: **Add bundle**, name it (the key comes from the name and is fixed once published), pick the Items (one without a price can't be picked; a stackable takes a quantity), set the Sparks price. The line under the price shows the Items total and "Save N%". Optional: a minimum price, and "On sale from" / "Until" dates. **Save bundles**. Removing a bundle removes its sales too.
+- **Sales** card: **Add sale**, pick an Item or a bundle, the percent off and the start and end dates; it shows the result ("400 → 280 Sparks"). **Save sales**. A sale that has ended is dropped on save.
+- **Sold only in bundles:** the checkbox on an Item's row in a bundle, or the toggle on the Item's page. A refusal shows at the field to fix.
+
+**As an agent:** ask the owner before saving, then use `store.set_bundles` and
+`store.set_sales`. `store.get_listing` returns `itemStore`: the bundles with
+`itemsTotalSparks` and `savePercent`, the sales with `listSparks` and
+`saleSparks`, `bundleOnlyItemIds`, and the Game's Items with ids and Sparks
+prices. Each call **replaces the whole list**, so send every bundle or sale to
+keep; `[]` clears it. A bundle without a key keeps the saved key of the same
+name; `bundleOnlyItemIds` on `store.set_bundles` sets the bundle-only Items.
+A refusal names the field, e.g. `storeBundles[0].priceSparks`.
 
 | | Rules |
 | --- | --- |
@@ -478,5 +493,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_project_setting` | `summer engine project-setting` |
 | `summer_run_script` | `summer engine run-script` |
 | `summer_stop` | `summer engine stop` |
+| `store.get_listing` | `summer store get-listing` |
+| `store.publish` | `summer store publish` |
 | `studio.open` | `summer studio open` |
 <!-- /shell-commands -->

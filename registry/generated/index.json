@@ -4135,7 +4135,7 @@
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "558cc2fd8408495bf45d205952e049ea61001d939a9c75a9f5797354726dff01",
+      "content_hash": "e5e8d76ac467fafdfbc7988a57c11cd41c19363ea3b75001bc94c877b3fd4f98",
       "summary": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",

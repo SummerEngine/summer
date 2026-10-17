@@ -185,6 +185,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `content.get_kit` | `summer content get-kit` |
 | `content.list_games` | `summer content list-games` |
 | `content.list_references` | `summer content list-references` |
+| `content.make` | `summer content make` |
 | `content.make_video` | `summer content make-video` |
 | `content.mark_posted` | `summer content mark-posted` |
 | `docs.read`, `summer_docs_read` | `summer docs read` |

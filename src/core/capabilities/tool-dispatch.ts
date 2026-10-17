@@ -153,6 +153,7 @@ import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
 import { syncItems } from "./sync-items.js";
+import { contentMake, contentMakeInput } from "./content-make/index.js";
 import { BuildToolError, buildToolFailure } from "./summer-bundle.js";
 import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
@@ -1037,6 +1038,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         face: "cli",
       })
     )
+  ),
+  entry("summer_content_make", "Make one finished piece of content for a game, beat for beat on a reference, from local footage, into the team's Review", false, (args) =>
+    structuredBuildFailure(() => contentMake({ ...contentMakeInput(args), face: "cli" }))
   ),
 
   // --- debug ---

@@ -281,6 +281,11 @@
       "note": "",
       "op": "engine.connect_signal"
     },
+    "summer_content_make": {
+      "kind": "same",
+      "note": "local: renders a piece from footage on this computer and saves it to the team's Review; reports to the hosted make request",
+      "op": "content.make"
+    },
     "summer_create_debug_report": {
       "kind": "keep",
       "note": "",

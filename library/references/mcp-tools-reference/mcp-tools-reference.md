@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (120 tools)
+## Tool surface (121 tools)
 
 ### Project files (4)
 
@@ -253,7 +253,7 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 | `summer_call` `{"op":"summer_get_agent_playbook"}` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — read at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 | `plans.get` (3.x `summer_get_board`) | Read the person's game plan (look, characters, place, storyboard, picks): every item with its id, picture URL and revision, to compare screenshots against. `projects.get({ projectId })` gives the project's `planId` from the project id in the build brief; works without the engine. |
 
-### Creator platform (5)
+### Creator platform (6)
 
 | Tool | Use |
 |---|---|
@@ -261,6 +261,7 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 | `summer_export_templates` | `list` or `install` export templates from Summer's CDN (`downloads.summer.games/engine-templates/<summerVersion>/manifest.json`) into the engine's user template folder (`<data>/Godot/export_templates/<FULL_CONFIG>/`), sha256-checked. Only download exports need them; store bundles need none. `summerVersion` is read on macOS, passed elsewhere. |
 | `store.upload_file` (3.x `summer_publish_build`; through `summer_call`) | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. Without a shell, `store.upload_begin`, `store.upload_sign_parts` and `store.upload_complete` take the bytes in parts. |
 | `economy.sync_items` (`summer_sync_items`; through `summer_call`) | Bring the store game's items in line with `summer.items.json` in the project root, matched by slug, so staging and production carry the same items. Confirm-gated: the plan first (create, update with the changed fields, unchanged, blocked), then the changed images are uploaded and the plan goes to the owner, who approves it in Studio; the items are then created or revised, priced in Sparks and submitted for review. One approval takes at most 50 changed items (a larger plan lists `batches`; confirm each with `slugs`); a new item needs at least one image. Never activates or releases an item. Needs `summer login --store`. Staging or production is the gateway setting: switching takes `SUMMER_GATEWAY_URL` and `SUMMER_MCP_RESOURCE_URL`, then `summer login --store --force` (one store sign-in per machine). |
+| `content.make` (`summer_content_make`; through `summer_call`) | Make one finished piece of content for a game on this computer and put it in the team's Review: picks the reference that fits today (a format the game has not posted, what changed in the repo), studies its cuts and caption look, maps each reference shot to a footage window with motion, cuts to its timings, draws its captions, puts a song on the beat, mixes at -14 LUFS, checks hook, motion per shot, safe zones, length and loudness, renders the reference side by side and saves the piece (failed checks: a draft). It never writes words: `needs_words` lists the beats, call again with `workDir` and `lines`; a reference that speaks also needs `voiceFile` in the team's voice (`needs_voice`). Same `workDir` continues where it stopped. Needs ffmpeg and ImageMagick (Whisper for a voice-over). |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
 
 ### Hosted store, publishing and Grow tools

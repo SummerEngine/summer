@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "300498a84e9da1d55d1962edc29a80a766e6af4aad96ed3deb1118501c467ddb",
+      "content_hash": "780278ed5c212a095fca65af14861ee936acc75b69de7dd9b0d859e90c21e7c5",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2196,7 +2196,7 @@
       "id": "skill/make-content",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "b692650539de42070228b8f1883a241ef3f28bf89714486fb70a746aa79e0157",
+      "content_hash": "b769fa952be55d027b6768e7afbd5b7de7e07980c36b2d6099cc6a1f376c2d80",
       "summary": "Make a finished, postable video of your game, cut per platform and saved for review.",
       "use_when": [
         "a developer asks for content for their game: a TikTok, Reels or Shorts clip, an X video, a trailer cut or a devlog",
@@ -6682,6 +6682,44 @@
         "filesystem": true,
         "editor_mutation": true,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/content-make",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e5058d60f2cc5e07f2d814636f58688c07fe6082f0d8ae0280555f65befa274a",
+      "summary": "Make a piece of content for a game. Copies a library reference beat for beat with footage on this computer, checks it, saves it to Review.",
+      "use_when": [
+        "\"make a piece of content for this\"",
+        "\"clip what we just built\"",
+        "\"make today's TikTok for my game\"",
+        "\"copy this reference with our footage\"",
+        "a daily run that puts one finished piece per game in Review (claim the queued make request)",
+        "a Change the team pressed on Today (claim; it answers needs_changes)",
+        "revising a piece after the team asked for changes (same workDir)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "video"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_content_make",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16",
+  "generated_at": "2026-10-17",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 276,
-  "query_count": 138,
+  "corpus_size": 277,
+  "query_count": 140,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8297,
-  "mrr_at_5": 0.9332,
+  "mean_recall_at_1": 0.8393,
+  "mrr_at_5": 0.9377,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 115,
-      "hit": 115,
+      "expected": 117,
+      "hit": 117,
       "recall_at_5": 1
     },
     "tool": {
@@ -24,7 +24,7 @@
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 16,
+  "hijacked_queries": 15,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,
@@ -131,6 +131,8 @@
     "bake a navmesh for this level": 1,
     "generate a cutscene for the game intro": 1,
     "I need trailer footage for my Steam page": 1,
+    "make a TikTok of my game's new boss fight": 1,
+    "cut a short clip of the game for Reels and Shorts with captions": 1,
     "animated looping background for the splash screen": 1,
     "I don't have the MCP tools, how do I run Summer commands from the terminal": 1,
     "take a screenshot of the running game": 1,

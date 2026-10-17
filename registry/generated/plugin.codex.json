@@ -70,6 +70,7 @@
     "./library/skills/in-game-purchases/",
     "./library/skills/instantiate-asset-pack/",
     "./library/skills/investigating-bugs/",
+    "./library/skills/make-content/",
     "./library/skills/make-game/",
     "./library/skills/multiplayer/",
     "./library/skills/multiplayer-movement/",

@@ -263,6 +263,10 @@ queries:
     expected: [skill/cinematic-cutscene]
   - query: "I need trailer footage for my Steam page"
     expected: [skill/trailer-shot]
+  - query: "make a TikTok of my game's new boss fight"
+    expected: [skill/make-content]
+  - query: "cut a short clip of the game for Reels and Shorts with captions"
+    expected: [skill/make-content]
   - query: "animated looping background for the splash screen"
     expected: [skill/animated-loop]
   - query: "I don't have the MCP tools, how do I run Summer commands from the terminal"

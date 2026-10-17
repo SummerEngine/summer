@@ -684,6 +684,19 @@
       "bundled": false
     },
     {
+      "id": "skill/make-content",
+      "name": "make-content",
+      "description": "Make a finished, postable video of your game, cut per platform and saved for review.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/make-content/",
+      "domains": [
+        "creator",
+        "video"
+      ]
+    },
+    {
       "id": "skill/make-game",
       "name": "make-game",
       "description": "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship.",

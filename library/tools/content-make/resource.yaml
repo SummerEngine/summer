@@ -71,25 +71,15 @@ input_schema:
       items:
         type: string
       description: 3-5 tags, the game's tag first. Default the kit's core tags.
-    brief:
+    note:
       type: string
       description: What to make it about ("the new boss", or commit lines like "3f2a1c9 Add waiting room"); weighs the reference pick and becomes the why.
     claim:
       type: boolean
-      description: Make the oldest queued make request for the team (the daily scheduler's, or a Change pressed on Today) and report every stage to it; nothing_queued when none, needs_changes for a revision.
-    worker:
+      description: Make a queued make request (the daily scheduler's, or a Change pressed on Today) and report every stage to it - the one named by requestId, else the team's oldest; nothing_queued when none, needs_changes for a revision.
+    requestId:
       type: string
-      description: This computer's name on a claim. Default its host name.
-    key:
-      type: string
-      description: The make request's key - one make per game, UTC day and key. Default this piece's own (HEAD and reference); "clip what we just built" passes the commit sha.
-    source:
-      type: string
-      enum:
-        - scheduler
-        - agent
-        - person
-      description: Who asked for it. Default agent.
+      description: The make request to claim, from content.make.
     learningIds:
       type: array
       items:

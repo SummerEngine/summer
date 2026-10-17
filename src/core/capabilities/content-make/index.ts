@@ -355,8 +355,9 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   if (input.hashtags) plan.post.hashtags = input.hashtags;
   if (input.voiceFile) plan.voice.file = resolve(input.voiceFile);
   if (input.music) plan.audio.music = resolve(input.music);
-  if (!plan.title) plan.title = `${kit.gameName ?? contentGameId}: ${plan.lines.find((line) => line && !/^TODO\b/.test(line)) ?? plan.format}`.slice(0, 100);
   writeJson(planFile, plan);
+  // a title nobody gave: the game and our first line
+  const title = plan.title || `${kit.gameName ?? contentGameId}: ${plan.lines.find((line) => line && !/^TODO\b/.test(line)) ?? plan.format}`.slice(0, 100);
   await make.stage("plan", "done", { message: `${plan.shots.length} shots` });
 
   const todo = unwrittenLines(plan);
@@ -512,7 +513,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
 
     const failing = checks.filter((check) => !check.pass && ["hook_seconds", "min_shot_motion", "safe_zone"].includes(check.name));
     const gameplaySeconds = Number(checks.find((check) => check.name === "gameplay_seconds")?.value ?? 0);
-    const summary = { piece, sideBySide: sbs, contactSheet: sheet, cover: coverFile, checks, why: plan.why, title: plan.title };
+    const summary = { piece, sideBySide: sbs, contactSheet: sheet, cover: coverFile, checks, why: plan.why, title: title };
     if (input.upload === false) return { ok: true, status: "rendered", workDir, referenceId: ref.referenceId, ...summary };
 
     // upload
@@ -525,25 +526,25 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
       await make.stage("upload", "done", { pieceId: delivered.pieceId });
       return { ok: true, status: "saved", workDir, referenceId: ref.referenceId, pieceId: delivered.pieceId, reviewUrl: delivered.reviewUrl, ...summary };
     }
-    const folder = `pieces/${slug(plan.title).slice(0, 50) || ref.referenceId}`;
+    const folder = `pieces/${slug(title).slice(0, 50) || ref.referenceId}`;
     const upload = async (file: string, contentType: string, title: string, description: string, tags: string[]): Promise<string> => {
       const begun = await cloudResult<{ uploadId: string; uploadUrl: string; headers: { "content-type": string } }>(deps.cloud, "content.upload_begin", { ...team, fileName: basename(file), contentType, size: statSync(file).size });
       await deps.put(begun.uploadUrl, file, begun.headers["content-type"] ?? contentType);
       const done = await cloudResult<{ item: { itemId: string } }>(deps.cloud, "content.upload_complete", { ...team, uploadId: begun.uploadId, title, description, tags, folder });
       return done.item.itemId;
     };
-    const videoItem = await upload(piece, "video/mp4", plan.title, `9:16 render, beat for beat on reference ${ref.referenceId}.`, ["render", plan.format].filter(Boolean));
-    const coverItem = await upload(coverFile, "image/jpeg", `${plan.title} (cover)`, "Cover frame.", ["cover"]);
-    const sbsItem = await upload(sbs, "video/mp4", `${plan.title} (side by side)`, "The reference and this piece side by side, synced on every beat. For review only; never post it.", ["side-by-side"]);
-    const sheetItem = await upload(sheet, "image/jpeg", `${plan.title} (contact sheet)`, "Reference | ours at the middle of every shot.", ["contact-sheet"]);
-    const caption = plan.post.caption || plan.title;
+    const videoItem = await upload(piece, "video/mp4", title, `9:16 render, beat for beat on reference ${ref.referenceId}.`, ["render", plan.format].filter(Boolean));
+    const coverItem = await upload(coverFile, "image/jpeg", `${title} (cover)`, "Cover frame.", ["cover"]);
+    const sbsItem = await upload(sbs, "video/mp4", `${title} (side by side)`, "The reference and this piece side by side, synced on every beat. For review only; never post it.", ["side-by-side"]);
+    const sheetItem = await upload(sheet, "image/jpeg", `${title} (contact sheet)`, "Reference | ours at the middle of every shot.", ["contact-sheet"]);
+    const caption = plan.post.caption || title;
     const variants = (["tiktok", "instagram", "youtube"] as const).map((platform) => ({
       platform,
       itemId: videoItem,
       coverItemId: coverItem,
       caption,
       hashtags: plan!.post.hashtags.slice(0, platform === "youtube" ? 3 : 5),
-      ...(platform === "youtube" ? { title: (plan!.post.title ?? plan!.title).slice(0, 100) } : {}),
+      ...(platform === "youtube" ? { title: (plan!.post.title ?? title).slice(0, 100) } : {}),
     }));
     const stats = plan.why.refStats;
     const notes = [
@@ -553,7 +554,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
     ].join("\n");
     const status = input.status ?? (failing.length ? "draft" : "in_review");
     const extra = { why: plan.why, checks: checks.map(({ name, value, pass }) => ({ name, value, pass })), sideBySideItemId: sbsItem, contactSheetItemId: sheetItem };
-    const base = { ...team, title: plan.title, format: plan.format, variants, referenceId: ref.referenceId, gameplaySeconds, notes, status };
+    const base = { ...team, title: title, format: plan.format, variants, referenceId: ref.referenceId, gameplaySeconds, notes, status };
     const save = async (op: "content.save_piece" | "content.update_piece", body: Record<string, unknown>) => {
       const withExtra = await deps.cloud(op, { ...body, ...extra });
       // a server that does not take why/checks yet: the same save without them (they are in the notes)

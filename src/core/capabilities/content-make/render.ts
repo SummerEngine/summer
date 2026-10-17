@@ -166,10 +166,13 @@ export interface CaptionBox {
 export async function captionPng(text: string, style: CaptionStyle, font: string, out: string): Promise<CaptionBox> {
   const label = styled(text, style);
   const size = style.size;
-  const stroke = style.outline ? Math.max(4, Math.round(size / 10)) : 0;
+  const stroke = style.outline ? Math.max(4, Math.round(size / 8)) : 0;
+  // centred text stays inside the safe area (0.06-0.86 of the width) with room for the outline
+  const maxWidth = W * 0.68;
   const tmp = `${out}.label.png`;
   const words = label.split(" ");
-  const hi = style.highlight && style.mode === "words" && words.length > 1 ? words.reduce((best, word, index) => (word.replace(/\W/g, "").length > words[best].replace(/\W/g, "").length ? index : best), 0) : -1;
+  const fits = Number((await magick(["-font", font, "-pointsize", String(size), `label:${label}`, "-format", "%w", "info:"])).stdout) <= maxWidth;
+  const hi = fits && style.highlight && style.mode === "words" && words.length > 1 ? words.reduce((best, word, index) => (word.replace(/\W/g, "").length > words[best].replace(/\W/g, "").length ? index : best), 0) : -1;
   if (hi >= 0) {
     // word by word so one word can take the highlight colour
     const parts: string[] = [];
@@ -182,7 +185,7 @@ export async function captionPng(text: string, style: CaptionStyle, font: string
     await magick(["-background", "none", ...parts.flatMap((part, index) => (index < parts.length - 1 ? [part, "-size", `${Math.round(size / 4)}x1`, "xc:none"] : [part])), "+append", tmp]);
     for (const part of parts) rmSync(part, { force: true });
   } else {
-    const wrapped = await wrap(label, font, size, W * 0.78);
+    const wrapped = await wrap(label, font, size, maxWidth);
     await magick([
       "-background", "none", "-font", font, "-pointsize", String(size), "-interline-spacing", String(-Math.round(size / 6)), "-gravity", "center",
       "-fill", style.color, ...(stroke ? ["-stroke", "black", "-strokewidth", String(stroke)] : []), `label:${wrapped}`,

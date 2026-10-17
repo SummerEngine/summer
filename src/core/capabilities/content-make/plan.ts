@@ -133,7 +133,7 @@ export function parseCaptionStyle(captionStyle: string | undefined, hasVoice: bo
     color: firstColor(head) ?? "#FFFFFF",
     highlight,
     font: /serif/.test(text) && !/sans/.test(head) ? "serif" : /rounded/.test(text) ? "rounded" : "sans",
-    size: mode === "words" ? 92 : 84,
+    size: mode === "words" ? 100 : 84,
     outline: !/no outline|without outline/.test(text),
     quoted: /quote marks|in quotes|inside quote/.test(text),
   };
@@ -320,7 +320,8 @@ export function beatMap(input: BeatMapInput): ShotSpec[] {
       .map((clip) => {
         let score = clipScore(clip, beatWords[beatIndex] ?? []);
         if (clip === lead) score += 0.75;
-        if (previous && previous.clip === clip) score += !fast && previous.beat === beatIndex ? 1 : -2;
+        // a long take runs on within its beat; a still or a fast cut never repeats
+        if (previous && previous.clip === clip) score += !fast && clip.kind === "video" && previous.beat === beatIndex ? 1 : -2;
         if (clip.kind === "video" && clip.duration < seconds) score -= 1;
         score -= (used.get(clip.path)?.length ?? 0) * (fast ? 0.6 : 0.25);
         return { clip, score };
@@ -432,23 +433,27 @@ export function evaluateChecks(input: CheckInput): Check[] {
 
 /**
  * Where to start the song so the most cuts land on its beats: tries every
- * start (0.05 s steps) and counts cuts within 70 ms of an onset. Ties go to
- * the earliest start.
+ * start (0.01 s steps) and counts cuts within 70 ms of an onset. Ties go to
+ * the start closest to the beats, then the earliest.
  */
 export function musicStart(onsets: readonly number[], cuts: readonly number[], songLength: number): { start: number; hits: number } {
   const inner = cuts.slice(1, -1);
   const length = cuts[cuts.length - 1] ?? 0;
-  let best = { start: 0, hits: -1 };
-  for (let step = 0; step * 0.05 + length <= songLength + 1e-6; step++) {
-    const start = Math.round(step * 5) / 100;
+  let best = { start: 0, hits: -1, off: Infinity };
+  for (let step = 0; step * 0.01 + length <= songLength + 1e-6; step++) {
+    const start = step / 100;
     let hits = 0;
+    let off = 0;
     let j = 0;
     for (const cut of inner) {
       const t = cut + start;
       while (j < onsets.length && onsets[j] < t - 0.07) j++;
-      if (j < onsets.length && Math.abs(onsets[j] - t) <= 0.07) hits++;
+      if (j < onsets.length && Math.abs(onsets[j] - t) <= 0.07) {
+        hits++;
+        off += Math.abs(onsets[j] - t);
+      }
     }
-    if (hits > best.hits) best = { start, hits };
+    if (hits > best.hits || (hits === best.hits && off < best.off - 1e-9)) best = { start, hits, off };
   }
   return { start: best.start, hits: Math.max(0, best.hits) };
 }

@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a9312ef0240d688e2754cc88840bca9ffa835156abbaf1c04ff391ca3372679e",
+      "content_hash": "300498a84e9da1d55d1962edc29a80a766e6af4aad96ed3deb1118501c467ddb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2196,12 +2196,12 @@
       "id": "skill/make-content",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "93105712f08cb9c6c0b875ba75daae340930c4c49a48af5cfa1230f7a63b0db8",
-      "summary": "Make a finished, postable video of your game, cut per platform and saved for the team's review.",
+      "content_hash": "b692650539de42070228b8f1883a241ef3f28bf89714486fb70a746aa79e0157",
+      "summary": "Make a finished, postable video of your game, cut per platform and saved for review.",
       "use_when": [
         "a developer asks for content for their game: a TikTok, Reels or Shorts clip, an X video, a trailer cut or a devlog",
         "a visible change just landed (a boss, a skin, a level, a rare drop) and a short clip of it would do well on social",
-        "a piece of content came back with changes requested on the team's Review tab"
+        "a piece of content came back with a Change note on the team's Today view"
       ],
       "facets": {
         "lifecycle": [
@@ -4171,13 +4171,16 @@
     {
       "id": "skill/summer-store",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "47ad07c4f3f550e82111423b87020bc1e5edcbe8da255eb4640baa125cb74c04",
-      "summary": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "version": "1.1.0",
+      "content_hash": "352328a8a5cbd265880be128f9f44790d4dd959b98ee17dbcb3dc264539821b0",
+      "summary": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
         "checking on the authority that a player really owns an item before letting them use or equip it",
-        "checkout shows pending, manual_review, insufficient_funds or unavailable, or bought items don't appear"
+        "checkout shows pending, manual_review, insufficient_funds, already_owned or unavailable, or bought items don't appear",
+        "recognizing items in game code by slug (item key) so one build works in staging and production",
+        "defining items in summer.items.json and syncing them to the store for the owner's approval",
+        "store bundles, Save %, timed sales, bundle-only items, or Owned instead of Buy"
       ],
       "facets": {
         "lifecycle": [
@@ -4195,6 +4198,9 @@
         "engine": ">=4.6"
       },
       "related": {
+        "tools": [
+          "tool/sync-items"
+        ],
         "skills": [
           "skill/multiplayer",
           "skill/multiplayer-state",
@@ -10176,6 +10182,48 @@
         "network": false,
         "credentials": false,
         "publish": false
+      }
+    },
+    {
+      "id": "tool/sync-items",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "58eb9c8d748a69dcebb967ff5a225110f947d5d8137a430e67bcb7b336518600",
+      "summary": "Sync summer.items.json to the creator's store game by item slug, confirm-gated - a plan first, then media upload and the owner's approval in Studio.",
+      "use_when": [
+        "\"add these items to my game\"",
+        "\"sync my items to staging\"",
+        "\"put the same items in production\"",
+        "\"change the price of emote_ponder\"",
+        "creating or revising store items from summer.items.json, matched by slug",
+        "making the staging game and the production game carry the same items"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-store"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_sync_items",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
       }
     },
     {

@@ -207,6 +207,7 @@
     "summer_starcast": "tool/starcast",
     "summer_start_game_task": "tool/start-game-task",
     "summer_stop": "tool/stop",
+    "summer_sync_items": "tool/sync-items",
     "summer_test_placement": "tool/test-placement",
     "summer_ui_actions": "tool/ui-actions",
     "summer_ui_activate": "tool/ui-activate",

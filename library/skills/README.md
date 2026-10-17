@@ -135,7 +135,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [grow-analytics](./grow-analytics/SKILL.md) | Read a creator's Summer Grow numbers (page views, launches, sessions, play time), compare windows. | deployment |
-| [make-content](./make-content/SKILL.md) | Make a finished, postable video of your game, cut per platform and saved for the team's review. | video |
+| [make-content](./make-content/SKILL.md) | Make a finished, postable video of your game, cut per platform and saved for review. | video |
 | [publish-your-game](./publish-your-game/SKILL.md) | Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link. | deployment |
 | [store-art](./store-art/SKILL.md) | Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules. | assets |
 | [store-listing](./store-listing/SKILL.md) | Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write. | product-language |
@@ -196,7 +196,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*summer-matchmaking*](./summer-matchmaking/SKILL.md) (preview) | Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures. | ux |
 | [*summer-parties*](./summer-parties/SKILL.md) (preview) | Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only. | ui |
 | [summer-player-data](./summer-player-data/SKILL.md) | Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries. | scripting |
-| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks. | gameplay |
+| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks. | gameplay |
 | [*summer-world-chat*](./summer-world-chat/SKILL.md) (preview) | Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only. | ui |
 | [*summer-world-saves*](./summer-world-saves/SKILL.md) (preview) | Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save. | scripting |
 

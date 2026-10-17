@@ -394,7 +394,7 @@ async function listGames(deps: PublishBuildDependencies): Promise<{ games: GameS
 }
 
 /** gameId is required: the error carries the person's games, or why the store did not list them. */
-async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
+export async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
   const listed = await listGames(deps);
   if ("games" in listed) {
     throw new BuildToolError(
@@ -418,7 +418,7 @@ async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> 
   );
 }
 
-async function storeToken(deps: PublishBuildDependencies): Promise<string> {
+export async function storeToken(deps: PublishBuildDependencies): Promise<string> {
   try {
     return await deps.token();
   } catch (error) {

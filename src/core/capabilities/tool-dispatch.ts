@@ -152,6 +152,8 @@ import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
+import { syncItems } from "./sync-items.js";
+import { BuildToolError, buildToolFailure } from "./summer-bundle.js";
 import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
 import { buildGameTaskPlan, gameTaskPlanInputSchema } from "./game-task-plan.js";
@@ -298,6 +300,18 @@ export class ToolResultError extends ToolDispatchError {
 export class CodedToolError extends ToolResultError {
   constructor(code: SummerErrorCode, message: string, extra: Record<string, unknown> = {}, recovery: string = CLI_RECOVERY[code]) {
     super(codedFailure(code, message, extra, recovery), message);
+  }
+}
+
+/** A creator tool's BuildToolError as a ToolResultError, so `summer tool` and
+ *  `summer <area> <action>` print its whole structured failure (code,
+ *  recovery and detail such as a manifest's problem list), as the MCP face does. */
+async function structuredBuildFailure<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof BuildToolError) throw new ToolResultError(buildToolFailure(error), error.message);
+    throw error;
   }
 }
 
@@ -1010,6 +1024,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
       face: "cli",
     })
+  ),
+  entry("summer_sync_items", "Sync summer.items.json to your store game by slug; the owner approves (confirm-gated)", false, (args) =>
+    // The same structured failure the MCP face gives (a manifest's whole problem list), printed whole.
+    structuredBuildFailure(() =>
+      syncItems({
+        gameId: optStr(args, "gameId"),
+        project: optStr(args, "project"),
+        file: optStr(args, "file"),
+        ...(Array.isArray(args.slugs) ? { slugs: args.slugs.filter((slug): slug is string => typeof slug === "string") } : {}),
+        confirm: args.confirm === true,
+        face: "cli",
+      })
+    )
   ),
 
   // --- debug ---

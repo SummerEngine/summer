@@ -204,12 +204,20 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
 const shellWord = (value: string) => (/^[\w./:@+=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`);
 
 /** The answer for a person; `out` is the --out to keep in the printed wait command. */
+/** A failure's problem list (a manifest's fields), one per line: in the answer's details or its tool's structured result. */
+function problemLines(details: Record<string, unknown> | undefined): string {
+  const tool = details?.tool && typeof details.tool === "object" ? (details.tool as Record<string, unknown>) : undefined;
+  const problems = Array.isArray(details?.problems) ? details.problems : Array.isArray(tool?.problems) ? tool.problems : [];
+  const lines = problems.filter((problem): problem is string => typeof problem === "string");
+  return lines.length ? `\n${lines.map((problem) => `  - ${problem}`).join("\n")}` : "";
+}
+
 export function formatAnswer(answer: Answer, out?: string): string {
   const waitFlags = (id: string) => `summer jobs wait --job-id ${id}${out ? ` --out ${shellWord(out)}` : ""}`;
   if (!answer.ok) {
     const next = answer.error.next;
     const step = !next ? "" : "op" in next ? `\nNext: ${next.op}` : "url" in next ? `\nNext: ${next.label}: ${next.url}` : `\nNext: ${next.say}`;
-    return `Error (${answer.error.code}): ${answer.error.message}${step}`;
+    return `Error (${answer.error.code}): ${answer.error.message}${problemLines(answer.error.details)}${step}`;
   }
   switch (answer.status) {
     case "done":

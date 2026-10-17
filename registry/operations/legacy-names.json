@@ -966,6 +966,16 @@
       "note": "",
       "op": "store.set_art"
     },
+    "summer_store_set_bundles": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_bundles"
+    },
+    "summer_store_set_sales": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_sales"
+    },
     "summer_store_set_sound": {
       "kind": "same",
       "note": "",
@@ -1035,6 +1045,11 @@
       "kind": "same",
       "note": "generic page executor: legacy only, never in store profiles",
       "op": "studio.use_page"
+    },
+    "summer_sync_items": {
+      "kind": "same",
+      "note": "local: reads summer.items.json and uploads its media; the owner approves the item changes",
+      "op": "economy.sync_items"
     },
     "summer_team": {
       "kind": "split",

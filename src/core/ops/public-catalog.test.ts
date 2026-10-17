@@ -14,12 +14,6 @@ import { publicCatalog, shippedCloudEntries, shippedWireForm } from "./public-ca
 
 /** Operations the hosted server still runs through their 3.x tool, so its public catalog does not list them yet. */
 const BRIDGED = ["docs.workflows"];
-/**
- * The content area (#163) names operations PublicSummerEngine defines in its
- * open content-room change (#1073). When that ships, `npm run sync:catalog`
- * and empty this list.
- */
-const NOT_SHIPPED_YET = ["content.get_kit", "content.list_games", "content.list_references", "content.make_video", "content.mark_posted", "content.update_kit"];
 
 describe("the shipped public catalog (registry/operations/public-catalog.json)", () => {
   const catalog = publicCatalog();
@@ -33,7 +27,7 @@ describe("the shipped public catalog (registry/operations/public-catalog.json)",
 
   it("lists every cloud operation legacy-names.json maps a 3.x name to", () => {
     const cloud = [...new Set(Object.values(legacyNames()).map((row) => row.op))].filter((op) => !isLocalOp(op));
-    expect(cloud.filter((op) => !shipped.has(op)).sort()).toEqual([...NOT_SHIPPED_YET, ...BRIDGED].sort());
+    expect(cloud.filter((op) => !shipped.has(op)).sort()).toEqual([...BRIDGED].sort());
   });
 
   it("agrees with legacy-names.json on every 3.x name it lists", () => {

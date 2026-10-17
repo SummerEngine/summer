@@ -1,6 +1,6 @@
 ---
 name: make-content
-description: "Make a finished, postable video of your game, cut per platform and saved for the team's review."
+description: "Make a finished, postable video of your game, cut per platform and saved for review."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -166,13 +166,13 @@ Make a separate render when length, safe zones or aspect differ. One file copied
 ## 9. Upload and save
 
 1. For each render and cover: `content.upload_begin` (`fileName`, `contentType`, `size` in bytes) gives an `uploadUrl`; PUT the file there with that content type; then `content.upload_complete` (`uploadId`, `title`, `description` of what happens in it, `tags`, `folder`) gives the item id.
-2. `content.save_piece` with `contentGameId`, `title`, `format`, and `variants` (1-5, one per platform: `platform` of `tiktok`, `instagram`, `youtube`, `youtube_long` or `x`; `itemId`; `coverItemId`; `caption`; `title` for YouTube; `hashtags`; `firstComment`; `suggestedSound`). Add `referenceId` (always: the reference you copied), `sourceItemIds`, `gameplaySeconds`, `selfScore`, and `notes` (the reference and its beats in one line, why it should perform, any caveat). It lands on the team's Review tab.
+2. `content.save_piece` with `contentGameId`, `title`, `format`, and `variants` (1-5, one per platform: `platform` of `tiktok`, `instagram`, `youtube`, `youtube_long` or `x`; `itemId`; `coverItemId`; `caption`; `title` for YouTube; `hashtags`; `firstComment`; `suggestedSound`). Add `referenceId` (always: the reference you copied), `sourceItemIds`, `gameplaySeconds`, `selfScore`, `notes`, and what Today shows under the player: `why` (`referenceId`, `fitReason`: one line on why it fits today, like the commit you saw, `refStats` with `views`, `likes`, `breakoutRatio`, `postedAt`), `checks` (`hook_seconds`, `min_shot_motion`, `safe_zone`, `loudness_lufs`, `true_peak_db`, `length_seconds`, `gameplay_seconds`, each with the measured `value` and `pass`; never a predicted score), `sideBySideItemId` (a library video: the reference left, yours right, synced), `contactSheetItemId`, `learningIds` (the kit learnings you applied) and `tomorrow` (what you make next). `summer content make` does all of this and reports each stage to its make request (`content.make`, `content.claim_make`, `content.update_make`; `jobs.wait` on `make:<requestId>`). It lands on the team's Today view.
 3. Reply with one line and the `reviewUrl`.
 4. Keep watching it (section 1, step 7). Feedback arrives on the piece: `needsWork` and `whatToChange`. Revise with `content.update_piece` (pass `expectedRevision`; status `in_review` sends it back). When the team says it is posted, `content.mark_posted`.
 
 ## 10. Learnings
 
-After every review, write what the person said into the kit: `content.update_kit`, a section titled "Learnings" (send the whole sections list back with `expectedRevision`). One line each, with the evidence: the piece and the person's words, or the numbers. A data rule stays a hypothesis until 3 pieces beat the account's median by 1.5x; the person's word is a rule at once and beats data. Read the Learnings section first on the next run.
+Every Change note and Skip reason becomes a learning in the kit by itself (`content.get_kit` `learnings`, with the piece it came from). Read them first on every run, follow each one, and list the ones you applied in `learningIds`. The team removes one with `content.delete_learning`. A data rule you find yourself stays a hypothesis until 3 pieces beat the account's median by 1.5x.
 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
@@ -187,12 +187,11 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `content.list_references` | `summer content list-references` |
 | `content.make_video` | `summer content make-video` |
 | `content.mark_posted` | `summer content mark-posted` |
-| `content.update_kit` | `summer content update-kit` |
 | `docs.read`, `summer_docs_read` | `summer docs read` |
 | `engine.capture_gameplay`, `summer_capture_gameplay` | `summer engine capture-gameplay` |
 | `engine.frame_shot` | `summer engine frame-shot` |
 | `engine.screenshot` | `summer engine screenshot` |
-| `summer_jobs_wait` | `summer jobs wait` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
 | `makers.bankai_swap` | `summer makers bankai-swap` |
 | `makers.camera_moves` | `summer makers camera-moves` |
 | `makers.character_turnaround` | `summer makers character-turnaround` |

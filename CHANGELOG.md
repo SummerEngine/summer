@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`summer-store` knows the store that shipped on 2026-10-16.** Game code names items by slug (Studio's "Item key"), which is the same in staging and production, with definition ids as the fallback. The skill says plainly that the slug getters need a Summer version newer than 0.7.3, and that hosted reads return `""` until slugs are delivered; it shows how to check both. It replaces "code never creates items" with the real rule: game code never creates items at runtime, and creators define them in Studio or through `summer.items.json` and `summer_sync_items` (dry-run plan, then the owner's approval, at most 50 items per approval, an image for every new item, staging and production through the gateway settings and `summer login --store --force`). It also covers unique items, `maxOwned` and the `already_owned` refusal ("Owned" instead of Buy); bundles with "Save N%", the lower price for players who already own some of a bundle's items, timed sales, "This offer ended" and bundle-only items, including what an in-game shop sees of them; and Local Play slugs through `catalog_item_slugs`.
+
 ## [4.3.0] - 2026-10-16
 
 Usage counts the `summer` CLI: each signed-in command sends one usage line, like an MCP tool call (never arguments, paths or project content), and a failed tool call names its error code.

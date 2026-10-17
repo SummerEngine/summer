@@ -7,6 +7,7 @@ import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/exp
 import { publishBuild } from "../../core/capabilities/publish-build.js";
 import { BuildToolError, buildToolFailure } from "../../core/capabilities/summer-bundle.js";
 import { syncItems } from "../../core/capabilities/sync-items.js";
+import { contentMake, contentMakeInput } from "../../core/capabilities/content-make/index.js";
 import { textJson } from "./text-json.js";
 
 async function creatorResult<T>(operation: () => Promise<T>) {
@@ -143,5 +144,33 @@ export function registerCreatorTools(server: McpServer): void {
       confirm: z.boolean().default(false).describe("Set true only after the user approves the plan."),
     },
     async (args) => creatorResult(() => syncItems({ ...args, face: "mcp" }))
+  );
+
+  server.tool(
+    "summer_content_make",
+    "Make one finished, postable piece of content for a game and put it in the team's Review (Studio > Grow > Content), on this computer: it picks the reference from Summer's library that fits today (a format the game has not posted, what changed in the repo), studies its cuts and caption look, measures the footage, maps each reference shot to a clip window with motion, cuts to the reference's timings, draws the captions in its style, mixes at -14 LUFS, checks hook, motion per shot, safe zones, length and loudness, renders the reference side by side, uploads and saves the piece (failed checks: a draft). It never writes words itself: the first call answers needs_words with the beats; call again with workDir and lines (one per beat, in the reference's pattern, true to the game, never the reference's own words). A reference that speaks also needs voiceFile, the lines recorded in the team's voice (needs_voice says so). Same workDir continues where a run stopped. Needs ffmpeg and ImageMagick (and Whisper for a voice-over). Takes a few minutes.",
+    {
+      contentGameId: z.string().optional().describe("The game's Content id, from content.list_games. Not needed with workDir."),
+      teamId: z.string().optional().describe("From team.list, when the person has more than one team."),
+      referenceId: z.string().optional().describe("The reference to copy, from content.list_references. Without it the best fit for today is picked."),
+      footage: z.array(z.string()).max(20).optional().describe("Folders (or files) of the game's footage on this computer: clips, stills, and the game's music. Default ./content/footage."),
+      lines: z.array(z.string()).max(80).optional().describe("Our words, one per reference beat (\"\" for a beat without words), from the needs_words answer."),
+      voiceFile: z.string().optional().describe("The lines recorded in the team's voice (wav, mp3, m4a), when the reference speaks."),
+      title: z.string().max(100).optional().describe("The piece's title in Review (also the YouTube title)."),
+      caption: z.string().max(2200).optional().describe("The post caption: one dry line and a question, no hashtags."),
+      hashtags: z.array(z.string()).max(10).optional().describe("3-5 tags, the game's tag first. Default: the kit's core tags."),
+      note: z.string().max(300).optional().describe("What to clip (\"the new boss\"): weighs the reference pick."),
+      workDir: z.string().optional().describe("The work folder an earlier call answered: continues that piece."),
+      out: z.string().optional().describe("Where the work goes (pieces, the reference videos and footage measurements). Default ~/.summer/content."),
+      music: z.string().optional().describe("The game's own music for a reference with a song (never the reference's audio). Default: the first song in the footage folders."),
+      font: z.string().optional().describe("The game's caption font file (.ttf/.otf)."),
+      referenceFile: z.string().optional().describe("The reference video, when it cannot be fetched (yt-dlp)."),
+      repo: z.string().optional().describe("The game's repo, for what changed today. Default the working directory."),
+      stage: z.enum(["plan", "all"]).optional().describe("plan: stop after the plan, to change shots in plan.json."),
+      upload: z.boolean().optional().describe("false: render and check only, upload nothing."),
+      replan: z.boolean().optional().describe("Throw away the plan and map the shots again."),
+      status: z.enum(["draft", "in_review"]).optional().describe("Override: in_review even with failed checks, or draft."),
+    },
+    async (args) => creatorResult(() => contentMake({ ...contentMakeInput(args as Record<string, unknown>), face: "mcp" }))
   );
 }

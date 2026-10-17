@@ -6650,6 +6650,43 @@
       }
     },
     {
+      "id": "tool/content-make",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "27214cec280995f304b43baa5f82c80488151e4ca0534df7ce840da922a75681",
+      "summary": "Make one finished piece for a game on this computer - a library reference copied beat for beat with the team's footage, checked, saved to Review.",
+      "use_when": [
+        "\"make a piece of content for this\"",
+        "\"clip what we just built\"",
+        "\"make today's TikTok for my game\"",
+        "\"copy this reference with our footage\"",
+        "a daily run that puts one finished piece per game in Review",
+        "revising a piece after the team asked for changes (same workDir)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "video"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_content_make",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/create-debug-report",
       "kind": "tool",
       "version": "1.0.2",

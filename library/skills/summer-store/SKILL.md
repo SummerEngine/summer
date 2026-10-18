@@ -470,12 +470,8 @@ Games and definition ids (one `summer.items.json` still serves both). Your
 production account and Games are not in it; if you have no staging account,
 ask Summer for access. Purchases there use test payments: Sparks bought in
 staging are sandbox Sparks, nothing real is charged, and they earn the
-creator nothing.
-
-Summer's test players (the fenced accounts used for multiplayer checks)
-have no Sparks today, so they cannot test a purchase. Giving test players
-sandbox Sparks is approved and being built. Until it ships, test a purchase
-with a staging account that bought Sparks in the staging Summer app.
+creator nothing. Test a purchase with a staging account that bought Sparks
+in the staging Summer app.
 
 Before testing, the item must be buyable in staging: reviewed, activated by
 the owner, and the staging Game live ("How an item becomes buyable").

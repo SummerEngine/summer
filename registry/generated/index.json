@@ -2056,7 +2056,7 @@
       "id": "skill/in-game-purchases",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "3addfcf19307a681f7772e91a955665a1043e5697ca8e4a4fc191528a4eb4438",
+      "content_hash": "f69c5122f960b3129cb90a5724d28e46ba38df189db4b1db2b7f5909a4c65819",
       "summary": "Sell items for Sparks via the Summer purchase sheet: checkout, not enough Sparks, unlocks, grants.",
       "use_when": [
         "adding a shop, buy button or paid item to a Summer game and wiring request_checkout",
@@ -4173,7 +4173,7 @@
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.2.0",
-      "content_hash": "37d9be8ba022c5656fb31c1bb920d6e35a43cd210000daa88374e7e1ca01bd03",
+      "content_hash": "62a3a62c2346d35b78ccdc6dd5aa3062318ffec5bc77ea498b69b77f8a40dbdf",
       "summary": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",

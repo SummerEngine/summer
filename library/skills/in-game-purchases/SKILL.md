@@ -243,10 +243,9 @@ The game code is identical on every surface.
 
 - Test against Summer staging, where Sparks come from test payments
   (sandbox Sparks). *Why:* no real money moves and results are identical to
-  production. Summer's fenced test players have no Sparks yet (giving them
-  sandbox Sparks is being built), so use a staging account that bought
-  Sparks in the staging Summer app. The `summer-store` skill covers staging
-  access and what makes an item buyable there.
+  production. Use a staging account that bought Sparks in the staging Summer
+  app. The `summer-store` skill covers staging access and what makes an item
+  buyable there.
 - Walk every state: decline the sheet, let it expire, buy with too few
   Sparks, get Sparks in the Summer app, then buy the item. Kill the game while
   a checkout is pending and relaunch; the result must still arrive once.

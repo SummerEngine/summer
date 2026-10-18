@@ -1,7 +1,7 @@
 id: tool/sync-items
 kind: tool
 version: 1.0.0
-summary: Sync summer.items.json to the creator's store game by item slug, confirm-gated - a plan first, then media upload and the owner's approval in Studio.
+summary: Sync summer.items.json to the store game by item slug - a plan, then the owner's approval in Studio. Needs the store sign-in (summer login --store).
 use_when:
   - '"add these items to my game"'
   - '"sync my items to staging"'
@@ -13,7 +13,8 @@ do_not_use_when:
   - the user has not approved the exact plan for this gateway and game
   - more than 50 items change at once - one approval takes 50; confirm each listed batch with slugs
   - the store sign-in is for the other environment - after changing SUMMER_GATEWAY_URL and SUMMER_MCP_RESOURCE_URL, run summer login --store --force first
-  - releasing or activating an item for players - the owner does that in Studio after Summer's review
+  - releasing or activating an item for players - after Summer approves it, the owner activates each item in Studio (Review activation); players can buy it only while the game is live
+  - Passport collectibles (stamps, pins, badges) - a Passport item with the same slug is blocked, never synced
   - retiring or deleting an item - items the file does not name are listed, never changed
   - the game's own price or store page - store.update_listing, pricing.set_base
 facets:

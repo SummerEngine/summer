@@ -2055,8 +2055,8 @@
     {
       "id": "skill/in-game-purchases",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "bc1e9c8bc31d415ecef419004a6d0284e0ba8261360ba3da5f1d9c668f4bba9c",
+      "version": "1.1.0",
+      "content_hash": "f69c5122f960b3129cb90a5724d28e46ba38df189db4b1db2b7f5909a4c65819",
       "summary": "Sell items for Sparks via the Summer purchase sheet: checkout, not enough Sparks, unlocks, grants.",
       "use_when": [
         "adding a shop, buy button or paid item to a Summer game and wiring request_checkout",
@@ -2081,6 +2081,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-store",
           "skill/multiplayer-state",
           "skill/ui-basics"
         ]
@@ -4171,8 +4172,8 @@
     {
       "id": "skill/summer-store",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "352328a8a5cbd265880be128f9f44790d4dd959b98ee17dbcb3dc264539821b0",
+      "version": "1.2.0",
+      "content_hash": "62a3a62c2346d35b78ccdc6dd5aa3062318ffec5bc77ea498b69b77f8a40dbdf",
       "summary": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
@@ -4202,6 +4203,7 @@
           "tool/sync-items"
         ],
         "skills": [
+          "skill/in-game-purchases",
           "skill/multiplayer",
           "skill/multiplayer-state",
           "skill/multiplayer-testing",
@@ -10226,8 +10228,8 @@
       "id": "tool/sync-items",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "58eb9c8d748a69dcebb967ff5a225110f947d5d8137a430e67bcb7b336518600",
-      "summary": "Sync summer.items.json to the creator's store game by item slug, confirm-gated - a plan first, then media upload and the owner's approval in Studio.",
+      "content_hash": "46229aab6701bdcc9721b9cf9f8e4ede0a792bd99aabbbd5ce6a73a98f4a7369",
+      "summary": "Sync summer.items.json to the store game by item slug - a plan, then the owner's approval in Studio. Needs the store sign-in (summer login --store).",
       "use_when": [
         "\"add these items to my game\"",
         "\"sync my items to staging\"",

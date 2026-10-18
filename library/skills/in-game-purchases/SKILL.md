@@ -25,6 +25,11 @@ checkout fails with `insufficient_funds`, tell the player they need more
 Sparks and that they can get them in the Summer app, then let them press Buy
 again.
 
+This skill covers the purchase sheet and granting an effect on a server.
+For the rest of the store, use the `summer-store` skill: where items come
+from and how one becomes buyable, item slugs, `summer.items.json`, bundles
+and sales, owned items, and the authority's entitlement check.
+
 ## When to sell with Sparks
 
 - Sell anything that persists across sessions or devices (cosmetics, unlocks,
@@ -89,12 +94,20 @@ The operation returned by `request_checkout` also completes: ok on
 
 ## Minimal complete example
 
+Items are named by **slug** (Studio's "Item key", e.g. `sword`), which is
+the same in staging and production. Definition ids (`item_…`) differ between
+them, so never hard-code one. The slug getters need a Summer version that
+carries them (newer than 0.7.3); on an older one, use each environment's
+definition id with `has_owned_definition()` and `get_definition_id()`. The
+`summer-store` skill shows how to check.
+
 ```gdscript
 extends Node
 ## A one-item shop. Buys `offer_id` and unlocks from inventory.
 
-@export var offer_id := "offer_sword"
-@export var definition_id := "item_sword"
+## From the store listing: item.price.offer_id of the item whose get_slug() is item_slug.
+@export var offer_id := ""
+@export var item_slug := "sword"
 
 signal message(text: String)
 var _seen := {}
@@ -137,7 +150,7 @@ func _on_checkout(status: SummerCheckoutStatus) -> void:
 			pass
 
 func _sync_owned() -> void:
-	if Summer.client.items.has_owned_definition(definition_id):
+	if Summer.client.items.has_owned_slug(item_slug):
 		message.emit("Sword unlocked.") # the only place the item is granted
 ```
 
@@ -156,7 +169,7 @@ items. The client sends the authority only an owned item ID. The authority:
 
 1. reads that player's inventory with
    `Summer.authority.items.inventory_for_session(session)` and checks the
-   item is there, owned, and of the right definition;
+   item is there, owned, and the right item (its slug);
 2. checks its own record of redeemed item IDs, kept in the player's secret
    player data (`Summer.authority.player_data`), so the item grants once per
    player in every world;
@@ -165,7 +178,7 @@ items. The client sends the authority only an owned item ID. The authority:
 
 ```gdscript
 # On the dedicated authority.
-const EFFECT_DEFINITION := "item_grow_now"
+const EFFECT_SLUG := "grow_now"
 
 func redeem(session: SummerSession, owned_item_id: String) -> void:
 	var inv := Summer.authority.items.inventory_for_session(session)
@@ -176,7 +189,7 @@ func redeem(session: SummerSession, owned_item_id: String) -> void:
 	for candidate in inv.items:
 		if candidate.get_owned_item_id() == owned_item_id:
 			item = candidate
-	if item == null or not item.is_owned() or item.get_definition_id() != EFFECT_DEFINITION:
+	if item == null or not item.is_owned() or item.get_slug() != EFFECT_SLUG:
 		return # not owned by this player: never grant
 
 	var load_op := Summer.authority.player_data.load(session)
@@ -228,8 +241,11 @@ The game code is identical on every surface.
 
 ## Testing
 
-- Test against Summer staging, which runs in sandbox mode. *Why:* no real
-  money moves and results are identical to production.
+- Test against Summer staging, where Sparks come from test payments
+  (sandbox Sparks). *Why:* no real money moves and results are identical to
+  production. Use a staging account that bought Sparks in the staging Summer
+  app. The `summer-store` skill covers staging access and what makes an item
+  buyable there.
 - Walk every state: decline the sheet, let it expire, buy with too few
   Sparks, get Sparks in the Summer app, then buy the item. Kill the game while
   a checkout is pending and relaunch; the result must still arrive once.
@@ -255,6 +271,7 @@ Sparks in the Summer app.
 
 ## See also
 
+- summer-store: items, slugs, bundles, owned items and the authority check
 - multiplayer-state
 - ui-basics
 

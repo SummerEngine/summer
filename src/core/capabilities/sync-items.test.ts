@@ -136,6 +136,12 @@ describe("planItem", () => {
     expect(planItem(manifestItem({ media: [] }), [], remote())).toMatchObject({ action: "update", changes: ["media"] });
   });
 
+  it("never plans a change to a Passport collectible that has the slug", () => {
+    const plan = planItem(manifestItem(), media, { ...remote(), authority: "PASSPORT_CONTROL" });
+    expect(plan).toMatchObject({ action: "blocked", definitionId: "item_ponder" });
+    expect((plan as { reason: string }).reason).toMatch(/Passport/);
+  });
+
   it("leaves an existing price alone when the file names none", () => {
     expect(planItem(manifestItem({ priceSparks: undefined }), media, remote({ priceSparks: 150 }))).toMatchObject({ action: "unchanged" });
   });
@@ -165,7 +171,7 @@ function fakeStore(options: { existing?: RemoteItem | null } = {}) {
     }
     const existing = options.existing;
     if (method === "GET" && url.startsWith(`${STORE}/games/game-1/item-definitions?slug=`)) {
-      return json(200, { items: existing ? [{ definitionId: existing.definitionId, slug: existing.slug, state: existing.state, authority: "CREATOR_CATALOG" }] : [] });
+      return json(200, { items: existing ? [{ definitionId: existing.definitionId, slug: existing.slug, state: existing.state, authority: existing.authority ?? "CREATOR_CATALOG" }] : [] });
     }
     if (method === "GET" && url.startsWith(`${STORE}/games/game-1/item-definitions?limit=`)) {
       return json(200, { items: [{ definitionId: "item_old", slug: null, name: "Old hat", authority: "CREATOR_CATALOG" }] });
@@ -263,6 +269,15 @@ describe("syncItems", () => {
     const proposals: ProposeItemsRequest[] = [];
     await syncItems({ gameId: "game-1", project: root, confirm: true, face: "cli" }, deps(store.fetch, proposals));
     expect(proposals[0].items[0]).toMatchObject({ action: "update", definitionId: "item_ponder", basedOnRevisionId: "rev_1", item: { priceSparks: 200, mediaAssetIds: ["asset_new"] } });
+  });
+
+  it("blocks a Passport collectible with the same slug and asks the owner nothing", async () => {
+    const store = fakeStore({ existing: { ...remote(), authority: "PASSPORT_CONTROL" } });
+    const proposals: ProposeItemsRequest[] = [];
+    const result = await syncItems({ gameId: "game-1", project: root, confirm: true, face: "cli" }, deps(store.fetch, proposals));
+    expect(result.plan).toEqual([expect.objectContaining({ slug: "emote_ponder", action: "blocked" })]);
+    expect(proposals).toEqual([]);
+    expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
   });
 
   it("sends nothing when the Game already matches", async () => {

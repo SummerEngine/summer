@@ -116,7 +116,7 @@ export function storeError(status: number, code: string, message: string | undef
     return new BuildToolError(
       "owner_approval_required",
       message || "Only the game's owner can do this.",
-      "Recovery: nothing went live. Submit with summer_store_submit and give the owner the approval link it returns; a live game's new download is finished by the owner in Studio.",
+      "Recovery: nothing went live. Submit with store.publish and give the owner the approval link it returns; a live game's new download is finished by the owner in Studio.",
       status
     );
   }
@@ -404,7 +404,7 @@ export async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<
         : "gameId is required, and this account has no store game yet.",
       listed.games.length
         ? "Recovery: call again with gameId from the list."
-        : "Recovery: create the store game first (summer_store_create_game), then call again with its gameId.",
+        : "Recovery: create the store game first (games.create), then call again with its gameId.",
       undefined,
       { games: listed.games }
     );
@@ -450,7 +450,7 @@ export async function checkStoreGame(
           : `The store did not find game "${gameId}", and did not list your games either: ${listed.error}`,
         "games" in listed && listed.games.length
           ? "Recovery: call again with gameId from the list."
-          : "Recovery: create the store game first (summer_store_create_game), or copy its id from Studio (the store page URL).",
+          : "Recovery: create the store game first (games.create), or copy its id from Studio (the store page URL).",
         404,
         "games" in listed ? { games: listed.games } : undefined
       );
@@ -462,7 +462,7 @@ export async function checkStoreGame(
   const catalog = new Set(targets.map((target) => target.replace(/-(universal|x64)$/, "")));
   const unlisted = exportTargets.filter((target) => !catalog.has(target));
   const warnings = unlisted.length
-    ? [`The store page of "${game.name ?? gameId}" does not list ${unlisted.join(", ")} (it lists ${targets.join(", ") || "no platforms"}). Players on ${unlisted.join(", ")} will not see this build until the store page lists them: add them with summer_store_update_listing.`]
+    ? [`The store page of "${game.name ?? gameId}" does not list ${unlisted.join(", ")} (it lists ${targets.join(", ") || "no platforms"}). Players on ${unlisted.join(", ")} will not see this build until the store page lists them: add them with store.update_listing.`]
     : [];
   return { game: { gameId, name: typeof game.name === "string" ? game.name : null, status: typeof game.status === "string" ? game.status : null, targets }, warnings };
 }

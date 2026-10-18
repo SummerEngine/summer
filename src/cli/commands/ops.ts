@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { CLI_AREAS } from "../../core/ops/areas.js";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
+import { shippedCloudEntries, shippedWireForm } from "../../core/ops/public-catalog.js";
 import { answerOfHosted, callHostedV4, describeFromShipped, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
@@ -306,15 +307,92 @@ export async function describeFromCli(
   return answer.ok ? 0 : 1;
 }
 
+const HELP_WORDS: ReadonlySet<string> = new Set(["--help", "-h", "help"]);
+/** gameId -> game-id, look_at -> look-at: the flag a field takes. */
+const flagOf = (field: string) => field.replace(/_/g, "-").replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+const VIEW_FLAGS = "[--input '<json>'] [--dry-run] [--wait] [--json]";
+
+/** `summer <area> --help`: the area's actions, from this package and the shipped catalog (no network). */
+export function areaHelp(area: string): string {
+  const titles = new Map<string, string>();
+  for (const entry of [...localEntries(), ...shippedCloudEntries()]) {
+    if (entry.name.startsWith(`${area}.`) && !titles.has(entry.name)) titles.set(entry.name, entry.title);
+  }
+  const actions = [...titles].map(([name, title]) => [flagOf(name.slice(area.length + 1)), title] as const).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const width = Math.max(0, ...actions.map(([action]) => action.length));
+  return [
+    `Usage: summer ${area} <action> [--<field> <value> ...] ${VIEW_FLAGS}`,
+    "",
+    ...(actions.length ? ["Actions:", ...actions.map(([action, title]) => `  ${action.padEnd(width)}  ${title}`)] : [`This version lists no ${area} operations; signed in, summer ops search ${area} finds the server's.`]),
+    "",
+    `One action's fields: summer ${area} <action> --help`,
+  ].join("\n");
+}
+
+type WireOperation = { name: string; title?: string; summary?: string; effect?: string; approval?: string; auth?: string; input?: JsonSchema & { required?: string[] } };
+
+/** One operation's help: its command, what it does, who approves, the sign-in and each field as a flag. */
+export function operationHelp(operation: WireOperation): string {
+  const [area, action] = operation.name.split(".");
+  const command = action ? `summer ${area} ${flagOf(action)}` : `summer ${area}`;
+  const required = new Set(operation.input?.required ?? []);
+  const fields = Object.entries(operation.input?.properties ?? {}).map(([field, schema]) => {
+    const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+    const flag = `--${flagOf(field)}${type === "boolean" ? "" : ` <${type ?? "value"}>`}`;
+    const description = (schema as { description?: string }).description ?? "";
+    return [flag, `${required.has(field) ? "Required. " : ""}${description}`.trim()] as const;
+  });
+  const width = Math.max(0, ...fields.map(([flag]) => flag.length));
+  const signIn = operation.auth === "account" ? "Needs a sign-in: summer login (the store sign-in alone: summer login --store)." : "Works signed out.";
+  return [
+    `Usage: ${command} ${fields.length ? "[--<field> <value> ...] " : ""}${VIEW_FLAGS}`,
+    "",
+    `${operation.title ?? operation.name}${operation.summary ? `: ${operation.summary}` : ""}`,
+    `Effect: ${operation.effect ?? "unknown"}. Approval: ${operation.approval ?? "none"}. ${signIn}`,
+    ...(fields.length ? ["", "Fields:", ...fields.map(([flag, text]) => `  ${flag.padEnd(width)}  ${text}`)] : []),
+    "",
+    `The exact input: summer ops describe ${operation.name}`,
+  ].join("\n");
+}
+
+/** `summer <area> <action> --help`: from this package or the shipped catalog; the server only for an operation newer than both. */
+export async function operationHelpFromCli(op: string, deps: OpsCliDeps = defaultOpsCliDeps): Promise<number> {
+  const name = resolveOpName(op);
+  let operation = (localWireForm(name) ?? shippedWireForm(name)) as WireOperation | null;
+  if (!operation) {
+    const asked = await runCloud("ops.describe", { input: { name }, json: true, dryRun: false, wait: false }, deps);
+    if (!asked.ok || asked.status !== "done") {
+      deps.printError(formatAnswer(asked));
+      return 1;
+    }
+    operation = (asked.result as { operation?: WireOperation }).operation ?? null;
+    if (!operation) {
+      deps.printError(formatAnswer(errorAnswer("not_found", `No operation is named "${name}".`, { next: { op: "ops.search", input: { query: name } } })));
+      return 1;
+    }
+  }
+  deps.print(operationHelp(operation));
+  return 0;
+}
+
 function areaCommand(area: string): Command {
   return new Command(area)
     .description(`Summer ${area} operations: summer ${area} <action> --field value. Find them: summer ops search ${area}`)
-    .argument("<action>", "The operation's action, e.g. list or set-base")
+    .argument("[action]", "The operation's action, e.g. list or set-base")
     .allowUnknownOption(true)
     .allowExcessArguments(true)
     .helpOption(false)
-    .action(async (action: string, _options: unknown, command: Command) => {
-      process.exitCode = await runOpFromCli(opFromCli(area, action), command.args.slice(1));
+    .action(async (action: string | undefined, _options: unknown, command: Command) => {
+      // Our own help: commander's would list no actions and no fields.
+      if (action === undefined || HELP_WORDS.has(action)) {
+        (action === undefined ? defaultOpsCliDeps.printError : defaultOpsCliDeps.print)(areaHelp(area));
+        process.exitCode = action === undefined ? 1 : 0;
+        return;
+      }
+      const argv = command.args.slice(1);
+      process.exitCode = argv.some((token) => HELP_WORDS.has(token) && token !== "help")
+        ? await operationHelpFromCli(opFromCli(area, action))
+        : await runOpFromCli(opFromCli(area, action), argv);
     });
 }
 

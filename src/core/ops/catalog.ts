@@ -48,6 +48,13 @@ const titleOf = (summary: string, op: string) => {
 
 let entriesCache: CatalogEntry[] | null = null;
 
+/**
+ * The local operations that reach Summer with the person's sign-in (the
+ * account and the store sign-in `summer login` makes; `summer login --store`
+ * for the store sign-in alone). Every other local one works signed out.
+ */
+const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "apps.publish_folder", "content.make"]);
+
 type IndexedTool = ReturnType<typeof loadLibraryIndex>[number];
 
 function entryFor(op: string, toolName: string, tool: IndexedTool, legacy: string): CatalogEntry {
@@ -162,7 +169,7 @@ export function localWireForm(op: string): Record<string, unknown> | null {
     effect: entry.effect,
     approval: entry.approval,
     provider: entry.provider,
-    auth: def?.auth ?? "none",
+    auth: def?.auth ?? (SIGNED_IN_LOCAL_OPS.has(op) ? "account" : "none"),
     input: localInputSchema(op) ?? { type: "object" },
     output: { type: "object" },
     ...(legacy.length ? { legacy } : {}),

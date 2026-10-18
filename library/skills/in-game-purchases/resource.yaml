@@ -1,6 +1,6 @@
 id: skill/in-game-purchases
 kind: skill
-version: 1.0.0
+version: 1.1.0
 summary: "Sell items for Sparks via the Summer purchase sheet: checkout, not enough Sparks, unlocks, grants."
 use_when:
   - "adding a shop, buy button or paid item to a Summer game and wiring request_checkout"
@@ -21,6 +21,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/summer-store
     - skill/multiplayer-state
     - skill/ui-basics
 source: official

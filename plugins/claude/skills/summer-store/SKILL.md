@@ -27,7 +27,7 @@ The ids, kept apart:
 | Id | Where it comes from | Use it for |
 | --- | --- | --- |
 | Slug ("Item key" in Studio) | You choose it, e.g. `party_hat`; the same in staging and production | Recognizing an item in game code |
-| Definition id | Summer assigns it (`item_…`); **differs between staging and production** | The same, on Summer versions without slugs |
+| Definition id | Summer assigns it (`item_…`); **differs between staging and production** | The same, on Summer versions without the slug getters |
 | Offer id | `item.price.offer_id` in the store listing | `SummerCheckoutLine.create(offer_id, quantity)` |
 | Owned item id | One owned copy (`item.get_owned_item_id()`) | Pointing at a specific owned copy |
 
@@ -49,7 +49,7 @@ This skill extends the Courtyard game from `multiplayer-project` and
 ## Where items come from
 
 **Game code never creates or grants items at runtime.** The creator defines
-them and Summer reviews each one before players can buy it. Two ways in:
+them, Summer reviews each one, and the owner activates it. Two ways in:
 
 | Way | How | Who writes |
 | --- | --- | --- |
@@ -59,6 +59,33 @@ them and Summer reviews each one before players can buy it. Two ways in:
 An agent never writes an item or a price itself. Bundles and sales (step 5)
 are not in the file; they belong to the store page draft, which the owner
 publishes.
+
+### How an item becomes buyable
+
+Today an item goes on sale only after all of these:
+
+1. **Defined.** In Studio, or from a sync plan the owner approved (Studio
+   applies it). Approving the plan does not put anything on sale.
+2. **Reviewed.** Each item is submitted for Summer's review. Its page shows
+   the state; "Check verification status" reads the result.
+3. **Activated, one item at a time.** Once Summer approves an item, the owner
+   presses **Review activation** on that item's page in Studio and confirms.
+   Nothing activates it for them: not the sync, not an agent.
+4. **The Game is live.** An active item is buyable only while its Game's
+   store page is live. It stops selling while the Game is unlisted and
+   resumes when the Game is listed again. An item can be activated before
+   the Game goes live; it sells from the moment the Game is live.
+
+**Editing a live item makes a new revision.** In Studio that is "Review new
+revision"; in a sync plan it is an `update` with `"revision": "new_draft"`.
+Players keep buying the live revision while the new one is reviewed, and
+the new one replaces it only after the owner's Review activation of it.
+
+**Coming:** Summer has decided that items will go on sale without waiting for
+Summer's review. Staff will review an item after it goes live and can take
+it down. The store change that does this is being built and has not shipped.
+Until it ships, follow the four steps above. When it ships, steps 2 and 3
+no longer hold up the sale; a live Game is still required.
 
 ### `summer.items.json`
 
@@ -113,12 +140,17 @@ publishes.
    uploads the changed images and sends the plan to the owner. The answer is
    `awaiting_owner_approval` with an approval link: give it to the owner.
    Nothing changes until they approve in Studio. Then each item is created
-   or revised, priced and submitted for Summer's review.
+   or revised, priced and submitted for Summer's review. Each one still
+   needs Summer's approval and the owner's Review activation before players
+   can buy it ("How an item becomes buyable").
 4. **One approval takes at most 50 items.** A larger plan lists `batches`;
    confirm each one with `"slugs": [...]` and pass on each approval link.
 
-Releasing an item to players, retiring it, and the Game's own price are not
-part of the sync. The owner does those in Studio.
+Activating an item (Review activation), retiring it, and the Game's own
+price are not part of the sync. The owner does those in Studio. A Passport
+collectible (a stamp, pin or badge) with the same slug is **blocked**:
+Passport items have their own lifecycle and are never synced; give the
+store item another slug.
 
 **Staging and production.** One file serves both, because items match by
 slug. Game ids differ, so take `gameId` from that environment's game list.
@@ -137,18 +169,21 @@ The machine holds one store sign-in. To switch, set `SUMMER_GATEWAY_URL` and
 - Never reused by another item of the Game, so game code and the authority
   can safely name items by slug.
 
-**Availability: check before you use slug getters.** These are newer than
-Summer 0.7.3 and need a Summer version that includes them:
-`SummerStoreItem.get_slug()`, `SummerInventoryItem.get_slug()`,
-`SummerClientItems.has_owned_slug()` and `SummerItemSelection.allowed_slugs`.
-Even on such a version, hosted reads return `""` until Summer delivers slugs
-to games end to end. Local Play fixtures carry them (step 7).
+**Availability: the platform sends slugs; the game needs the getters.**
+Since 2026-10-16 Summer sends every item's slug to games: the store listing
+carries `StoreItem.slug` and the inventory `InventoryItem.definition_slug`.
+Game code reads them with `SummerStoreItem.get_slug()`,
+`SummerInventoryItem.get_slug()`, `SummerClientItems.has_owned_slug()` and
+`SummerItemSelection.allowed_slugs`. Those getters are not in Summer 0.7.3;
+they come with the next Summer Engine release that carries them (0.7.4, in
+progress). Check the version the game runs on before relying on them. Local
+Play fixtures carry slugs too (step 7).
 
 | Check | Result |
 | --- | --- |
 | `summer_run_script {"scenePath": "res://main.tscn", "source": "func run(ctx):\n\tctx.report(\"slugs\", ClassDB.class_has_method(\"SummerClientItems\", \"has_owned_slug\"))"}` | `slugs: true`: this Summer version has the getters |
 | No MCP: write the slug code, then `summer_get_script_errors` | A "not found" error on `has_owned_slug` or `get_slug`: this version lacks them |
-| Hosted: `get_slug()` on an item you gave a slug | `""`: slugs are not delivered there yet; use the definition-id fallback |
+| Hosted: `get_slug()` returns `""` | That item has no Item key yet: set one in Studio or in `summer.items.json` |
 
 Without the getters, use the definition-id variants in steps 1–3, with each
 environment's definition ids.
@@ -321,14 +356,14 @@ The client sends `await command({"c": "equip", "hat": slug})` and every client
 draws hats from `match_doc.hats`. Other players see the hat only because the
 authority published it.
 
-**Without slugs** (older Summer versions, or hosted reads that return `""`):
+**Without slugs** (Summer versions without the getters, or an item with no Item key):
 keep each environment's definition ids, send the definition id, and compare
 `item.get_definition_id() == definition_id` instead of `item.get_slug() == slug`.
 
 For an equipment slot, `SummerItemSelection` does this check for you: set
 `selection.allowed_slugs = PackedStringArray(["party_hat"])`, then call
 `configure_slot` with an empty definition allowlist. An item whose inventory
-carries no slug never matches, so the slot fails closed until slugs arrive.
+carries no slug never matches, so the slot fails closed until it has one.
 
 `Summer.authority.items.inventory_changed(session, change)` hints that a
 player's inventory changed during the match. To drop an item that was
@@ -430,7 +465,20 @@ What the fixture gives you:
 - Each item has the slug you gave its template: Bob's hat is `party_hat`, so slug code behaves as it will once slugs are delivered.
 - Other ids are local stand-ins: owned item id `local-item:bob:0`, definition id `local-definition:courtyard:0`, `item_template_version_id` `"hat"`. Without slugs, equip with the local definition id the client reads from `items.get_owned_items()`.
 
-**Staging.** Test real purchases there; Summer staging uses sandbox payments.
+**Staging.** Summer staging is a separate environment: its own sign-in,
+Games and definition ids (one `summer.items.json` still serves both). Your
+production account and Games are not in it; if you have no staging account,
+ask Summer for access. Purchases there use test payments: Sparks bought in
+staging are sandbox Sparks, nothing real is charged, and they earn the
+creator nothing.
+
+Summer's test players (the fenced accounts used for multiplayer checks)
+have no Sparks today, so they cannot test a purchase. Giving test players
+sandbox Sparks is approved and being built. Until it ships, test a purchase
+with a staging account that bought Sparks in the staging Summer app.
+
+Before testing, the item must be buyable in staging: reviewed, activated by
+the owner, and the staging Game live ("How an item becomes buyable").
 Walk through every outcome:
 
 - decline the sheet;
@@ -447,6 +495,7 @@ Walk through every outcome:
 - [ ] Buy is disabled while `has_pending_checkouts()` is true, and for owned unique items.
 - [ ] `manual_review` shows "confirming", and `already_owned` shows "Owned".
 - [ ] Every `summer.items.json` sync: the dry-run plan was shown, then confirmed, then the owner got the approval link.
+- [ ] Every new or changed item: Summer approved it, the owner pressed Review activation, and the Game is live.
 - [ ] Staging: a purchase shows up in the inventory, and the equipped item appears for every player.
 
 ## Common mistakes
@@ -455,7 +504,8 @@ Walk through every outcome:
 | --- | --- | --- |
 | Create or grant items from game code | Define them in Studio, or in `summer.items.json` synced with `summer_sync_items` | Items are reviewed, and the owner approves every change |
 | Hard-code definition ids | Match by slug | Definition ids differ between staging and production |
-| Assume slug getters work everywhere | Check the Summer version; fall back to definition ids on `""` | Older versions lack them, and hosted reads may not carry slugs yet |
+| Assume slug getters work everywhere | Check the Summer version; fall back to definition ids without them | 0.7.3 and older lack them; an item without an Item key reads `""` |
+| Tell the owner an approved sync plan is on sale | Say each item still needs Summer's review, Review activation, and a live Game | Approving the plan only creates or revises the items |
 | Confirm a sync without showing the plan | Dry run, show it, then `confirm` | The plan is what the owner approves |
 | Treat `already_owned` as an error | Show "Owned" | A unique item is one per player |
 | Unlock on `purchased` | Unlock from `Summer.client.items` | Ownership lives in the inventory; receipts can replay |

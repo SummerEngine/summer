@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
-import { describeFromCli, formatAnswer, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
+import { areaHelp, describeFromCli, formatAnswer, operationHelpFromCli, opsCliCommands, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
 import { callHostedV4 } from "../../core/ops/cloud.js";
 import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
@@ -293,6 +293,60 @@ describe("summer ops search and describe signed out", () => {
     const unknown = signedOut();
     expect(await describeFromCli("store.no_such_op", unknown)).toBe(1);
     expect(unknown.err[0]).toMatch(/^Error \(not_signed_in\)/);
+  });
+});
+
+describe("--help on an area command", () => {
+  it("lists an area's actions as commands", () => {
+    const help = areaHelp("economy");
+    expect(help).toMatch(/^ {2}sync-items {2}/m);
+    expect(help).toMatch(/^ {2}propose-items {2}/m);
+  });
+
+  it("prints a local operation's fields as flags and its store sign-in, without asking the server", async () => {
+    const d = deps();
+    expect(await operationHelpFromCli("economy.sync_items", d)).toBe(0);
+    expect(d.out[0]).toMatch(/^Usage: summer economy sync-items /);
+    expect(d.out[0]).toMatch(/^ {2}--game-id <string> /m);
+    expect(d.out[0]).toMatch(/^ {2}--confirm /m);
+    expect(d.out[0]).toContain("summer login --store");
+    expect(d.hosted).not.toHaveBeenCalled();
+  });
+
+  it("prints a cloud operation's fields from the shipped catalog, required ones marked, signed out", async () => {
+    const d = deps(vi.fn(async () => {
+      throw new OAuthError("store_login_required", "This machine is not signed in to the Summer store.", 'Recovery: run "summer login".');
+    }));
+    expect(await operationHelpFromCli("store.set_bundles", d)).toBe(0);
+    expect(d.out[0]).toMatch(/^ {2}--game-id <string> +Required\./m);
+  });
+
+  it("answers --help from the command line instead of sending it as a field", async () => {
+    const written: string[] = [];
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => (written.push(String(chunk)), true));
+    const saved = process.exitCode;
+    try {
+      const economy = opsCliCommands().find((command) => command.name() === "economy")!;
+      await economy.parseAsync(["sync-items", "--help"], { from: "user" });
+      expect(process.exitCode).toBe(0);
+      await economy.parseAsync(["--help"], { from: "user" });
+      expect(process.exitCode).toBe(0);
+    } finally {
+      spy.mockRestore();
+      process.exitCode = saved;
+    }
+    expect(written.join("")).toContain("Usage: summer economy sync-items");
+    expect(written.join("")).toContain("Usage: summer economy <action>");
+  });
+});
+
+describe("a local operation that needs a sign-in says so", () => {
+  it("economy.sync_items and store.upload_file need the account and store sign-in; docs.search does not", async () => {
+    for (const [op, auth] of [["economy.sync_items", "account"], ["store.upload_file", "account"], ["docs.search", "none"]] as const) {
+      const d = deps();
+      expect(await describeFromCli(op, d)).toBe(0);
+      expect(JSON.parse(d.out[0])).toMatchObject({ name: op, auth });
+    }
   });
 });
 

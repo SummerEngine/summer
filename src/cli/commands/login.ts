@@ -25,7 +25,7 @@ export const loginCommand = new Command("login")
   )
   .option(
     "--store",
-    "Only the store sign-in (summer_publish_build, the store, publishing, board and Grow tools); plain summer login does it too"
+    "Only the store sign-in (uploads with store.upload_file, item sync with economy.sync_items, the store, publishing, board and Grow tools); plain summer login does it too"
   )
   .option("--no-store", "Only the Summer account sign-in; skip the store sign-in")
   .option("--force", "Force re-authentication even if already logged in")

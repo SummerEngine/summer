@@ -81,7 +81,7 @@ const PROPOSAL_FAILURES: Record<string, string> = {
   invalid_input: "Recovery: Summer refused a field of the plan (details name it). Fix summer.items.json and call again; the uploaded media is reused.",
   idempotency_conflict: "Recovery: this plan's key was already used for a different plan. Call again with confirm=false to read the Game afresh, then confirm the new plan.",
   unavailable: "Recovery: Summer could not take the plan right now. Call again in a few minutes with the same summer.items.json; the owner is asked once.",
-  not_found: "Recovery: Summer found no such game for this account on this gateway. Check gameId with summer_store_list_games (staging and production games have different ids).",
+  not_found: "Recovery: Summer found no such game for this account on this gateway. Check gameId with games.list (staging and production games have different ids).",
 };
 
 export interface SyncItemsDependencies extends PublishBuildDependencies {
@@ -138,6 +138,8 @@ export interface LocalMedia {
 
 export interface RemoteItem {
   definitionId: string;
+  /** Who manages the item: CREATOR_CATALOG (the creator's store items) or PASSPORT_CONTROL (a Passport collectible). */
+  authority?: string | null;
   state: string | null;
   slug: string;
   revision: Json;
@@ -163,6 +165,15 @@ export function planItem(item: ManifestItem, media: LocalMedia[], remote: Remote
     // The platform refuses an item created without media.
     if (!media.length) return { slug: item.slug, action: "blocked", reason: "a new item needs at least one image" };
     return { slug: item.slug, action: "create", changes: ["new item", ...(item.priceSparks !== undefined ? ["price"] : []), "media"] };
+  }
+  // A Passport collectible has its own lifecycle (Passport control, take-down), and the owner's apply only writes store items.
+  if (remote.authority === "PASSPORT_CONTROL") {
+    return {
+      slug: item.slug,
+      action: "blocked",
+      definitionId: remote.definitionId,
+      reason: `The Game's "${item.slug}" is a Passport collectible, which summer.items.json does not manage. Give this item another slug, or change the Passport item in Studio.`,
+    };
   }
   const revision = remote.revision;
   if (typeof revision.revisionId !== "string" || !revision.revisionId) {
@@ -235,6 +246,10 @@ async function readRemote(store: Store, gameId: string, slug: string): Promise<R
   const found = (page.items ?? []).find((definition) => definition.slug === slug);
   if (!found) return null;
   const definitionId = String(found.definitionId);
+  // A Passport collectible is blocked by its authority alone (planItem): nothing else of it is read.
+  if (found.authority === "PASSPORT_CONTROL") {
+    return { definitionId, authority: "PASSPORT_CONTROL", state: typeof found.state === "string" ? found.state : null, slug, revision: {}, priceSparks: null, mediaSha256: [] };
+  }
   const current = await store.call<Json>("GET", `games/${seg(gameId)}/item-definitions/${seg(definitionId)}`);
   const revision: Json = current.revision ?? {};
   let priceSparks: number | null = null;
@@ -247,7 +262,8 @@ async function readRemote(store: Store, gameId: string, slug: string): Promise<R
     const asset = await store.call<Json>("GET", `media-assets/${seg(assetId)}`);
     mediaSha256.push(String(asset.sha256 ?? ""));
   }
-  return { definitionId, state: typeof current.definition?.state === "string" ? current.definition.state : null, slug, revision, priceSparks, mediaSha256 };
+  const authority = typeof current.definition?.authority === "string" ? current.definition.authority : typeof found.authority === "string" ? found.authority : null;
+  return { definitionId, authority, state: typeof current.definition?.state === "string" ? current.definition.state : null, slug, revision, priceSparks, mediaSha256 };
 }
 
 /** Upload one file as a Game media asset; the same file and name continue the same upload. */

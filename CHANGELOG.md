@@ -4,6 +4,10 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-10-18
+
+The store skills say how an item really becomes buyable and name items by slug, area commands answer `--help`, and `summer content make` follows the live make-request ops.
+
 - **`summer-store` says how an item becomes buyable today.** After the owner approves a sync plan, Summer reviews each item, then the owner activates each approved item in Studio (Review activation), and players can buy it only while the Game is live: it stops while the Game is unlisted and sells again when it is listed. Editing a live item makes a new revision, reviewed and activated again, while the live one keeps selling. It notes the coming change (items go on sale without waiting for Summer's review; staff review afterwards and can take one down) without claiming it has shipped. Slugs: the platform sends `StoreItem.slug` and `InventoryItem.definition_slug` since 2026-10-16; the in-game getters come with the next Summer Engine release that carries them (0.7.4, in progress). Staging: a separate sign-in and Games, and sandbox Sparks from test payments.
 - **`in-game-purchases` names items by slug** (`has_owned_slug`, `get_slug`) instead of hard-coded `item_sword` definition ids, which differ between staging and production, and sends the rest of the store to `summer-store`.
 - **`--help` works on area commands.** `summer economy sync-items --help` prints the command's fields as flags, what it does, who approves and the sign-in it needs (it answered "help: not a field of this operation"), and `summer economy --help` lists the area's actions. Both work signed out and offline.

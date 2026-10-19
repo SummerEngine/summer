@@ -1058,7 +1058,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   ),
   entry("summer_projects_open_local", "Open a project in Summer Engine and wait until it connects; install:true installs a missing engine (only after the person's yes)", false, (args) =>
     localProjectStep(() =>
-      openLocalProject({ path: optStr(args, "path"), install: args.install === true }, engineSelectionFromEnv() ?? { cwd: process.cwd() })
+      openLocalProject(
+        { path: optStr(args, "path"), install: args.install === true },
+        engineSelectionFromEnv() ?? { cwd: process.cwd() },
+        // A shell command waits for the whole install and first open, like `summer dev`
+        // (the MCP answers "call again" instead, to stay within a tool call).
+        { waitMs: args.install === true ? 60 * 60_000 : 180_000 }
+      )
     )
   ),
   entry("summer_content_make", "Make one finished piece of content for a game, beat for beat on a reference, from local footage, into the team's Review", false, (args) =>

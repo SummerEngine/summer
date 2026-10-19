@@ -113,7 +113,7 @@ export function engineFailure(text: string, op: string, options: { effect: "read
 }
 
 /** The codes a local tool's failure keeps as they are (projects.create_local, projects.open_local). */
-const LOCAL_CODES = new Set<ErrorCode>(["engine_not_running", "invalid_input", "not_found", "unavailable"]);
+const LOCAL_CODES = new Set<ErrorCode>(["engine_not_running", "invalid_input", "not_found", "unavailable", "conflict", "unsupported"]);
 
 /** A local tool's coded failure (`{ok:false, code, error, recovery}`) as the answer, with its recovery as the next step; null when it has no such code. */
 export function codedLocalFailure(body: Record<string, unknown>): Answer | null {

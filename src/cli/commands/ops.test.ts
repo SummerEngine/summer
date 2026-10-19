@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { areaHelp, describeFromCli, formatAnswer, operationHelpFromCli, opsCliCommands, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
+import { closestActions, resolveCliOp } from "../../core/ops/catalog.js";
 import { callHostedV4 } from "../../core/ops/cloud.js";
 import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
 import { OAuthError } from "../../core/oauth.js";
@@ -186,6 +187,27 @@ describe("summer engine <action>", () => {
     });
     expect(await runOpFromCli("engine.run_script", ["--source", "func run(ctx): pass", "--json"], lacks)).toBe(1);
     expect(JSON.parse(lacks.err[0])).toMatchObject({ ok: false, error: { code: "engine_lacks_op", next: { say: "Update Summer Engine." } } });
+  });
+});
+
+describe("summer engine with a 3.x tool name or a typo", () => {
+  it("runs the operation a 3.x tool name stands for", () => {
+    expect(resolveCliOp("engine", "summer_get_scene_tree")).toBe("engine.get_scene_tree");
+    expect(resolveCliOp("engine", "get-scene-tree")).toBe("engine.get_scene_tree");
+    expect(resolveCliOp("engine", "camera-bookmark")).toBe("engine.list_camera_bookmarks");
+    expect(resolveCliOp("engine", "engine_play")).toBe("engine.play");
+    expect(resolveCliOp("engine", "search_library")).toBe("docs.search");
+    expect(resolveCliOp("engine", "no-such-thing")).toBe("engine.no_such_thing");
+  });
+
+  it("a miss names the closest actions as commands", async () => {
+    const d = deps();
+    expect(await runOpFromCli("engine.get_scene_tre", ["--json"], d)).toBe(1);
+    const answer = JSON.parse(d.err[0]);
+    expect(answer).toMatchObject({ ok: false, error: { code: "not_found", next: { op: "ops.search" } } });
+    expect(answer.error.message).toContain("Closest: summer engine get-scene-tree");
+    expect(answer.error.message).toContain("summer engine --help");
+    expect(closestActions("engine.screenshoot")[0]).toBe("screenshot");
   });
 });
 

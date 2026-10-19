@@ -14,6 +14,7 @@ import { findProjectRoot, type EngineSelection } from "../engine.js";
 import { EngineInstallError, type InstallFailureReason } from "../engine-install.js";
 import { openProjectInEditor, sessionProject, type SelfStartDeps } from "../engine-self-start.js";
 import { createProject, isEmptyProjectFolder, projectRootAbove } from "../local-project.js";
+import { PREVIEW_URL, registerPreview } from "../preview/launch-config.js";
 import { getTemplateRegistry, resolveTemplate } from "../templates.js";
 import { settlesWithin } from "../util/sleep.js";
 
@@ -63,6 +64,15 @@ export function defaultProjectParent(cwd: string, home: string = homedir()): str
   const inHome = relative(resolve(home), dir);
   if (inHome && !inHome.startsWith("..") && !isAbsolute(inHome) && !APP_FOLDERS.test(inHome)) return dir;
   return join(resolve(home), "Documents", "Summer");
+}
+
+/** With no name, a new game never reuses a folder: my-game, then my-game-2, my-game-3, ...
+ *  (a download this process is still running keeps its folder). */
+function freeDefaultFolder(parent: string, base: string): string {
+  for (let n = 1; ; n++) {
+    const dir = join(parent, n === 1 ? base : `${base}-${n}`);
+    if (creating.has(dir) || !existsSync(dir) || (statSync(dir).isDirectory() && isEmptyProjectFolder(dir) && !existsSync(join(dir, "project.godot")))) return dir;
+  }
 }
 
 /** Projects being written by this process, by folder: a slow template download outlives one tool call. */
@@ -118,7 +128,7 @@ export async function createLocalProject(
     throw new LocalProjectError("invalid_input", `name is the project's name, not a path: '${name}'.`, "Put the folder in dir.");
   }
   const askedDir = input.dir?.trim().replace(/^~(?=$|[\\/])/, homedir());
-  const dir = askedDir ? resolve(cwd, askedDir) : join(defaultProjectParent(cwd), name || (input.template ? entry.slug : DEFAULT_NAME));
+  const dir = askedDir ? resolve(cwd, askedDir) : name ? join(defaultProjectParent(cwd), name) : freeDefaultFolder(defaultProjectParent(cwd), input.template ? entry.slug : DEFAULT_NAME);
   const next = { op: "projects.open_local" as const, input: { path: dir } };
 
   // A call that timed out left the download running: wait for it again, never start a second one.
@@ -158,6 +168,8 @@ export interface OpenedLocalProject {
   ok: true;
   projectPath: string;
   engineVersion: string | null;
+  /** `summer preview`'s address, and the .claude/launch.json that registers it for Claude Code Desktop (null: not written). */
+  preview: { url: string; launchJson: string | null };
   next: string;
 }
 
@@ -171,7 +183,9 @@ export async function openLocalProject(
   selection: EngineSelection | undefined,
   deps: SelfStartDeps = {},
   /** The MCP binds its session to the opened project with the connected client. */
-  onOpen?: (projectRoot: string, client: EngineApiClient) => void
+  onOpen?: (projectRoot: string, client: EngineApiClient) => void,
+  /** The folder the agent session runs in: its .claude/launch.json gets summer-preview. */
+  sessionFolder: string = process.cwd()
 ): Promise<OpenedLocalProject> {
   const asked = input.path?.trim();
   const root = asked ? await findProjectRoot(resolve(selection?.cwd ?? process.cwd(), asked)) : await sessionProject(selection);
@@ -190,10 +204,21 @@ export async function openLocalProject(
     throw error;
   }
   onOpen?.(root, client);
+  // Claude Code Desktop's Browser pane shows the game from the session's launch.json (only adds; never in home).
+  let launchJson: string | null = null;
+  try {
+    const written = registerPreview(sessionFolder, root);
+    if (written && written.status !== "skipped") launchJson = written.path;
+  } catch {
+    // the game still opened; the preview is optional
+  }
   return {
     ok: true,
     projectPath: root,
     engineVersion: client.getEngineVersion() ?? null,
-    next: "Call summer_get_project_context, then build the scene.",
+    preview: { url: PREVIEW_URL, launchJson },
+    next:
+      `Call summer_get_project_context, then build the scene. See the game at ${PREVIEW_URL}: ` +
+      "Claude Code Desktop's Browser pane starts it; elsewhere run: npx -y summer-engine@latest preview --open",
   };
 }

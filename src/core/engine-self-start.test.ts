@@ -262,5 +262,11 @@ describe("the MCP opens the session's project when no editor runs", () => {
     const launch = launcher({ status: "spawn_failed", binary: "/fake/Summer", code: "EACCES" });
     const error = await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch }));
     expect(error.recovery).toBe(SELF_START_RECOVERY.launchFailed("EACCES"));
+    // An editor that closed cleanly is not a broken install: no reinstall advice.
+    _resetSelfStartForTests();
+    const closed = launcher({ status: "spawn_failed", binary: "/fake/Summer", code: "exited with code 0" });
+    const early = await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: closed }));
+    expect(early.recovery).toBe(SELF_START_RECOVERY.closedEarly(project));
+    expect(early.recovery).not.toContain("install");
   });
 });

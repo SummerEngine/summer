@@ -175,6 +175,21 @@ describe("summer run engine resolution", () => {
     expect(errors.join("\n")).toContain("Summer Engine binary failed to start: exited with code 1");
   });
 
+  it("a clean exit with no editor taking over is a closed start, never a reinstall", async () => {
+    findEngineBinaryMock.mockReturnValue("/opt/prebuilt/summer-linux-x86_64");
+    nextExitCode = 0;
+    const project = join(root, "proj0");
+    const { mkdir: mk, writeFile: wf } = await import("node:fs/promises");
+    await mk(project, { recursive: true });
+    await wf(join(project, "project.godot"), "");
+
+    await runCommand.parseAsync([project], { from: "user" });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("closed before it opened");
+    expect(errors.join("\n")).not.toContain("summer install");
+  }, 15_000);
+
   it("reports a binary that fails to start instead of crashing with a raw stack", async () => {
     findEngineBinaryMock.mockReturnValue("/opt/stale/summer-linux-x86_64");
     const enoent = Object.assign(new Error("spawn ENOENT"), { code: "ENOENT" });
@@ -410,6 +425,27 @@ describe("summer run with an editor already open (the instance registry)", () =>
 
     expect(spawnMock).not.toHaveBeenCalled();
     expect(logs.join("\n")).toContain(`already starting with ${game}`);
+  });
+
+  it("a clean exit followed by a new editor on the project (a restart) is followed, not a failure", async () => {
+    const game = await project("game");
+    findEngineBinaryMock.mockReturnValue(binary);
+    // The launched process registers its successor, then exits cleanly.
+    spawnMock.mockImplementationOnce((() => {
+      const child = new EventEmitter() as EventEmitter & { unref: () => void };
+      child.unref = vi.fn();
+      setTimeout(async () => {
+        await registerEditor(game, "Game");
+        child.emit("exit", 0, null);
+      }, 0);
+      return child;
+    }) as never);
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.7.3" } as never);
+
+    await runCommand.parseAsync([game], { from: "user" });
+
+    expect(process.exitCode).toBeUndefined();
+    expect(logs.join("\n")).toContain("Summer Engine running (v0.7.3)");
   });
 
   it("refuses a second editor and names the project that is open", async () => {

@@ -5,8 +5,11 @@
  * one per command run by a signed-in person, with the tool (`summer_call`
  * plus the operation for `summer <area> <action>`, the summer_* tool for
  * `summer tool`, else the command name), success or the error code, duration
- * and the agent app named in the environment. Never arguments, paths or
- * project content. Off with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1; nothing
+ * and the agent app named in the environment, plus the closed-shape fields
+ * of usage-fields.ts (project id hash, template, game clients started,
+ * engine state) and, on a `summer login` that worked, this machine's install
+ * id so the anonymous first-run line joins the account. Never arguments,
+ * paths or project content. Off with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1; nothing
  * at all when no account token is on disk or in SUMMER_TOKEN. A command that
  * ran on Summer's server (a cloud operation, a hosted `summer tool`) sends no
  * line: the server records it from the request's `X-Summer-Client-Surface: cli`.
@@ -23,6 +26,7 @@ import { isTelemetryDisabled, resolveAgentHost } from "./agent-host.js";
 import { hasEnvAuthToken } from "./auth.js";
 import { OP_NAME } from "./ops/contract.js";
 import { getSummerDir } from "./store.js";
+import { processUsageFields } from "./usage-fields.js";
 
 /** What the server accepts as a tool: `summer_call`, `summer_play`, `create`, `skills_install`. */
 const TOOL = /^[a-z][a-z0-9_]{0,79}$/;
@@ -96,6 +100,8 @@ export function cliUsageBody(
     durationMs: Math.max(0, Math.round(now - started.startedAt)),
     mcpClient: resolveAgentHost(env, undefined).id,
     surfaceVersion: "v4",
+    // The child (cli-usage-beacon.ts) checks these again and adds the template and engine state.
+    ...processUsageFields(),
   };
 }
 

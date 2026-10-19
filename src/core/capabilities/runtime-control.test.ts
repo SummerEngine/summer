@@ -19,6 +19,7 @@ import {
   buildRuntimeSpawnOp,
   buildStopGameOp,
   findProbePayload,
+  playClientCount,
   playGame,
   playIsQuiet,
   playNeedsOp,
@@ -349,6 +350,13 @@ describe("summer_play Local Play — players/spectators/queue ride the PlayGame 
     const plain = { ok: true, results: [{ ok: true, op: "PlayGame", playing: true }] };
     expect(withLocalPlayEcho(plain, {})).toBe(plain);
     expect(withLocalPlayEcho(plain, { players: 0 })).toBe(plain);
+  });
+
+  it("counts the game clients a play started for the usage line", () => {
+    expect(playClientCount({ ok: true, results: [{ ok: true, op: "PlayGame", playing: true }] })).toBe(1);
+    expect(playClientCount({ ok: true, results: [{ ok: true, op: "PlayGame", local_play: { applied: true, players: 3, spectators: 1 } }] })).toBe(4);
+    expect(playClientCount({ ok: true, results: [{ ok: true, op: "PlayGame", local_play: { applied: false, reason: "already_running" } }] })).toBe(1);
+    expect(playClientCount({ ok: false, results: [{ ok: false, op: "PlayGame", error: "no main scene" }] })).toBeNull();
   });
 });
 

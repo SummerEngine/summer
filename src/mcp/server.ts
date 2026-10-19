@@ -62,6 +62,7 @@ import {
 } from "./tool-surface.js";
 import { shapeToolResult, singleEditCounter } from "./tool-results.js";
 import { recordLocalToolCall, recordMcpSession, toolErrorCode } from "../core/telemetry.js";
+import { boundProject, type UsageFields } from "../core/usage-fields.js";
 import { currentToolContext, registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
@@ -326,13 +327,20 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
       // A tool another tool runs (summer_call, a v4 operation over its 3.x
       // tool) is part of that call: only the outer call sends a usage line.
       const nested = currentToolContext() !== undefined;
+      // What the call notes for its line (core/usage-fields.ts), shared with any tool it runs.
+      let noted: UsageFields = {};
       const recordUsage = (ok: boolean, durationMs: number, error?: string | null) => {
-        if (!nested) recordLocalToolCall({ tool: name, op: knownOp(opForToolCall(name, handlerArgs[0])), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error });
+        const bound = boundProject();
+        const usage = { ...(bound ? { projectIdHash: bound } : {}), ...noted };
+        if (!nested) recordLocalToolCall({ tool: name, op: knownOp(opForToolCall(name, handlerArgs[0])), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error, usage });
       };
       let result: unknown;
       try {
         // Every Summer request the tool makes names it (core/agent-host.ts).
-        result = await runWithToolContext(name, "mcp", () => (handler as (...a: unknown[]) => unknown)(...handlerArgs));
+        result = await runWithToolContext(name, "mcp", () => {
+          noted = currentToolContext()?.usage ?? {};
+          return (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+        });
       } catch (error) {
         // A handler THROW never produced a result to classify; record it as
         // ok:false / exception so the stream does not silently skip failures,

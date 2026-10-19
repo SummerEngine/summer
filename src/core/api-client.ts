@@ -23,6 +23,7 @@ import {
 } from "./async-op-lifecycle.js";
 import { pickPlayDeterminism, type PlayDeterminism } from "./capabilities/play-determinism.js";
 import { honestSceneReceipt } from "./capabilities/engine-receipt.js";
+import { noteBoundProject } from "./usage-fields.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -281,6 +282,7 @@ export class EngineApiClient {
         { ...effective }
       );
       client.lastHealth = connection.health;
+      noteBoundProject(connection.health.projectIdHash);
       return client;
     }
 
@@ -300,6 +302,7 @@ export class EngineApiClient {
           projectIdHash: health.projectIdHash,
         });
         client.lastHealth = health;
+        noteBoundProject(health.projectIdHash);
         return client;
       }
     }
@@ -312,6 +315,7 @@ export class EngineApiClient {
       projectIdHash: connection.health.projectIdHash,
     });
     client.lastHealth = connection.health;
+    noteBoundProject(connection.health.projectIdHash);
     client.registryDiscovery = { ...discovery };
     return client;
   }
@@ -367,6 +371,7 @@ export class EngineApiClient {
       projectId: health.projectId,
       projectIdHash: health.projectIdHash,
     };
+    noteBoundProject(health.projectIdHash);
     return this.targetIdentity.projectIdHash;
   }
 

@@ -3945,7 +3945,7 @@
       "id": "skill/summer-cli",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "13ce5f864eaa9e209e1d841a0cd3b571c1518971e8029d88bbe36d3cad200673",
+      "content_hash": "0cace5d5db555cd232700adea13716d2814baa542e6e12fd2c9ee6c168de891d",
       "summary": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
       "use_when": [
         "the session has no summer_* MCP tools, or Summer was set up with summer setup <agent> --cli",

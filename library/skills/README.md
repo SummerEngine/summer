@@ -1,6 +1,6 @@
 # Summer skills
 
-> 129 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 130 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -8,7 +8,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 ## Domains
 
-- [2d](#2d) (10)
+- [2d](#2d) (11)
 - [3d](#3d) (6)
 - [agent-workflow](#agent-workflow) (19)
 - [ai](#ai) (2)
@@ -42,6 +42,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [concept-art](./concept-art/SKILL.md) ★ | Explore art direction with 3-4 rough concept variants of a character, environment or prop. | assets |
 | [create-asset-sheet](./create-asset-sheet/SKILL.md) | Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced. | assets |
 | [instantiate-asset-pack](./instantiate-asset-pack/SKILL.md) | Lay out a whole create-asset-sheet pack in the scene: composites, paint order, Sprite2D and NinePatch. | assets |
+| [*painted-25d-world*](./painted-25d-world/SKILL.md) (preview) (library only) | Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters. | level-design, rendering, assets |
 | [pixel-art](./pixel-art/SKILL.md) ★ | Generate pixel-art sprites, items, tiles and portraits at a set resolution with a limited palette. | assets |
 | [skybox-panorama](./skybox-panorama/SKILL.md) | Generate a 360-degree sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment. | assets |
 | [sprite-sheet](./sprite-sheet/SKILL.md) | Generate animated 2D character sprite sheets (walk, attack, idle, death) for AnimatedSprite2D. | assets |

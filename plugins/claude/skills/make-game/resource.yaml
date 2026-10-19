@@ -1,6 +1,6 @@
 id: skill/make-game
 kind: skill
-version: 1.1.0
+version: 1.2.0
 summary: "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship."
 use_when:
   - the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline
@@ -33,6 +33,7 @@ related:
     - skill/camera-rigs
     - skill/combat-basics
     - skill/save-load
+    - skill/painted-25d-world
 source: official
 license: MIT
 status: stable

@@ -1,6 +1,6 @@
 id: skill/new-project
 kind: skill
-version: 1.0.4
+version: 1.0.5
 summary: "Create a blank Summer Engine project: ask for the project name and run summer create empty."
 use_when:
   - the user wants a fresh blank Summer Engine project — from scratch, blank canvas
@@ -20,6 +20,7 @@ compatibility:
 related:
   skills:
     - skill/make-game
+    - skill/painted-25d-world
 source: official
 license: MIT
 status: stable

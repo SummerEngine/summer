@@ -1,27 +1,43 @@
 import { Command } from "commander";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import { createInterface } from "node:readline/promises";
 import { createHash } from "crypto";
 import {
+  accessSync,
   chmodSync,
+  constants as fsConstants,
   createWriteStream,
   existsSync,
   mkdirSync,
   readdirSync,
   renameSync,
   rmSync,
+  statfsSync,
+  statSync,
   symlinkSync,
 } from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
-import { tmpdir, platform } from "os";
+import { homedir, tmpdir, platform } from "os";
 import { dirname, join, resolve } from "path";
+import { noteCliError } from "../../core/cli-usage.js";
 import {
+  DEFAULT_DOWNLOAD_BYTES,
   ENGINE_BINARY_ENV,
+  EngineInstallError,
+  INSTALL_RETRY,
+  INSTALL_SPACE_FACTOR,
   LINUX_ENGINE_BINARY_NAME,
-  macInstallDestination,
+  asInstallError,
+  checkDiskSpace,
+  chooseMacDestination,
+  errorDetail,
+  formatSize,
+  installFailureReason,
   recordEngineInstall,
   windowsEnginePaths,
+  type FreeSpace,
+  type InstallFailureReason,
   type LinuxReleaseAsset,
   findExtractedEngineBinary,
   linuxArchiveKind,
@@ -30,7 +46,10 @@ import {
   resolveLinuxInstallSource,
 } from "../../core/engine-install.js";
 
+export { EngineInstallError, type InstallFailureReason };
+
 const RELEASES_URL = "https://www.summerengine.com/api/desktop/releases";
+const DOWNLOAD_PAGE = "https://summerengine.com/download";
 
 interface ReleaseInfo {
   latest: {
@@ -44,9 +63,10 @@ interface ReleaseInfo {
  *  fetch(undefined) failure — surface it clearly with a manual fallback. */
 export function requireDownloadUrl(value: string | undefined, label: string): string {
   if (!value || value.trim().length === 0) {
-    throw new Error(
-      `Release info is missing the ${label} download URL — the releases endpoint may be ` +
-      `outdated. Download manually from https://summerengine.com/download`
+    throw new EngineInstallError(
+      "release_info",
+      `Release info is missing the ${label} download URL; the releases endpoint may be ` +
+        `outdated. Download manually from ${DOWNLOAD_PAGE}`
     );
   }
   return value;
@@ -54,14 +74,15 @@ export function requireDownloadUrl(value: string | undefined, label: string): st
 
 /** Verify a downloaded file's sha256 against the expected hash from the releases
  *  endpoint. Skipped when no expected hash is published. Catches a truncated or
- *  corrupted download (a ~1GB install over a flaky network) before it becomes a
+ *  corrupted download (a ~700 MB install over a flaky network) before it becomes a
  *  confusing DMG-mount / installer failure downstream. */
 export function verifyChecksum(actual: string, expected: string | undefined, label: string): void {
   if (!expected || expected.trim().length === 0) return; // nothing published to verify against
   if (actual.toLowerCase() !== expected.toLowerCase()) {
-    throw new Error(
-      `${label} checksum mismatch — the download was corrupted or incomplete ` +
-      `(expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Re-run \`summer install\`.`
+    throw new EngineInstallError(
+      "checksum",
+      `${label} checksum mismatch: the download was corrupted or incomplete ` +
+        `(expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Run: ${INSTALL_RETRY}`
     );
   }
 }
@@ -93,6 +114,8 @@ export function planMacInstall(input: {
   latestVersion: string;
   yes: boolean;
   isTTY: boolean;
+  /** The command that repeats this install (with its --path), for the refusal. */
+  retry?: string;
 }): MacInstallPlan {
   if (!input.exists) return { action: "install" };
   if (isSameVersion(input.installedVersion, input.latestVersion)) {
@@ -104,7 +127,7 @@ export function planMacInstall(input: {
     action: "refuse",
     reason:
       `Summer Engine ${input.installedVersion ?? "(unknown version)"} is already installed; ` +
-      `updating to v${input.latestVersion} replaces it. Re-run with --yes to confirm.`,
+      `updating to v${input.latestVersion} replaces it. To confirm, run: ${input.retry ?? INSTALL_RETRY} --yes`,
   };
 }
 
@@ -127,7 +150,68 @@ export function replaceMacApp(mountPoint: string, destApp: string, exec: ShellEx
   exec(`mv "${staged}" "${destApp}"`);
 }
 
-/** Remove partial downloads / staged bundles when the user interrupts. */
+/** The mount point hdiutil attach printed (the /Volumes/... column), or null. */
+export function parseMountPoint(hdiutilOutput: string): string | null {
+  return (
+    hdiutilOutput
+      .split("\n")
+      .filter((line) => line.includes("/Volumes/"))
+      .map((line) => line.trim().split("\t").pop()?.trim())
+      .find(Boolean) ?? null
+  );
+}
+
+/** Mount the DMG and return its mount point; any failure is `mount`. */
+export function attachDmg(dmgPath: string, exec: (command: string) => string): string {
+  let output: string;
+  try {
+    output = exec(`hdiutil attach "${dmgPath}" -nobrowse -noverify -noautoopen`);
+  } catch (err) {
+    throw asInstallError(
+      err,
+      "mount",
+      (detail) => `Could not open the downloaded DMG (${detail}). Download it from ${DOWNLOAD_PAGE} and drag Summer to Applications.`
+    );
+  }
+  const mountPoint = parseMountPoint(output);
+  if (!mountPoint) {
+    throw new EngineInstallError(
+      "mount",
+      `The downloaded DMG opened without a mount point. Download it from ${DOWNLOAD_PAGE} and drag Summer to Applications.`
+    );
+  }
+  return mountPoint;
+}
+
+/** Eject the DMG, best effort: a busy volume ("resource busy") gets one retry
+ *  with -force, and a failure here never fails an install that already
+ *  succeeded. Returns whether it ejected. */
+export function detachDmg(mountPoint: string, exec: (command: string) => unknown): boolean {
+  for (const command of [`hdiutil detach "${mountPoint}" -quiet`, `hdiutil detach "${mountPoint}" -quiet -force`]) {
+    try {
+      exec(command);
+      return true;
+    } catch {
+      // retry once with -force, then give up
+    }
+  }
+  return false;
+}
+
+/** Whether the engine executable at this path is running: pgrep on a pattern
+ *  anchored to the start of the command line, so a process that only mentions
+ *  the path in its arguments does not count. pgrep exits 1 on no match. */
+export function isEngineRunning(binary: string, execFile: (file: string, args: string[]) => string): boolean {
+  const pattern = `^${binary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( |$)`;
+  try {
+    return execFile("pgrep", ["-f", pattern]).trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Remove partial downloads / staged bundles when the user interrupts. The
+ *  returned function removes the handlers; every install path calls it. */
 function cleanupOnSignal(paths: string[]): () => void {
   const handler = () => {
     for (const path of paths) {
@@ -176,7 +260,7 @@ export function windowsInstalledBinary(customPath?: string, exists: (path: strin
 
 /**
  * Download progress: rewrites one line on a terminal; elsewhere (an agent,
- * a log file) one line per 10%, so a 1 GB download is about ten lines
+ * a log file) one line per 10%, so a 700 MB download is about ten lines
  * instead of hundreds of kilobytes.
  */
 export function createProgressReporter(isTTY: boolean, write: (text: string) => void) {
@@ -197,60 +281,263 @@ export function createProgressReporter(isTTY: boolean, write: (text: string) => 
   };
 }
 
-export const installCommand = new Command("install")
-  .description("Download and install Summer Engine")
-  .option("--path <dir>", "Custom install directory (macOS: the engine goes in <dir>/Summer.app). summer remembers it, so later commands find this engine")
-  .option("--yes", "Replace an already-installed engine without prompting")
-  .action(async (opts: { path?: string; yes?: boolean }) => {
-    const os = platform();
+// ------------------------------------------------------------ installEngine
 
-    if (os === "linux") {
-      await installLinux(opts.path);
-      return;
-    }
+export interface InstallEngineOptions {
+  /** Custom install directory (macOS: <path>/Summer.app). */
+  path?: string;
+  /** Replace an older installed engine without asking. */
+  yes?: boolean;
+  /** Progress and result lines; console.log when not given. */
+  log?: (line: string) => void;
+  /** Whether a person can answer a prompt on stdin; no prompt unless true. */
+  isTTY?: boolean;
+}
 
-    if (os !== "darwin" && os !== "win32") {
-      console.error(
-        `Unsupported platform: ${os}.\n` +
-        "Summer Engine installs on macOS, Windows, and Linux (x86_64).\n" +
-        "Download from: https://summerengine.com/download"
-      );
-      process.exit(1);
-    }
+export interface InstallEngineResult {
+  /** The engine executable, or null when the Windows installer put it somewhere unknown. */
+  binary: string | null;
+  version: string | null;
+  /** The bundle (macOS) or folder the engine is in. */
+  destination: string;
+  /** Nothing was replaced: already up to date, an existing binary registered, or the update was declined. */
+  alreadyInstalled: boolean;
+}
 
-    console.log("Fetching latest release info...");
+/** The machine around an install; tests replace any of it. */
+export interface InstallDeps {
+  platform: NodeJS.Platform;
+  arch: string;
+  /** Run a shell command and return stdout; throws with stderr in the message.
+   *  `inherit` hands the terminal to the command (the Windows installer). */
+  exec: (command: string, inherit?: boolean) => string;
+  /** Run a program without a shell (pgrep); throws on a non-zero exit. */
+  execFile: (file: string, args: string[]) => string;
+  fetch: typeof fetch;
+  freeSpace: FreeSpace;
+  canWrite: (path: string) => boolean;
+  tmpDir: string;
+  home: string;
+  env: NodeJS.ProcessEnv;
+  confirm: (question: string) => Promise<boolean>;
+  record: (binary: string, version: string | null) => Promise<void>;
+  /** Rewrite one progress line instead of printing one per 10%. */
+  stdoutIsTTY: boolean;
+}
 
-    let releases: ReleaseInfo;
-    try {
-      const res = await fetch(RELEASES_URL, { signal: AbortSignal.timeout(10000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      releases = (await res.json()) as ReleaseInfo;
-    } catch (err) {
-      console.error(
-        "Could not fetch release info. Download manually from:\n" +
-        "  https://summerengine.com/download"
-      );
-      process.exit(1);
-    }
+/** The nearest folder that exists at or above `path`. */
+function existingAncestor(path: string): string {
+  let dir = resolve(path);
+  while (!existsSync(dir) && dirname(dir) !== dir) dir = dirname(dir);
+  return dir;
+}
 
-    if (os === "darwin") {
-      await installMac(releases, opts.path, Boolean(opts.yes));
-    } else {
-      await installWindows(releases, opts.path);
-    }
-  });
+function freeSpaceOf(path: string): { bytes: number; volume: string } {
+  const dir = existingAncestor(path);
+  const stats = statfsSync(dir);
+  return { bytes: Number(stats.bavail) * Number(stats.bsize), volume: String(statSync(dir).dev) };
+}
 
-async function installMac(releases: ReleaseInfo, customPath?: string, yes = false): Promise<void> {
-  const info = releases.latest.macos;
-  if (!info) {
-    console.error("No macOS release found.");
-    process.exit(1);
+/** Whether this user may create or replace `path` (judged on the nearest existing folder). */
+function isWritable(path: string): boolean {
+  try {
+    accessSync(existingAncestor(path), fsConstants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function defaultInstallDeps(): InstallDeps {
+  return {
+    platform: platform(),
+    arch: process.arch,
+    exec: (command, inherit) => {
+      if (!inherit) return execSync(command, { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
+      execSync(command, { stdio: "inherit" });
+      return "";
+    },
+    execFile: (file, args) => execFileSync(file, args, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }),
+    fetch: (input, init) => fetch(input, init),
+    freeSpace: freeSpaceOf,
+    canWrite: isWritable,
+    tmpDir: tmpdir(),
+    home: homedir(),
+    env: process.env,
+    confirm,
+    record: recordEngineInstall,
+    stdoutIsTTY: Boolean(process.stdout.isTTY),
+  };
+}
+
+/**
+ * Install Summer Engine for this platform: `summer install`, and the engine
+ * step of `summer dev`. Never exits the process and asks on stdin only when
+ * `isTTY` is true; every failure is an EngineInstallError whose reason is the
+ * telemetry code and whose message ends in one next step.
+ */
+export async function installEngine(
+  opts: InstallEngineOptions,
+  deps: Partial<InstallDeps> = {}
+): Promise<InstallEngineResult> {
+  const d: InstallDeps = { ...defaultInstallDeps(), ...deps };
+  const log = opts.log ?? ((line: string) => console.log(line));
+
+  if (d.platform === "linux") return installLinux(opts, d, log);
+  if (d.platform !== "darwin" && d.platform !== "win32") {
+    throw new EngineInstallError(
+      "unsupported_platform",
+      `Summer Engine does not install on ${d.platform}; it runs on macOS, Windows and Linux (x86_64). ` +
+        `See ${DOWNLOAD_PAGE}`
+    );
   }
 
-  const dmgUrl = requireDownloadUrl(info.dmg_url, "macOS DMG");
-  console.log(`Latest version: ${info.version}`);
+  log("Fetching latest release info...");
+  let releases: ReleaseInfo;
+  try {
+    const res = await d.fetch(RELEASES_URL, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    releases = (await res.json()) as ReleaseInfo;
+    if (!releases?.latest) throw new Error("no latest release in the answer");
+  } catch (err) {
+    throw new EngineInstallError(
+      "release_info",
+      `Could not fetch the Summer Engine release info (${errorDetail(err)}). Download the engine from ${DOWNLOAD_PAGE}`
+    );
+  }
 
-  const destApp = macInstallDestination(customPath);
+  return d.platform === "darwin" ? installMac(releases, opts, d, log) : installWindows(releases, opts, d, log);
+}
+
+/** The command that repeats this install. */
+function retryCommand(opts: InstallEngineOptions): string {
+  return opts.path ? `${INSTALL_RETRY} --path "${opts.path}"` : INSTALL_RETRY;
+}
+
+function nextSteps(log: (line: string) => void): void {
+  log("\nNext steps:");
+  log("  summer dev    # Create a starter project and open it");
+}
+
+/** Start a download: the open response and its size (0 when the server sends none). */
+async function openDownload(url: string, fetchFn: typeof fetch): Promise<{ res: Response; bytes: number }> {
+  let res: Response;
+  try {
+    res = await fetchFn(url);
+  } catch (err) {
+    throw new EngineInstallError(
+      "download",
+      `Download failed: ${errorDetail(err)}. Check your connection, then run: ${INSTALL_RETRY}`
+    );
+  }
+  if (!res.ok || !res.body) {
+    throw new EngineInstallError(
+      "download",
+      `Download failed: HTTP ${res.status}. Check your connection, then run: ${INSTALL_RETRY}`
+    );
+  }
+  return { res, bytes: parseInt(res.headers.get("content-length") || "0", 10) || 0 };
+}
+
+/** Refuse before writing a byte when the download or the install would not fit. */
+function requireSpace(res: Response, needs: Array<{ path: string; bytes: number }>, freeSpace: FreeSpace): void {
+  try {
+    checkDiskSpace(needs, freeSpace);
+  } catch (err) {
+    void res.body?.cancel().catch(() => {});
+    throw err;
+  }
+}
+
+/** Stream the body to disk, hashing as it goes. */
+async function saveDownload(
+  res: Response,
+  dest: string,
+  report: (downloaded: number, total: number) => void
+): Promise<{ sha256: string }> {
+  mkdirSync(dirname(dest), { recursive: true });
+  const fileStream = createWriteStream(dest);
+  const readable = Readable.fromWeb(res.body as import("stream/web").ReadableStream);
+
+  // Hash while streaming (the 'data' listener and the pipe both see every chunk
+  // in flowing mode), so we get integrity for free without a second read pass.
+  const hash = createHash("sha256");
+  let downloaded = 0;
+  const total = parseInt(res.headers.get("content-length") || "0", 10);
+  readable.on("data", (chunk: Buffer) => {
+    hash.update(chunk);
+    downloaded += chunk.length;
+    report(downloaded, total);
+  });
+
+  await pipeline(readable, fileStream);
+  return { sha256: hash.digest("hex") };
+}
+
+/** Download, check the space first, verify the hash. The file is removed on failure. */
+async function downloadVerified(
+  url: string,
+  dest: string,
+  needs: (bytes: number) => Array<{ path: string; bytes: number }>,
+  label: string,
+  expectedSha256: string | undefined,
+  d: InstallDeps,
+  log: (line: string) => void
+): Promise<void> {
+  try {
+    const { res, bytes } = await openDownload(url, d.fetch);
+    requireSpace(res, needs(bytes || DEFAULT_DOWNLOAD_BYTES), d.freeSpace);
+    log(`Downloading ${label}${bytes ? ` (${formatSize(bytes)})` : ""}...`);
+    const report = createProgressReporter(
+      d.stdoutIsTTY,
+      d.stdoutIsTTY ? (text) => process.stdout.write(text) : (text) => log(text.replace(/\n$/, ""))
+    );
+    const { sha256 } = await saveDownload(res, dest, report);
+    if (d.stdoutIsTTY) process.stdout.write("\n");
+    verifyChecksum(sha256, expectedSha256, label);
+  } catch (err) {
+    try { rmSync(dest, { force: true }); } catch { /* best effort */ }
+    throw asInstallError(
+      err,
+      "download",
+      (detail) => `The download stopped (${detail}). Check your connection, then run: ${INSTALL_RETRY}`
+    );
+  }
+}
+
+async function recordInstall(d: InstallDeps, binary: string, version: string | null, log: (line: string) => void) {
+  try {
+    await d.record(binary, version);
+  } catch (err) {
+    // The engine is installed; only the pointer for later commands is missing.
+    log(`Note: could not record the install (${errorDetail(err)}); set SUMMER_BIN=${binary} if summer cannot find it.`);
+  }
+}
+
+async function installMac(
+  releases: ReleaseInfo,
+  opts: InstallEngineOptions,
+  d: InstallDeps,
+  log: (line: string) => void
+): Promise<InstallEngineResult> {
+  const info = releases.latest.macos;
+  if (!info) {
+    throw new EngineInstallError("release_info", `The release info lists no macOS build. Download the engine from ${DOWNLOAD_PAGE}`);
+  }
+  const dmgUrl = requireDownloadUrl(info.dmg_url, "macOS DMG");
+  log(`Latest version: ${info.version}`);
+
+  const canReplace = (app: string) => d.canWrite(dirname(app)) && d.canWrite(app);
+  const { destApp, fallback } = chooseMacDestination({ customPath: opts.path, home: d.home, canReplace });
+  if (!canReplace(destApp)) {
+    throw new EngineInstallError(
+      "permission",
+      `This user cannot write to ${existsSync(destApp) ? destApp : dirname(destApp)}. ` +
+        `Install into a folder you own: ${INSTALL_RETRY} --path <folder>`
+    );
+  }
+  if (fallback) log(`/Applications is not writable for this user, so the engine goes to ${destApp}.`);
+
   const destBinary = join(destApp, "Contents", "MacOS", "Summer");
   const exists = existsSync(destApp);
   const installedVersion = exists ? readMacBundleVersion(destApp) : null;
@@ -258,129 +545,138 @@ async function installMac(releases: ReleaseInfo, customPath?: string, yes = fals
     exists,
     installedVersion,
     latestVersion: info.version,
-    yes,
-    isTTY: Boolean(process.stdin.isTTY),
+    yes: Boolean(opts.yes),
+    isTTY: Boolean(opts.isTTY),
+    retry: retryCommand(opts),
   });
   if (plan.action === "up-to-date") {
-    await recordEngineInstall(destBinary, plan.version);
-    console.log(`Summer Engine v${plan.version} is already installed at ${destApp} (up to date).`);
-    return;
+    await recordInstall(d, destBinary, plan.version, log);
+    log(`Summer Engine v${plan.version} is already installed at ${destApp} (up to date).`);
+    return { binary: destBinary, version: plan.version, destination: destApp, alreadyInstalled: true };
   }
-  if (plan.action === "refuse") {
-    console.error(plan.reason);
-    process.exitCode = 1;
-    return;
-  }
+  if (plan.action === "refuse") throw new EngineInstallError("needs_confirmation", plan.reason);
   if (plan.action === "needs-confirmation") {
-    console.log(
-      `Summer Engine ${plan.installed ?? "(unknown version)"} is installed at ${destApp}.`
-    );
-    if (!(await confirm(`Replace it with v${info.version}?`))) {
-      console.log("Cancelled. Nothing was changed.");
-      return;
+    log(`Summer Engine ${plan.installed ?? "(unknown version)"} is installed at ${destApp}.`);
+    if (!(await d.confirm(`Replace it with v${info.version}?`))) {
+      log("Cancelled. Nothing was changed.");
+      return { binary: destBinary, version: installedVersion, destination: destApp, alreadyInstalled: true };
     }
   }
-
-  const dmgPath = join(tmpdir(), `Summer-v${info.version}.dmg`);
-  const stagedApp = `${destApp}.new`;
-  const releaseSignals = cleanupOnSignal([dmgPath, stagedApp]);
-  console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
-
-  try {
-    const { sha256 } = await downloadFile(dmgUrl, dmgPath);
-    verifyChecksum(sha256, info.dmg_sha256, "DMG");
-  } catch (err) {
-    releaseSignals();
-    try { execSync(`rm -f "${dmgPath}"`, { stdio: "ignore" }); } catch { /* best effort */ }
-    console.error(err instanceof Error ? err.message : String(err));
-    process.exit(1);
-  }
-
-  console.log("Mounting DMG...");
-  const mountOutput = execSync(`hdiutil attach "${dmgPath}" -nobrowse -noverify -noautoopen`, {
-    encoding: "utf-8",
-  });
-
-  const mountPoint = mountOutput
-    .split("\n")
-    .filter((line) => line.includes("/Volumes/"))
-    .map((line) => line.trim().split("\t").pop()?.trim())
-    .find(Boolean);
-
-  if (!mountPoint) {
-    console.error("Failed to find mount point. Install manually from the DMG.");
-    process.exit(1);
-  }
-
-  try {
-    console.log("Installing to " + destApp + "...");
-    mkdirSync(dirname(destApp), { recursive: true });
-    replaceMacApp(mountPoint, destApp, (command) => execSync(command, { stdio: "ignore" }));
-    console.log("Done!");
-  } catch (err) {
-    console.error(
-      `Install failed: ${err instanceof Error ? err.message : String(err)}\n` +
-        (exists ? `The existing ${destApp} was left in place.` : "Nothing was installed.")
+  if (exists && isEngineRunning(destBinary, d.execFile)) {
+    throw new EngineInstallError(
+      "app_running",
+      `Summer Engine is running from ${destApp}, so it cannot be replaced now. ` +
+        `Quit Summer Engine, then run: ${INSTALL_RETRY} --yes`
     );
-    process.exitCode = 1;
-    return;
+  }
+
+  const dmgPath = join(d.tmpDir, `Summer-v${info.version}.dmg`);
+  const releaseSignals = cleanupOnSignal([dmgPath, `${destApp}.new`]);
+  try {
+    await downloadVerified(
+      dmgUrl,
+      dmgPath,
+      (bytes) => [
+        { path: d.tmpDir, bytes },
+        { path: dirname(destApp), bytes: bytes * INSTALL_SPACE_FACTOR },
+      ],
+      `Summer Engine v${info.version} DMG`,
+      info.dmg_sha256,
+      d,
+      log
+    );
+
+    log("Mounting DMG...");
+    const mountPoint = attachDmg(dmgPath, d.exec);
+    try {
+      log(`Installing to ${destApp}...`);
+      mkdirSync(dirname(destApp), { recursive: true });
+      replaceMacApp(mountPoint, destApp, (command) => { d.exec(command); });
+    } catch (err) {
+      throw asInstallError(
+        err,
+        "copy",
+        (detail) =>
+          `Could not copy Summer.app to ${destApp} (${detail}); ` +
+          `${exists ? "the existing engine was left in place" : "nothing was installed"}. ` +
+          `Install it by hand from ${DOWNLOAD_PAGE}`
+      );
+    } finally {
+      if (!detachDmg(mountPoint, d.exec)) log(`Note: could not eject ${mountPoint}; eject it in Finder later.`);
+    }
   } finally {
-    execSync(`hdiutil detach "${mountPoint}" -quiet`, { stdio: "ignore" });
-    try { execSync(`rm "${dmgPath}"`, { stdio: "ignore" }); } catch {}
+    try { rmSync(dmgPath, { force: true }); } catch { /* best effort */ }
     releaseSignals();
   }
 
-  await recordEngineInstall(destBinary, info.version);
-  console.log(`\nSummer Engine v${info.version} installed to ${destApp}`);
-  console.log(FIRST_START_NOTE);
-  console.log("\nNext steps:");
-  console.log("  summer login    # Sign in to your account");
-  console.log("  summer run      # Launch the engine");
+  log("Done!");
+  await recordInstall(d, destBinary, info.version, log);
+  log(`\nSummer Engine v${info.version} installed to ${destApp}`);
+  log(FIRST_START_NOTE);
+  nextSteps(log);
+  return { binary: destBinary, version: info.version, destination: destApp, alreadyInstalled: false };
 }
 
-async function installWindows(releases: ReleaseInfo, customPath?: string): Promise<void> {
+async function installWindows(
+  releases: ReleaseInfo,
+  opts: InstallEngineOptions,
+  d: InstallDeps,
+  log: (line: string) => void
+): Promise<InstallEngineResult> {
   const info = releases.latest.windows;
   if (!info) {
-    console.error("No Windows release found.");
-    process.exit(1);
+    throw new EngineInstallError("release_info", `The release info lists no Windows build. Download the engine from ${DOWNLOAD_PAGE}`);
   }
-
   const exeUrl = requireDownloadUrl(info.url, "Windows installer");
-  console.log(`Latest version: ${info.version}`);
+  log(`Latest version: ${info.version}`);
 
-  const exePath = join(tmpdir(), `Summer-v${info.version}.exe`);
-  console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
-
-  try {
-    const { sha256 } = await downloadFile(exeUrl, exePath);
-    verifyChecksum(sha256, info.sha256, "installer");
-  } catch (err) {
-    try { execSync(`del "${exePath}"`, { stdio: "ignore" }); } catch { /* best effort */ }
-    console.error(err instanceof Error ? err.message : String(err));
-    process.exit(1);
-  }
-
-  console.log("Running installer...");
-  try {
-    execSync(`"${exePath}" ${windowsInstallerArgs(customPath)}`, {
-      stdio: "inherit",
-    });
-  } catch {
-    console.error(
-      "Installer failed. Try running it manually:\n  " + exePath
+  const installDir = opts.path ?? join(d.env.LOCALAPPDATA ?? d.home, "SummerEngine");
+  if (!d.canWrite(installDir)) {
+    throw new EngineInstallError(
+      "permission",
+      `This user cannot write to ${installDir}. Install into a folder you own: ${INSTALL_RETRY} --path <folder>`
     );
-    process.exit(1);
   }
 
-  try { execSync(`del "${exePath}"`, { stdio: "ignore" }); } catch {}
+  const exePath = join(d.tmpDir, `Summer-v${info.version}.exe`);
+  const releaseSignals = cleanupOnSignal([exePath]);
+  try {
+    await downloadVerified(
+      exeUrl,
+      exePath,
+      (bytes) => [
+        { path: d.tmpDir, bytes },
+        { path: installDir, bytes: bytes * INSTALL_SPACE_FACTOR },
+      ],
+      `Summer Engine v${info.version} installer`,
+      info.sha256,
+      d,
+      log
+    );
+  } finally {
+    releaseSignals();
+  }
 
-  const installed = windowsInstalledBinary(customPath);
-  if (installed) await recordEngineInstall(installed, info.version);
-  console.log(`\nSummer Engine v${info.version} installed${installed ? ` to ${installed}` : "!"}`);
-  console.log(FIRST_START_NOTE);
-  console.log("\nNext steps:");
-  console.log("  summer login    # Sign in to your account");
-  console.log("  summer run      # Launch the engine");
+  log("Running installer...");
+  try {
+    d.exec(`"${exePath}" ${windowsInstallerArgs(opts.path)}`, true);
+  } catch (err) {
+    // The installer stays on disk so the next step can name it.
+    throw asInstallError(err, "installer", (detail) => `The Summer Engine installer failed (${detail}). Run it yourself: ${exePath}`);
+  }
+  try { rmSync(exePath, { force: true }); } catch { /* best effort */ }
+
+  const installed = windowsInstalledBinary(opts.path);
+  if (installed) await recordInstall(d, installed, info.version, log);
+  log(`\nSummer Engine v${info.version} installed${installed ? ` to ${installed}` : "!"}`);
+  log(FIRST_START_NOTE);
+  nextSteps(log);
+  return {
+    binary: installed,
+    version: info.version,
+    destination: installed ? dirname(installed) : installDir,
+    alreadyInstalled: false,
+  };
 }
 
 // ------------------------------------------------------------------- Linux
@@ -403,31 +699,37 @@ function walkFiles(dir: string): string[] {
 function registerExistingLinuxBinary(
   sourcePath: string,
   destDir: string,
-  destBinary: string
+  destBinary: string,
+  log: (line: string) => void
 ): void {
   const absolute = resolve(sourcePath);
   if (!existsSync(absolute)) {
-    console.error(
-      `${ENGINE_BINARY_ENV} points at ${absolute}, but nothing exists there.`
+    throw new EngineInstallError(
+      "copy",
+      `${ENGINE_BINARY_ENV} points at ${absolute}, but nothing exists there. ` +
+        `Set it to the engine binary, then run: ${INSTALL_RETRY}`
     );
-    process.exit(1);
   }
   try {
     chmodSync(absolute, 0o755);
   } catch {
     // Best effort — a read-only mount still works if already executable.
   }
-  mkdirSync(destDir, { recursive: true });
-  if (absolute !== destBinary) {
-    rmSync(destBinary, { force: true });
-    symlinkSync(absolute, destBinary);
+  try {
+    mkdirSync(destDir, { recursive: true });
+    if (absolute !== destBinary) {
+      rmSync(destBinary, { force: true });
+      symlinkSync(absolute, destBinary);
+    }
+  } catch (err) {
+    throw asInstallError(err, "copy", (detail) => `Could not link ${destBinary} to ${absolute} (${detail}). Run: ${INSTALL_RETRY} --path <folder>`);
   }
-  console.log(`Registered existing engine binary: ${absolute}`);
-  console.log(`  -> ${destBinary}`);
+  log(`Registered existing engine binary: ${absolute}`);
+  log(`  -> ${destBinary}`);
 }
 
-async function fetchLinuxReleaseAsset(apiUrl: string): Promise<LinuxReleaseAsset> {
-  const res = await fetch(apiUrl, {
+async function fetchLinuxReleaseAsset(apiUrl: string, fetchFn: typeof fetch): Promise<LinuxReleaseAsset> {
+  const res = await fetchFn(apiUrl, {
     headers: { Accept: "application/vnd.github+json" },
     signal: AbortSignal.timeout(15000),
   });
@@ -435,77 +737,109 @@ async function fetchLinuxReleaseAsset(apiUrl: string): Promise<LinuxReleaseAsset
   return pickLinuxReleaseAsset(await res.json());
 }
 
-async function installLinux(customPath?: string): Promise<void> {
-  if (process.arch !== "x64") {
-    console.error(
-      `Linux ${process.arch} has no published Summer Engine artifact yet (x86_64 only).\n` +
-      `Build from source, then set ${ENGINE_BINARY_ENV} to the binary and re-run \`summer install\`.`
+/** The published .sha256 for a Linux artifact; a missing one skips the check, as before. */
+async function fetchLinuxChecksum(sha256Url: string | undefined, fetchFn: typeof fetch): Promise<string | undefined> {
+  if (!sha256Url) return undefined;
+  try {
+    const res = await fetchFn(sha256Url, { signal: AbortSignal.timeout(15000) });
+    return res.ok ? (await res.text()).trim().split(/\s+/, 1)[0] : undefined;
+  } catch (err) {
+    throw new EngineInstallError(
+      "download",
+      `Could not fetch the Linux artifact checksum (${errorDetail(err)}). Check your connection, then run: ${INSTALL_RETRY}`
     );
-    process.exit(1);
+  }
+}
+
+async function installLinux(
+  opts: InstallEngineOptions,
+  d: InstallDeps,
+  log: (line: string) => void
+): Promise<InstallEngineResult> {
+  if (d.arch !== "x64") {
+    throw new EngineInstallError(
+      "unsupported_platform",
+      `Linux ${d.arch} has no published Summer Engine artifact yet (x86_64 only). ` +
+        `Build from source, set ${ENGINE_BINARY_ENV} to the binary, then run: ${INSTALL_RETRY}`
+    );
   }
 
-  const destDir = customPath ? resolve(customPath) : linuxEngineInstallDir();
+  const destDir = opts.path ? resolve(opts.path) : linuxEngineInstallDir();
   const destBinary = join(destDir, LINUX_ENGINE_BINARY_NAME);
-  const source = resolveLinuxInstallSource();
+  const source = resolveLinuxInstallSource(d.env);
 
   if (source.kind === "binary") {
-    registerExistingLinuxBinary(source.path, destDir, destBinary);
-    await recordEngineInstall(destBinary, null);
-    printLinuxNextSteps(destBinary);
-    return;
+    registerExistingLinuxBinary(source.path, destDir, destBinary, log);
+    await recordInstall(d, destBinary, null, log);
+    printLinuxNextSteps(destBinary, log);
+    return { binary: destBinary, version: null, destination: destDir, alreadyInstalled: true };
+  }
+  if (!d.canWrite(destDir)) {
+    throw new EngineInstallError(
+      "permission",
+      `This user cannot write to ${destDir}. Install into a folder you own: ${INSTALL_RETRY} --path <folder>`
+    );
   }
 
   let url = source.kind === "url" ? source.url : "";
   let sha256Url: string | undefined;
   let versionLabel = "custom";
   if (source.kind === "release") {
-    console.log("Fetching latest Linux release info...");
+    log("Fetching latest Linux release info...");
     try {
-      const asset = await fetchLinuxReleaseAsset(source.apiUrl);
+      const asset = await fetchLinuxReleaseAsset(source.apiUrl, d.fetch);
       url = asset.url;
       sha256Url = asset.sha256Url;
       versionLabel = asset.version;
     } catch (err) {
-      console.error(
-        `Could not resolve a Linux release artifact: ${err instanceof Error ? err.message : String(err)}`
+      throw new EngineInstallError(
+        "release_info",
+        `Could not resolve a Linux release artifact (${errorDetail(err)}). See ${DOWNLOAD_PAGE}`
       );
-      process.exit(1);
     }
-    console.log(`Latest Linux release: ${versionLabel}`);
+    log(`Latest Linux release: ${versionLabel}`);
   }
 
   const kind = linuxArchiveKind(url);
+  const stamp = Date.now();
   const downloadPath = join(
-    tmpdir(),
-    `summer-engine-${Date.now()}.${kind === "binary" ? "bin" : kind === "zip" ? "zip" : "tar.gz"}`
+    d.tmpDir,
+    `summer-engine-${stamp}.${kind === "binary" ? "bin" : kind === "zip" ? "zip" : "tar.gz"}`
   );
-  console.log(`Downloading ${url} ...`);
-
+  const extractDir = join(d.tmpDir, `summer-engine-extract-${stamp}`);
+  const releaseSignals = cleanupOnSignal([downloadPath, extractDir]);
   try {
-    const { sha256 } = await downloadFile(url, downloadPath);
-    if (sha256Url) {
-      const shaRes = await fetch(sha256Url, { signal: AbortSignal.timeout(15000) });
-      if (shaRes.ok) {
-        const expected = (await shaRes.text()).trim().split(/\s+/, 1)[0];
-        verifyChecksum(sha256, expected, "Linux artifact");
-      }
-    }
+    const expected = await fetchLinuxChecksum(sha256Url, d.fetch);
+    await downloadVerified(
+      url,
+      downloadPath,
+      (bytes) => [
+        { path: d.tmpDir, bytes },
+        { path: destDir, bytes: bytes * INSTALL_SPACE_FACTOR },
+      ],
+      "Linux artifact",
+      expected,
+      d,
+      log
+    );
 
-    mkdirSync(destDir, { recursive: true });
     let extractedBinary = downloadPath;
-    let extractDir: string | null = null;
     if (kind !== "binary") {
-      extractDir = join(tmpdir(), `summer-engine-extract-${Date.now()}`);
-      mkdirSync(extractDir, { recursive: true });
-      if (kind === "tar.gz") {
-        execSync(`tar -xzf "${downloadPath}" -C "${extractDir}"`, { stdio: "ignore" });
-      } else {
-        execSync(`unzip -oq "${downloadPath}" -d "${extractDir}"`, { stdio: "ignore" });
+      try {
+        mkdirSync(extractDir, { recursive: true });
+        d.exec(
+          kind === "tar.gz"
+            ? `tar -xzf "${downloadPath}" -C "${extractDir}"`
+            : `unzip -oq "${downloadPath}" -d "${extractDir}"`
+        );
+      } catch (err) {
+        throw asInstallError(err, "download", (detail) => `Could not unpack the Linux artifact (${detail}). Run: ${INSTALL_RETRY}`);
       }
       const found = findExtractedEngineBinary(walkFiles(extractDir));
       if (!found) {
-        throw new Error(
-          `The downloaded archive contains no engine binary (expected ${LINUX_ENGINE_BINARY_NAME}).`
+        throw new EngineInstallError(
+          "download",
+          `The downloaded archive contains no engine binary (expected ${LINUX_ENGINE_BINARY_NAME}). See ${DOWNLOAD_PAGE}`
         );
       }
       extractedBinary = found;
@@ -514,61 +848,86 @@ async function installLinux(customPath?: string): Promise<void> {
     // Replace, never edit in place: an engine reading its own binary mid-write
     // is worse than a moment with no file. rename first (same tmpfs), copy as
     // the cross-device fallback.
-    rmSync(destBinary, { force: true });
     try {
-      renameSync(extractedBinary, destBinary);
-    } catch {
-      execSync(`cp "${extractedBinary}" "${destBinary}"`, { stdio: "ignore" });
+      mkdirSync(destDir, { recursive: true });
+      rmSync(destBinary, { force: true });
+      try {
+        renameSync(extractedBinary, destBinary);
+      } catch {
+        d.exec(`cp "${extractedBinary}" "${destBinary}"`);
+      }
+      chmodSync(destBinary, 0o755);
+    } catch (err) {
+      throw asInstallError(err, "copy", (detail) => `Could not put the engine at ${destBinary} (${detail}). Run: ${INSTALL_RETRY} --path <folder>`);
     }
-    chmodSync(destBinary, 0o755);
-    if (extractDir) rmSync(extractDir, { recursive: true, force: true });
-  } catch (err) {
-    console.error(err instanceof Error ? err.message : String(err));
-    process.exit(1);
   } finally {
     rmSync(downloadPath, { force: true });
+    rmSync(extractDir, { recursive: true, force: true });
+    releaseSignals();
   }
 
-  await recordEngineInstall(destBinary, versionLabel === "custom" ? null : versionLabel);
-  console.log(`\nSummer Engine (${versionLabel}) installed to ${destBinary}`);
-  console.log(FIRST_START_NOTE);
-  printLinuxNextSteps(destBinary);
+  const version = versionLabel === "custom" ? null : versionLabel;
+  await recordInstall(d, destBinary, version, log);
+  log(`\nSummer Engine (${versionLabel}) installed to ${destBinary}`);
+  log(FIRST_START_NOTE);
+  printLinuxNextSteps(destBinary, log);
+  return { binary: destBinary, version, destination: destDir, alreadyInstalled: false };
 }
 
-function printLinuxNextSteps(binary: string): void {
-  console.log("\nNext steps:");
-  console.log("  summer doctor   # Verify the setup");
-  console.log(`  ${binary} --headless --editor --path <project>   # Headless engine`);
-  console.log("  summer login    # Optional: only gateway features (asset search/generation) need it");
+function printLinuxNextSteps(binary: string, log: (line: string) => void): void {
+  log("\nNext steps:");
+  log("  summer dev      # Create a starter project and open it");
+  log("  summer doctor   # Verify the setup");
+  log(`  ${binary} --headless --editor --path <project>   # Headless engine`);
 }
 
-export async function downloadFile(url: string, dest: string): Promise<{ sha256: string }> {
-  const res = await fetch(url);
-  if (!res.ok || !res.body) {
-    throw new Error(`Download failed: HTTP ${res.status}`);
+// ------------------------------------------------------------------ command
+
+/** The coded failure an error from installEngine stands for, or null for a
+ *  bug (rethrown as before). A raw ENOSPC/EACCES/EPERM still gets its code. */
+export function installCommandFailure(err: unknown): EngineInstallError | null {
+  if (err instanceof EngineInstallError) return err;
+  const reason = installFailureReason(err, "copy");
+  return reason === "disk_space" || reason === "permission" ? asInstallError(err, reason, errorDetail) : null;
+}
+
+/** `summer install`: installEngine with a printed, coded failure and exit code 1. */
+export async function runInstallCommand(
+  opts: { path?: string; yes?: boolean },
+  deps: {
+    install?: typeof installEngine;
+    error?: (line: string) => void;
+    noteError?: (code: string) => void;
+  } = {}
+): Promise<void> {
+  try {
+    await (deps.install ?? installEngine)({
+      path: opts.path,
+      yes: opts.yes,
+      log: (line) => console.log(line),
+      isTTY: Boolean(process.stdin.isTTY),
+    });
+  } catch (err) {
+    const failure = installCommandFailure(err);
+    if (!failure) throw err;
+    (deps.error ?? ((line: string) => console.error(line)))(failure.message);
+    (deps.noteError ?? noteCliError)(failure.reason);
+    process.exitCode = 1;
   }
+}
 
-  const dir = join(dest, "..");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-  const fileStream = createWriteStream(dest);
-  const readable = Readable.fromWeb(res.body as import("stream/web").ReadableStream);
-
-  // Hash while streaming (the 'data' listener and the pipe both see every chunk
-  // in flowing mode), so we get integrity for free without a second read pass.
-  const hash = createHash("sha256");
-  let downloaded = 0;
-  const total = parseInt(res.headers.get("content-length") || "0", 10);
-  const isTTY = Boolean(process.stdout.isTTY);
-  const report = createProgressReporter(isTTY, (text) => process.stdout.write(text));
-
-  readable.on("data", (chunk: Buffer) => {
-    hash.update(chunk);
-    downloaded += chunk.length;
-    report(downloaded, total);
+export const installCommand = new Command("install")
+  .description("Download and install Summer Engine")
+  .option("--path <dir>", "Custom install directory (macOS: the engine goes in <dir>/Summer.app). summer remembers it, so later commands find this engine")
+  .option("--yes", "Replace an already-installed engine without prompting")
+  .action(async (opts: { path?: string; yes?: boolean }) => {
+    await runInstallCommand(opts);
   });
 
-  await pipeline(readable, fileStream);
+export async function downloadFile(url: string, dest: string): Promise<{ sha256: string }> {
+  const { res } = await openDownload(url, (input, init) => fetch(input, init));
+  const isTTY = Boolean(process.stdout.isTTY);
+  const result = await saveDownload(res, dest, createProgressReporter(isTTY, (text) => process.stdout.write(text)));
   if (isTTY) process.stdout.write("\n");
-  return { sha256: hash.digest("hex") };
+  return result;
 }

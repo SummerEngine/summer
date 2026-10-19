@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  EngineInstallError,
+  asInstallError,
+  checkDiskSpace,
   describeEngineExecutableProblem,
+  errorDetail,
+  installFailureReason,
   ENGINE_BIN_ENV,
   ENGINE_BINARY_ENV,
   engineBinaryOverride,
@@ -224,5 +229,59 @@ describe("engineBinaryOverride + describeEngineExecutableProblem (summer run --b
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("install failure reasons", () => {
+  it("codes a full disk and a refused write wherever they happen", () => {
+    expect(installFailureReason(Object.assign(new Error("x"), { code: "ENOSPC" }), "copy")).toBe("disk_space");
+    expect(installFailureReason(new Error("Command failed: cp\ncp: x: No space left on device"), "copy")).toBe("disk_space");
+    expect(installFailureReason(Object.assign(new Error("x"), { code: "EACCES" }), "copy")).toBe("permission");
+    expect(installFailureReason(Object.assign(new Error("x"), { code: "EPERM" }), "copy")).toBe("permission");
+    expect(installFailureReason(new Error("cp: x: Operation not permitted"), "copy")).toBe("permission");
+    expect(installFailureReason(new Error("Input/output error"), "copy")).toBe("copy");
+    expect(installFailureReason(new EngineInstallError("mount", "m"), "copy")).toBe("mount");
+  });
+
+  it("keeps the stderr line of a failed command and ends every message in a next step", () => {
+    expect(errorDetail(new Error("Command failed: cp -R a b\ncp: b: Input/output error\n"))).toBe("cp: b: Input/output error");
+    const copy = asInstallError(new Error("boom"), "copy", (detail) => `Copy failed (${detail}). Run: summer install`);
+    expect([copy.reason, copy.message]).toEqual(["copy", "Copy failed (boom). Run: summer install"]);
+    const full = asInstallError(Object.assign(new Error("ENOSPC"), { code: "ENOSPC" }), "copy", () => "unused");
+    expect(full.reason).toBe("disk_space");
+    expect(full.message).toMatch(/npx -y summer-engine@latest install$/);
+  });
+});
+
+describe("checkDiskSpace", () => {
+  const GB = 1024 ** 3;
+
+  it("passes when every volume has room", () => {
+    expect(() =>
+      checkDiskSpace([{ path: "/tmp", bytes: GB }, { path: "/Volumes/X", bytes: 2 * GB }], (path) =>
+        path === "/tmp" ? { bytes: 2 * GB, volume: "a" } : { bytes: 3 * GB, volume: "b" }
+      )
+    ).not.toThrow();
+  });
+
+  it("adds up needs on one volume and names it", () => {
+    const space = () => ({ bytes: 3 * GB, volume: "a" });
+    let err: unknown;
+    try {
+      checkDiskSpace([{ path: "/var/folders/t", bytes: GB }, { path: "/Applications", bytes: 2.5 * GB }], space);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(EngineInstallError);
+    expect((err as EngineInstallError).reason).toBe("disk_space");
+    expect((err as Error).message).toContain("/var/folders/t: 3.0 GB free, about 3.5 GB needed");
+  });
+
+  it("skips a volume whose free space cannot be read", () => {
+    expect(() =>
+      checkDiskSpace([{ path: "/x", bytes: GB }], () => {
+        throw new Error("ENOSYS");
+      })
+    ).not.toThrow();
   });
 });

@@ -2,7 +2,8 @@ extends CharacterBody3D
 ## Sprite character on a capsule. Input moves in screen directions: up = away from the camera on the ground.
 ## The sprite is a vertical Y-billboard, stretched by 1 / cos(camera pitch) so it reads at full height
 ## from the tilted camera. Sheet: one row per animation (idle_down, walk_down, walk_up, walk_left, ...),
-## fixed cell size; the json next to it lists cell_w, cell_h, frames, rows and fps (number or per-row dict).
+## fixed cell size; the json next to it lists cell_w, cell_h, frames, rows and fps (a number, or a dictionary
+## by row or by kind: {"idle": 6, "walk": 10, "run": 14}).
 
 @export var sheet: Texture2D
 @export_file("*.json") var sheet_json := ""
@@ -44,8 +45,10 @@ func _frames(meta: Dictionary) -> SpriteFrames:
 	for r in meta.rows.size():
 		var anim: String = meta.rows[r]
 		sf.add_animation(anim)
-		var fps = meta.fps
-		sf.set_animation_speed(anim, float(fps[anim]) if fps is Dictionary and fps.has(anim) else (8.0 if fps is Dictionary else float(fps)))
+		var fps = meta.fps   # one number, or a dictionary by row ("walk_down") or by kind ("walk")
+		if fps is Dictionary:
+			fps = fps.get(anim, fps.get(anim.get_slice("_", 0), 8.0))
+		sf.set_animation_speed(anim, float(fps))
 		for c in int(meta.frames):
 			var at := AtlasTexture.new()
 			at.atlas = sheet

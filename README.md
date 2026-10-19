@@ -20,7 +20,7 @@
 
 ## Install
 
-- **Start a game now** (Node 20+): `npx -y summer-engine@latest dev`. It installs the Summer Engine app if it is missing (about 660 MB, free), creates a starter project in this folder and opens it, ready for your agent. No sign-in needed to build.
+- **Start a game now** (Node 20+): `npx -y summer-engine@latest dev`. It asks before it installs the Summer Engine app (about 660 MB, free) when it is missing, creates a starter project here (in `./my-game` when this folder has other files) and opens it, ready for your agent. No sign-in needed to build.
 - **Chat apps** (Claude, ChatGPT, Cursor...): add `https://mcp.summerengine.com/mcp`. Nothing to install.
 - **Homebrew:** `brew install summerengine/tap/summer`
 - **npm** (Node 20+): `npm install -g summer-engine`
@@ -244,10 +244,10 @@ cd ~/Projects   # or wherever the user keeps code
 If the user said "let's make a game" without specifying a template, use the default (`3d-basic`: a sky, a sun with soft shadows, a ground and a hero the camera frames). Pick a sensible project name from the user's request, for example "FPS" to `my-fps-game`. Avoid spaces in the name.
 
 ```bash
-npx -y summer-engine@latest dev 3d-basic my-fps-game
+npx -y summer-engine@latest dev --yes 3d-basic my-fps-game
 ```
 
-It installs the engine if it is missing, creates the project (a folder that already holds `project.godot` is just opened), launches the editor in the background and waits up to 3 minutes for its local API, printing progress every 10 seconds. It ends with one `Connected:` line. Give the shell call a long timeout (10 minutes) the first time: the download comes first. `summer dev .` uses the current folder when it is empty.
+`--yes` is the user's OK to install the engine when it is missing (about 660 MB): ask them first. Without it, `summer dev` installs nothing and exits with `needs_confirmation` and the question to ask. It installs the engine if it is missing, creates the project (a folder that already holds `project.godot` is just opened), launches the editor in the background and waits up to 3 minutes for its local API, printing progress every 10 seconds. It ends with one `Connected:` line. Give the shell call a long timeout (10 minutes) the first time: the download comes first. `summer dev .` uses the current folder when it is empty.
 
 ### Step 5b: Wait for the engine to be reachable (only if `summer dev` said it is still starting)
 

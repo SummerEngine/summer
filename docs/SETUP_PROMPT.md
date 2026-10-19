@@ -18,7 +18,7 @@ Expected agent behavior:
 1. Check Node.js 20+. On Windows, install Node LTS with winget if it is missing (after asking), and type `npx.cmd` instead of `npx` in PowerShell.
 2. Run `npx -y summer-engine@latest doctor --json` (its top-level `ok` means "no check failed", not "installed").
 3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every skill and the MCP config. For most agents it also connects Summer Games (`summer-games`); tell the user the one `Sign in once:` step setup prints, then continue.
-4. After choosing a stable parent directory, run `npx -y summer-engine@latest dev <template> <folder>` (default template `3d-basic`): it installs the engine if it is missing (about 660 MB), creates the project, opens it and waits until the editor answers.
+4. After choosing a stable parent directory and asking the user's OK to install the engine (about 660 MB, free), run `npx -y summer-engine@latest dev --yes <template> <folder>` (default template `3d-basic`): it installs the engine if it is missing, creates the project, opens it and waits until the editor answers.
 5. Building needs no sign-in. Run `npx -y summer-engine@latest login` only when the user wants cloud work (assets, publishing) or a tool answers `not_signed_in`.
 6. Use the `brainstorm-game` skill before building from a vague prompt.
 

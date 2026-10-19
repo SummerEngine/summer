@@ -1,5 +1,5 @@
 ---
-description: First run with Summer. One OK, then a game from a template that already plays (or a plan first in Summer); a first playable game in about five minutes, no sign-in.
+description: First run with Summer. One OK, then a game from a template that already plays (or a plan first in Summer); a first playable game in about five minutes, no sign-in to build.
 argument-hint: [your game idea, in one sentence]
 allowed-tools: Bash Read Skill
 ---
@@ -29,7 +29,7 @@ For 3b, pick the template from the idea (list in 3b) and a folder: a new folder 
 
 > I'll install Summer Engine (about 660 MB, free) if needed and open a starter project in `<folder>`, in a window behind your work. OK?
 
-Drop the install part when `status` shows the engine is installed. That one yes covers the install, the folder and the window; ask nothing else before the game plays.
+Drop the install part when the `engine-install` check of `npx -y summer-engine@latest doctor --json` is `ok`. That one yes covers the install, the folder and the window; ask nothing else before the game plays.
 
 ## 3a. Plan it first
 
@@ -56,7 +56,7 @@ No sign-in: engine tools work signed out. Sign in only when a cloud operation (a
    - anything else: `3d-basic`
 
    Run `npx -y summer-engine@latest list templates` if none fits.
-2. **Install, create and open: one command**, after the user's OK from step 2: `npx -y summer-engine@latest dev <template> <folder>`. Give it a 10-minute timeout: it downloads the engine first when it is missing, then waits until the editor answers and prints one `Connected:` line. If it says the editor is still starting, go on: the `summer-engine` tools open and wait for the project themselves.
+2. **Install, create and open: one command**, after the user's OK from step 2: `npx -y summer-engine@latest dev --yes <template> <folder>` (`--yes` is that OK; without it, `summer dev` installs nothing and asks you to ask). Give it a 10-minute timeout: it downloads the engine first when it is missing, then waits until the editor answers and prints one `Connected:` line. If it says the editor is still opening, wait 30 seconds and call `summer_get_project_context`: the `summer-engine` tools find the project `summer dev` opened and wait for it.
 3. **Make it theirs, then play.** Activate the `using-summer` skill. Call `summer_get_project_context`, make one small change that matches the idea (the title, the player's colour or speed, one enemy), then verify it: `summer_play`, `summer_screenshot` with `target: "game"`, `summer_get_diagnostics`, `summer_stop`. Show what you saw; tell them to press Play in the editor.
 
 ## 4. Hand over

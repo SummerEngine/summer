@@ -52,13 +52,13 @@ If the user has clearly invoked `brainstorm-game` already and the brief calls fo
 
 ### 3. Create and open it
 
-One command creates the project and opens it (it also installs Summer Engine when it is missing, so say that first and get the user's yes):
+One command creates the project and opens it. When Summer Engine is missing it also installs it (about 660 MB): ask the user first, and pass `--yes` only with their OK (without it nothing is installed):
 
 ```
-summer dev 3d-basic my-game
+summer dev --yes 3d-basic my-game
 ```
 
-or `summer dev empty my-game`. It writes `project.godot` and the chosen `main.tscn` (no network call for these two), opens the editor and waits until it answers.
+or `summer dev --yes empty my-game`. It writes `project.godot` and the chosen `main.tscn` (no network call for these two), opens the editor and waits until it answers.
 
 No shell in this session (a chat app)? Call `projects.create_local` with `template` and `name`, then `projects.open_local` with its `projectPath` (and `install: true` only after the user said yes to installing the engine).
 

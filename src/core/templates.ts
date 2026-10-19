@@ -384,8 +384,10 @@ export async function fetchPinnedTemplate(
   }
 }
 
-/** Download, gunzip and unpack a GitHub tarball into `staging` as a stream,
- *  bounded by fetchTimeoutSeconds(). Returns the tree digest of the archive. */
+/** Download, gunzip and unpack a GitHub tarball into `staging` as a stream.
+ *  fetchTimeoutSeconds() bounds each wait for bytes, not the whole download:
+ *  a big template on a slow link keeps going while bytes arrive. Returns the
+ *  tree digest of the archive. */
 async function downloadTree(
   url: string,
   staging: string,
@@ -393,16 +395,22 @@ async function downloadTree(
 ): Promise<string> {
   const seconds = fetchTimeoutSeconds();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), seconds * 1000);
+  let timer = setTimeout(() => ctrl.abort(), seconds * 1000);
+  const stillGoing = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => ctrl.abort(), seconds * 1000);
+  };
   const gunzip = createGunzip();
   try {
     const res = await fetcher(url, ctrl.signal);
     if (res.status !== 200 || !res.body) throw new Error(`HTTP ${res.status}`);
+    const body = Readable.fromWeb(res.body as unknown as WebReadableStream<Uint8Array>);
+    body.on("data", stillGoing);
     // Errors on either side end the gunzip stream early; extractTar then fails.
-    pipeline(Readable.fromWeb(res.body as unknown as WebReadableStream<Uint8Array>), gunzip, () => {});
+    pipeline(body, gunzip, () => {});
     return await extractTar(gunzip, staging);
   } catch (err) {
-    if (ctrl.signal.aborted) throw new Error(`timed out after ${seconds}s`);
+    if (ctrl.signal.aborted) throw new Error(`no data for ${seconds}s`);
     throw err;
   } finally {
     clearTimeout(timer);

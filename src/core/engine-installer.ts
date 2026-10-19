@@ -567,13 +567,16 @@ async function installMac(
       return { binary: destBinary, version: installedVersion, destination: destApp, alreadyInstalled: true };
     }
   }
-  if (exists && isEngineRunning(destBinary, d.execFile)) {
-    throw new EngineInstallError(
-      "app_running",
-      `Summer Engine is running from ${destApp}, so it cannot be replaced now. ` +
-        `Quit Summer Engine, then run: ${INSTALL_RETRY} --yes`
-    );
-  }
+  const refuseWhileRunning = () => {
+    if (existsSync(destApp) && isEngineRunning(destBinary, d.execFile)) {
+      throw new EngineInstallError(
+        "app_running",
+        `Summer Engine is running from ${destApp}, so it cannot be replaced now. ` +
+          `Quit Summer Engine, then run: ${INSTALL_RETRY} --yes`
+      );
+    }
+  };
+  refuseWhileRunning();
 
   const dmgPath = join(d.tmpDir, `Summer-v${info.version}.dmg`);
   const releaseSignals = cleanupOnSignal([dmgPath, `${destApp}.new`]);
@@ -594,6 +597,8 @@ async function installMac(
     log("Mounting DMG...");
     const mountPoint = attachDmg(dmgPath, d.exec);
     try {
+      // Again after the download: the person may have opened Summer meanwhile.
+      refuseWhileRunning();
       log(`Installing to ${destApp}...`);
       mkdirSync(dirname(destApp), { recursive: true });
       replaceMacApp(mountPoint, destApp, (command) => { d.exec(command); });

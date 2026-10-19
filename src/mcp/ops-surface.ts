@@ -5,7 +5,7 @@ import { localEntries, localInputSchema, localWireForm, missingInput, type Catal
 import { answerOfHosted, describeFromShipped, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
-import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
+import { answerOfEngineResult, codedLocalFailure, engineFailure, textsOf } from "../core/ops/engine-answer.js";
 import { TAKES_OUT, withOutField, type FileSaver } from "../core/ops/save-files.js";
 import { loadLibraryIndex } from "../core/library-search.js";
 import { FOOTER_SUFFIX } from "../core/library-read.js";
@@ -73,6 +73,9 @@ const DOCS_ALIASES: ReadonlyArray<[string, string]> = [
   ["summer_docs_read", "summer_read_library"],
 ];
 
+/** Local operations listed with the engine tools: they create and open the project the engine tools need, with no shell. */
+const LOCAL_PROJECT_TOOLS = ["summer_projects_create_local", "summer_projects_open_local"];
+
 /** Listed with the engine tools although its operation is docs.engine_api: the offline engine class reference. */
 const ENGINE_REFERENCE = "summer_api_docs";
 
@@ -125,6 +128,8 @@ function answerOfLocal(result: unknown, op: string, effect: "read" | "write"): A
   }
   if (record.isError) {
     const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+    const coded = codedLocalFailure(body);
+    if (coded) return coded;
     const message = typeof body.message === "string" ? body.message : typeof body.error === "string" ? body.error : first.slice(0, 500) || "The tool failed.";
     const details = { tool: payload };
     if (/not found|does not exist|no such/i.test(message)) return errorAnswer("not_found", message, { details });
@@ -266,6 +271,26 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       callback: (async (...args: unknown[]) => {
         const raw = await handler(...args);
         return toolResult(answerOfEngineResult(raw, op, answerOptions), raw);
+      }) as never,
+    });
+  }
+
+  // projects.create_local and projects.open_local: the one answer shape, like the engine tools.
+  const localProjectTools = options.engine ? LOCAL_PROJECT_TOOLS.filter((name) => tools[name] && entries.has(names[name]?.op ?? "")) : [];
+  for (const name of localProjectTools) listed.add(name);
+  for (const name of localProjectTools) {
+    const tool = tools[name];
+    const op = names[name].op;
+    const entry = entries.get(op)!;
+    const handler = tool.handler as Handler;
+    rawHandlers.set(name, handler);
+    tool.update({
+      title: entry.title,
+      description: renderOpRefs(entry.summary, toolOf),
+      annotations: annotationsForEffect(entry.effect === "read" ? "read" : "write", Boolean(facts.get(name)?.network), entry.title),
+      callback: (async (...args: unknown[]) => {
+        const raw = await handler(...args);
+        return toolResult(answerOfLocal(raw, op, "write"), raw);
       }) as never,
     });
   }

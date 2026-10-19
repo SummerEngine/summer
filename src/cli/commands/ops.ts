@@ -5,7 +5,7 @@ import { shippedCloudEntries, shippedWireForm } from "../../core/ops/public-cata
 import { answerOfHosted, callHostedV4, describeFromShipped, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, localToolsFor, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
-import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
+import { codedLocalFailure, engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
@@ -147,7 +147,8 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   } catch (error) {
     if (error instanceof EngineUnavailableError) return engineNotRunning();
     if (error instanceof ToolResultError) {
-      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
+      if (def) return engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide });
+      return codedLocalFailure(error.result) ?? errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
     }
     return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
   }

@@ -112,6 +112,18 @@ export function engineFailure(text: string, op: string, options: { effect: "read
   return errorAnswer("invalid_input", message, { next: describe, details });
 }
 
+/** The codes a local tool's failure keeps as they are (projects.create_local, projects.open_local). */
+const LOCAL_CODES = new Set<ErrorCode>(["engine_not_running", "invalid_input", "not_found", "unavailable"]);
+
+/** A local tool's coded failure (`{ok:false, code, error, recovery}`) as the answer, with its recovery as the next step; null when it has no such code. */
+export function codedLocalFailure(body: Record<string, unknown>): Answer | null {
+  const code = str(body.code) as ErrorCode | undefined;
+  if (body.ok !== false || !code || !LOCAL_CODES.has(code)) return null;
+  const recovery = str(body.recovery);
+  if (code === "engine_not_running") return engineNotRunning(recovery);
+  return errorAnswer(code, str(body.error) ?? str(body.message) ?? "The operation failed.", { ...(recovery ? { next: { say: recovery } } : {}), details: { tool: body } });
+}
+
 /** A 3.x engine tool's whole result as the answer: its payload on success, the mapped failure otherwise. */
 export function answerOfEngineResult(result: unknown, op: string, options: { effect: "read" | "write"; guide?: string }): Answer {
   const [first = "", ...notes] = textsOf(result);

@@ -585,3 +585,36 @@ describe("v4, generated files on this machine", () => {
     }
   });
 });
+
+describe("projects.create_local and projects.open_local: a project with no shell", () => {
+  it("lists both with the one answer shape in the full profile, and leaves them out of the capped engine profile", async () => {
+    const full = await session(undefined, "v4");
+    const engine = await session("engine", "v4");
+    try {
+      const tools = new Map((await full.client.listTools()).tools.map((tool) => [tool.name, tool]));
+      expect(tools.get("summer_projects_create_local")?.title).toBe("Create a project on this computer");
+      expect(tools.get("summer_projects_open_local")?.description).toContain("summer_get_project_context");
+      expect(tools.get("summer_projects_create_local")?.description).toContain("summer_projects_open_local");
+      const engineNames = (await engine.client.listTools()).tools.map((tool) => tool.name);
+      expect(engineNames).not.toContain("summer_projects_open_local");
+    } finally {
+      await full.close();
+      await engine.close();
+    }
+  });
+
+  it("creates a project through summer_call, and opening a folder with no project names the step", async () => {
+    const { client, close } = await session(undefined, "v4");
+    try {
+      const dir = join(root, "space-dodge");
+      const created = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "projects.create_local", input: { dir } } }));
+      expect(created).toMatchObject({ ok: true, status: "done", result: { projectPath: dir, template: "3d-basic", created: true, next: { op: "projects.open_local", input: { path: dir } } } });
+      expect(await readFile(join(dir, "main.tscn"), "utf8")).toContain("WorldEnvironment");
+
+      const missing = answerOf(await client.callTool({ name: "summer_projects_open_local", arguments: { path: join(root, "nowhere") } }));
+      expect(missing).toMatchObject({ ok: false, error: { code: "not_found", next: { say: expect.stringContaining("projects.create_local") } } });
+    } finally {
+      await close();
+    }
+  });
+});

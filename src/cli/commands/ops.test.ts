@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { areaHelp, describeFromCli, formatAnswer, operationHelpFromCli, opsCliCommands, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
 import { closestActions, resolveCliOp } from "../../core/ops/catalog.js";
@@ -208,6 +208,23 @@ describe("summer engine with a 3.x tool name or a typo", () => {
     expect(answer.error.message).toContain("Closest: summer engine get-scene-tree");
     expect(answer.error.message).toContain("summer engine --help");
     expect(closestActions("engine.screenshoot")[0]).toBe("screenshot");
+  });
+});
+
+describe("summer projects create-local / open-local", () => {
+  it("creates a project on this computer from the shell too, and names the step when there is no project to open", async () => {
+    const scratch = await mkdtemp(join(tmpdir(), "summer-ops-projects-"));
+    try {
+      const d = { ...deps(), dispatch: dispatchTool };
+      const dir = join(scratch, "game");
+      expect(await runOpFromCli("projects.create_local", ["--dir", dir, "--json"], d)).toBe(0);
+      expect(JSON.parse(d.out[0])).toMatchObject({ ok: true, result: { projectPath: dir, template: "3d-basic", created: true } });
+
+      expect(await runOpFromCli("projects.open_local", ["--path", join(scratch, "nowhere"), "--json"], d)).toBe(1);
+      expect(JSON.parse(d.err[0])).toMatchObject({ ok: false, error: { code: "not_found", next: { say: expect.stringContaining("projects.create_local") } } });
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
   });
 });
 

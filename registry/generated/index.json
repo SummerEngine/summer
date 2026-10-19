@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "780278ed5c212a095fca65af14861ee936acc75b69de7dd9b0d859e90c21e7c5",
+      "content_hash": "ffbfc1600b7a464189708280ba06c7e89453844b5ed139204eaf3e555e5265c4",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -8938,6 +8938,77 @@
         "filesystem": true,
         "editor_mutation": true,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/projects-create-local",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "a7ae06f6688b7ded22644066e7cb1c069b1964482382217f920b749b978f5928",
+      "summary": "Create a project on this computer. Writes a template (3d-basic by default) to a folder, no shell needed. Returns projectPath. Next: projects.open_local.",
+      "use_when": [
+        "\"make me a game\"",
+        "\"start a new Summer project\"",
+        "\"create a 3d project on my computer\"",
+        "no editor is open and this session has no project (engine_not_running says so)",
+        "an agent with no shell (Claude Desktop, a chat app) starts a game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "project",
+          "editor"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_projects_create_local",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/projects-open-local",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "debdb45afee6723998960845ad1ba236bb20b37844b343427301704b07c7adbc",
+      "summary": "Open a project in Summer Engine. Waits until it connects; installs the engine only with install: true (the person's yes). Next: engine.get_project_context.",
+      "use_when": [
+        "\"open my game in Summer\"",
+        "\"open the editor\"",
+        "engine_not_running and the session has a project, or after projects.create_local",
+        "an agent with no shell (Claude Desktop, a chat app) needs the editor"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "project",
+          "editor"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_projects_open_local",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

@@ -2,7 +2,7 @@
   "_generated": "GENERATED from integrations/codex — do not edit; npm run generate:registry",
   "name": "summer",
   "version": "4.4.0",
-  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 121-tool MCP bridge to the Summer Engine desktop app.",
+  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 123-tool MCP bridge to the Summer Engine desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
@@ -147,7 +147,7 @@
   "interface": {
     "displayName": "Summer Engine",
     "shortDescription": "Make games with AI",
-    "longDescription": "Summer Engine is the game engine built for AI. Codex builds a full multiplayer game in it, plays and tests it, and publishes it on summer.games. The plugin adds game-dev skills, lifecycle hooks, and a 121-tool MCP bridge to the Summer Engine desktop app: project files, scenes, asset import, play mode, screenshots, diagnostics, asset generation and the store. Git, shell, and grep stay with Codex. Session-start orients each session. The pre-commit doctor (opt-in) blocks bad commits.",
+    "longDescription": "Summer Engine is the game engine built for AI. Codex builds a full multiplayer game in it, plays and tests it, and publishes it on summer.games. The plugin adds game-dev skills, lifecycle hooks, and a 123-tool MCP bridge to the Summer Engine desktop app: project files, scenes, asset import, play mode, screenshots, diagnostics, asset generation and the store. Git, shell, and grep stay with Codex. Session-start orients each session. The pre-commit doctor (opt-in) blocks bad commits.",
     "developerName": "Summer Labs, Inc.",
     "category": "Developer Tools",
     "capabilities": [

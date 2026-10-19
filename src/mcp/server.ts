@@ -13,6 +13,7 @@ import {
   registerProjectTools,
 } from "./tools/project-tools.js";
 import { registerPerceptionTools } from "./tools/perception-tools.js";
+import { registerLocalProjectTools } from "./tools/local-project-tools.js";
 import { registerSpatialTools } from "./tools/spatial-tools.js";
 import { registerPlacementTools } from "./tools/placement-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
@@ -132,6 +133,23 @@ export function configureMcpEngineSelection(
   cachedClient = null;
 }
 
+/** The session's editor selection (projects.open_local opens its project). */
+export function currentMcpEngineSelection(): EngineSelection | undefined {
+  return engineSelection ? { ...engineSelection } : undefined;
+}
+
+/** Bind the session to the project projects.open_local opened, with the client it connected. */
+export function bindMcpProject(projectRoot: string, client: EngineApiClient): void {
+  engineSelection = { cwd: projectRoot };
+  cachedClient = client;
+}
+
+/** The step's log lines go to the MCP log and stderr, never stdout (the protocol). */
+export function logEngineSelfStart(line: string): void {
+  appendMcpLogEvent("mcp:engine_self_start", { line });
+  writeMcpStderr("mcp:engine_self_start", { line });
+}
+
 export async function getClient(): Promise<EngineApiClient> {
   // Opt-in per-project routing (editor -> live worker -> spawned worker).
   // OFF by default: with the flag unset this block is skipped entirely and
@@ -176,12 +194,7 @@ export async function getClient(): Promise<EngineApiClient> {
     if (notRunning) {
       // Open the session's project ourselves when we can, else a coded
       // error with the one command that gets there (core/engine-self-start.ts).
-      cachedClient = await selfStartEngine(engineSelection, notRunning, {
-        log: (line) => {
-          appendMcpLogEvent("mcp:engine_self_start", { line });
-          writeMcpStderr("mcp:engine_self_start", { line });
-        },
-      });
+      cachedClient = await selfStartEngine(engineSelection, notRunning, { log: logEngineSelfStart });
       return cachedClient;
     }
     throw new Error(
@@ -484,6 +497,7 @@ export function createMcpServer(
   registerSeeingTools(server);
   registerAuditTools(server);
   registerProjectTools(server, { engine });
+  registerLocalProjectTools(server);
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);

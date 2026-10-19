@@ -25,11 +25,13 @@ import {
   codedFailure,
   codeForStatus,
   describeNetworkError,
+  EngineNotRunningError,
   engineNotRunningFromConnectError,
   networkDetails,
   NOT_SIGNED_IN,
   type SummerErrorCode,
 } from "../error-codes.js";
+import { engineSelectionFromEnv } from "../engine.js";
 import {
   missingEngineEventsResult,
   missingEngineOpResult,
@@ -154,6 +156,7 @@ import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
 import { syncItems } from "./sync-items.js";
 import { contentMake, contentMakeInput } from "./content-make/index.js";
+import { createLocalProject, LocalProjectError, localProjectFailure, openLocalProject } from "./projects-local.js";
 import { BuildToolError, buildToolFailure } from "./summer-bundle.js";
 import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
@@ -312,6 +315,17 @@ async function structuredBuildFailure<T>(run: () => Promise<T>): Promise<T> {
     return await run();
   } catch (error) {
     if (error instanceof BuildToolError) throw new ToolResultError(buildToolFailure(error), error.message);
+    throw error;
+  }
+}
+
+/** projects.create_local / open_local: their coded failures, printed whole. */
+async function localProjectStep<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof LocalProjectError) throw new ToolResultError(localProjectFailure(error), error.message);
+    if (error instanceof EngineNotRunningError) throw new CodedToolError("engine_not_running", error.message, {}, error.recovery);
     throw error;
   }
 }
@@ -1037,6 +1051,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         confirm: args.confirm === true,
         face: "cli",
       })
+    )
+  ),
+  entry("summer_projects_create_local", "Create a Summer project on this computer from a template (3d-basic by default)", false, (args) =>
+    localProjectStep(() => createLocalProject({ template: optStr(args, "template"), name: optStr(args, "name"), dir: optStr(args, "dir") }))
+  ),
+  entry("summer_projects_open_local", "Open a project in Summer Engine and wait until it connects; install:true installs a missing engine (only after the person's yes)", false, (args) =>
+    localProjectStep(() =>
+      openLocalProject({ path: optStr(args, "path"), install: args.install === true }, engineSelectionFromEnv() ?? { cwd: process.cwd() })
     )
   ),
   entry("summer_content_make", "Make one finished piece of content for a game, beat for beat on a reference, from local footage, into the team's Review", false, (args) =>

@@ -20,10 +20,11 @@ export const CLI_AREAS = [
  * page or an editor surface, docking an App in the editor, uploading a
  * local export, syncing the project's summer.items.json, and making a
  * piece of content from footage on this computer (content.make; Summer's
- * server keeps the request it reports to). Everything else runs on the
- * hosted server.
+ * server keeps the request it reports to), and creating and opening a
+ * project on this computer (projects.create_local, projects.open_local).
+ * Everything else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "economy.sync_items", "content.make"]);
+const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "economy.sync_items", "content.make", "projects.create_local", "projects.open_local"]);
 
 export function isLocalOp(op: string): boolean {
   return op.startsWith("engine.") || LOCAL_OPS.has(op);

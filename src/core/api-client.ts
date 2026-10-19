@@ -69,6 +69,15 @@ export type EngineSnapshot = {
   projectMismatch?: boolean;
 };
 
+/** Options for a viewport or game capture. */
+export type SnapshotOptions = {
+  /** Write the frame into the snapshots folder and return its localPath
+   *  (default true). The live preview (`summer preview`) passes false: it
+   *  sends each frame straight to the browser, so polling a few frames a
+   *  second never fills the temp folder. */
+  saveFile?: boolean;
+};
+
 type SnapshotPayload = Record<string, unknown> & {
   ok?: boolean;
   error?: string;
@@ -810,7 +819,7 @@ export class EngineApiClient {
     return localPath;
   }
 
-  private async snapshot(kind: "viewport" | "game"): Promise<EngineSnapshot> {
+  private async snapshot(kind: "viewport" | "game", options: SnapshotOptions = {}): Promise<EngineSnapshot> {
     // Block E: /api/snapshot/* is queued (GET -> 202 -> poll /api/ops/result).
     // The terminal result is the apply dict; the image rides as base64 inside it
     // (no raw-binary channel). Legacy/dormant engines answer 200 synchronously
@@ -835,14 +844,15 @@ export class EngineApiClient {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 
-    return this._parseSnapshotResponse(response, kind);
+    return this._parseSnapshotResponse(response, kind, options.saveFile !== false);
   }
 
   /** Shared: turn an ops/snapshot response envelope into an EngineSnapshot.
    *  Used by viewport/game snapshots and by scenePreview. */
   private async _parseSnapshotResponse(
     response: unknown,
-    kind: "viewport" | "game" | "scene"
+    kind: "viewport" | "game" | "scene",
+    saveFile = true
   ): Promise<EngineSnapshot> {
     const payload = findSnapshotPayload(response);
     if (!payload) {
@@ -867,7 +877,7 @@ export class EngineApiClient {
 
     const { format, mime, ext } = snapshotFormat(payload);
     const buffer = Buffer.from(base64, "base64");
-    const localPath = await this.writeSnapshotFile(kind, buffer, ext);
+    const localPath = saveFile ? await this.writeSnapshotFile(kind, buffer, ext) : undefined;
 
     // Client-side identity drift check (item 4). Current engines validate the
     // identity query on snapshot reads, but older builds may ignore it. Re-read
@@ -936,12 +946,12 @@ export class EngineApiClient {
     };
   }
 
-  async viewportSnapshot(): Promise<EngineSnapshot> {
-    return this.snapshot("viewport");
+  async viewportSnapshot(options?: SnapshotOptions): Promise<EngineSnapshot> {
+    return this.snapshot("viewport", options);
   }
 
-  async gameSnapshot(): Promise<EngineSnapshot> {
-    return this.snapshot("game");
+  async gameSnapshot(options?: SnapshotOptions): Promise<EngineSnapshot> {
+    return this.snapshot("game", options);
   }
 
   /**

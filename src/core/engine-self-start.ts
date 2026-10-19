@@ -14,13 +14,16 @@
  * is an explicit ask and still opens.
  */
 import { execSync } from "child_process";
+import { realpathSync } from "fs";
+import { resolve, sep } from "path";
 import { EngineApiClient } from "./api-client.js";
 import { checkEngineHealth, findProjectRoot, listEngineInstances, type EngineSelection } from "./engine.js";
 import { lastLaunch, LaunchLockBusyError, launchEditor, resolveRunBinary, type LaunchEditorResult } from "./engine-launch.js";
+import { ENGINE_BIN_ENV } from "./engine-install.js";
 import { installEngine } from "./engine-installer.js";
 import { EngineNotRunningError } from "./error-codes.js";
 import { processIsAlive } from "./util/process.js";
-import { sleep } from "./util/sleep.js";
+import { settlesWithin, sleep } from "./util/sleep.js";
 
 export const AUTO_LAUNCH_ENV = "SUMMER_AUTO_LAUNCH";
 /** One tool call ends within this, all steps included (under a 60 s client timeout). */
@@ -42,6 +45,7 @@ export const SELF_START_RECOVERY = {
     "No Summer project for this session. If summer dev is still opening one, wait and call again. Otherwise projects.create_local " +
     `makes one (3d-basic by default) and projects.open_local opens it; or run: ${DEV_COMMAND} 3d-basic my-game.`,
   busy: "Summer Engine has the project open but does not answer (busy, or still importing). Call again in 30 seconds.",
+  launchBusy: "Another Summer launch is in progress. Call again in 30 seconds.",
   noDisplay:
     "This Linux session has no display (DISPLAY or WAYLAND_DISPLAY), so the editor cannot open here. " +
     "Open the project in Summer Engine on a computer with a desktop.",
@@ -76,6 +80,11 @@ const RECENT_MS = 3_000;
  *  one tool call, and the next call reports it or carries on. */
 let install: { promise: Promise<void>; line: string; done: boolean; error: unknown } | null = null;
 
+/** Test-only: forget the last answer only (withEngine's immediate retry window). */
+export function _resetRecentForTests(): void {
+  recent = null;
+}
+
 /** Test-only: forget the launches and the install this process made. */
 export function _resetSelfStartForTests(): void {
   launched.clear();
@@ -86,12 +95,30 @@ export function _resetSelfStartForTests(): void {
 /**
  * The project this session works on: --project, else the folder the agent
  * started in, else the project the last `summer dev` / `summer run` opened
- * while its editor process lives (it makes a subfolder the agent did not start in).
+ * from this folder (it makes a subfolder the agent did not start in), while
+ * that launch is recent, its editor lives and the project is still there.
  */
 export async function sessionProject(selection: EngineSelection | undefined): Promise<string | null> {
   if (selection?.projectPath) return findProjectRoot(selection.projectPath);
   if (selection?.instanceId) return null;
-  return (await findProjectRoot(selection?.cwd ?? process.cwd())) ?? lastLaunch()?.projectPath ?? null;
+  const cwd = selection?.cwd ?? process.cwd();
+  const here = await findProjectRoot(cwd);
+  if (here) return here;
+  const last = lastLaunch();
+  if (!last) return null;
+  const root = await findProjectRoot(last.projectPath);
+  const folder = canonicalPath(cwd);
+  // Only a launch from this session's folder, or of a project below it: never another session's project.
+  const ours = root && (last.cwd === folder || root.startsWith(folder.endsWith(sep) ? folder : folder + sep));
+  return ours ? root : null;
+}
+
+function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
 }
 
 /** Linux with no display server: an editor window cannot open (containers, SSH, cloud agents). */
@@ -150,7 +177,7 @@ async function installWithin(deps: SelfStartDeps, waitMs: number): Promise<boole
     install = state;
   }
   const current = install;
-  await Promise.race([current.promise, sleep(waitMs)]);
+  await settlesWithin(current.promise, waitMs);
   if (!current.done) return false;
   install = null;
   if (current.error) throw current.error;
@@ -188,8 +215,11 @@ export async function openProjectInEditor(
   if (hasNoDisplay(env)) throw failure("Summer Engine cannot open a window here.", SELF_START_RECOVERY.noDisplay);
   const open = await otherOpenProject(root);
   if (open) throw failure("Summer Engine has another project open.", SELF_START_RECOVERY.otherProject(open, root));
-  if (resolveRunBinary(undefined, env).binary === null) {
-    if (!options.install) throw failure("Summer Engine is not installed.", SELF_START_RECOVERY.notInstalledHere);
+  const binary = resolveRunBinary(undefined, env);
+  if (binary.binary === null) {
+    // A build named in SUMMER_BIN that is missing is not "not installed": installing would not change it.
+    if (env[ENGINE_BIN_ENV]?.trim()) throw failure("Summer Engine could not start.", binary.error);
+    if (!options.install && !install) throw failure("Summer Engine is not installed.", SELF_START_RECOVERY.notInstalledHere);
     log("Summer Engine is not installed: installing it");
     if (!(await installWithin(deps, left(5_000)))) {
       throw failure("Summer Engine is installing.", SELF_START_RECOVERY.installing(install?.line ?? "starting"));
@@ -211,13 +241,13 @@ export async function openProjectInEditor(
     result = await (deps.launch ?? launchEditor)({
       projectPath: root,
       posture: "background",
-      // Room left for the --help probe and the connect after it.
-      waitMs: left(10_000),
+      // The lock wait, the --help probe and the API wait end by then; the connect after it fits in the rest.
+      deadline: deadline - 5_000,
       out: { log, error: log },
     });
   } catch (error) {
-    // Another launch holds the lock: it is starting an editor right now.
-    if (error instanceof LaunchLockBusyError) throw failure("Summer Engine is starting.", SELF_START_RECOVERY.starting(root));
+    // Another launch holds the lock: it may be for another project.
+    if (error instanceof LaunchLockBusyError) throw failure("Another Summer launch is in progress.", SELF_START_RECOVERY.launchBusy);
     throw failure("Summer Engine could not start.", SELF_START_RECOVERY.launchFailed((error as Error).message));
   }
   switch (result.status) {
@@ -271,6 +301,8 @@ async function openSessionProject(
   // A registered editor that does not answer is busy (an import, a blocking
   // script): it is there, so never start a second one.
   if (/instance \S+ is not responding/.test(notRunning.reason)) throw failure("Summer Engine is not answering.", SELF_START_RECOVERY.busy);
+  // The person already said yes to an install this process runs: say so instead of asking again.
+  if (install && !install.done) throw failure("Summer Engine is installing.", SELF_START_RECOVERY.installing(install.line));
   const root = await sessionProject(selection);
   if (!root) {
     if (resolveRunBinary(undefined, env).binary === null) throw failure("Summer Engine is not installed.", SELF_START_RECOVERY.notInstalled);

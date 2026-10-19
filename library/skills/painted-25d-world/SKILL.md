@@ -22,7 +22,9 @@ camera. Characters are 2D sprite sheets standing in the 3D world.
 side-scroller, platformer look), build it with this skill. Do not start from a 2D template or a Node2D tile map.
 The genre playbooks in `make-game` still decide the mechanics; this skill decides how the world is made and looks.
 
-- Top-down / three-quarter games: camera 35 degrees down, 45 degrees around (houses show two faces).
+- Top-down / three-quarter games: camera 30 degrees down, 45 degrees around (houses show two faces). Image
+  models draw "isometric" as 2:1 dimetric, which is exactly 30 degrees down; use 30 so the blockout can match a
+  generated concept.
 - Side-scrollers: the same technique with a camera that looks along the side axis (about 10-20 degrees down,
   0 degrees around) and pans left and right only. Paint one frame per screen-wide chunk.
 
@@ -38,7 +40,7 @@ continue. The blockout, the camera and the projection cost nothing.
 
 ```
 Hand-painted illustration of <place>, rich detail, warm painterly light, seen from a high three-quarter
-top-down camera (looking down about 35 degrees, orthographic, no perspective distortion), like a tilted
+top-down camera (looking down about 30 degrees, orthographic, no perspective distortion), like a tilted
 isometric game map. In the scene: <every object with its rough position: "three cottages around a dirt
 plaza, a well with a small roof in the centre, a striped market stall top left, fences, round trees">.
 Clean readable shapes, soft brush texture, no characters, no text, no UI, no border.
@@ -52,12 +54,13 @@ Write one GDScript or scene that rebuilds the concept **one to one** from the fi
 positions and footprints, roof shapes (gable, hip, dormer, thatch overhang), chimneys, the well, the stall, fences,
 paths, trees and bushes where the concept has them. Use `MeshInstance3D` with `BoxMesh`, `PrismMesh`,
 `CylinderMesh`, `SphereMesh` (or CSG). Give each material one flat colour (red = tile roof, yellow = thatch,
-grey = stone, brown = wood, green = grass): the colours tell the painter what each block is.
+dark blue = slate, cream = plaster walls, grey = stone, brown = wood, green = grass, pink low blocks = flower
+beds): the colours tell the painter what each block is, and the paint-over prompt repeats them as a colour key.
 
 ```
 Level (Node3D, painted_world.gd)
   PaintCamera   Camera3D  projection ORTHOGONAL, keep_aspect KEEP_WIDTH, size = frame width in metres (32 for a village square)
-                rotation_degrees = Vector3(-35, 45, 0)   # 35 down, 45 around; never change it later
+                rotation_degrees = Vector3(-30, 45, 0)   # 30 down, 45 around; never change it later
                 position = frame centre - forward * 60, far = 200
   GameCamera    Camera3D  (painted_world.gd copies the direction and follows by translation)
   Painted       Node3D    every blockout mesh goes under here
@@ -68,13 +71,26 @@ Level (Node3D, painted_world.gd)
 ```
 
 Solid things get a `StaticBody3D` and a box/cylinder shape: walls, trunks, fence posts, the well, furniture.
-Things the player walks behind need real height (houses, trees, stalls). Flat detail (flowers, cobbles, rugs)
-stays in the painting only.
+Things the player walks behind need real height (houses, trees, stalls).
 
-**Match the concept.** Render the blockout from `PaintCamera` (step 3), lay it over the concept and move blocks
-until the silhouettes line up. Read positions straight from the concept: the bottom corners of a house's walls give
-its footprint; the ridge gives the roof height. If the blockout does not match the concept, the painting will not
-match the blocks.
+**Paint richness follows blockout density.** The painter details what the blocks give it. Add low blocks for
+flower beds, barrels, crates, benches, lanterns and window boxes wherever the concept has them; a sparse blockout
+comes back as a sparse painting. Only truly flat detail (cobbles, rugs, grass) can stay paint-only.
+
+**Match the concept.** Read positions straight from the concept by inverting the orthographic camera. With the
+concept W x H pixels, `s` = pixels per metre (W / frame width), `elev` = 30 degrees and a pixel (sx, sy) on the
+ground (a wall's bottom corner):
+
+```
+u = (sx - W/2) / s                      # metres along the camera's right axis
+v = (H/2 - sy) / (s * sin(elev))        # metres along the ground, away from the camera
+height = dy / (s * cos(elev))           # a vertical edge dy pixels long (wall, ridge, chimney)
+world = target + right_ground * u + far_ground * v
+```
+
+Three wall-bottom corners give a footprint; the ridge gives the roof height. Then render the blockout from
+`PaintCamera` (step 3), overlay its edges in red on the concept and move blocks until the silhouettes line up.
+If the blockout does not match the concept, the painting will not match the blocks.
 
 ### 3. Render the blockout from the paint camera
 
@@ -90,23 +106,33 @@ Then upload it (`summer_call` `assets.upload_begin`, post the form, then `assets
 
 ### 4. Paint-over (strict image to image)
 
-`summer_assets_generate_image` with `referenceImageUrl` = the blockout render, the best frontier model you have
-(`gpt-image-2` or `nano-banana-2`), 16:9, `width` 4096, `height` 2304:
+**Never pass the whole concept as a reference.** Even when the blockout rebuilds it one to one, frontier edit
+models copy the full concept and ignore the blocks. Pass a **material sheet** instead: a 2x2 grid of close-up
+crops from the concept (for a village: clay-tile roof with a timber-framed wall, thatch, market stall with
+cobbles, slate roof with flower beds). It carries the style and materials but no layout.
+
+With two images (image 1 = blockout render, image 2 = material sheet), the best frontier edit model you have, 16:9,
+the largest size (4K):
 
 ```
-Repaint this exact image as a finished hand-painted game background in this style: <describe the concept's
-style in words: brushwork, outlines, palette, light>. This is a texture paint-over: keep the image
-pixel-aligned. Every edge, silhouette and object stays exactly where it is in the input. Same camera, same
-framing, same perspective. Do not add, remove, move or resize any building, roof, wall, door, window,
-chimney, tree, bush, fence post, well, stall or path. Only add surface detail inside the existing shapes.
-Materials: <colour -> material list, e.g. red blocks are clay-tile roofs, yellow blocks are thatch, the brown
-disc is a dirt plaza with cobbles>. No characters, no text, no border.
+Image 1 is a flat-coloured 3D blockout render of <place> from a fixed game camera. Image 2 is a sheet of four
+close-up material samples from the finished concept art (<the four samples>). Image 2 is a style and
+material reference only: never copy its layout or composition.
+Repaint image 1 in exactly that style, materials, light and detail. This is a strict image-to-image
+paint-over: keep every shape, edge and position of image 1 identical, pixel-aligned. Same camera, same
+framing. Every <building, roof, chimney, door, well, stall, crate, bench, barrel, fence, tree and bush> stays
+exactly where image 1 has it, with exactly the same silhouette and size. Do not add, remove or move anything.
+Do not add extra props, buildings or trees. Only paint surface detail inside the existing shapes.
+Colour key of image 1: red = clay-tile roof, yellow = golden thatch roof, dark blue = slate roof, cream =
+timber-framed plaster walls, grey = mossy stone, brown = worn wood, light brown floor = cobblestone plaza,
+green ground = grass, green spheres = round leafy tree canopies, small green domes = flowering bushes,
+orange = lit lanterns and fruit crates, pink low blocks = dense flower beds and window boxes.
+<Light and finish: e.g. warm golden late-afternoon light, glowing windows, painterly near-realistic detail as
+in image 2: ivy on walls, moss on stones, rich textures>. No characters, no text, no border.
 ```
 
-When the host can pass two images (a style reference beside the structure image), add the concept as the style
-reference **only if the blockout rebuilds the concept's layout one to one**. If the layouts differ, the model
-copies the concept's layout and ignores the blocks; then use a crop of one object (a single house) as the style
-reference instead.
+`summer_assets_generate_image` takes one `referenceImageUrl` (the blockout render): put the material and
+style description into the prompt in words, keep the colour key, and use `gpt-image-2` or `nano-banana-2`.
 
 **Check alignment before you use it.** Overlay the blockout's edges (red) on the painting and look: roof lines,
 wall corners, the well and the stall must sit on the red lines. Reject any painting where objects moved, were
@@ -115,8 +141,9 @@ added, or the framing zoomed; generate again rather than project a drifted paint
 ### 5. Resolution
 
 Painting pixels per metre must be at least the screen's pixels per metre. A 32 m wide frame painted at 2048 px
-gives 64 px/m: soft when the game camera zooms 2x on a 1080p screen (120 px/m). Paint at 4K (4096+ px wide) for a
-2x zoom. For bigger worlds use more frames, not a wider frame.
+gives 64 px/m: soft when the game camera zooms 2x on a 1080p screen (120 px/m). A 4K painting (about 5500 px)
+over a 40 m frame gives 137 px/m and stays sharp at a 2x zoom (about 96 px/m on screen in the editor's game
+view). For bigger worlds use more frames, not a wider frame.
 
 ### 6. Projection in the engine
 
@@ -135,7 +162,8 @@ camera's frame as its UV. No UV unwrapping, no baking.
 - The game camera has the paint camera's direction and only **moves** (follows the player). With an orthographic
   camera, moving never reveals a surface the painting did not see. Never orbit or tilt it: turned views show the
   painting's mistakes (a painted chimney next to the real one, roof edges smeared on the ground).
-- Clamp the player and the camera to the painted frame (`painted_world.gd` does both).
+- Clamp the player and the camera to the painted frame (`painted_world.gd` does both). The clamp uses the real
+  viewport aspect, not 16:9: the editor's game view and phone screens are other shapes.
 - More world = more frames. Every frame uses the same direction, its own paint camera position and painting.
   Paint neighbouring frames with an overlap strip so the seams match.
 
@@ -186,7 +214,10 @@ triggers that move the player between levels and switch the game camera.
 
 ## Common mistakes
 
-- **Concept as style reference with a different layout:** the painting copies the concept and ignores the blocks.
+- **The whole concept as a reference:** the painting copies the concept and ignores the blocks, even when the
+  blockout matches it. Pass a 2x2 material sheet cropped from the concept.
+- **A sparse blockout:** the painting comes back sparse. Add low blocks for flower beds, crates, barrels, benches.
+- **35 degrees against a generated concept:** generated "isometric" art is 30 degrees down; the blocks will not fit.
 - **Generic boxes that do not follow the concept:** the painting then fights the geometry; rebuild one to one.
 - **Rotating the game camera:** shows painted detail on the wrong surfaces. Translate only.
 - **2K painting with a zoomed camera:** blurry. Paint 4K.

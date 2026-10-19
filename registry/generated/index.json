@@ -2619,7 +2619,7 @@
       "id": "skill/new-project",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "1eb5cd6c8b1dbc0583fb294be8ee9a35f698372f2eb0f2931964b0d98d1e7498",
+      "content_hash": "d4de2b21dd1711ad2206629884862002783cd83694acfb6078c880a9361a18d6",
       "summary": "Create a blank Summer Engine project: ask for the project name and run summer create empty.",
       "use_when": [
         "the user wants a fresh blank Summer Engine project — from scratch, blank canvas",

@@ -48,14 +48,14 @@ Exit codes lie in both directions here.
 - **`--write-movie` under `--headless` is a deterministic crash**, not a graceful failure. `MovieWriter::add_frame()` dereferences a null image from the dummy renderer on frame one. Headless has no pixels, so there is no safe form of this. Frame capture needs the windowed verify instance below.
 - **`--quit-after 1`** hits the fast-exit path and aborts during static destruction. Use `--headless --quit-after 60` if you need a bounded editor run — with `--headless`, never without.
 
-### Never put a window on the user's screen
+### Never put an extra window on the user's screen from a shell
 
 <EXTREMELY-IMPORTANT>
-**Every engine launch you make is `--headless`.** The user did not ask you to open anything. A window that appears unasked steals focus, interrupts whatever they were doing, and is indistinguishable from a crash or a bug from their side. This is a product rule, not a convenience.
+**Every engine process you start from a shell is `--headless`.** The user did not ask you to open anything. A window that appears unasked steals focus, interrupts whatever they were doing, and is indistinguishable from a crash or a bug from their side. This is a product rule, not a convenience.
 
 The one exception is the verify instance, and it is safe precisely because it is not visible: `--summer-verify` opens a real rendering window that is **hidden, `NO_FOCUS`, and positioned at `(-32000,-32000)`**. That is why it can produce real pixels without ever appearing. Never reproduce the "I need a renderer" reasoning by launching a plain windowed editor — use `--summer-verify`.
 
-If you genuinely believe the user needs to see the editor, ask them first.
+This rule is about extra engine processes you start from a shell. Opening the Summer editor and playing the game in a window through the Summer tools is allowed and expected: `summer_play`, then `summer_screenshot` or `summer_frame_shot` to see the result. Close what you opened when you are done; one editor at a time.
 </EXTREMELY-IMPORTANT>
 
 ### Finding the binary — do not guess
@@ -401,7 +401,7 @@ Keep scripts in the project (`res://` is required for `-s`), but name them so th
 | Killing an import at 3s | Measured 0/8 assets registered. The floor is ~5s. |
 | A long-lived `--headless --editor` as a file watcher | It never rescans. Boot, act, exit. |
 | Adding `--quiet` | Swallows your own print() output. |
-| Launching the editor without `--headless` | Pops a window onto the user's screen unasked. |
+| A shell script run without `--headless` | Pops an extra window onto the user's screen unasked. To see the game, use `summer_play` and `summer_screenshot` in the open editor. |
 | Ignoring `ResourceSaver.save()`'s return value | Non-zero is a silent failure that ships. |
 | `pack()` without setting `.owner` on every node | Two success codes, nodes missing from the file. |
 | Verifying a write by reading the object you just wrote | In-memory read-back passes whether or not it landed. |
@@ -420,8 +420,11 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 
 | In this skill | Command |
 |---|---|
+| `summer_frame_shot` | `summer engine frame-shot` |
 | `summer_get_project_context` | `summer engine get-project-context` |
 | `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_play` | `summer engine play` |
 | `summer_run_script` | `summer engine run-script` |
+| `summer_screenshot` | `summer engine screenshot` |
 | `summer_write_file` | `summer engine write-file` |
 <!-- /shell-commands -->

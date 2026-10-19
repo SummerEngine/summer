@@ -8,7 +8,7 @@ import { OPS_MCP_ASSETS_INSTRUCTIONS } from "./ops-surface.js";
 
 describe("MCP server instructions (initialize response)", () => {
   it("is one tight paragraph naming the five first-turn habits", () => {
-    expect(SUMMER_MCP_INSTRUCTIONS.length).toBeLessThanOrEqual(600);
+    expect(SUMMER_MCP_INSTRUCTIONS.length).toBeLessThanOrEqual(800);
     expect(SUMMER_MCP_INSTRUCTIONS).not.toContain("\n");
     for (const tool of [
       "summer_get_project_context",

@@ -2022,7 +2022,7 @@
       "id": "skill/headless-scripting",
       "kind": "skill",
       "version": "1.1.3",
-      "content_hash": "c3b44387601015118a6d127267417c195437cc5ba5b9bc5b23ebb964e34075e0",
+      "content_hash": "5f4573a964c39168eed233e94f4959991709b352486bf7494a7300ba737adeda",
       "summary": "Run a GDScript file against Summer Engine from the shell for what no MCP tool does: navmesh, TileSets.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -2575,7 +2575,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "028d1b0144df1610cc0a4e92701a42055f499f54e0627d8ad8f79090be8b3c81",
+      "content_hash": "cf3fcb80dbae1479a7fdea6a8e21f08d696d1d40e58ac24bf4f98ad414b7b584",
       "summary": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -7070,7 +7070,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "0698f5fe6cfcb89703b54caeaf06c39f649f6938f9d23be34bb3e975ea8c7bbf",
+      "content_hash": "0b2d2cffa90f20af9d9199fd4b9d7720c85d33d44663251867475f95a49e88e2",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
@@ -8814,7 +8814,7 @@
       "id": "tool/play",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "8907087f8f29d2324d92ed9d656c74dfc7530dd55743b0de7c4768c3d3c42753",
+      "content_hash": "4ce70b57668ab656480e294eefffe8e36ddee93f5d285a2ffa5217dd476dfe20",
       "summary": "Start the game quietly (editor keeps tab and focus) — main or a given scene, embedded or offscreen, with pins, or a local multiplayer session (players).",
       "use_when": [
         "runtime verification after edits",
@@ -9684,7 +9684,7 @@
       "id": "tool/screenshot",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "c421909fa8ea62c3be65cbbe2863ddffa1599be5b372b5b378a37e0eb435abe3",
+      "content_hash": "5aaad5b7a2c6236872653f24c6076a0f562ee71606f1fd045e00c82711cf3062",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",

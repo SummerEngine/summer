@@ -89,6 +89,13 @@ describe("projects.create_local", () => {
     expect(inside.message).toContain("is inside the project");
   });
 
+  it("a second game with no name gets its own folder: my-game, then my-game-2", async () => {
+    expect(await createLocalProject({}, root)).toMatchObject({ projectPath: join(root, "my-game"), created: true });
+    expect(await createLocalProject({}, root)).toMatchObject({ projectPath: join(root, "my-game-2"), created: true });
+    expect(await createLocalProject({ template: "empty" }, root)).toMatchObject({ projectPath: join(root, "empty") });
+    expect(await createLocalProject({ template: "empty" }, root)).toMatchObject({ projectPath: join(root, "empty-2") });
+  });
+
   it("expands ~ in dir and refuses . and .. as a name", async () => {
     expect(await createLocalProject({ dir: "~/games/tilde" }, root)).toMatchObject({ projectPath: join(homedir(), "games", "tilde") });
     expect((await failureOf(createLocalProject({ name: ".." }, root), LocalProjectError)).code).toBe("invalid_input");
@@ -127,9 +134,12 @@ describe("projects.open_local", () => {
     const connect = vi.fn(async () => fakeClient);
     const onOpen = vi.fn();
 
-    const result = await openLocalProject({ path: join(game, "scenes") }, { cwd: root }, { launch, connect, env: display }, onOpen);
+    const result = await openLocalProject({ path: join(game, "scenes") }, { cwd: root }, { launch, connect, env: display }, onOpen, root);
 
-    expect(result).toEqual({ ok: true, projectPath: game, engineVersion: "0.9.9", next: "Call summer_get_project_context, then build the scene." });
+    expect(result).toMatchObject({ ok: true, projectPath: game, engineVersion: "0.9.9", preview: { url: "http://localhost:5199", launchJson: join(root, ".claude", "launch.json") } });
+    expect(result.next).toContain("summer_get_project_context");
+    expect(result.next).toContain("http://localhost:5199");
+    expect(JSON.parse(readFileSync(join(root, ".claude", "launch.json"), "utf8")).configurations[0]).toMatchObject({ name: "summer-preview", cwd: "game" });
     expect(launch.mock.calls[0][0]).toMatchObject({ projectPath: game, posture: "background" });
     expect(connect).toHaveBeenCalledWith({ cwd: game });
     expect(onOpen).toHaveBeenCalledWith(game, fakeClient);

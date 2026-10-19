@@ -6,10 +6,13 @@ import { noteCliError } from "../../core/cli-usage.js";
 import { ENGINE_BIN_ENV } from "../../core/engine-install.js";
 import { launchEditor, resolveRunBinary } from "../../core/engine-launch.js";
 import { resolveLaunchPosture } from "../../core/launch-posture.js";
+import { PREVIEW_URL, registerPreview, type LaunchConfigResult } from "../../core/preview/launch-config.js";
 import { getTemplateRegistry, resolveTemplate, type TemplateEntry } from "../../core/templates.js";
 import { installEngine } from "../../core/engine-installer.js";
 import { installCommandFailure } from "./install.js";
 import { createProject, isEmptyProjectFolder, isHomeOrRoot, projectRootAbove } from "../../core/local-project.js";
+
+export { registerPreview };
 
 /**
  * `summer dev [template] [dir]`: from nothing to an editor an agent can
@@ -93,11 +96,28 @@ export function connectedLine(version: string, dir: string): string {
   return (
     `Connected: Summer Engine ${version} has ${dir} open. ` +
     "Next: call summer_get_project_context in your agent, then build the scene " +
-    "(from a shell: npx -y summer-engine@latest engine get-project-context)."
+    "(from a shell: npx -y summer-engine@latest engine get-project-context). " +
+    `See the game at ${PREVIEW_URL}: Claude Code Desktop's Browser pane starts it; elsewhere run: npx -y summer-engine@latest preview --open`
   );
 }
 
+/** The one line `summer dev` prints about .claude/launch.json, or null for nothing to say. */
+function previewLine(result: LaunchConfigResult | null): string | null {
+  if (!result) return null;
+  switch (result.status) {
+    case "created":
+    case "added":
+      return `${result.status === "created" ? "Wrote" : "Added summer-preview to"} ${result.path}: Claude Code Desktop's Browser pane shows the game from it.`;
+    case "kept":
+      return null;
+    case "skipped":
+      return `${result.path} left as it is (${result.reason}). To see the game in Claude Code Desktop, add: ${JSON.stringify(result.entry)}`;
+  }
+}
+
 export interface DevOptions {
+  /** false: leave .claude/launch.json alone (--no-launch-json). */
+  launchJson?: boolean;
   focus?: boolean;
   background?: boolean;
   bin?: string;
@@ -181,6 +201,15 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
     log(plan.note);
   }
 
+  if (options.launchJson !== false) {
+    try {
+      const line = previewLine(registerPreview(deps.cwd ?? process.cwd(), plan.dir));
+      if (line) log(line);
+    } catch (err) {
+      log(`.claude/launch.json not written: ${(err as Error).message}`);
+    }
+  }
+
   let result: Awaited<ReturnType<typeof launchEditor>>;
   try {
     result = await (deps.launch ?? launchEditor)({
@@ -236,6 +265,7 @@ export const devCommand = new Command("dev")
   .option("--focus", "Open the editor in front (default in a terminal)")
   .option("--bin <path>", `Engine executable to launch instead of the installed one (env: ${ENGINE_BIN_ENV})`)
   .option("--yes", "Install Summer Engine when it is missing without asking (only after the person said yes)")
+  .option("--no-launch-json", "Do not add summer-preview to .claude/launch.json in this folder (Claude Code Desktop's Browser pane)")
   .action(async (template: string | undefined, dir: string | undefined, options: DevOptions) => {
     const args = [template, dir].filter((arg): arg is string => arg !== undefined);
     process.exitCode = await runDev(args, options);

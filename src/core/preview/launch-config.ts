@@ -23,8 +23,9 @@
  * describe no file that names a server or a URL, so there is nothing to write
  * for it.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isHomeOrRoot } from "../local-project.js";
 import { asRecord } from "../util/json.js";
 
 export const PREVIEW_LAUNCH_NAME = "summer-preview";
@@ -140,4 +141,28 @@ export function writeClaudeLaunchConfig(sessionRoot: string, options: LaunchConf
   if (!autoVerifySet) next.autoVerify = true;
   writeAtomic(path, `${JSON.stringify(next, null, jsonIndent(text))}${text.endsWith("\n") ? "\n" : ""}`);
   return { status: "added", path, entry, autoVerify: next.autoVerify !== false };
+}
+
+/** Where `summer preview` serves the running game (Claude Code Desktop opens localhost:<port>). */
+export const PREVIEW_URL = `http://localhost:${DEFAULT_PREVIEW_PORT}`;
+
+/**
+ * Register `summer preview` in <session folder>/.claude/launch.json, so
+ * Claude Code Desktop's Browser pane shows the game as soon as the session
+ * opens (core/preview/launch-config.ts: it only adds). Null when the session
+ * folder is the home folder or a filesystem root (~/.claude is Claude Code's
+ * own config), or the project is neither at, above nor below it.
+ */
+export function registerPreview(sessionFolder: string, projectDir: string): LaunchConfigResult | null {
+  const real = (path: string) => (existsSync(path) ? realpathSync(path) : resolve(path));
+  const session = real(sessionFolder);
+  const project = real(projectDir);
+  if (isHomeOrRoot(session)) return null;
+  const below = relative(session, project);
+  const isBelow = !below.startsWith("..") && !isAbsolute(below);
+  const isAbove = !isBelow && !relative(project, session).startsWith("..") && !isAbsolute(relative(project, session));
+  if (!isBelow && !isAbove) return null;
+  // Below: the preview starts in the project; above: it finds the project from the session folder.
+  const cwd = isBelow && below ? below.split(sep).join("/") : undefined;
+  return writeClaudeLaunchConfig(session, { entry: previewLaunchEntry(DEFAULT_PREVIEW_PORT, cwd) });
 }

@@ -36,6 +36,9 @@ const LAUNCH_LOCK_WAIT_MS = 15_000;
 /** How long `summer run` waits for the local API after a launch. */
 export const RUN_WAIT_MS = 20_000;
 
+/** spawn_failed's code when the editor closed cleanly before its API answered, with no successor: not a broken install. */
+export const CLOSED_EARLY = "exited with code 0";
+
 async function removeStaleLaunchLock(lockDir: string): Promise<boolean> {
   const ownerPath = join(lockDir, "owner.json");
   try {
@@ -246,14 +249,34 @@ export async function findOpenEditor(projectPath: string | null): Promise<OpenEd
  *  has `--path <project> --editor`, or `-e` after the editor restarts
  *  itself), whether or not it answers yet. */
 export function editorStartingFor(projectPath: string): boolean {
-  if (process.platform === "win32") return false;
+  return editorPidFor(projectPath) !== null;
+}
+
+/** The pid of an editor process started on this project, or null (none; Windows has no pgrep). */
+function editorPidFor(projectPath: string): number | null {
+  if (process.platform === "win32") return null;
   const pattern = `--path ${projectPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (--editor|-e)( |$)`;
   try {
-    return execFileSync("pgrep", ["-f", "--", pattern], { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim().length > 0;
+    const pid = Number(execFileSync("pgrep", ["-f", "--", pattern], { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim().split(/\s+/)[0]);
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
   } catch {
-    return false; // pgrep exits 1 when nothing matches
+    return null; // pgrep exits 1 when nothing matches
   }
 }
+
+/** The editor that took over the project after the launched one exited cleanly (it restarted itself): a live registered instance, or an editor process on the project. */
+async function successorFor(projectPath: string, exited: number | undefined): Promise<number | null> {
+  const root = canonical(projectPath);
+  const instance = (await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true })).find(
+    (candidate) => candidate.resourceRoot === root && candidate.pid !== exited
+  );
+  if (instance) return instance.pid;
+  const pid = editorPidFor(root);
+  return pid !== null && pid !== exited ? pid : null;
+}
+
+/** How long a clean exit of the launched editor may be a restart before it counts as a failed start. */
+const RESTART_GRACE_MS = 5_000;
 
 export interface LaunchOutput {
   log: (line: string) => void;
@@ -302,7 +325,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     // until the editor answers or waitMs passes; `onUp` adds the caller's lines.
     const waitForApi = async (
       port: number | null,
-      failed: () => LaunchEditorResult | null,
+      failed: () => Promise<LaunchEditorResult | null>,
       onUp: (health: EngineHealth) => void
     ): Promise<LaunchEditorResult | null> => {
       const startTime = Date.now();
@@ -311,7 +334,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       let nextHeartbeat = startTime + 10_000;
       while (Date.now() < end) {
         await sleep(500);
-        const failure = failed();
+        const failure = await failed();
         if (failure) return failure;
         const probe = port ?? (await getApiPort());
         const health = await checkEngineHealth(probe);
@@ -332,7 +355,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
           await heartbeat();
         }
       }
-      return failed();
+      return await failed();
     };
 
     const open = await findOpenEditor(projectPath);
@@ -355,7 +378,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     // or busy): wait for it, never start a second one.
     if (open.kind === "starting") {
       out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
-      const waited = await waitForApi(open.port, () => null, () => {});
+      const waited = await waitForApi(open.port, async () => null, () => {});
       return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null, pid: open.pid });
     }
 
@@ -398,11 +421,18 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     // exception with a raw stack; catch it and report the path instead. An
     // editor that exits with an error before its API answers (no display, a
     // crash on open, killed by the system) ends the wait at once.
-    const spawnState: { error: NodeJS.ErrnoException | null; exit: string | null } = { error: null, exit: null };
+    // A clean exit (code 0) may be the editor restarting itself: the new
+    // process for the project is followed, and only an exit with no
+    // successor within RESTART_GRACE_MS counts as a failed start.
+    const spawnState: { error: NodeJS.ErrnoException | null; exit: string | null; cleanExitAt: number | null } = { error: null, exit: null, cleanExitAt: null };
     child.on("error", (error: NodeJS.ErrnoException) => {
       spawnState.error = error;
     });
     child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      if (code === 0 && !signal) {
+        spawnState.cleanExitAt = Date.now();
+        return;
+      }
       spawnState.exit = signal ? `killed by ${signal}` : `exited with code ${code}`;
       if (child.pid) forgetLaunch(child.pid);
     });
@@ -413,7 +443,25 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       await writeStoreJson(LAST_LAUNCH_FILE, { projectPath, pid: child.pid, at: Date.now(), cwd: canonical(process.cwd()) } satisfies LastLaunch).catch(() => undefined);
     }
 
-    const spawnFailed = (): LaunchEditorResult | null => {
+    let editorPid = child.pid;
+    const spawnFailed = async (): Promise<LaunchEditorResult | null> => {
+      if (spawnState.cleanExitAt !== null) {
+        const successor = projectPath ? await successorFor(projectPath, child.pid) : null;
+        if (successor && projectPath) {
+          // It restarted itself: wait for the new process, and let other launchers know it.
+          spawnState.cleanExitAt = null;
+          editorPid = successor;
+          await writeStoreJson(LAST_LAUNCH_FILE, { projectPath, pid: successor, at: Date.now(), cwd: canonical(process.cwd()) } satisfies LastLaunch).catch(() => undefined);
+          return null;
+        }
+        if (Date.now() - spawnState.cleanExitAt < RESTART_GRACE_MS) return null;
+        if (child.pid) forgetLaunch(child.pid);
+        out.error(
+          `Summer Engine closed before it opened ${projectPath ?? "the editor"} (exit code 0). ` +
+            "Run the same command again; if it closes again, open the project in Summer Engine to see why."
+        );
+        return { status: "spawn_failed", binary, code: CLOSED_EARLY };
+      }
       const code = spawnState.error ? (spawnState.error.code ?? spawnState.error.message) : spawnState.exit;
       if (!code) return null;
       out.error(
@@ -438,7 +486,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
         }
       }
     });
-    if (result?.status === "running") return { ...result, pid: child.pid };
-    return result ?? { status: "starting", binary, pid: child.pid };
+    if (result?.status === "running") return { ...result, pid: editorPid };
+    return result ?? { status: "starting", binary, pid: editorPid };
   }, lockWaitMs);
 }

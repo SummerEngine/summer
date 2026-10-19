@@ -42,7 +42,7 @@ Default: `my-game`. If they say "anything is fine" or similar, use `my-game` and
 Two built-in options:
 
 - `empty` — root `Node3D` only. Pure blank canvas. Best for: experimentation, when the user knows exactly what they want to build.
-- `3d-basic` — root `Node3D` with `Camera3D`, `DirectionalLight3D`, a floor `MeshInstance3D`, and a `WorldEnvironment`. Best for: first-time users who want something they can press Play on.
+- `3d-basic` — root `Node3D` with a procedural sky on a `WorldEnvironment`, a sun with soft shadows, a tinted ground, one hero mesh and a `Camera3D` that frames it. Best for: first-time users who want something they can press Play on.
 
 If you're not sure which fits, ask:
 
@@ -50,29 +50,21 @@ If you're not sure which fits, ask:
 
 If the user has clearly invoked `brainstorm-game` already and the brief calls for 3D, default to `3d-basic` and mention you did. If 2D or 2.5D, use `empty`, keep its `Node3D` root and build the world with `painted-25d-world` (a painted 3D blockout under a fixed orthographic camera with sprite characters).
 
-### 3. Create
+### 3. Create and open it
+
+One command creates the project and opens it. When Summer Engine is missing it also installs it (about 660 MB): ask the user first, and pass `--yes` only with their OK (without it nothing is installed):
 
 ```
-summer create empty my-game
+summer dev --yes 3d-basic my-game
 ```
 
-or
+or `summer dev --yes empty my-game`. It writes `project.godot` and the chosen `main.tscn` (no network call for these two), opens the editor and waits until it answers.
 
-```
-summer create 3d-basic my-game
-```
+No shell in this session (a chat app)? Call `projects.create_local` with `template` and `name`, then `projects.open_local` with its `projectPath` (and `install: true` only after the user said yes to installing the engine).
 
-The command writes `project.godot` and the chosen `main.tscn`. It makes no network call.
+Confirm the project loaded with `summer_get_project_context`. If it fails, run `summer doctor` and surface the failure to the user.
 
-### 4. Open it
-
-```
-summer run my-game
-```
-
-Confirm the engine launched and the project loaded. If `summer run` fails, run `summer doctor` and surface the failure to the user.
-
-### 5. Don't keep going automatically
+### 4. Don't keep going automatically
 
 After scaffolding, **stop and let the user direct.** A common mistake: fire `fps-controller` or `design-mechanic` automatically because "now we make a game." Wait. The user might want to:
 
@@ -95,9 +87,9 @@ Ask: "Project is open. What do you want to build?"
 
 ## Edge cases
 
-- **Engine not running** → that's fine. `summer create` doesn't need the engine. After scaffolding, `summer run <name>` will start it.
+- **Engine not running** → that's fine. `summer dev` (or `projects.open_local`) starts it; `summer create` alone doesn't need it.
 - **User wants 2D or 2.5D** → use `empty`, keep the `Node3D` root and follow `painted-25d-world`. Use a `Node2D` root only when the user asks for a classic 2D tile or pixel game.
-- **Directory exists** → the CLI errors out. Ask for a different name; don't try to overwrite.
+- **Directory exists** → a folder that already holds `project.godot` is just opened; one with other files is refused. Ask for a different name; don't try to overwrite.
 
 ## Closing
 
@@ -111,4 +103,6 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | In this skill | Command |
 |---|---|
 | `summer_get_project_context` | `summer engine get-project-context` |
+| `projects.create_local` | `summer projects create-local` |
+| `projects.open_local` | `summer projects open-local` |
 <!-- /shell-commands -->

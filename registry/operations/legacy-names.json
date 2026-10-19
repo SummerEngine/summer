@@ -761,6 +761,16 @@
       "note": "",
       "op": "engine.project_setting"
     },
+    "summer_projects_create_local": {
+      "kind": "same",
+      "note": "local: writes a project from a template to this computer (the cloud projects.create makes a plan)",
+      "op": "projects.create_local"
+    },
+    "summer_projects_open_local": {
+      "kind": "same",
+      "note": "local: opens a project in Summer Engine and waits until it connects; installs the engine only with install true",
+      "op": "projects.open_local"
+    },
     "summer_publish_build": {
       "kind": "same",
       "note": "local: begin, PUT parts and complete from a path",

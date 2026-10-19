@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-10-19",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 279,
+  "corpus_size": 281,
   "query_count": 142,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8415,
-  "mrr_at_5": 0.9386,
+  "mean_recall_at_1": 0.8275,
+  "mrr_at_5": 0.9316,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -24,7 +24,7 @@
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 15,
+  "hijacked_queries": 17,
   "per_query": {
     "make me a cozy 2D village game where I can walk into the houses": 1,
     "I want a top-down 2.5D RPG that looks hand painted": 1,

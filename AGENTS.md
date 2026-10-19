@@ -117,7 +117,7 @@ After you have **verified** an entry's result in-engine — not before — you m
 | Situation | Action |
 |---|---|
 | An answer has `ok: false` | Read `error.code` and do its one `next` step. Retry only as `error.retry` says (`same_key` = the same `idempotencyKey`). |
-| `engine_not_running` (3.x: "Summer Engine is not running") | Tell user `summer run <project-path>`, or open the project in Summer Engine. Continue with non-MCP work; do not fall back to editing `.tscn` directly. |
+| `engine_not_running` (3.x: "Summer Engine is not running") | Do its `recovery` / `next` step: the MCP opens the session's project by itself when the engine is installed; when it is not installed or there is no project, ask the person before anything installs (about 660 MB), then `projects.create_local` and `projects.open_local` with `install: true` (no shell needed), or `npx -y summer-engine@latest dev --yes` from a shell (it installs, creates and opens). Continue with non-MCP work meanwhile; do not fall back to editing `.tscn` directly. |
 | `status: "needs_approval"` | Give the user `approval.url`; nothing has changed. Call `summer_jobs_wait` with the returned job until it ends: `done`, `declined`, `expired` or `stale`. |
 | `status: "running"` | Long work (3D, video, motion, builds, uploads) answers with a job. Call `summer_jobs_wait` with its id; do not call the change again. |
 | `no_credits` | Give the user the link in `next` (Add credits). Do not retry until they say they added credits. |

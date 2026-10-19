@@ -278,3 +278,135 @@ export function findExtractedEngineBinary(files: string[]): string | null {
     null
   );
 }
+
+// ------------------------------------------------------- install failures
+
+/** Why `summer install` failed: the CLI usage line's error code, one per kind
+ *  of failure, so telemetry says more than `exit_1`. */
+export type InstallFailureReason =
+  | "release_info"
+  | "download"
+  | "checksum"
+  | "disk_space"
+  | "mount"
+  | "copy"
+  | "permission"
+  | "app_running"
+  | "needs_confirmation"
+  | "installer"
+  | "unsupported_platform";
+
+/** An install failure with its reason; the message ends in one next step. */
+export class EngineInstallError extends Error {
+  readonly reason: InstallFailureReason;
+  constructor(reason: InstallFailureReason, message: string) {
+    super(message);
+    this.name = "EngineInstallError";
+    this.reason = reason;
+  }
+}
+
+/** The command every "try again" next step names. */
+export const INSTALL_RETRY = "npx -y summer-engine@latest install";
+
+/** The useful line of an error: for a failed shell command the last line of
+ *  its stderr ("cp: ...: Permission denied"), not "Command failed: ...". */
+export function errorDetail(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err);
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return (lines.at(-1) ?? "unknown error").slice(0, 200);
+}
+
+/** A full disk and a refused write have their own reasons wherever they
+ *  happen; anything else is `fallback`. */
+export function installFailureReason(err: unknown, fallback: InstallFailureReason): InstallFailureReason {
+  if (err instanceof EngineInstallError) return err.reason;
+  const code = (err as { code?: unknown } | null)?.code;
+  const text = err instanceof Error ? err.message : String(err);
+  if (code === "ENOSPC" || /no space left on device/i.test(text)) return "disk_space";
+  if (code === "EACCES" || code === "EPERM" || /permission denied|operation not permitted/i.test(text)) {
+    return "permission";
+  }
+  return fallback;
+}
+
+/** Turn an unexpected error into an EngineInstallError: disk_space and
+ *  permission get their own message, anything else `message(detail)`. */
+export function asInstallError(
+  err: unknown,
+  fallback: InstallFailureReason,
+  message: (detail: string) => string
+): EngineInstallError {
+  if (err instanceof EngineInstallError) return err;
+  const reason = installFailureReason(err, fallback);
+  const detail = errorDetail(err);
+  if (reason === "disk_space") {
+    return new EngineInstallError(reason, `The disk ran out of space during the install (${detail}). Free up space, then run: ${INSTALL_RETRY}`);
+  }
+  if (reason === "permission") {
+    return new EngineInstallError(
+      reason,
+      `The install was not allowed to write a file (${detail}). Install into a folder you own: ${INSTALL_RETRY} --path <folder>`
+    );
+  }
+  return new EngineInstallError(reason, message(detail));
+}
+
+/** The engine download when the server sends no content-length (the macOS DMG is about 660 MB). */
+export const DEFAULT_DOWNLOAD_BYTES = 700 * 1024 * 1024;
+
+/** The install folder needs about this many times the download: the unpacked
+ *  app plus the staged copy that replaces an existing one. */
+export const INSTALL_SPACE_FACTOR = 2.5;
+
+/** Free bytes on the volume holding `path`, and an id for that volume. */
+export type FreeSpace = (path: string) => { bytes: number; volume: string };
+
+export function formatSize(bytes: number): string {
+  return bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`;
+}
+
+/**
+ * Refuse before the download fills the disk. Each need is a folder and the
+ * bytes it takes; needs on one volume add up (the default macOS temp folder
+ * and /Applications share the system volume). A volume whose free space
+ * cannot be read is skipped: the install tries, and ENOSPC still maps to
+ * disk_space.
+ */
+export function checkDiskSpace(needs: Array<{ path: string; bytes: number }>, freeSpace: FreeSpace): void {
+  const volumes = new Map<string, { path: string; bytes: number; free: number }>();
+  for (const need of needs) {
+    let space: { bytes: number; volume: string };
+    try {
+      space = freeSpace(need.path);
+    } catch {
+      continue;
+    }
+    const entry = volumes.get(space.volume) ?? { path: need.path, bytes: 0, free: space.bytes };
+    entry.bytes += need.bytes;
+    volumes.set(space.volume, entry);
+  }
+  for (const volume of volumes.values()) {
+    if (volume.free < volume.bytes) {
+      throw new EngineInstallError(
+        "disk_space",
+        `Not enough disk space on the volume with ${volume.path}: ${formatSize(volume.free)} free, ` +
+          `about ${formatSize(volume.bytes)} needed. Free up space, then run: ${INSTALL_RETRY}`
+      );
+    }
+  }
+}
+
+/** Where the macOS engine goes: --path wins; otherwise /Applications/Summer.app,
+ *  or ~/Applications/Summer.app when this user cannot replace it there (a
+ *  standard, non-admin account). macEnginePaths looks there too, and the
+ *  install record puts it first. */
+export function chooseMacDestination(input: {
+  customPath?: string;
+  home: string;
+  canReplace: (app: string) => boolean;
+}): { destApp: string; fallback: boolean } {
+  const destApp = macInstallDestination(input.customPath);
+  if (input.customPath?.trim() || input.canReplace(destApp)) return { destApp, fallback: false };
+  return { destApp: join(input.home, "Applications", "Summer.app"), fallback: true };
+}

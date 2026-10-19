@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { getSummerDir } from "../../core/store.js";
 import {
   ENGINE_BIN_ENV,
+  chooseMacDestination,
   engineBinaryCandidates,
   findEngineBinary,
   macInstallDestination,
@@ -18,6 +19,23 @@ describe("summer install --path", () => {
     expect(macInstallDestination("/Volumes/X/engine-0.7.0")).toBe("/Volumes/X/engine-0.7.0/Summer.app");
     expect(macInstallDestination("/Volumes/X/engine-0.7.0/")).toBe("/Volumes/X/engine-0.7.0/Summer.app");
     expect(macInstallDestination("/Volumes/X/Summer Beta.app")).toBe("/Volumes/X/Summer Beta.app");
+  });
+
+  it("falls back to ~/Applications/Summer.app only when /Applications cannot be replaced and no --path is given", () => {
+    const home = "/Users/u";
+    expect(chooseMacDestination({ home, canReplace: () => true })).toEqual({
+      destApp: "/Applications/Summer.app",
+      fallback: false,
+    });
+    expect(chooseMacDestination({ home, canReplace: () => false })).toEqual({
+      destApp: "/Users/u/Applications/Summer.app",
+      fallback: true,
+    });
+    // --path is what the person asked for: never moved, a write failure is reported instead.
+    expect(chooseMacDestination({ customPath: "/Volumes/X", home, canReplace: () => false })).toEqual({
+      destApp: "/Volumes/X/Summer.app",
+      fallback: false,
+    });
   });
 
   it("records the installed engine so later commands find it without SUMMER_BIN", async () => {

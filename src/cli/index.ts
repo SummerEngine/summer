@@ -6,6 +6,7 @@ import { runCommand } from "./commands/run.js";
 import { openCommand } from "./commands/open.js";
 import { installCommand } from "./commands/install.js";
 import { createCommand } from "./commands/create.js";
+import { devCommand } from "./commands/dev.js";
 import { listCommand } from "./commands/list.js";
 import { memoryCommand } from "./commands/memory.js";
 import { skillsCommand } from "./commands/skills.js";
@@ -41,6 +42,7 @@ export function runCli(mcpCommand: Command): void {
       runRootAction(command.args, () => printIntro(version));
     });
 
+  program.addCommand(devCommand);
   program.addCommand(installCommand);
   program.addCommand(loginCommand);
   program.addCommand(logoutCommand);
@@ -84,6 +86,7 @@ function printIntro(version: string): void {
   console.log(`     ${c.brand("\"Install Summer Engine and let's make a game.\"")}`);
   console.log("");
   console.log(`     ${c.bold("Manual commands")}`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest dev   ${c.dim("# install, create a starter project, open it")}`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest setup claude-code --yes`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest create 3d-basic my-game`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest plan make a small arena shooter`);

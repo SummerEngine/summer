@@ -30,7 +30,8 @@ Only summerengine.com (and subdomains) are ever opened — a gateway configured 
     openArgsShape,
     async (args) => {
       const result = await runOpen(args, {
-        engine: () => getClient(),
+        // Lists and prints must not open the editor (no side effects).
+        engine: () => getClient({ launch: false }),
         openUrl: (url) => open(url),
         isLoggedIn: async () => (await getAuthToken()) !== null,
         gatewayUrl: resolveGatewayUrl,

@@ -8,7 +8,7 @@ MCP setup page: https://summerengine.com/mcp
 Paste this into the AI environment:
 
 ```text
-Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, and open a starter project so we can start building.
 ```
 
 The agent should read the Summer README/install playbook, detect the current machine state, and run only the missing setup steps with `npx -y summer-engine@latest`.
@@ -18,10 +18,9 @@ Expected agent behavior:
 1. Check Node.js 20+. On Windows, install Node LTS with winget if it is missing (after asking), and type `npx.cmd` instead of `npx` in PowerShell.
 2. Run `npx -y summer-engine@latest doctor --json` (its top-level `ok` means "no check failed", not "installed").
 3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every skill and the MCP config. For most agents it also connects Summer Games (`summer-games`); tell the user the one `Sign in once:` step setup prints, then continue.
-4. Run `npx -y summer-engine@latest install` if the `engine-install` check needs attention.
-5. Run `npx -y summer-engine@latest login` if the `login` check needs attention.
-6. Create and run a starter project only after choosing a stable parent directory.
-7. Use the `brainstorm-game` skill before building from a vague prompt.
+4. After choosing a stable parent directory and asking the user's OK to install the engine (about 660 MB, free), run `npx -y summer-engine@latest dev --yes <template> <folder>` (default template `3d-basic`): it installs the engine if it is missing, creates the project, opens it and waits until the editor answers.
+5. Building needs no sign-in. Run `npx -y summer-engine@latest login` only when the user wants cloud work (assets, publishing) or a tool answers `not_signed_in`.
+6. Use the `brainstorm-game` skill before building from a vague prompt.
 
 First-class setup targets: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted): `gemini`, `roo-code`.
 

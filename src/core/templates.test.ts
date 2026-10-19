@@ -1,7 +1,20 @@
 import { execFileSync, execSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import { parse as parseYaml } from "yaml";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PACKAGE_ROOT } from "./package-root.js";
@@ -9,8 +22,10 @@ import {
   computeTreeDigest,
   DEFAULT_FETCH_TIMEOUT_S,
   FETCH_TIMEOUT_ENV,
+  fetchPinnedTemplate,
   fetchTimeoutSeconds,
   getTemplateRegistry,
+  githubTarballUrl,
   GitTimeoutError,
   materializePinnedTemplate,
   normalizeTemplateEntry,
@@ -338,4 +353,225 @@ describe.skipIf(process.platform === "win32")("materializePinnedTemplate fetch t
     expect(processIsAlive(pid)).toBe(false);
     expect(readFileSync(envFile, "utf8")).toContain("GIT_TERMINAL_PROMPT=0");
   }, 30_000); // a 1 s bound plus killing the child and a 3 s check: more than the 5 s default on a busy machine
+});
+
+// ---------- tarball download (no git), served from a local git archive ----------
+
+/** A minimal ustar header + data, for hand-made hostile archives. */
+function tarEntry(name: string, type: string, data = "", link = ""): Buffer {
+  const h = Buffer.alloc(512);
+  h.write(name, 0, 100, "utf8");
+  h.write("0000644\0", 100, "latin1");
+  h.write(Buffer.byteLength(data).toString(8).padStart(11, "0") + "\0", 124, "latin1");
+  h.write(type, 156, "latin1");
+  h.write(link, 157, 100, "utf8");
+  h.write("ustar\u000000", 257, "latin1");
+  h.fill(0x20, 148, 156);
+  let sum = 0;
+  for (const b of h) sum += b;
+  h.write(sum.toString(8).padStart(6, "0") + "\0 ", 148, "latin1");
+  const body = Buffer.alloc(Math.ceil(Buffer.byteLength(data) / 512) * 512);
+  body.write(data, "utf8");
+  return Buffer.concat([h, body]);
+}
+
+describe("githubTarballUrl", () => {
+  const sha = "b".repeat(40);
+  it("maps github.com pins to codeload, with or without .git or a trailing slash", () => {
+    const want = `https://codeload.github.com/SummerEngine/template-x/tar.gz/${sha}`;
+    for (const repo of [
+      "https://github.com/SummerEngine/template-x",
+      "https://github.com/SummerEngine/template-x.git",
+      "https://github.com/SummerEngine/template-x/",
+    ]) {
+      expect(githubTarballUrl({ repo, commit: sha, tree_digest: ZERO_DIGEST })).toBe(want);
+    }
+  });
+
+  it("returns null for other hosts, extra path segments, or a non-SHA commit", () => {
+    const pin = (repo: string, commit = sha) => ({ repo, commit, tree_digest: ZERO_DIGEST });
+    expect(githubTarballUrl(pin("https://gitlab.com/a/b"))).toBeNull();
+    expect(githubTarballUrl(pin("https://github.com/a/b/tree/main"))).toBeNull();
+    expect(githubTarballUrl(pin("/local/path"))).toBeNull();
+    expect(githubTarballUrl(pin("https://github.com/a/b", "main"))).toBeNull();
+  });
+});
+
+describe("fetchPinnedTemplate (tarball from git archive, git fallback)", () => {
+  const posix = process.platform !== "win32";
+  let scratch = "";
+  let repo = "";
+  let commit = "";
+  let digest = "";
+  let tarball = Buffer.alloc(0);
+
+  beforeAll(() => {
+    scratch = mkdtempSync(join(tmpdir(), "summer-templates-tar-"));
+    repo = join(scratch, "fixture-repo");
+    mkdirSync(join(repo, "scenes", "levels"), { recursive: true });
+    mkdirSync(join(repo, "bin"));
+    writeFileSync(join(repo, "project.godot"), '[application]\nconfig/name="Fixture"\n');
+    writeFileSync(join(repo, "scenes", "main.tscn"), "[gd_scene format=3]\n");
+    writeFileSync(join(repo, "scenes", "levels", "one.tscn"), "[gd_scene load_steps=1 format=3]\n");
+    writeFileSync(join(repo, "bin", "run.sh"), "#!/bin/sh\necho run\n");
+    chmodSync(join(repo, "bin", "run.sh"), 0o755);
+    // Over 100 bytes: git archive splits the first into the ustar prefix and
+    // puts the second (a 114-byte name) in a pax `path` record.
+    mkdirSync(join(repo, "deep", "a".repeat(60)), { recursive: true });
+    writeFileSync(join(repo, "deep", "a".repeat(60), `${"b".repeat(60)}.txt`), "long\n");
+    writeFileSync(join(repo, "deep", `${"c".repeat(110)}.txt`), "longer\n");
+    if (posix) {
+      symlinkSync("scenes/main.tscn", join(repo, "main-link.tscn"));
+      // Names git C-quotes in ls-tree output: non-ASCII, a quote, a backslash, a tab.
+      writeFileSync(join(repo, "café.txt"), "accent\n");
+      writeFileSync(join(repo, 'say "hi".txt'), "quote\n");
+      writeFileSync(join(repo, "back\\slash.txt"), "backslash\n");
+      writeFileSync(join(repo, "tab\there.txt"), "tab\n");
+    }
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "add", ".");
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "pinned");
+    commit = git(repo, "rev-parse", "HEAD");
+    digest = computeTreeDigest(repo, commit);
+    // Exactly what codeload serves: git archive with a <repo>-<sha>/ prefix.
+    tarball = execFileSync("git", ["archive", "--format=tar.gz", `--prefix=fixture-repo-${commit}/`, commit], {
+      cwd: repo,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    writeFileSync(join(repo, "DRIFT.md"), "not in the pin\n");
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "add", ".");
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "drift");
+    git(repo, "config", "uploadpack.allowAnySHA1InWant", "true");
+  });
+
+  afterAll(() => {
+    rmSync(scratch, { recursive: true, force: true });
+  });
+
+  // The pin's repo stays a local path so the git fallback can fetch it; the
+  // tarballUrl seam sends the download path to the injected fetcher.
+  const pinned = (treeDigest: string) => entry({ slug: "fixture", pin: { repo, commit, tree_digest: treeDigest } });
+  const tarballUrl = () => `https://codeload.github.com/o/fixture-repo/tar.gz/${commit}`;
+  const serve = (body: Buffer, status = 200) => {
+    const calls: string[] = [];
+    const fetchTarball = async (url: string) => {
+      calls.push(url);
+      return new Response(new Uint8Array(body), { status });
+    };
+    return { calls, fetchTarball };
+  };
+  const leftovers = () => readdirSync(scratch).filter((n) => n.includes("summer-download"));
+
+  it("downloads without git: archive digest equals computeTreeDigest, files land, no .git, no staging", async () => {
+    const target = join(scratch, "proj-tar");
+    const logs: string[] = [];
+    const { calls, fetchTarball } = serve(tarball);
+    const result = await fetchPinnedTemplate(pinned(digest), {
+      targetDir: target,
+      log: (l) => logs.push(l),
+      fetchTarball,
+      tarballUrl,
+    });
+
+    expect(result).toEqual({ commit, tree_digest: digest });
+    expect(calls).toEqual([tarballUrl()]);
+    expect(logs.some((l) => l.startsWith("Downloading"))).toBe(true);
+    expect(logs).toContain(`Verified tree digest ${digest.slice(0, 12)}`);
+    expect(logs.some((l) => l.startsWith("Fetching") || l.includes("falling back"))).toBe(false); // git never ran
+    expect(readFileSync(join(target, "project.godot"), "utf8")).toContain("Fixture");
+    expect(readFileSync(join(target, "scenes", "levels", "one.tscn"), "utf8")).toBe("[gd_scene load_steps=1 format=3]\n");
+    expect(readFileSync(join(target, "deep", "a".repeat(60), `${"b".repeat(60)}.txt`), "utf8")).toBe("long\n");
+    expect(readFileSync(join(target, "deep", `${"c".repeat(110)}.txt`), "utf8")).toBe("longer\n");
+    expect(existsSync(join(target, "DRIFT.md"))).toBe(false);
+    expect(existsSync(join(target, ".git"))).toBe(false);
+    if (posix) {
+      expect(statSync(join(target, "bin", "run.sh")).mode & 0o111).not.toBe(0);
+      expect(statSync(join(target, "project.godot")).mode & 0o111).toBe(0);
+      expect(readlinkSync(join(target, "main-link.tscn"))).toBe("scenes/main.tscn");
+      expect(readFileSync(join(target, "café.txt"), "utf8")).toBe("accent\n");
+      expect(readFileSync(join(target, 'say "hi".txt'), "utf8")).toBe("quote\n");
+      expect(readFileSync(join(target, "tab\there.txt"), "utf8")).toBe("tab\n");
+    }
+    expect(leftovers()).toEqual([]);
+  });
+
+  it("a wrong pin digest falls back to git, whose strict check refuses, and leaves nothing behind", async () => {
+    const target = join(scratch, "proj-tar-mismatch");
+    const logs: string[] = [];
+    const { fetchTarball } = serve(tarball);
+    await expect(
+      fetchPinnedTemplate(pinned(ZERO_DIGEST), { targetDir: target, log: (l) => logs.push(l), fetchTarball, tarballUrl })
+    ).rejects.toThrow(TemplateDigestMismatchError);
+    expect(logs.some((l) => l.includes(`archive ${digest.slice(0, 12)}`) && l.includes("falling back to git"))).toBe(true);
+    expect(logs.some((l) => l.startsWith("Fetching"))).toBe(true);
+    expect(existsSync(target)).toBe(false);
+    expect(leftovers()).toEqual([]);
+  });
+
+  it("falls back to git when the fetcher throws, returns 404, or serves a broken archive", async () => {
+    const broken = tarball.subarray(0, Math.floor(tarball.length / 2));
+    const fetchers = [
+      async (): Promise<Response> => {
+        throw new Error("getaddrinfo ENOTFOUND codeload.github.com");
+      },
+      serve(Buffer.from("Not Found"), 404).fetchTarball,
+      serve(broken).fetchTarball,
+    ];
+    for (const [i, fetchTarball] of fetchers.entries()) {
+      const target = join(scratch, `proj-tar-fallback-${i}`);
+      const logs: string[] = [];
+      const result = await fetchPinnedTemplate(pinned(digest), {
+        targetDir: target,
+        log: (l) => logs.push(l),
+        fetchTarball,
+        tarballUrl,
+      });
+      expect(result).toEqual({ commit, tree_digest: digest });
+      expect(logs.some((l) => l.includes("falling back to git"))).toBe(true);
+      expect(logs.some((l) => l.startsWith("Fetching"))).toBe(true);
+      expect(existsSync(join(target, "project.godot"))).toBe(true);
+      expect(existsSync(join(target, ".git"))).toBe(false);
+    }
+    expect(leftovers()).toEqual([]);
+  });
+
+  it.skipIf(!posix)("refuses archive paths that escape staging (.. or through a symlink) and falls back", async () => {
+    const hostile = [
+      [tarEntry("r/", "5"), tarEntry("r/../escape-dotdot.txt", "0", "x")],
+      [tarEntry("r/", "5"), tarEntry("r/up", "2", "", ".."), tarEntry("r/up/escape-link.txt", "0", "x")],
+    ];
+    for (const [i, parts] of hostile.entries()) {
+      const target = join(scratch, `proj-tar-hostile-${i}`);
+      const logs: string[] = [];
+      const { fetchTarball } = serve(gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)])));
+      await fetchPinnedTemplate(pinned(digest), { targetDir: target, log: (l) => logs.push(l), fetchTarball, tarballUrl });
+      const reason = i === 0 ? "unsafe path" : "non-directory";
+      expect(logs.some((l) => l.includes(reason) && l.includes("falling back to git"))).toBe(true);
+      expect(existsSync(join(target, "project.godot"))).toBe(true);
+    }
+    expect(existsSync(join(scratch, "escape-dotdot.txt"))).toBe(false);
+    expect(existsSync(join(scratch, "escape-link.txt"))).toBe(false);
+    expect(leftovers()).toEqual([]);
+  });
+
+  it("keepGit and non-GitHub pins go straight to git without calling the fetcher", async () => {
+    const { calls, fetchTarball } = serve(tarball);
+    const keep = join(scratch, "proj-tar-keep");
+    await fetchPinnedTemplate(pinned(digest), { targetDir: keep, keepGit: true, fetchTarball, tarballUrl });
+    expect(git(keep, "rev-parse", "HEAD")).toBe(commit);
+    const local = join(scratch, "proj-tar-local");
+    await fetchPinnedTemplate(pinned(digest), { targetDir: local, fetchTarball }); // default URL: a local path maps to null
+    expect(existsSync(join(local, "project.godot"))).toBe(true);
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses an existing target before downloading", async () => {
+    const target = join(scratch, "proj-tar-exists");
+    mkdirSync(target);
+    const { calls, fetchTarball } = serve(tarball);
+    await expect(fetchPinnedTemplate(pinned(digest), { targetDir: target, fetchTarball, tarballUrl })).rejects.toThrow(
+      /already exists/
+    );
+    expect(calls).toEqual([]);
+  });
 });

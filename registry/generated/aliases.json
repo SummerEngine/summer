@@ -178,6 +178,8 @@
     "summer_place_adjacent": "tool/place-adjacent",
     "summer_play": "tool/play",
     "summer_project_setting": "tool/project-setting",
+    "summer_projects_create_local": "tool/projects-create-local",
+    "summer_projects_open_local": "tool/projects-open-local",
     "summer_publish_build": "tool/publish-build",
     "summer_raycast": "tool/raycast",
     "summer_read_file": "tool/read-file",

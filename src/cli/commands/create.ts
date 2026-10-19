@@ -1,68 +1,27 @@
 import { Command } from "commander";
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync } from "fs";
 import { join, resolve } from "path";
-import { checkEngineHealth, getApiPort } from "../../core/engine.js";
-import { PACKAGE_ROOT } from "../../core/package-root.js";
-import { SUMMER_ENGINE_COMPATIBILITY } from "../../core/summer-compatibility.js";
+import { createProject } from "../../core/local-project.js";
 import {
   getTemplateRegistry,
-  materializePinnedTemplate,
   resolveTemplate,
   TemplateDigestMismatchError,
   type TemplateEntry,
 } from "../../core/templates.js";
-import { PROJECT_MANIFEST_RELPATH, writeProjectManifest } from "../../project-memory/project-manifest.js";
-import { writeAgentInstructions, type InstructionFileResult } from "../../project-memory/agent-instructions.js";
+import { PROJECT_MANIFEST_RELPATH } from "../../project-memory/project-manifest.js";
+import type { InstructionFileResult } from "../../project-memory/agent-instructions.js";
 
-import { TOOLKIT_VERSION as toolkitVersion } from "../../core/version.js";
-
-/** Summer Engine's version when it is reachable right now, else undefined —
- *  the manifest then omits engine_version rather than guessing. */
-async function detectEngineVersion(): Promise<string | undefined> {
-  try {
-    return (await checkEngineHealth(await getApiPort()))?.version;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Built-in templates are generated in-process — no download, no pin. Their
- * library manifests (`library/templates/<slug>/resource.yaml`) declare
- * `builtin: true`; this map supplies the generator for each such slug.
- */
-type BuiltinGenerator = (dir: string, projectName: string) => void;
-
-export const BUILTIN_GENERATORS: Readonly<Record<string, BuiltinGenerator>> = {
-  empty: (dir, name) => {
-    writeFileSync(join(dir, "project.godot"), renderProjectSettings(name, "res://main.tscn"));
-    writeFileSync(join(dir, "main.tscn"), emptyScene());
-  },
-  "3d-basic": (dir, name) => {
-    writeFileSync(join(dir, "project.godot"), renderProjectSettings(name, "res://main.tscn"));
-    writeFileSync(join(dir, "main.tscn"), basicScene3D());
-  },
-};
-
-/**
- * Copy the autopilot verification scaffold into a fresh project.
- *
- * Every project gets a working example of how to prove its own gameplay: a probe
- * that drives the player with real input, saves rendered frames, asserts, and
- * exits. Without it every agent reinvents verification from scratch, and most
- * settle for asking the user to play the game instead.
- *
- * Never overwrites — an existing tests/autopilot/ is the user's, not ours.
- */
-export function scaffoldAutopilot(projectDir: string): boolean {
-  const source = join(PACKAGE_ROOT, "assets", "autopilot");
-  const target = join(projectDir, "tests", "autopilot");
-
-  if (!existsSync(source) || existsSync(target)) return false;
-
-  cpSync(source, target, { recursive: true });
-  return true;
-}
+// Writing the project lives in core (shared with `summer dev` and the MCP's
+// projects.create_local); this file is the command.
+export {
+  BUILTIN_GENERATORS,
+  createProject,
+  escapeGodotString,
+  isEmptyProjectFolder,
+  renderProjectSettings,
+  scaffoldAutopilot,
+  type CreatedProject,
+} from "../../core/local-project.js";
 
 /** What the scaffold's first run actually does — the "Next steps" line must not
  *  promise a verify when the first thing run.sh does is the one-off asset import. */
@@ -144,111 +103,15 @@ export const createCommand = new Command("create")
       for (const note of entry.do_not_use_when) console.error(`  ${note}`);
     }
 
-    if (entry.builtin) {
-      const generate = BUILTIN_GENERATORS[entry.slug];
-      if (!generate) {
-        console.error(`${entry.id} is declared builtin but this CLI has no generator for it. Update the CLI.`);
-        process.exit(1);
-      }
-      console.log(`Creating project from built-in '${entry.slug}' template...`);
-      mkdirSync(fullPath, { recursive: true });
-      generate(fullPath, dirName);
-      const scaffolded = scaffoldAutopilot(fullPath);
-      writeProjectManifest(fullPath, {
-        template: { id: entry.id, version: entry.version, builtin: true },
-        toolkit_version: toolkitVersion,
-        engine_version: await detectEngineVersion(),
-      });
-      printNextSteps(fullPath, dirName, scaffolded, writeAgentInstructions(fullPath));
-      return;
-    }
-
-    const pin = entry.pin!;
-    let materialized;
     try {
-      materialized = materializePinnedTemplate(entry, {
-        targetDir: fullPath,
+      const { scaffolded, instructions } = await createProject(entry, fullPath, {
+        name: dirName,
         keepGit: options.keepGit,
         log: (line) => console.log(line),
       });
+      printNextSteps(fullPath, dirName, scaffolded, instructions);
     } catch (err) {
       console.error(err instanceof TemplateDigestMismatchError ? err.message : (err as Error).message);
       process.exit(1);
     }
-
-    const scaffolded = scaffoldAutopilot(fullPath);
-    writeProjectManifest(fullPath, {
-      template: {
-        id: entry.id,
-        version: entry.version,
-        repo: pin.repo,
-        commit: materialized.commit,
-        tree_digest: materialized.tree_digest,
-      },
-      toolkit_version: toolkitVersion,
-      engine_version: await detectEngineVersion(),
-    });
-
-    console.log(`Source: ${pin.repo} @ ${materialized.commit.slice(0, 12)} (tree digest verified)`);
-    printNextSteps(fullPath, dirName, scaffolded, writeAgentInstructions(fullPath));
   });
-
-/**
- * project.godot uses C-style double-quoted strings; a project name containing
- * `"` or `\` must be escaped or the file does not parse.
- */
-export function escapeGodotString(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n");
-}
-
-export function renderProjectSettings(name: string, mainScene: string): string {
-  return `; Summer Engine Project
-; Generated by summer-engine CLI
-; Technical base ${SUMMER_ENGINE_COMPATIBILITY.currentTechnicalBaseVersion}; Summer follows upstream continuously
-
-[application]
-
-config/name="${escapeGodotString(name)}"
-run/main_scene="${escapeGodotString(mainScene)}"
-config/features=PackedStringArray("${SUMMER_ENGINE_COMPATIBILITY.projectFeatureTag}")
-
-[rendering]
-
-renderer/rendering_method="forward_plus"
-`;
-}
-
-function emptyScene(): string {
-  return `[gd_scene format=3]
-
-[node name="World" type="Node3D"]
-`;
-}
-
-function basicScene3D(): string {
-  return `[gd_scene load_steps=4 format=3]
-
-[sub_resource type="BoxMesh" id="BoxMesh_floor"]
-size = Vector3(20, 0.2, 20)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.4, 0.45, 0.4, 1)
-
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
-
-[node name="World" type="Node3D"]
-
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 5, 10)
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 8, 0)
-shadow_enabled = true
-
-[node name="Floor" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_floor")
-surface_material_override/0 = SubResource("StandardMaterial3D_floor")
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-`;
-}

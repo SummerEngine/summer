@@ -79,6 +79,8 @@ match the blocks.
 ### 3. Render the blockout from the paint camera
 
 - Quick look: `summer_screenshot` with `target: "scene"`, `framing: "camera"`, `camera_path: "PaintCamera"`.
+- Or play the level with `paint` left empty: `painted_world.gd` then shows the plain blockout through
+  `PaintCamera`; `summer_screenshot` `target: "game"` captures it.
 - Exact PNG for the painter: copy `_building-blocks/capture_paint_view.gd`, make a scene with just that node
   (`level` = the level scene, `size` = 2048x1152 or larger at 16:9), and play it (`summer_play` offscreen). It
   saves `res://painted/blockout.png` through the paint camera and quits.

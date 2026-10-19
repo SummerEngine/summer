@@ -3,9 +3,12 @@ extends Node3D
 ## The game camera keeps the paint camera's direction and only moves, so surfaces hidden in the
 ## painting stay hidden. The player and the camera are clamped to the painted frame.
 ## Scene: PaintCamera (Camera3D, orthographic, KEEP_WIDTH), GameCamera (Camera3D), Painted (the blockout).
+## With no `paint` set the level shows the plain blockout through PaintCamera: play it and capture that
+## frame as the paint-over's structure image.
 
 const PROJECTION := preload("res://painted/paint_projection.gdshader")
 
+## The paint-over. Leave empty to see the blockout through PaintCamera (the capture for the paint-over).
 @export var paint: Texture2D
 @export var player_path: NodePath
 ## The game camera shows 1 / zoom of the painted width. Keep painting px per metre >= screen px per metre.
@@ -17,6 +20,10 @@ const PROJECTION := preload("res://painted/paint_projection.gdshader")
 var paint_size: Vector2
 
 func _ready() -> void:
+	if paint == null:
+		paint_cam.make_current()
+		set_physics_process(false)
+		return
 	paint_size = Vector2(paint_cam.size, paint_cam.size * paint.get_height() / float(paint.get_width()))
 	var mat := ShaderMaterial.new()
 	mat.shader = PROJECTION

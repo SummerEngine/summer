@@ -2692,7 +2692,7 @@
       "id": "skill/painted-25d-world",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "4872c1b9442c60dbc9a95071cde1e24ec20d468b775a51032f94e53bcb317f6a",
+      "content_hash": "1505bb7ac856297e43256993b432b975e4b2ea928f731068451100f1e3a93dfa",
       "summary": "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters.",
       "use_when": [
         "the user asks for a 2D game, a 2.5D game, a top-down RPG, a cozy village or farming game, a dungeon crawler look, or a side-scroller — build the world as a painted 2.5D world, not from a 2D template",
@@ -3945,7 +3945,7 @@
       "id": "skill/summer-cli",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "13ce5f864eaa9e209e1d841a0cd3b571c1518971e8029d88bbe36d3cad200673",
+      "content_hash": "0cace5d5db555cd232700adea13716d2814baa542e6e12fd2c9ee6c168de891d",
       "summary": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
       "use_when": [
         "the session has no summer_* MCP tools, or Summer was set up with summer setup <agent> --cli",

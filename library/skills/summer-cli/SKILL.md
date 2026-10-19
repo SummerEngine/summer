@@ -92,12 +92,14 @@ summer run ./my-game                                       # opens the project; 
 summer engine get-project-context                          # first call: project, main scene, engine version
 summer engine get-scene-tree --scene-path res://main.tscn --depth 2
 summer engine screenshot                                   # the answer's localPath is an image: open it to look
+summer preview                                             # the game, live, in your own browser: http://127.0.0.1:5199
 ```
 
 - Values are engine value strings, not JSON: `"Vector3(0, 10, 0)"`, `"Color(1, 0.5, 0, 1)"`. A resource is its class name: `"BoxMesh"`.
 - Name the scene in every change: `--scene-path res://<scene>.tscn`.
 - 3 or more scene edits are one script, not a chain of commands. Write a `func run(ctx):` that ends with `ctx.save_scene()` to a file, then run `summer engine run-script --scene-path res://main.tscn --source "$(cat build.gd)"`. The `scene-scripting` skill has the script API.
 - With more than one editor open, set `SUMMER_ENGINE_PROJECT` to the project folder so the command picks the right one.
+- To watch the game in your own browser (Claude Code Desktop's Browser pane, the Codex app's in-app browser), run `summer preview` in the background, from the folder the session started in. It serves http://127.0.0.1:5199 (the next free port if that one is taken; it prints the URL): the running game, or the editor view when no game runs, with a status line that says what to do next. It also adds a `summer-preview` entry to `.claude/launch.json` there, so Desktop starts it and checks the game after each edit. A game frame comes about every 20 s, because reading one stalls the game; the page's Refresh button takes one now. Keys and clicks on the frame go to the running game. `--no-launch-json` leaves the file alone.
 - `summer tool <slug> --args '<json>'` runs an engine tool by its 3.x name too. `summer tool --list` lists them.
 
 ## Without Summer Engine

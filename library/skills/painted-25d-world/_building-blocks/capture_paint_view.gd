@@ -6,6 +6,8 @@ extends Node
 @export var level: PackedScene
 @export var size := Vector2i(2048, 1152)
 @export var out_path := "res://painted/blockout.png"
+## The location's paint camera inside `level`.
+@export var camera_path := "Village/PaintCamera"
 
 func _ready() -> void:
 	var vp := SubViewport.new()
@@ -14,10 +16,11 @@ func _ready() -> void:
 	vp.own_world_3d = true
 	add_child(vp)
 	var lvl := level.instantiate()
-	# the capture shows the plain blockout: drop the level script so no paint is applied yet
+	# the capture shows the plain blockout: drop the world script (no player or follow camera needed);
+	# leave the location's `paint` empty so no painting is projected yet
 	lvl.set_script(null)
 	vp.add_child(lvl)
-	var cam: Camera3D = lvl.get_node("PaintCamera")
+	var cam: Camera3D = lvl.get_node(camera_path)
 	cam.current = true
 	for i in 4:
 		await RenderingServer.frame_post_draw

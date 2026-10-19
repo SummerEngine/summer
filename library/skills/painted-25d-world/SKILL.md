@@ -32,6 +32,34 @@ Tell the user once, before the first character generation or animation: "The wor
 characters costs a couple of dollars in credits and can come out with mistakes; I will check every frame." Then
 continue. The blockout, the camera and the projection cost nothing.
 
+## Hard rules (a playtest found each one)
+
+1. **Scale.** Doors 2.5 m. Hero height = door height / 1.15 (2.15 m). One-storey eaves 3.5-4 m, two-storey about
+   6 m. Check the hero against a door in the first screenshot.
+2. **Speed from the sheet's natural speeds.** A cycle's natural speed is the ground speed at which its feet stick
+   (stride per cycle x cycles per second, scaled to the hero height). Generated walk cycles take short steps
+   (about 1.1-1.2 m/s at 2.15 m); jog/run cycles are natural at about 3.5 m/s. Default movement = the jog/run
+   cycle at 1.1-1.3x natural (about 4.2 m/s); Shift sprints up to 1.8x natural; the walk cycle only for slow
+   movement (Alt stroll about 1.6 m/s, NPCs), never above 1.5x natural. Slower than 4 m/s feels sluggish.
+3. **Animation speed follows ground speed.** Each sheet json carries `height_m`, `stride_m` and `cycles_per_s`
+   per kind; `speed_scale = speed / natural speed`, clamped. The feet must not slide. Never one fixed fps for
+   every speed.
+4. **Framing.** The game camera shows about 16 m across (7-8 hero heights). Clamp it inside the painting with
+   the real viewport aspect, never an assumed 16:9. The clear colour is the painting's edge colour, per location.
+   Rooms are framed whole, like a stage.
+5. **At least one enterable building** in every village: a cut-away interior, same view direction, its own 4K
+   paint-over, door triggers both ways, a door gap of about 1.8 m. Blockout door and step slabs are hidden in the
+   game; the painting shows them.
+6. **Eight directions** for idle, walk and run: down, up, left, right, down_left, down_right, up_left, up_right.
+   One clip per direction and animation. Mirror only where every frame holds up (never asymmetric hair, a held
+   weapon or a walking stick). The player picks the facing by 45 degree sectors.
+7. **Blockout proportions from the concept.** Dormers sit on the roof slope (never floating); gables and roofs
+   from measured concept pixels; doors 2.5 m; a low block for every flower bed, barrel and crate.
+8. **No long cast shadows in the paint.** "Soft short contact shadows only, no long cast shadows on the ground":
+   baked long shadows look wrong once the hero walks through them.
+9. **Verify in a real window.** Run the game with `-- --shots=<dir>`: `painted_world.gd` walks and runs the hero
+   through `shot_plan` (add a walk through each door) and saves a JPG per step. Look at every frame.
+
 ## Steps
 
 ### 1. Concept (one image)
@@ -51,23 +79,27 @@ Pick the image the user likes. It is the art direction and the layout.
 ### 2. Blockout (cheap: you write it)
 
 Write one GDScript or scene that rebuilds the concept **one to one** from the fixed camera: the same building
-positions and footprints, roof shapes (gable, hip, dormer, thatch overhang), chimneys, the well, the stall, fences,
-paths, trees and bushes where the concept has them. Use `MeshInstance3D` with `BoxMesh`, `PrismMesh`,
-`CylinderMesh`, `SphereMesh` (or CSG). Give each material one flat colour (red = tile roof, yellow = thatch,
-dark blue = slate, cream = plaster walls, grey = stone, brown = wood, green = grass, pink low blocks = flower
-beds): the colours tell the painter what each block is, and the paint-over prompt repeats them as a colour key.
+positions and footprints, roof shapes (gable, hip, dormers on the slope, thatch overhang), chimneys, the well, the
+stall, fences, paths, trees and bushes where the concept has them. Use `MeshInstance3D` with `BoxMesh`,
+`PrismMesh`, `CylinderMesh`, `SphereMesh` (or CSG). Give each material one flat colour (red = tile roof, yellow =
+thatch, dark blue = slate, cream = plaster walls, grey = stone, brown = wood, tall brown slabs = doors, green =
+grass, pink low blocks = flower beds): the colours tell the painter what each block is, and the paint-over prompt
+repeats them as a colour key. Name door and step slabs `..._door` / `..._steps`: they are hidden in the game.
 
 ```
-Level (Node3D, painted_world.gd)
-  PaintCamera   Camera3D  projection ORTHOGONAL, keep_aspect KEEP_WIDTH, size = frame width in metres (32 for a village square)
+World (Node3D, painted_world.gd: player_path, start_location)
+  Village       Node3D, painted_location.gd (paint, frame_whole = false)
+    PaintCamera Camera3D  ORTHOGONAL, KEEP_WIDTH, size = frame width in metres (40 for a village square)
                 rotation_degrees = Vector3(-30, 45, 0)   # 30 down, 45 around; never change it later
                 position = frame centre - forward * 60, far = 200
-  GameCamera    Camera3D  (painted_world.gd copies the direction and follows by translation)
-  Painted       Node3D    every blockout mesh goes under here
-    House1      StaticBody3D + CollisionShape3D + MeshInstance3D(s)
-    ...
-    Ground      StaticBody3D + a large BoxMesh, walkable
-  Player        CharacterBody3D (painted_player.gd)
+    Painted     Node3D    every block: StaticBody3D + CollisionShape3D + MeshInstance3D(s), Ground walkable
+  Cottage       Node3D, painted_location.gd (frame_whole = true), 100 m off to the side
+    PaintCamera same rotation, size 12-14
+    Painted     ...
+  DoorIn        Area3D, painted_door.gd (to = Cottage, spawn = a Marker3D inside the room)
+  DoorOut       Area3D, painted_door.gd (to = Village, spawn = a Marker3D outside the village door)
+  GameCamera    Camera3D
+  Player        CharacterBody3D, painted_player.gd (sheet, sheet_json)
 ```
 
 Solid things get a `StaticBody3D` and a box/cylinder shape: walls, trunks, fence posts, the well, furniture.
@@ -94,12 +126,13 @@ If the blockout does not match the concept, the painting will not match the bloc
 
 ### 3. Render the blockout from the paint camera
 
-- Quick look: `summer_screenshot` with `target: "scene"`, `framing: "camera"`, `camera_path: "PaintCamera"`.
-- Or play the level with `paint` left empty: `painted_world.gd` then shows the plain blockout through
+- Quick look: `summer_screenshot` with `target: "scene"`, `framing: "camera"`, `camera_path:
+  "Village/PaintCamera"`.
+- Or play with the location's `paint` left empty: the world then shows the plain blockout through that
   `PaintCamera`; `summer_screenshot` `target: "game"` captures it.
 - Exact PNG for the painter: copy `_building-blocks/capture_paint_view.gd`, make a scene with just that node
-  (`level` = the level scene, `size` = 2048x1152 or larger at 16:9), and play it (`summer_play` offscreen). It
-  saves `res://painted/blockout.png` through the paint camera and quits.
+  (`level` = the world scene, `camera_path` = the location's camera, `size` = 2048x1152 or larger at 16:9), and
+  play it (`summer_play` offscreen). It saves `res://painted/blockout.png` and quits.
 
 Then upload it (`summer_call` `assets.upload_begin`, post the form, then `assets.upload_complete`, then
 `assets.get` for its `fileUrl`).
@@ -120,15 +153,17 @@ close-up material samples from the finished concept art (<the four samples>). Im
 material reference only: never copy its layout or composition.
 Repaint image 1 in exactly that style, materials, light and detail. This is a strict image-to-image
 paint-over: keep every shape, edge and position of image 1 identical, pixel-aligned. Same camera, same
-framing. Every <building, roof, chimney, door, well, stall, crate, bench, barrel, fence, tree and bush> stays
-exactly where image 1 has it, with exactly the same silhouette and size. Do not add, remove or move anything.
-Do not add extra props, buildings or trees. Only paint surface detail inside the existing shapes.
+framing. Every <building, roof, chimney, dormer, door, steps, well, stall, crate, bench, barrel, fence, tree and
+bush> stays exactly where image 1 has it, with exactly the same silhouette and size. Do not add, remove or move
+anything. Do not add extra props, buildings or trees. Only paint surface detail inside the existing shapes.
 Colour key of image 1: red = clay-tile roof, yellow = golden thatch roof, dark blue = slate roof, cream =
-timber-framed plaster walls, grey = mossy stone, brown = worn wood, light brown floor = cobblestone plaza,
-green ground = grass, green spheres = round leafy tree canopies, small green domes = flowering bushes,
-orange = lit lanterns and fruit crates, pink low blocks = dense flower beds and window boxes.
-<Light and finish: e.g. warm golden late-afternoon light, glowing windows, painterly near-realistic detail as
-in image 2: ivy on walls, moss on stones, rich textures>. No characters, no text, no border.
+timber-framed plaster walls, grey = mossy stone (chimneys, well, low walls, steps), brown = worn wood (tall
+brown slabs on walls = wooden doors), light brown floor = cobblestone plaza, green ground = grass, green
+spheres = round leafy tree canopies, small green domes = flowering bushes, orange = lit lanterns and fruit
+crates, pink low blocks = dense flower beds and window boxes.
+<Light and finish: e.g. warm golden late-afternoon light, soft short contact shadows only (no long cast shadows
+on the ground), glowing windows, painterly near-realistic detail as in image 2: ivy on walls, moss on stones,
+rich textures>. No characters, no text, no border.
 ```
 
 `summer_assets_generate_image` takes one `referenceImageUrl` (the blockout render): put the material and
@@ -140,75 +175,81 @@ added, or the framing zoomed; generate again rather than project a drifted paint
 
 ### 5. Resolution
 
-Painting pixels per metre must be at least the screen's pixels per metre. A 32 m wide frame painted at 2048 px
-gives 64 px/m: soft when the game camera zooms 2x on a 1080p screen (120 px/m). A 4K painting (about 5500 px)
-over a 40 m frame gives 137 px/m and stays sharp at a 2x zoom (about 96 px/m on screen in the editor's game
-view). For bigger worlds use more frames, not a wider frame.
+Painting pixels per metre must be at least the screen's pixels per metre. A 4K painting (about 5500 px) over a
+40 m frame gives 137 px/m; a 16 m view on a 1080p-class game view needs about 96-120 px/m, so it stays sharp. A
+2048 px painting over 32 m (64 px/m) is soft at that view. For bigger worlds use more frames, not a wider frame.
 
 ### 6. Projection in the engine
 
-Copy `_building-blocks/paint_projection.gdshader` to `res://painted/`, `painted_world.gd` and `painted_player.gd`
-next to it. On the level root set `paint` = the painting texture and `player_path`. On `_ready` the level puts
-one `ShaderMaterial` on every mesh under `Painted`; the shader takes each surface point's position in the paint
-camera's frame as its UV. No UV unwrapping, no baking.
+Copy `_building-blocks/paint_projection.gdshader`, `painted_location.gd`, `painted_world.gd`,
+`painted_door.gd` and `painted_player.gd` to `res://painted/`. Set each location's `paint`. On `_ready` a
+location puts one `ShaderMaterial` on every mesh under its `Painted`; the shader takes each surface point's
+position in that location's paint camera frame as its UV. No UV unwrapping, no baking.
 
 - Keep the scene's tonemap **Linear**, exposure 1, no glow, no fog: the painting already holds the light.
 - Import the painting lossless (Import dock: Compress Mode Lossless, mipmaps on); VRAM compression smears it.
-- Verify: `summer_screenshot` `framing: "camera"` through `PaintCamera` must look exactly like the painting.
-  Then play and screenshot the game (`target: "game"`).
+- Verify: `summer_screenshot` `framing: "camera"` through the `PaintCamera` must look exactly like the painting.
+  Then play and look at the real window (hard rule 9).
 
 ### 7. Camera rules
 
 - The game camera has the paint camera's direction and only **moves** (follows the player). With an orthographic
   camera, moving never reveals a surface the painting did not see. Never orbit or tilt it: turned views show the
   painting's mistakes (a painted chimney next to the real one, roof edges smeared on the ground).
-- Clamp the player and the camera to the painted frame (`painted_world.gd` does both). The clamp uses the real
-  viewport aspect, not 16:9: the editor's game view and phone screens are other shapes.
+- Outdoors it shows about 16 m across; rooms are framed whole. `painted_world.gd` sizes and clamps it with the
+  real viewport aspect and sets the clear colour to the painting's edge colour.
 - More world = more frames. Every frame uses the same direction, its own paint camera position and painting.
   Paint neighbouring frames with an overlap strip so the seams match.
 
 ### 8. Interiors
 
-Each interior is its own small level far away (for example 100 m off to the side) with the **same** camera
-direction and a smaller frame (12 m). Lower the two walls nearest the camera to knee height (a dollhouse cut-away)
-and leave a door gap. Blockout, render, paint over and project exactly like the outside. Doors are `Area3D`
-triggers that move the player between levels and switch the game camera.
+Every village gets at least one enterable building. Each interior is its own location far away (for example 100 m
+off to the side) with the **same** camera direction and a smaller frame (12-14 m), `frame_whole = true`. Lower
+the two walls nearest the camera to knee height (a dollhouse cut-away) and leave a door gap of about 1.8 m.
+Blockout, render, paint over (its own 4K paint-over, the same rules and colour key: warm floorboards, plaster,
+beams, fireplace, bed, shelves, rug, "keep the area outside the room plain flat dark") and project exactly like
+the outside. `painted_door.gd` triggers go both ways; put each spawn marker clear of the other door's trigger.
 
 ### 9. Characters
 
 1. **Ready-made:** search the library for the painted plug-in characters first (`summer_docs_search`
-   "painted 2.5D character sprite sheet"). They come with every direction for idle and walk.
-2. **New character:** generate a 4-pose turnaround in the world's style on flat pure green:
+   "painted 2.5D character sprite sheet").
+2. **New character:** generate an 8-pose turnaround (or two 4-pose sheets) in the world's style on flat pure
+   green:
    ```
-   Character turnaround sheet in the art style of <the world>: <character>. Draw the same character 4 times
-   in one row, same size, feet on one baseline: facing down toward the viewer, facing up (back view), facing
-   left, facing right. Seen from a high three-quarter top-down camera. Plain flat pure green background
-   (#00FF00), no ground, no shadows, no text.
+   Character turnaround sheet in the art style of <the world>: <character>. Draw the same character 8 times,
+   same size, feet on one baseline: facing down toward the viewer, down-left, left, up-left, up (back view),
+   up-right, right, down-right. Seen from a high three-quarter top-down camera. Plain flat pure green
+   background (#00FF00), no ground, no shadows, no text.
    ```
    Crop each pose, pad it to 9:16 with the same green, upload it, then `summer_assets_generate_video`
-   (`model: "minimax-h3-max"`, `aspectRatio: "9:16"`, 5 s) per direction and animation:
+   (`model: "minimax-h3-max"`, `aspectRatio: "9:16"`, 5 s): one clip per direction and animation:
    ```
-   The character, <facing the viewer | seen from behind | in side view facing right>, walks in place on the
-   spot with a steady, simple game walk cycle. The character stays exactly centred at the same size and never
-   moves across the frame or turns. Static locked camera, no zoom. The plain flat pure green background stays
-   perfectly flat and unchanged. Seamless loop.
+   The character, <facing>, walks in place on the spot with a steady, simple game walk cycle. The character
+   stays exactly centred at the same size and never moves across the frame or turns. Static locked camera, no
+   zoom. The plain flat pure green background stays perfectly flat and unchanged. Seamless loop.
    ```
+   Add "long confident strides, heel to toe" to walk clips: generated walks otherwise take short steps.
    Idle: "stands still in a relaxed idle: gentle breathing, one blink, feet planted". Run: "runs in place".
-3. **Clip to sheet** (host with a shell and ffmpeg): key out the green by colour, take one walk cycle (about
-   1 s at 24 fps; skip the first second), sample 8 frames evenly, crop every frame of every clip with the **same**
-   box so the feet stay on one line, and tile them into one sheet: one row per animation (`idle_down`,
-   `walk_down`, `walk_up`, `walk_left`, `walk_right`, ...). Left can be the right row mirrored. Write a json
-   beside it: `{"cell_w", "cell_h", "frames", "rows", "fps"}`. Look at every frame; regenerate a clip with a
-   broken frame.
+3. **Clip to sheet** (host with a shell and ffmpeg): key out the green by colour, take one cycle (skip the
+   first second), sample 8 frames evenly, crop every frame of every clip with the **same** box so the feet stay
+   on one line, and tile them into one sheet: one row per animation and direction (`idle_down`,
+   `walk_up_left`, `run_right`, ...). Write the json beside it: `{"cell_w", "cell_h", "frames", "rows",
+   "fps": {"idle", "walk", "run"}, "height_m", "stride_m": {"walk", "run"}, "cycles_per_s": {"walk", "run"}}`.
+   Measure once per kind: `stride_m` = how far a planted foot slides back during one cycle at `height_m`,
+   `cycles_per_s` = cycles per second at the sheet's fps. Look at every frame; regenerate a clip with a broken
+   frame.
    Without video: `summer_call` `assets.generate_sprite_sheet` (8-frame walk from one picture, per direction).
 4. **In the game:** `painted_player.gd` makes an `AnimatedSprite3D`: Y-billboard, unshaded, alpha cut (so painted
-   walls hide the character), height stretched by `1 / cos(camera pitch)`. Spawn points 0.5 m or more away from
-   walls, or the flat card cuts into them.
+   walls hide the character), height stretched by `1 / cos(camera pitch)`, 8 facings by 45 degree sectors (a
+   missing diagonal falls back to its side row), move 4.2 m/s on the jog cycle, sprint 6.3, stroll 1.6 on the
+   walk cycle, animation speed = speed / natural speed.
+   Spawn points 0.5 m or more away from walls, or the flat card cuts into them.
 
 ### 10. Weapons
 
 - **Variant sheet (best look):** edit the turnaround so the character holds the weapon, then animate the clips
-  again. One extra sheet per weapon.
+  again. One extra sheet per weapon. Never mirror a sheet with a held weapon.
 - **Held sprite layer (cheap):** a second `Sprite3D` child with the weapon, a per-direction offset and draw order
   (behind the body when facing up). Good for many weapons; the hand will not wrap around the grip.
 
@@ -218,12 +259,15 @@ triggers that move the player between levels and switch the game camera.
   blockout matches it. Pass a 2x2 material sheet cropped from the concept.
 - **A sparse blockout:** the painting comes back sparse. Add low blocks for flower beds, crates, barrels, benches.
 - **35 degrees against a generated concept:** generated "isometric" art is 30 degrees down; the blocks will not fit.
-- **Generic boxes that do not follow the concept:** the painting then fights the geometry; rebuild one to one.
+- **A tiny or giant hero:** check the hero against a door (door = hero x 1.15) in the first screenshot.
+- **Sliding feet or slow walking:** move on the jog cycle at about 4.2 m/s, speed_scale = speed / natural; never a
+  walk cycle above 1.5x natural.
+- **Long baked shadows:** they lie on the ground while the hero walks through them. Contact shadows only.
+- **Floating dormers, blockout door slabs left visible:** dormers on the slope; hide door and step slabs.
 - **Rotating the game camera:** shows painted detail on the wrong surfaces. Translate only.
-- **2K painting with a zoomed camera:** blurry. Paint 4K.
 - **Filmic/ACES tonemap or lights on painted meshes:** colours shift. Unshaded material, Linear tonemap.
 - **Perspective camera:** moving it reveals hidden faces. Use orthographic.
-- **Player walking off the painted frame:** clamp to the frame.
+- **Assuming a 16:9 window:** the clamp shows past the painting in the editor's game view. Use the real aspect.
 
 ## Optional: Blender route
 

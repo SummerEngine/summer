@@ -1,0 +1,39 @@
+id: skill/painted-25d-world
+kind: skill
+version: 1.0.0
+summary: "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters."
+use_when:
+  - the user asks for a 2D game, a 2.5D game, a top-down RPG, a cozy village or farming game, a dungeon crawler look, or a side-scroller — build the world as a painted 2.5D world, not from a 2D template
+  - the user wants a game that looks like a hand-painted illustration but can be walked around in, with buildings to enter
+  - making a level from a concept image — rebuild the concept as blocks, paint over the blockout render, project the painting onto the blocks
+  - adding sprite characters, interiors or weapons to a painted 2.5D world
+do_not_use_when:
+  - the user explicitly wants pixel-art tiles or a classic 2D tile map — use pixel-art and the 2D genre playbooks in make-game
+  - the game is full 3D with a free camera (third-person, FPS) — the painting only holds from one camera direction
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - level-design
+    - rendering
+    - assets
+  modalities:
+    - images
+    - scenes
+    - scripts
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
+    - skill/new-project
+    - skill/concept-art
+    - skill/sprite-sheet
+    - skill/scene-composition
+source: official
+license: MIT
+status: preview
+recommended: false
+bundled: false

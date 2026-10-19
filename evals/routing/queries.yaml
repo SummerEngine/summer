@@ -21,6 +21,10 @@
 
 queries:
   # ── 2D assets ──────────────────────────────────────────────────────────
+  - query: "make me a cozy 2D village game where I can walk into the houses"
+    expected: [skill/painted-25d-world]
+  - query: "I want a top-down 2.5D RPG that looks hand painted"
+    expected: [skill/painted-25d-world]
   - query: "draw a portrait of my wizard for the dialogue box"
     expected: [skill/character-portrait]
   - query: "show me a few different art styles for the main character before we commit"

@@ -48,7 +48,7 @@ If you're not sure which fits, ask:
 
 > "Empty (just a root node) or 3d-basic (camera, light, and a floor — you can press play immediately)?"
 
-If the user has clearly invoked `brainstorm-game` already and the brief calls for 3D, default to `3d-basic` and mention you did. If 2D, use `empty` (we don't ship a 2D-basic yet).
+If the user has clearly invoked `brainstorm-game` already and the brief calls for 3D, default to `3d-basic` and mention you did. If 2D or 2.5D, use `empty`, keep its `Node3D` root and build the world with `painted-25d-world` (a painted 3D blockout under a fixed orthographic camera with sprite characters).
 
 ### 3. Create
 
@@ -88,7 +88,7 @@ Ask: "Project is open. What do you want to build?"
 | Don't | Why |
 |---|---|
 | Skip the name question and use `my-game` silently | The user has opinions about the directory name. Two seconds of asking saves a `mv` later. |
-| Use `summer create 3d-basic` for a 2D game | Wrong starting scene. Use `empty` and let the user/agent build the 2D root from there. |
+| Use `summer create 3d-basic` for a 2D game | Its light and floor fight the painted look. Use `empty` and follow `painted-25d-world`. |
 | Default to a community template | That's `browse-templates`. This skill is specifically for "blank canvas." |
 | Continue into `fps-controller` automatically | Most users want to brainstorm or set art direction first. Stop and ask. |
 | Run this when the user is in an existing project | Check `summer status` or `summer_get_project_context` first. If a project is already open, the user probably wanted to modify it, not create a new one. |
@@ -96,7 +96,7 @@ Ask: "Project is open. What do you want to build?"
 ## Edge cases
 
 - **Engine not running** → that's fine. `summer create` doesn't need the engine. After scaffolding, `summer run <name>` will start it.
-- **User wants 2D but `empty` is the only 2D-friendly built-in** → use `empty`, then set up a 2D scene root via `summer_replace_node` (Node3D → Node2D). Mention this — don't surprise the user.
+- **User wants 2D or 2.5D** → use `empty`, keep the `Node3D` root and follow `painted-25d-world`. Use a `Node2D` root only when the user asks for a classic 2D tile or pixel game.
 - **Directory exists** → the CLI errors out. Ask for a different name; don't try to overwrite.
 
 ## Closing
@@ -111,5 +111,4 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | In this skill | Command |
 |---|---|
 | `summer_get_project_context` | `summer engine get-project-context` |
-| `summer_replace_node` | `summer engine replace-node` |
 <!-- /shell-commands -->

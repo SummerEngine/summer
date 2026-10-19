@@ -845,6 +845,22 @@
       ]
     },
     {
+      "id": "skill/painted-25d-world",
+      "name": "painted-25d-world",
+      "description": "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/painted-25d-world/",
+      "domains": [
+        "2d",
+        "level-design",
+        "rendering",
+        "assets"
+      ],
+      "bundled": false
+    },
+    {
       "id": "skill/pixel-art",
       "name": "pixel-art",
       "description": "Generate pixel-art sprites, items, tiles and portraits at a set resolution with a limited palette.",

@@ -40,6 +40,8 @@ Distilled blueprints for common genres live in this skill's `references/` folder
 | Third-person action / 3D platformer | `references/3d-third-person.md` | `references/3d-third-person-systems.md` | Node3D / CharacterBody3D / SpringArm3D |
 | First-person horror | `references/3d-horror.md` | `references/3d-horror-systems.md` | Node3D / CharacterBody3D / Camera3D on Head |
 
+**2D and 2.5D games look painted.** For any 2D or 2.5D request (top-down, RPG, cozy, side-scroller, platformer look), build the world with the `painted-25d-world` skill: a 3D blockout under one fixed orthographic camera, an AI paint-over projected onto the blocks, sprite characters (Node3D / CharacterBody3D / translate-only Camera3D). Use the 2D playbooks above for the core loop, mechanics and build order only, not for the scene tree or art. Do not start a 2D game from a 2D template unless the user asks for that template.
+
 No playbook (racing, sandbox, sim): build fresh through the phases below. The playbooks lean on these system skills — load one when its mechanic comes up: `character-movement`, `camera-rigs`, `combat-basics`, `save-load`, `ui-basics`, `multiplayer-project`.
 
 These rules from the playbooks apply to every genre:

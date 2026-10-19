@@ -104,6 +104,8 @@ describe("library-only skills", () => {
       "realtime-wet-surfaces",
       "psx-retro-rendering",
       "skintokens-auto-rigging",
+      // routed from make-game and new-project; the installed-description budget is full
+      "painted-25d-world",
     ];
     const registry = getSkillRegistry();
     expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());

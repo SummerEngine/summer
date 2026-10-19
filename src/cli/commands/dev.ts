@@ -6,8 +6,8 @@ import { ENGINE_BIN_ENV } from "../../core/engine-install.js";
 import { launchEditor, resolveRunBinary } from "../../core/engine-launch.js";
 import { resolveLaunchPosture } from "../../core/launch-posture.js";
 import { getTemplateRegistry, resolveTemplate, type TemplateEntry } from "../../core/templates.js";
-import { createProject, isEmptyProjectFolder } from "./create.js";
-import { EngineInstallError, installEngine } from "./install.js";
+import { EngineInstallError, installEngine } from "../../core/engine-installer.js";
+import { createProject, isEmptyProjectFolder } from "../../core/local-project.js";
 
 /**
  * `summer dev [template] [dir]`: from nothing to an editor an agent can

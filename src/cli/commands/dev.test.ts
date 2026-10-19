@@ -246,7 +246,11 @@ describe("summer dev registers the preview for Claude Code Desktop's Browser pan
 describe.skipIf(process.platform === "win32")("runDev end to end with a fake engine binary and health server", () => {
   let server: Server | null = null;
 
+  let stopEngine = () => {};
+
   afterEach(async () => {
+    stopEngine();
+    stopEngine = () => {};
     await new Promise<void>((done) => (server ? server.close(() => done()) : done()));
     server = null;
   });
@@ -255,8 +259,21 @@ describe.skipIf(process.platform === "win32")("runDev end to end with a fake eng
     const argsFile = join(root, "engine-args.txt");
     const engine = join(root, "bin", "Summer");
     mkdirSync(join(root, "bin"));
-    // --help lists the background flag (the launch probe); a real launch records its argv.
-    writeFileSync(engine, `#!/bin/sh\nif [ "$1" = "--help" ]; then echo "--summer-background"; exit 0; fi\necho "$@" > "${argsFile}"\n`, { mode: 0o755 });
+    // --help lists the background flag (the launch probe); a real launch records its argv and pid
+    // and stays up like an editor (an editor that exits ends the wait as a failed launch).
+    const pidFile = join(root, "engine.pid");
+    stopEngine = () => {
+      try {
+        process.kill(Number(readFileSync(pidFile, "utf8").trim()));
+      } catch {
+        // already gone
+      }
+    };
+    writeFileSync(
+      engine,
+      `#!/bin/sh\nif [ "$1" = "--help" ]; then echo "--summer-background"; exit 0; fi\necho $$ > "${pidFile}"\necho "$@" > "${argsFile}"\nexec sleep 30\n`,
+      { mode: 0o755 }
+    );
     process.env.SUMMER_BIN = engine;
 
     // The editor's API answers once the engine has started.

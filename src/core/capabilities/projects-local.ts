@@ -8,23 +8,27 @@
  */
 import { existsSync, statSync } from "fs";
 import { homedir } from "os";
-import { basename, join, resolve } from "path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "path";
 import type { EngineApiClient } from "../api-client.js";
 import { findProjectRoot, type EngineSelection } from "../engine.js";
+import { EngineInstallError, type InstallFailureReason } from "../engine-install.js";
 import { openProjectInEditor, sessionProject, type SelfStartDeps } from "../engine-self-start.js";
-import { createProject, isEmptyProjectFolder } from "../local-project.js";
+import { createProject, isEmptyProjectFolder, projectRootAbove } from "../local-project.js";
 import { getTemplateRegistry, resolveTemplate } from "../templates.js";
+import { settlesWithin } from "../util/sleep.js";
 
 /** The starter project when no template is named (the same as `summer dev`). */
 export const LOCAL_DEFAULT_TEMPLATE = "3d-basic";
 const DEFAULT_NAME = "my-game";
 
-/** A failure the caller can fix: `code` is the answer's error code, `recovery` its one next step. */
+/** A failure the caller can fix: `code` is the answer's error code,
+ *  `recovery` its one next step, `reason` the install's own code when an install failed. */
 export class LocalProjectError extends Error {
   constructor(
-    readonly code: "invalid_input" | "not_found" | "unavailable",
+    readonly code: "invalid_input" | "not_found" | "unavailable" | "conflict" | "unsupported",
     message: string,
-    readonly recovery: string
+    readonly recovery: string,
+    readonly reason?: string
   ) {
     super(message);
     this.name = "LocalProjectError";
@@ -33,19 +37,47 @@ export class LocalProjectError extends Error {
 
 /** `{ok:false, code, error, recovery}`, the shape every face prints. */
 export function localProjectFailure(error: LocalProjectError): Record<string, unknown> {
-  return { ok: false, code: error.code, error: error.message, recovery: error.recovery };
+  return { ok: false, code: error.code, error: error.message, recovery: error.recovery, ...(error.reason ? { reason: error.reason } : {}) };
 }
 
+/** An approved install that failed, with its own reason (disk_space, download, ...). */
+function installFailure(error: EngineInstallError): LocalProjectError {
+  const code = ({ unsupported_platform: "unsupported", app_running: "conflict" } as Partial<Record<InstallFailureReason, LocalProjectError["code"]>>)[error.reason] ?? "unavailable";
+  return new LocalProjectError(code, "Summer Engine could not be installed.", error.message, error.reason);
+}
+
+/** App folders a chat app may start its server in: never a place for a game. */
+const APP_FOLDERS = /(^|[\\/])(AppData|Library|\.config|\.local|Program Files( \(x86\))?|WindowsApps)([\\/]|$)/i;
+
 /**
- * Where a new project goes when no folder is named: in the session's folder,
- * or in ~/Documents (the editor's own default) when the session has none: a
- * chat app starts its server in / or the home folder.
+ * Where a new project goes when no folder is named. Next to the project the
+ * session is in (never inside another project); else the session's folder
+ * when it is a folder of the person's own inside home (not home itself, not
+ * an app's folder: chat apps start their server in an install or app-data
+ * folder, or in / or home); else ~/Documents/Summer.
  */
 export function defaultProjectParent(cwd: string, home: string = homedir()): string {
   const dir = resolve(cwd);
-  if (dir !== resolve(dir, "/") && dir !== resolve(home)) return dir;
-  const documents = join(home, "Documents");
-  return existsSync(documents) ? documents : home;
+  const enclosing = projectRootAbove(dir, home);
+  if (enclosing) return dirname(enclosing);
+  const inHome = relative(resolve(home), dir);
+  if (inHome && !inHome.startsWith("..") && !isAbsolute(inHome) && !APP_FOLDERS.test(inHome)) return dir;
+  return join(resolve(home), "Documents", "Summer");
+}
+
+/** Projects being written by this process, by folder: a slow template download outlives one tool call. */
+const creating = new Map<string, Promise<CreatedLocalProject>>();
+/** One call waits this long for a template download, then answers "still creating". */
+const CREATE_WAIT_MS = 40_000;
+
+/** The error for a folder that cannot be written, a full disk, or the template fetch. */
+function createFailure(error: unknown, dir: string): LocalProjectError {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === "EACCES" || code === "EPERM" || code === "EROFS") {
+    return new LocalProjectError("invalid_input", `Cannot write to ${dir} (${code}).`, "Pass dir: a folder you can write to, e.g. ~/Documents/Summer/my-game.");
+  }
+  if (code === "ENOSPC") return new LocalProjectError("unavailable", `The disk is full (${dir}).`, "Free up space, then call again.");
+  return new LocalProjectError("unavailable", `Could not create the project: ${(error as Error).message}`, "Check the network, then call again.");
 }
 
 export interface CreateLocalInput {
@@ -64,7 +96,11 @@ export interface CreatedLocalProject {
 }
 
 /** Write a new project from a template; a folder that already holds one is left as it is. */
-export async function createLocalProject(input: CreateLocalInput, cwd: string = process.cwd()): Promise<CreatedLocalProject> {
+export async function createLocalProject(
+  input: CreateLocalInput,
+  cwd: string = process.cwd(),
+  waitMs: number = CREATE_WAIT_MS
+): Promise<CreatedLocalProject> {
   const entries = getTemplateRegistry();
   const asked = input.template?.trim() || LOCAL_DEFAULT_TEMPLATE;
   const resolution = resolveTemplate(asked, entries);
@@ -78,24 +114,39 @@ export async function createLocalProject(input: CreateLocalInput, cwd: string = 
   }
   const entry = resolution.entry;
   const name = input.name?.trim();
-  if (name && /[\\/]/.test(name)) {
+  if (name && (/[\\/]/.test(name) || name === "." || name === "..")) {
     throw new LocalProjectError("invalid_input", `name is the project's name, not a path: '${name}'.`, "Put the folder in dir.");
   }
-  const dir = input.dir?.trim()
-    ? resolve(cwd, input.dir.trim())
-    : join(defaultProjectParent(cwd), name || (input.template ? entry.slug : DEFAULT_NAME));
+  const askedDir = input.dir?.trim().replace(/^~(?=$|[\\/])/, homedir());
+  const dir = askedDir ? resolve(cwd, askedDir) : join(defaultProjectParent(cwd), name || (input.template ? entry.slug : DEFAULT_NAME));
   const next = { op: "projects.open_local" as const, input: { path: dir } };
 
-  if (existsSync(join(dir, "project.godot"))) return { ok: true, projectPath: dir, template: null, created: false, next };
-  if (existsSync(dir) && (!statSync(dir).isDirectory() || !isEmptyProjectFolder(dir))) {
-    throw new LocalProjectError("invalid_input", `${dir} has files but no project.godot.`, "Pass dir: a new folder, or an empty one.");
+  // A call that timed out left the download running: wait for it again, never start a second one.
+  let job = creating.get(dir);
+  if (!job) {
+    if (existsSync(join(dir, "project.godot"))) return { ok: true, projectPath: dir, template: null, created: false, next };
+    const around = projectRootAbove(dirname(dir));
+    if (around) {
+      throw new LocalProjectError("invalid_input", `${dir} is inside the project ${around}.`, `Pass dir: a folder outside it, e.g. ${join(dirname(around), basename(dir))}.`);
+    }
+    if (existsSync(dir) && (!statSync(dir).isDirectory() || !isEmptyProjectFolder(dir))) {
+      throw new LocalProjectError("invalid_input", `${dir} has files but no project.godot.`, "Pass dir: a new folder, or an empty one.");
+    }
+    job = createProject(entry, dir, { name: name || basename(dir), log: () => {} }).then(
+      (): CreatedLocalProject => ({ ok: true, projectPath: dir, template: entry.slug, created: true, next }),
+      (error: unknown) => {
+        throw createFailure(error, dir);
+      }
+    );
+    job.catch(() => undefined);
+    creating.set(dir, job);
   }
-  try {
-    await createProject(entry, dir, { name: name || basename(dir), log: () => {} });
-  } catch (error) {
-    throw new LocalProjectError("unavailable", `Could not create the project: ${(error as Error).message}`, "Check the network, then call again.");
+  const done = await settlesWithin(job, waitMs);
+  if (!done) {
+    throw new LocalProjectError("unavailable", `Still creating ${dir} (downloading the template).`, "Call projects.create_local again in 30 seconds with the same input.");
   }
-  return { ok: true, projectPath: dir, template: entry.slug, created: true, next };
+  creating.delete(dir);
+  return job;
 }
 
 export interface OpenLocalInput {
@@ -131,7 +182,13 @@ export async function openLocalProject(
       "Make one with projects.create_local, then pass its projectPath as path."
     );
   }
-  const client = await openProjectInEditor(root, { cwd: root }, { install: input.install === true }, deps);
+  let client: EngineApiClient;
+  try {
+    client = await openProjectInEditor(root, { cwd: root }, { install: input.install === true }, deps);
+  } catch (error) {
+    if (error instanceof EngineInstallError) throw installFailure(error);
+    throw error;
+  }
   onOpen?.(root, client);
   return {
     ok: true,

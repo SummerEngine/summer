@@ -6,7 +6,7 @@
  * already open.
  */
 import { execFileSync, spawn } from "child_process";
-import { readFileSync, realpathSync } from "fs";
+import { readFileSync, realpathSync, rmSync } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
@@ -66,7 +66,10 @@ export class LaunchLockBusyError extends Error {
 
 /** Hold ~/.summer/launch.lock while `fn` runs. A launch that waits longer
  *  than the stale age calls `heartbeat` so other launchers keep waiting. */
-export async function withLaunchLock<T>(fn: (heartbeat: () => Promise<void>) => Promise<T>): Promise<T> {
+export async function withLaunchLock<T>(
+  fn: (heartbeat: () => Promise<void>) => Promise<T>,
+  maxWaitMs: number = LAUNCH_LOCK_WAIT_MS
+): Promise<T> {
   const summerDir = getSummerDir();
   await mkdir(summerDir, { recursive: true, mode: 0o700 });
 
@@ -98,7 +101,7 @@ export async function withLaunchLock<T>(fn: (heartbeat: () => Promise<void>) => 
         continue;
       }
 
-      if (Date.now() - startedAt > LAUNCH_LOCK_WAIT_MS) {
+      if (Date.now() - startedAt >= maxWaitMs) {
         throw new LaunchLockBusyError();
       }
 
@@ -163,16 +166,36 @@ export interface LastLaunch {
   projectPath: string;
   pid: number;
   at: number;
+  /** The folder the launch ran in (`summer dev` makes the project below it). */
+  cwd?: string;
 }
 
-/** The last launch while its editor process is alive, else null. */
-export function lastLaunch(): LastLaunch | null {
+/** Past this the launched editor has registered, or it never will. */
+export const LAST_LAUNCH_MAX_MS = 10 * 60_000;
+
+/** The last launch while it is recent and its editor process is alive, else
+ *  null; a stale record is deleted, so a reused pid never blocks a project. */
+export function lastLaunch(now: number = Date.now()): LastLaunch | null {
+  const path = join(getSummerDir(), LAST_LAUNCH_FILE);
   try {
-    const record = JSON.parse(readFileSync(join(getSummerDir(), LAST_LAUNCH_FILE), "utf-8")) as Partial<LastLaunch>;
-    if (typeof record.projectPath !== "string" || typeof record.pid !== "number" || typeof record.at !== "number") return null;
-    return processIsAlive(record.pid) ? (record as LastLaunch) : null;
+    const record = JSON.parse(readFileSync(path, "utf-8")) as Partial<LastLaunch>;
+    if (typeof record.projectPath === "string" && typeof record.pid === "number" && typeof record.at === "number") {
+      if (now - record.at <= LAST_LAUNCH_MAX_MS && processIsAlive(record.pid)) return record as LastLaunch;
+    }
+    rmSync(path, { force: true });
   } catch {
-    return null;
+    // no record
+  }
+  return null;
+}
+
+/** Forget the last launch when it names this editor process (it exited). */
+function forgetLaunch(pid: number): void {
+  const path = join(getSummerDir(), LAST_LAUNCH_FILE);
+  try {
+    if ((JSON.parse(readFileSync(path, "utf-8")) as Partial<LastLaunch>).pid === pid) rmSync(path, { force: true });
+  } catch {
+    // no record
   }
 }
 
@@ -180,7 +203,7 @@ export type OpenEditor =
   | { kind: "none" }
   | { kind: "this"; port: number; health: EngineHealth }
   /** An editor process has this project but does not answer: busy, or still importing. */
-  | { kind: "starting"; port: number | null }
+  | { kind: "starting"; port: number | null; pid?: number }
   | { kind: "other"; port: number; health: EngineHealth; project: string };
 
 /**
@@ -199,10 +222,11 @@ export async function findOpenEditor(projectPath: string | null): Promise<OpenEd
     const instances = await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true });
     for (const instance of instances.filter((i) => i.resourceRoot === root)) {
       const health = await checkEngineHealth(instance.port);
-      return health ? { kind: "this", port: instance.port, health } : { kind: "starting", port: instance.port };
+      return health ? { kind: "this", port: instance.port, health } : { kind: "starting", port: instance.port, pid: instance.pid };
     }
     const last = lastLaunch();
-    if ((last && canonical(last.projectPath) === root) || editorStartingFor(root)) return { kind: "starting", port: null };
+    if (last && canonical(last.projectPath) === root) return { kind: "starting", port: null, pid: last.pid };
+    if (editorStartingFor(root)) return { kind: "starting", port: null };
     for (const instance of instances) {
       const health = await checkEngineHealth(instance.port);
       if (!health) continue;
@@ -219,10 +243,11 @@ export async function findOpenEditor(projectPath: string | null): Promise<OpenEd
 }
 
 /** Whether an editor process was started on this project (its command line
- *  has `--path <project> --editor`), whether or not it answers yet. */
+ *  has `--path <project> --editor`, or `-e` after the editor restarts
+ *  itself), whether or not it answers yet. */
 export function editorStartingFor(projectPath: string): boolean {
   if (process.platform === "win32") return false;
-  const pattern = `--path ${projectPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} --editor`;
+  const pattern = `--path ${projectPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (--editor|-e)( |$)`;
   try {
     return execFileSync("pgrep", ["-f", "--", pattern], { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim().length > 0;
   } catch {
@@ -245,6 +270,9 @@ export interface LaunchEditorOptions {
   waitMs?: number;
   /** One "still starting" line this often while waiting; 0 = none. */
   progressEveryMs?: number;
+  /** An absolute end (ms) for the whole launch, lock wait and --help probe
+   *  included (the MCP's per-call deadline); the API wait is what is left. */
+  deadline?: number;
   out: LaunchOutput;
 }
 
@@ -263,11 +291,12 @@ export type LaunchEditorResult =
  * waitMs passes. Prints what it does through `out`; the caller words the end.
  */
 export async function launchEditor(options: LaunchEditorOptions): Promise<LaunchEditorResult> {
-  const { out, posture } = options;
-  const projectPath = options.projectPath ? resolve(options.projectPath) : null;
-  const waitMs = options.waitMs ?? RUN_WAIT_MS;
+  const { out, posture, deadline } = options;
+  // The canonical path: the same form the registry, the pgrep check and the spawn use.
+  const projectPath = options.projectPath ? canonical(options.projectPath) : null;
   const progressEveryMs = options.progressEveryMs ?? 0;
 
+  const lockWaitMs = deadline !== undefined ? Math.min(LAUNCH_LOCK_WAIT_MS, Math.max(0, deadline - Date.now())) : LAUNCH_LOCK_WAIT_MS;
   return withLaunchLock(async (heartbeat) => {
     // Poll /api/health (the instance's port when known, else the pointer)
     // until the editor answers or waitMs passes; `onUp` adds the caller's lines.
@@ -277,9 +306,10 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       onUp: (health: EngineHealth) => void
     ): Promise<LaunchEditorResult | null> => {
       const startTime = Date.now();
+      const end = deadline ?? startTime + (options.waitMs ?? RUN_WAIT_MS);
       let nextProgress = startTime + progressEveryMs;
       let nextHeartbeat = startTime + 10_000;
-      while (Date.now() - startTime < waitMs) {
+      while (Date.now() < end) {
         await sleep(500);
         const failure = failed();
         if (failure) return failure;
@@ -326,7 +356,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     if (open.kind === "starting") {
       out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
       const waited = await waitForApi(open.port, () => null, () => {});
-      return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null });
+      return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null, pid: open.pid });
     }
 
     const resolved = resolveRunBinary(options.bin);
@@ -373,13 +403,14 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       spawnState.error = error;
     });
     child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
-      if (code !== 0) spawnState.exit = signal ? `killed by ${signal}` : `exited with code ${code}`;
+      spawnState.exit = signal ? `killed by ${signal}` : `exited with code ${code}`;
+      if (child.pid) forgetLaunch(child.pid);
     });
     child.unref();
     if (projectPath && child.pid) {
       // Other launchers (another `summer dev`, the MCP) wait for this editor
       // until it registers, and the MCP finds the project through it.
-      await writeStoreJson(LAST_LAUNCH_FILE, { projectPath, pid: child.pid, at: Date.now() } satisfies LastLaunch).catch(() => undefined);
+      await writeStoreJson(LAST_LAUNCH_FILE, { projectPath, pid: child.pid, at: Date.now(), cwd: canonical(process.cwd()) } satisfies LastLaunch).catch(() => undefined);
     }
 
     const spawnFailed = (): LaunchEditorResult | null => {
@@ -409,5 +440,5 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     });
     if (result?.status === "running") return { ...result, pid: child.pid };
     return result ?? { status: "starting", binary, pid: child.pid };
-  });
+  }, lockWaitMs);
 }

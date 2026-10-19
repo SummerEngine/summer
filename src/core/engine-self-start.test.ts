@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +17,16 @@ import type { EngineApiClient } from "./api-client.js";
 import { checkEngineHealth } from "./engine.js";
 import { findEngineBinary } from "./engine-install.js";
 import { LaunchLockBusyError, type LaunchEditorOptions, type LaunchEditorResult } from "./engine-launch.js";
-import { _resetSelfStartForTests, DEV_COMMAND, hasNoDisplay, selfStartEngine, SELF_START_RECOVERY, sessionProject } from "./engine-self-start.js";
+import {
+  _resetRecentForTests,
+  _resetSelfStartForTests,
+  DEV_COMMAND,
+  hasNoDisplay,
+  openProjectInEditor,
+  selfStartEngine,
+  SELF_START_RECOVERY,
+  sessionProject,
+} from "./engine-self-start.js";
 import { EngineNotRunningError } from "./error-codes.js";
 import { setSummerDirForTests } from "./store.js";
 
@@ -182,7 +191,7 @@ describe("the MCP opens the session's project when no editor runs", () => {
     const lockBusy = vi.fn(async (_options: LaunchEditorOptions): Promise<LaunchEditorResult> => {
       throw new LaunchLockBusyError();
     });
-    expect((await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: lockBusy }))).recovery).toBe(SELF_START_RECOVERY.starting(project));
+    expect((await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: lockBusy }))).recovery).toBe(SELF_START_RECOVERY.launchBusy);
     _resetSelfStartForTests();
     const broken = vi.fn(async (_options: LaunchEditorOptions): Promise<LaunchEditorResult> => {
       throw new Error("EACCES: ~/.summer");
@@ -203,12 +212,50 @@ describe("the MCP opens the session's project when no editor runs", () => {
     expect(launch).toHaveBeenCalledTimes(2);
   });
 
-  it("with no project in the agent's folder, the project the last summer dev opened is the session's while its editor runs", async () => {
+  it("with no project in the agent's folder, the project the last summer dev opened from it is the session's while that editor runs", async () => {
+    const record = join(root, ".summer", "last-launch.json");
+    const write = (value: Record<string, unknown>) => writeFileSync(record, JSON.stringify({ projectPath: project, pid: process.pid, at: Date.now(), ...value }));
     mkdirSync(join(root, ".summer"), { recursive: true });
-    writeFileSync(join(root, ".summer", "last-launch.json"), JSON.stringify({ projectPath: project, pid: process.pid, at: Date.now() }));
+    write({ cwd: elsewhere });
     expect(await sessionProject({ cwd: elsewhere })).toBe(project);
-    writeFileSync(join(root, ".summer", "last-launch.json"), JSON.stringify({ projectPath: project, pid: 2 ** 30, at: Date.now() }));
+    // A project below the session's folder needs no matching cwd; another session's folder never adopts it.
+    write({ cwd: "/somewhere/else" });
+    expect(await sessionProject({ cwd: root })).toBe(project);
     expect(await sessionProject({ cwd: elsewhere })).toBeNull();
+    // A dead editor, an old record or a deleted project never block or misdirect: the stale record is removed.
+    write({ cwd: elsewhere, pid: 2 ** 30 });
+    expect(await sessionProject({ cwd: elsewhere })).toBeNull();
+    expect(existsSync(record)).toBe(false);
+    write({ cwd: elsewhere, at: Date.now() - 11 * 60_000 });
+    expect(await sessionProject({ cwd: elsewhere })).toBeNull();
+    write({ cwd: elsewhere, projectPath: join(root, "gone") });
+    expect(await sessionProject({ cwd: elsewhere })).toBeNull();
+  });
+
+  it("while an approved install runs, other engine tools say installing instead of asking again", async () => {
+    findEngineBinaryMock.mockReturnValue(null);
+    let finish: () => void = () => {};
+    const install = vi.fn(async (options: { log?: (line: string) => void }) => {
+      options.log?.("  20% (130.0MB)");
+      await new Promise<void>((done) => (finish = done));
+      return { binary: "/x", version: "0.9.9", destination: "/x", alreadyInstalled: false };
+    });
+    const launch = launcher({ status: "running", launched: true, port: 1, health: up as never });
+    await failureOf(openProjectInEditor(project, { cwd: project }, { install: true }, { env: on, launch, install, waitMs: 0 }));
+    _resetRecentForTests();
+    const other = await failureOf(selfStartEngine({ cwd: elsewhere }, notRunning(), { env: on, launch }));
+    expect(other.recovery).toBe(SELF_START_RECOVERY.installing("20% (130.0MB)"));
+    finish();
+  });
+
+  it("a SUMMER_BIN that names nothing is never answered with an install", async () => {
+    findEngineBinaryMock.mockReturnValue(null);
+    const install = vi.fn();
+    const error = await failureOf(
+      openProjectInEditor(project, { cwd: project }, { install: true }, { env: { ...on, SUMMER_BIN: join(root, "missing", "Summer") }, install: install as never })
+    );
+    expect(error.recovery).toContain("nothing exists there");
+    expect(install).not.toHaveBeenCalled();
   });
 
   it("a binary that fails to start says how to repair it", async () => {

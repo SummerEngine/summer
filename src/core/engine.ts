@@ -11,6 +11,7 @@ import {
 const DEFAULT_PORT = 6550;
 const INSTANCE_SCHEMA_VERSION = 1;
 const INSTANCE_STALE_MS = 180_000;
+const BUSY_INSTANCE_STALE_MS = 30 * 60_000;
 const MAX_INSTANCE_FILE_BYTES = 64 * 1024;
 
 export interface EngineSelection {
@@ -181,8 +182,9 @@ function parseEngineInstance(value: unknown): EngineInstance | null {
 export async function listEngineInstances(
   nowMs = Date.now(),
   summerDir = getSummerDir(),
-  /** Keep entries whose heartbeat is old: an editor that is alive but busy
-   *  (a long import) stops beating; the launcher must still not start a second one. */
+  /** Keep entries whose heartbeat is old (up to 30 min): an editor that is
+   *  alive but busy (a long import) stops beating; the launcher must still
+   *  not start a second one. */
   options: { anyHeartbeat?: boolean } = {}
 ): Promise<EngineInstance[]> {
   const instancesDir = join(summerDir, "instances");
@@ -212,7 +214,9 @@ export async function listEngineInstances(
         JSON.parse(await readFile(path, "utf-8"))
       );
       if (!parsed || !processIsAlive(parsed.pid)) continue;
-      if (!options.anyHeartbeat && nowMs - parsed.heartbeatAt * 1000 > INSTANCE_STALE_MS) continue;
+      // A busy editor's heartbeat may lag; one silent this long is gone (its pid reused).
+      const staleAfter = options.anyHeartbeat ? BUSY_INSTANCE_STALE_MS : INSTANCE_STALE_MS;
+      if (nowMs - parsed.heartbeatAt * 1000 > staleAfter) continue;
       parsed.resourceRoot = await canonicalPath(parsed.resourceRoot);
       instances.push(parsed);
     } catch {

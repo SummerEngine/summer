@@ -16,16 +16,21 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
   statfsSync,
   statSync,
   symlinkSync,
+  writeFileSync,
 } from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { homedir, tmpdir, platform } from "os";
-import { dirname, join, resolve } from "path";
+import { basename, dirname, join, resolve } from "path";
+import { getSummerDir } from "./store.js";
+import { processIsAlive } from "./util/process.js";
+import { sleep } from "./util/sleep.js";
 import {
   DEFAULT_DOWNLOAD_BYTES,
   ENGINE_BINARY_ENV,
@@ -142,8 +147,7 @@ export type ShellExec = (command: string) => void;
  *  no engine exists: copy to <destApp>.new first, and only after that
  *  succeeds remove the old bundle and rename the staged copy into place. A
  *  failed copy leaves the existing install untouched. */
-export function replaceMacApp(mountPoint: string, destApp: string, exec: ShellExec): void {
-  const staged = `${destApp}.new`;
+export function replaceMacApp(mountPoint: string, destApp: string, exec: ShellExec, staged = `${destApp}.new`): void {
   exec(`rm -rf "${staged}"`);
   try {
     exec(`cp -R "${mountPoint}/Summer.app" "${staged}"`);
@@ -387,6 +391,52 @@ export async function installEngine(
 ): Promise<InstallEngineResult> {
   const d: InstallDeps = { ...defaultInstallDeps(), ...deps };
   const log = opts.log ?? ((line: string) => console.log(line));
+  // `summer install`, `summer dev --yes` and projects.open_local can start at
+  // once: one install at a time; the next one then finds the engine in place.
+  return withInstallLock(log, () => installUnlocked(opts, d, log));
+}
+
+/** ~/.summer/install.lock: held while one install runs. A holder whose
+ *  process is gone, or that is hours old, is stale and removed. */
+export const INSTALL_LOCK_DIR = "install.lock";
+const INSTALL_LOCK_STALE_MS = 2 * 60 * 60_000;
+
+async function withInstallLock<T>(log: (line: string) => void, fn: () => Promise<T>): Promise<T> {
+  const lockDir = join(getSummerDir(), INSTALL_LOCK_DIR);
+  mkdirSync(dirname(lockDir), { recursive: true, mode: 0o700 });
+  let said = false;
+  while (true) {
+    try {
+      mkdirSync(lockDir, { mode: 0o700 });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      let owner: { pid?: unknown; createdAt?: unknown } = {};
+      try {
+        owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf-8")) as typeof owner;
+      } catch {
+        // just created by its holder, or broken: judged by age below
+      }
+      const pid = typeof owner.pid === "number" ? owner.pid : 0;
+      const createdAt = typeof owner.createdAt === "number" ? owner.createdAt : statSync(lockDir).mtimeMs;
+      if ((pid && !processIsAlive(pid)) || Date.now() - createdAt > INSTALL_LOCK_STALE_MS) {
+        rmSync(lockDir, { recursive: true, force: true });
+        continue;
+      }
+      if (!said) log("Another Summer Engine install is running; waiting for it to finish...");
+      said = true;
+      await sleep(1_000);
+      continue;
+    }
+    try {
+      writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid, createdAt: Date.now() }), { mode: 0o600 });
+      return await fn();
+    } finally {
+      rmSync(lockDir, { recursive: true, force: true });
+    }
+  }
+}
+
+async function installUnlocked(opts: InstallEngineOptions, d: InstallDeps, log: (line: string) => void): Promise<InstallEngineResult> {
 
   if (d.platform === "linux") return installLinux(opts, d, log);
   if (d.platform !== "darwin" && d.platform !== "win32") {
@@ -578,8 +628,10 @@ async function installMac(
   };
   refuseWhileRunning();
 
-  const dmgPath = join(d.tmpDir, `Summer-v${info.version}.dmg`);
-  const releaseSignals = cleanupOnSignal([dmgPath, `${destApp}.new`]);
+  // Names of this process's own: an install another process left behind never shares them.
+  const dmgPath = join(d.tmpDir, `Summer-v${info.version}-${process.pid}.dmg`);
+  const staged = `${destApp}.new-${process.pid}`;
+  const releaseSignals = cleanupOnSignal([dmgPath, staged]);
   try {
     await downloadVerified(
       dmgUrl,
@@ -601,7 +653,11 @@ async function installMac(
       refuseWhileRunning();
       log(`Installing to ${destApp}...`);
       mkdirSync(dirname(destApp), { recursive: true });
-      replaceMacApp(mountPoint, destApp, (command) => { d.exec(command); });
+      // A staged copy an interrupted install left behind (we hold the install lock: no other is running).
+      for (const name of readdirSync(dirname(destApp))) {
+        if (name.startsWith(`${basename(destApp)}.new`)) rmSync(join(dirname(destApp), name), { recursive: true, force: true });
+      }
+      replaceMacApp(mountPoint, destApp, (command) => { d.exec(command); }, staged);
     } catch (err) {
       throw asInstallError(
         err,
@@ -648,7 +704,7 @@ async function installWindows(
     );
   }
 
-  const exePath = join(d.tmpDir, `Summer-v${info.version}.exe`);
+  const exePath = join(d.tmpDir, `Summer-v${info.version}-${process.pid}.exe`);
   const releaseSignals = cleanupOnSignal([exePath]);
   try {
     await downloadVerified(

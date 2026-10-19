@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,7 +19,8 @@ import type { LaunchEditorOptions } from "../engine-launch.js";
 import { _resetSelfStartForTests, SELF_START_RECOVERY } from "../engine-self-start.js";
 import { EngineNotRunningError } from "../error-codes.js";
 import { setSummerDirForTests } from "../store.js";
-import { createLocalProject, defaultProjectParent, LocalProjectError, openLocalProject } from "./projects-local.js";
+import { EngineInstallError } from "../engine-install.js";
+import { createLocalProject, defaultProjectParent, LocalProjectError, localProjectFailure, openLocalProject } from "./projects-local.js";
 
 const findEngineBinaryMock = vi.mocked(findEngineBinary);
 const up = { ok: true, engine: "summer", version: "0.9.9", port: 6551, instanceId: "fake-1" } as never;
@@ -30,7 +31,8 @@ const display = { DISPLAY: ":0" } as NodeJS.ProcessEnv;
 let root = "";
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), "summer-projects-local-")));
+  // A folder of the person's own, inside home (the test home), as an agent's session folder is.
+  root = realpathSync(mkdtempSync(join(homedir(), "work-")));
   setSummerDirForTests(join(root, ".summer"));
   findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
   _resetSelfStartForTests();
@@ -67,12 +69,29 @@ describe("projects.create_local", () => {
     expect(await createLocalProject({ dir: "games/here" }, root)).toMatchObject({ projectPath: dir, template: "3d-basic" });
   });
 
-  it("a chat app's session folder (/ or home) puts the project in ~/Documents", () => {
+  it("a chat app's session folder (/, home, an app folder, outside home) puts the project in ~/Documents/Summer", () => {
     const home = join(root, "home");
-    mkdirSync(join(home, "Documents"), { recursive: true });
-    expect(defaultProjectParent(home, home)).toBe(join(home, "Documents"));
-    expect(defaultProjectParent("/", home)).toBe(join(home, "Documents"));
-    expect(defaultProjectParent(root, home)).toBe(root);
+    const summer = join(home, "Documents", "Summer");
+    expect(defaultProjectParent(home, home)).toBe(summer);
+    expect(defaultProjectParent("/", home)).toBe(summer);
+    expect(defaultProjectParent(join(home, "AppData", "Local", "AnthropicClaude", "app-1.2.3"), home)).toBe(summer);
+    expect(defaultProjectParent(join(home, "Library", "Application Support", "Claude"), home)).toBe(summer);
+    expect(defaultProjectParent(join(root, "elsewhere"), join(root, "other-home"))).toBe(join(root, "other-home", "Documents", "Summer"));
+    expect(defaultProjectParent(join(home, "code"), home)).toBe(join(home, "code"));
+  });
+
+  it("never inside another project: next to the session's project by default, refused when asked", async () => {
+    const game = join(root, "first");
+    mkdirSync(join(game, "scenes"), { recursive: true });
+    writeFileSync(join(game, "project.godot"), "");
+    expect(await createLocalProject({ name: "second" }, join(game, "scenes"))).toMatchObject({ projectPath: join(root, "second"), created: true });
+    const inside = await failureOf(createLocalProject({ dir: join(game, "nested") }, root), LocalProjectError);
+    expect(inside.message).toContain("is inside the project");
+  });
+
+  it("expands ~ in dir and refuses . and .. as a name", async () => {
+    expect(await createLocalProject({ dir: "~/games/tilde" }, root)).toMatchObject({ projectPath: join(homedir(), "games", "tilde") });
+    expect((await failureOf(createLocalProject({ name: ".." }, root), LocalProjectError)).code).toBe("invalid_input");
   });
 
   it("leaves a folder that is already a project as it is", async () => {
@@ -120,6 +139,16 @@ describe("projects.open_local", () => {
     const error = await failureOf(openLocalProject({ path: root }, { cwd: root }), LocalProjectError);
     expect(error.code).toBe("not_found");
     expect(error.recovery).toContain("projects.create_local");
+  });
+
+  it("an approved install that fails keeps its reason", async () => {
+    const game = project("game");
+    findEngineBinaryMock.mockReturnValue(null);
+    const install = vi.fn(async () => {
+      throw new EngineInstallError("disk_space", "Not enough free space on Macintosh HD. Free 2 GB, then call again.");
+    });
+    const error = await failureOf(openLocalProject({ path: game, install: true }, undefined, { install, waitMs: 20, env: display }), LocalProjectError);
+    expect(localProjectFailure(error)).toMatchObject({ ok: false, code: "unavailable", reason: "disk_space", recovery: expect.stringContaining("Free 2 GB") });
   });
 
   it("never installs without install: true; with it, installs, says it is installing, then opens", async () => {

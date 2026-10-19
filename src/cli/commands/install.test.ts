@@ -255,7 +255,7 @@ describe("installEngine on macOS (fakes only)", () => {
     expect(h.recorded).toEqual([[result.binary, "0.7.0"]]);
     expect(h.lines.join("\n")).toContain("summer dev");
     expect(h.lines.join("\n")).not.toMatch(/summer login|~1 GB/);
-    expect(existsSync(join(h.deps.tmpDir!, "Summer-v0.7.0.dmg"))).toBe(false);
+    expect(existsSync(join(h.deps.tmpDir!, `Summer-v0.7.0-${process.pid}.dmg`))).toBe(false);
   });
 
   it("a failed eject does not fail a finished install (retries once with -force)", async () => {
@@ -292,7 +292,7 @@ describe("installEngine on macOS (fakes only)", () => {
   it("a checksum mismatch is `checksum` and leaves no DMG behind", async () => {
     const h = make({ release: { dmg_sha256: "deadbeef" } });
     expect(await failureReason(installEngine(h.opts, h.deps))).toBe("checksum");
-    expect(existsSync(join(h.deps.tmpDir!, "Summer-v0.7.0.dmg"))).toBe(false);
+    expect(existsSync(join(h.deps.tmpDir!, `Summer-v0.7.0-${process.pid}.dmg`))).toBe(false);
     expect(h.commands).toEqual([]);
   });
 
@@ -302,7 +302,7 @@ describe("installEngine on macOS (fakes only)", () => {
     const err = await installEngine(h.opts, h.deps).catch((e: EngineInstallError) => e);
     expect((err as EngineInstallError).reason).toBe("disk_space");
     expect((err as Error).message).toMatch(/Free up space/);
-    expect(existsSync(join(h.deps.tmpDir!, "Summer-v0.7.0.dmg"))).toBe(false);
+    expect(existsSync(join(h.deps.tmpDir!, `Summer-v0.7.0-${process.pid}.dmg`))).toBe(false);
   });
 
   it("an hdiutil attach failure is `mount`", async () => {
@@ -387,6 +387,32 @@ describe("installEngine on other platforms (fakes only)", () => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
   });
 
+  it("one install at a time: a second waits while the first holds ~/.summer/install.lock, a dead holder's lock is removed", async () => {
+    const { getSummerDir } = await import("../../core/store.js");
+    const lock = join(getSummerDir(), "install.lock");
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: process.pid, createdAt: Date.now() }));
+    const lines: string[] = [];
+    const h = harness({ deps: { platform: "freebsd" } });
+    let settled = false;
+    const run = installEngine({ ...h.opts, log: (line) => lines.push(line) }, h.deps).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+    void run.then(() => (settled = true));
+    await new Promise((done) => setTimeout(done, 1_500));
+    expect(settled).toBe(false);
+    expect(lines.join("\n")).toContain("Another Summer Engine install is running");
+    rmSync(lock, { recursive: true, force: true });
+    expect(((await run) as EngineInstallError).reason).toBe("unsupported_platform");
+    expect(existsSync(lock)).toBe(false);
+
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: 2 ** 30, createdAt: Date.now() }));
+    expect(await failureReason(installEngine(h.opts, h.deps))).toBe("unsupported_platform");
+    expect(existsSync(lock)).toBe(false);
+  });
+
   it("an unknown platform is `unsupported_platform`", async () => {
     const h = harness({ deps: { platform: "freebsd" } });
     dirs.push(h.dir);
@@ -420,7 +446,7 @@ describe("installEngine on other platforms (fakes only)", () => {
     dirs.push(h.dir);
     const err = await installEngine(h.opts, h.deps).catch((e: EngineInstallError) => e);
     expect((err as EngineInstallError).reason).toBe("installer");
-    expect((err as Error).message).toContain("Summer-v0.7.0.exe");
+    expect((err as Error).message).toContain(`Summer-v0.7.0-${process.pid}.exe`);
   });
 });
 

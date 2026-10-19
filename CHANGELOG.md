@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-10-19
+
+4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.
+
+From adding Summer to an agent to editing a good-looking scene with one OK: `summer dev` installs the engine (with the person's yes), creates a starter project and opens it; the MCP opens the project itself; agents with no shell use `projects.create_local` and `projects.open_local`; Claude Code Desktop's Browser pane shows the game; and `summer preview` serves the running game to the agent's own browser.
+
 - **`painted-25d-world`: a 1.8 m/s default walk, and a walk clip whose stride fits it.** Cozy, exploration and RPG games walk at about 1.8 m/s and run on Shift at about 4 m/s. The walk cycle's playback stays within about 1.5x its natural speed: when a clip's natural walk is too slow, regenerate it with the brisk long-stride prompt (now the skill's walk prompt, word for word) instead of over-speeding a short-step clip. Stride examples updated to the plug-in sheets (walk 0.94 m per cycle at 1.8 m).
 - **`painted-25d-world` after a blind test run and a gait rule.**
   - A first-time agent built a harbour from the skill alone. Its findings are in:
@@ -20,13 +26,6 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
     - the plug-in character paths.
   - New building blocks: `blockout_builder.gd` (a JSON blockout spec), `paintcam_check.gd`, and `tools/` (`cam.py` pixel-to-ground, `preview.py` wireframe over the concept, `overlay.py` alignment check, `detail4k.py` tiled 4K pass).
   - Gait: cozy, exploration and RPG games walk by default (about 2 m/s, walk cycle) and run on Shift (about 4 m/s, run cycle). Action games may run by default. Playback stays speed / natural speed.
-
-## [4.5.0] - 2026-10-19
-
-4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.
-
-From adding Summer to an agent to editing a good-looking scene with one OK: `summer dev` installs the engine (with the person's yes), creates a starter project and opens it; the MCP opens the project itself; agents with no shell use `projects.create_local` and `projects.open_local`; Claude Code Desktop's Browser pane shows the game; and `summer preview` serves the running game to the agent's own browser.
-
 - **`summer dev` shows the game in Claude Code Desktop's Browser pane.** It adds the `summer-preview` entry to `.claude/launch.json` in the folder it runs in (only adds; never in the home folder; `cwd` set when the project sits below that folder; `--no-launch-json` skips it), so Desktop starts `summer preview` and checks the game after each edit. The `Connected:` line ends with the preview URL (`http://localhost:5199`) and, outside Desktop, `npx -y summer-engine@latest preview --open`. `projects.open_local` does the same for the folder the agent session runs in and answers `preview.url`.
 - **Launches and installs, follow-ups from review.** An editor that exits cleanly (code 0) before its API answers is followed when a new editor takes the project over within 5 s (it restarted itself); otherwise it is reported as closed early, never as a broken install. A stale install lock is taken over by one waiter only (an atomic rename, checked). A second `projects.create_local` with no name makes `my-game-2`, `my-game-3`, ... instead of returning the first game.
 - **`summer dev [template] [dir]`: from nothing to an editor your agent can drive, in one command.** `npx -y summer-engine@latest dev` installs Summer Engine when it is missing (only with `--yes` or the person's yes at a terminal; an agent without `--yes` gets `needs_confirmation` and the question to ask), creates a starter project (the built-in `3d-basic` unless you name a template) in the project this folder is in, else in this folder when it is empty or only has dotfiles (never the home folder or a filesystem root), else in `./my-game`, opens it in the background with `summer run`'s launch and waits up to 3 minutes for the editor's local API, with a progress line every 10 s. It ends with one `Connected:` line naming the project and the next step. A folder that already holds `project.godot` is just opened, so running it again is safe.

@@ -4,6 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`painted-25d-world`: a 1.8 m/s default walk, and a walk clip whose stride fits it.** Cozy, exploration and RPG games walk at about 1.8 m/s and run on Shift at about 4 m/s. The walk cycle's playback stays within about 1.5x its natural speed: when a clip's natural walk is too slow, regenerate it with the brisk long-stride prompt (now the skill's walk prompt, word for word) instead of over-speeding a short-step clip. Stride examples updated to the plug-in sheets (walk 0.94 m per cycle at 1.8 m).
 - **`painted-25d-world` after a blind test run and a gait rule.**
   - A first-time agent built a harbour from the skill alone. Its findings are in:
     - a project step;

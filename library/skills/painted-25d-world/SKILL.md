@@ -36,15 +36,14 @@ continue. The blockout, the camera and the projection cost nothing.
 
 1. **Scale.** Doors 2.5 m. Hero height = door height / 1.15 (2.15 m). One-storey eaves 3.5-4 m, two-storey about
    6 m. Check the hero against a door in the first screenshot.
-2. **The gait follows the game type.** Cozy, exploration and RPG games walk by default (about 2 m/s, walk cycle)
+2. **The gait follows the game type.** Cozy, exploration and RPG games walk by default (about 1.8 m/s, walk cycle)
    and run on Shift (about 4 m/s, run cycle). Action games may run by default (about 4.2 m/s, run cycle). Never
    play the run cycle for the default gait of a cozy game. `painted_player.gd`: `move_speed`, `sprint_speed`,
    `run_cycle_from` (3 m/s).
 3. **Animation speed follows ground speed.** A cycle's natural speed is the ground speed at which its feet stick
    (stride per cycle x cycles per second, scaled to the hero height). Each sheet json carries `height_m`,
    `stride_m` and `cycles_per_s` per kind; `speed_scale = speed / natural speed`, clamped. The feet must not
-   slide. Never one fixed fps for every speed. Generated walk cycles take short steps (natural about 1.2 m/s at
-   2.15 m): ask new walk clips for long strides so 2 m/s plays near natural.
+   slide. Never one fixed fps for every speed.
 4. **Framing.** The game camera shows about 16 m across (7-8 hero heights). Clamp it inside the painting with
    the real viewport aspect, never an assumed 16:9. The clear colour is the painting's edge colour, per location.
    Rooms are framed whole, like a stage.
@@ -60,6 +59,11 @@ continue. The blockout, the camera and the projection cost nothing.
    baked long shadows look wrong once the hero walks through them.
 9. **Verify in a real window.** Run the game with `-- --shots=<dir>`: `painted_world.gd` walks and runs the hero
    through `shot_plan` (add a walk through each door) and saves a JPG per step. Look at every frame.
+10. **Generate a walk whose stride fits the default speed.** Keep the walk cycle's playback within about 1.5x
+   (`speed / natural <= 1.5`): a short-step clip played fast looks wrong. Measure the natural walk speed; if it
+   is too low, regenerate the walk clips with the brisk long-stride prompt (step 9). The plug-in walks are natural
+   at about 1.25-1.4 m/s at 2.15 m, so 1.8 m/s plays at 1.3-1.45x. Short, 4-heads-tall characters reach about
+   half a body height per cycle at most; taller proportions (6-7 heads) give longer strides.
 
 ## Steps
 
@@ -272,11 +276,14 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
    (`model: "minimax-h3-max"`, `aspectRatio: "9:16"`, 5 s, an `idempotencyKey`): one clip per direction and
    animation:
    ```
-   The character, <facing>, walks in place on the spot with a steady, simple game walk cycle. The character
+   The character, <facing>, walks in place on the spot with a brisk, purposeful walk cycle: long confident strides, heel to toe, the front leg reaching far forward and the back leg pushing far back, arms swinging strongly opposite the legs, upright posture. The character
    stays exactly centred at the same size and never moves across the frame or turns. Static locked camera, no
    zoom. The plain flat pure green background stays perfectly flat and unchanged. Seamless loop.
    ```
-   Add "long confident strides, heel to toe" to walk clips: generated walks otherwise take short steps.
+   That is the walk prompt for a default walk (a plain "steady, simple walk cycle" takes short steps and must be
+   over-sped). For a longer stride still: "walks in place on the spot with a long-legged power walk: very wide
+   steps, at each step the front heel lands far ahead and the back foot pushes off far behind, legs nearly fully
+   extended front to back, arms swinging wide, a quick purposeful pace."
    Idle: "stands still in a relaxed idle: gentle breathing, one blink, feet planted". Run: "runs in place".
 3. **Clip to sheet** (host with a shell and ffmpeg): key out the green by colour, take one cycle (skip the
    first second), sample 8 frames evenly, crop every frame of every clip with the **same** box so the feet stay

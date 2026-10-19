@@ -410,16 +410,10 @@ async function withInstallLock<T>(log: (line: string) => void, fn: () => Promise
       mkdirSync(lockDir, { mode: 0o700 });
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
-      let owner: { pid?: unknown; createdAt?: unknown } = {};
-      try {
-        owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf-8")) as typeof owner;
-      } catch {
-        // just created by its holder, or broken: judged by age below
-      }
-      const pid = typeof owner.pid === "number" ? owner.pid : 0;
-      const createdAt = typeof owner.createdAt === "number" ? owner.createdAt : statSync(lockDir).mtimeMs;
-      if ((pid && !processIsAlive(pid)) || Date.now() - createdAt > INSTALL_LOCK_STALE_MS) {
-        rmSync(lockDir, { recursive: true, force: true });
+      const owner = lockOwner(lockDir);
+      if (!owner) continue; // released meanwhile
+      if ((owner.pid && !processIsAlive(owner.pid)) || Date.now() - owner.createdAt > INSTALL_LOCK_STALE_MS) {
+        takeOverStaleLock(lockDir, owner);
         continue;
       }
       if (!said) log("Another Summer Engine install is running; waiting for it to finish...");
@@ -433,6 +427,48 @@ async function withInstallLock<T>(log: (line: string) => void, fn: () => Promise
     } finally {
       rmSync(lockDir, { recursive: true, force: true });
     }
+  }
+}
+
+export type LockOwner = { pid: number; createdAt: number };
+
+/** Who holds the lock: owner.json, or (just made, not written yet) the folder's age. Null when it is gone. */
+function lockOwner(lockDir: string): LockOwner | null {
+  try {
+    const owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf-8")) as Partial<LockOwner>;
+    if (typeof owner.pid === "number" && typeof owner.createdAt === "number") return { pid: owner.pid, createdAt: owner.createdAt };
+  } catch {
+    // just created by its holder, or broken: judged by age
+  }
+  try {
+    return { pid: 0, createdAt: statSync(lockDir).mtimeMs };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remove a stale lock so that only one waiter wins: rename it aside (one
+ * rename of a folder succeeds), then check that the folder moved is still
+ * the stale one judged. If a live holder took the lock in between, put its
+ * lock back.
+ */
+export function takeOverStaleLock(lockDir: string, stale: LockOwner): void {
+  const aside = `${lockDir}.stale-${process.pid}-${Date.now()}`;
+  try {
+    renameSync(lockDir, aside);
+  } catch {
+    return; // another waiter took it over first, or it was released
+  }
+  const moved = lockOwner(aside);
+  if (moved && moved.pid === stale.pid && moved.createdAt === stale.createdAt) {
+    rmSync(aside, { recursive: true, force: true });
+    return;
+  }
+  try {
+    renameSync(aside, lockDir);
+  } catch {
+    rmSync(aside, { recursive: true, force: true });
   }
 }
 
@@ -653,9 +689,10 @@ async function installMac(
       refuseWhileRunning();
       log(`Installing to ${destApp}...`);
       mkdirSync(dirname(destApp), { recursive: true });
-      // A staged copy an interrupted install left behind (we hold the install lock: no other is running).
+      // A staged copy an interrupted install left behind: its process is gone (`.new-<pid>`, or the older `.new`).
       for (const name of readdirSync(dirname(destApp))) {
-        if (name.startsWith(`${basename(destApp)}.new`)) rmSync(join(dirname(destApp), name), { recursive: true, force: true });
+        const left = new RegExp(`^${basename(destApp).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.new(?:-(\\d+))?$`).exec(name);
+        if (left && (!left[1] || !processIsAlive(Number(left[1])))) rmSync(join(dirname(destApp), name), { recursive: true, force: true });
       }
       replaceMacApp(mountPoint, destApp, (command) => { d.exec(command); }, staged);
     } catch (err) {

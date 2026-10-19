@@ -18,7 +18,7 @@ import { realpathSync } from "fs";
 import { resolve, sep } from "path";
 import { EngineApiClient } from "./api-client.js";
 import { checkEngineHealth, findProjectRoot, listEngineInstances, type EngineSelection } from "./engine.js";
-import { lastLaunch, LaunchLockBusyError, launchEditor, resolveRunBinary, type LaunchEditorResult } from "./engine-launch.js";
+import { CLOSED_EARLY, lastLaunch, LaunchLockBusyError, launchEditor, resolveRunBinary, type LaunchEditorResult } from "./engine-launch.js";
 import { ENGINE_BIN_ENV } from "./engine-install.js";
 import { installEngine } from "./engine-installer.js";
 import { EngineNotRunningError } from "./error-codes.js";
@@ -55,6 +55,8 @@ export const SELF_START_RECOVERY = {
     `Summer Engine is opening ${root}; the first open imports every asset and can take a few minutes. Call again in 30 seconds.`,
   installing: (line: string) =>
     `Summer Engine is installing (${line}). Call projects.open_local again in 30 seconds; it opens the project when the install is done.`,
+  closedEarly: (root: string) =>
+    `Summer Engine closed before it opened ${root}. Call again; if it closes again, open the project in Summer Engine to see why.`,
   launchFailed: (code: string) =>
     `Summer Engine could not start (${code}). Repair it: npx -y summer-engine@latest install --yes, then call again.`,
   autoLaunchOff: (root: string) => `Open it with projects.open_local, or run: npx -y summer-engine@latest run ${root}`,
@@ -266,6 +268,7 @@ export async function openProjectInEditor(
     case "no_binary":
       throw failure("Summer Engine is not installed.", SELF_START_RECOVERY.notInstalledHere);
     case "spawn_failed":
+      if (result.code === CLOSED_EARLY) throw failure("Summer Engine closed before the project opened.", SELF_START_RECOVERY.closedEarly(root));
       throw failure("Summer Engine could not start.", SELF_START_RECOVERY.launchFailed(result.code));
   }
 }

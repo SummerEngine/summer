@@ -17,6 +17,7 @@ import {
   replaceMacApp,
   requireDownloadUrl,
   runInstallCommand,
+  takeOverStaleLock,
   verifyChecksum,
   windowsInstallerArgs,
   type InstallDeps,
@@ -411,6 +412,23 @@ describe("installEngine on other platforms (fakes only)", () => {
     writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: 2 ** 30, createdAt: Date.now() }));
     expect(await failureReason(installEngine(h.opts, h.deps))).toBe("unsupported_platform");
     expect(existsSync(lock)).toBe(false);
+  });
+
+  it("a stale lock is taken over by one waiter only: a live holder that took it meanwhile keeps it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "summer-install-lock-"));
+    try {
+      const lock = join(dir, "install.lock");
+      mkdirSync(lock);
+      writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: process.pid, createdAt: 2 }));
+      // Judged stale from an earlier read (a dead holder), but a live holder has the lock now.
+      takeOverStaleLock(lock, { pid: 2 ** 30, createdAt: 1 });
+      expect(JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"))).toEqual({ pid: process.pid, createdAt: 2 });
+      // The holder judged is still there: the lock goes.
+      takeOverStaleLock(lock, { pid: process.pid, createdAt: 2 });
+      expect(existsSync(lock)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("an unknown platform is `unsupported_platform`", async () => {

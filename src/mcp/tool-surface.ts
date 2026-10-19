@@ -42,6 +42,9 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
   ],
   ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_capture_gameplay"],
   ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree"],
+  // Create and open a project on this computer with no shell (the full profile;
+  // the engine profile's clients have a shell, `summer dev`, and a tool cap).
+  projects: ["summer_projects_create_local", "summer_projects_open_local"],
 };
 
 const localToolset = new Map<string, Toolset>(

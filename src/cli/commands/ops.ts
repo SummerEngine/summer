@@ -1,11 +1,11 @@
 import { Command } from "commander";
 import { CLI_AREAS } from "../../core/ops/areas.js";
-import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
+import { closestActions, localEntries, localInputSchema, localWireForm, missingInput, resolveCliOp } from "../../core/ops/catalog.js";
 import { shippedCloudEntries, shippedWireForm } from "../../core/ops/public-catalog.js";
 import { answerOfHosted, callHostedV4, describeFromShipped, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
+import { errorAnswer, isLocalOp, localToolsFor, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
-import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
+import { codedLocalFailure, engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
@@ -124,7 +124,12 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   const split = ENGINE_SPLIT_OPS[op];
   const entry = localEntries().find((candidate) => candidate.name === op);
   const tool = split?.tool ?? entry?.mcpTool ?? localToolsFor(op)[0];
-  if (!tool) return errorAnswer("not_found", `No operation is named "${op}".`, { next: { op: "ops.search", input: { query: op } } });
+  if (!tool) {
+    const [area] = op.split(".");
+    const closest = closestActions(op).map((action) => `summer ${area} ${action}`);
+    const hint = closest.length ? ` Closest: ${closest.join(", ")}. All of them: summer ${area} --help` : "";
+    return errorAnswer("not_found", `No operation is named "${op}".${hint}`, { next: { op: "ops.search", input: { query: op } } });
+  }
   // maxCharacters cuts the text an MCP client gets; the CLI prints the whole answer.
   const { maxCharacters, ...input } = call.input;
   const uncut = maxCharacters === undefined ? undefined : ["maxCharacters: the CLI prints the whole answer; cut it in the shell (for example | head -c 8000)."];
@@ -142,7 +147,8 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   } catch (error) {
     if (error instanceof EngineUnavailableError) return engineNotRunning();
     if (error instanceof ToolResultError) {
-      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
+      if (def) return engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide });
+      return codedLocalFailure(error.result) ?? errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
     }
     return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
   }
@@ -390,9 +396,11 @@ function areaCommand(area: string): Command {
         return;
       }
       const argv = command.args.slice(1);
+      // A 3.x tool name as the action runs its operation (resolveCliOp).
+      const op = resolveCliOp(area, action);
       process.exitCode = argv.some((token) => HELP_WORDS.has(token) && token !== "help")
-        ? await operationHelpFromCli(opFromCli(area, action))
-        : await runOpFromCli(opFromCli(area, action), argv);
+        ? await operationHelpFromCli(op)
+        : await runOpFromCli(op, argv);
     });
 }
 

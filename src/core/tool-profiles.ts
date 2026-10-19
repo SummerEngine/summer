@@ -18,6 +18,7 @@ export const TOOLSETS = [
   "grow",
   "studio",
   "cloud",
+  "projects",
   "other",
 ] as const;
 export type Toolset = (typeof TOOLSETS)[number];

@@ -740,7 +740,7 @@ export function splitInputSchema(def: EngineSplitDef, toolSchema: Record<string,
   };
 }
 
-const OP_REF = /\b(engine|docs|store)\.[a-z][a-z0-9_]*\b/g;
+const OP_REF = /\b(engine|docs|store|projects)\.[a-z][a-z0-9_]*\b/g;
 
 /** Every operation a summary names (`engine.snapshot_diff`, `docs.read`). */
 export function opsNamedIn(text: string): string[] {

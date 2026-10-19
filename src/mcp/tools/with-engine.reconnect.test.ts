@@ -85,8 +85,16 @@ describe("withEngine — safe retry only where nothing could have applied", () =
     const body = JSON.parse(resultText(res));
     expect(body).toMatchObject({ ok: false, code: "engine_not_running", error: "Summer Engine is not running." });
     expect(body.recovery).toMatch(/summer-engine@latest run <project-path>/);
-    expect(body.hint).toMatch(/summer_search_library/);
+    expect(body.hint).toMatch(/summer_docs_search/);
     expect(resultText(res)).not.toMatch(/api-token/);
+  });
+
+  it("passes the error's own next step (not installed, no project, still starting) through as recovery", async () => {
+    mockGetClient.mockRejectedValue(
+      new EngineNotRunningError("Summer Engine is not installed.", "no api-token found", "Run: npx -y summer-engine@latest dev")
+    );
+    const body = JSON.parse(resultText(await withEngine(vi.fn())));
+    expect(body).toMatchObject({ ok: false, code: "engine_not_running", error: "Summer Engine is not installed.", recovery: "Run: npx -y summer-engine@latest dev" });
   });
 
   it("does NOT retry a generic connection error thrown from inside fn (may be mid-mutation)", async () => {

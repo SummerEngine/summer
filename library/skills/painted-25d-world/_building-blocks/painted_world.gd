@@ -38,7 +38,7 @@ func _ready() -> void:
 	game_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	game_cam.keep_aspect = Camera3D.KEEP_WIDTH
 	game_cam.global_basis = paint_cam.global_basis
-	game_cam.size = paint_cam.size / zoom
+	game_cam.size = minf(paint_size.x, paint_size.y / _aspect()) / zoom
 	game_cam.far = paint_cam.far
 	game_cam.make_current()
 	if player.has_method("setup"):
@@ -58,7 +58,14 @@ func _physics_process(_delta: float) -> void:
 		var fwd := -paint_cam.global_basis.z
 		var far := Vector3(fwd.x, 0, fwd.z).normalized()
 		player.global_position += paint_cam.global_basis.x * (clamped.x - c.x) + far * (clamped.y - c.y) / far.dot(paint_cam.global_basis.y)
-	# follow by translation only, and never show past the painting's edge
-	var view := Vector2(game_cam.size, game_cam.size * paint_size.y / paint_size.x)
+	# follow by translation only, and never show past the painting's edge, whatever the window shape
+	var aspect := _aspect()
+	game_cam.size = minf(paint_size.x, paint_size.y / aspect) / zoom
+	var view := Vector2(game_cam.size, game_cam.size * aspect)
 	var t := plane(player.global_position).clamp(-(paint_size - view) / 2.0, (paint_size - view) / 2.0)
 	game_cam.global_position = paint_cam.global_position + paint_cam.global_basis.x * t.x + paint_cam.global_basis.y * t.y
+
+## Viewport height / width. The editor's game view and phones are not 16:9.
+func _aspect() -> float:
+	var vp := get_viewport().get_visible_rect().size
+	return vp.y / vp.x if vp.x > 0 else 9.0 / 16.0

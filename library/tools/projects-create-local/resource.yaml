@@ -43,7 +43,7 @@ input_schema:
       description: The project's name and folder name. Default my-game (or the template's name).
     dir:
       type: string
-      description: The project folder - a new or empty folder. Default <name> in the session's folder.
+      description: The project folder - a new or empty folder, not inside another project; ~ is home. Default <name> next to the session's project, in the session's folder, or in ~/Documents/Summer.
   additionalProperties: false
 authority:
   filesystem: true

@@ -28,11 +28,11 @@ async function localProjectResult<T>(operation: () => Promise<T>) {
 export function registerLocalProjectTools(server: McpServer): void {
   server.tool(
     "summer_projects_create_local",
-    "Create a Summer project on this computer from a template, with no shell: the built-in 3d-basic (sky, sun, ground and a hero; no download) unless template names another. Writes it into dir, or <name> in the session's folder (~/Documents when there is none). A folder that already holds project.godot is left as it is. Returns projectPath. Next: summer_projects_open_local with that path.",
+    "Create a Summer project on this computer from a template, with no shell: the built-in 3d-basic (sky, sun, ground and a hero; no download) unless template names another. Writes it into dir, or into <name> next to the session's project, in the session's folder, or in ~/Documents/Summer; never inside another project. A folder that already holds project.godot is left as it is. Returns projectPath. Next: summer_projects_open_local with that path.",
     {
       template: z.string().max(80).optional().describe("Template slug (docs.search finds them): 3d-basic (default), empty, 3d-third-person-controller, 2d-platformer, ..."),
       name: z.string().max(80).optional().describe("The project's name and folder name. Default my-game (or the template's name)."),
-      dir: z.string().max(1000).optional().describe("The project folder: a new or empty folder. Default <name> in the session's folder."),
+      dir: z.string().max(1000).optional().describe("The project folder: a new or empty folder, not inside another project; ~ is home. Default <name> next to the session's project, in the session's folder, or in ~/Documents/Summer."),
     },
     async (args) => localProjectResult(() => createLocalProject(args, currentMcpEngineSelection()?.cwd))
   );

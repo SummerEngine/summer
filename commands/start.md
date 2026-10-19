@@ -55,7 +55,7 @@ No sign-in: engine tools work signed out. Sign in only when a cloud operation (a
    - third-person or exploring: `3d-third-person-controller`
    - anything else: `3d-basic`
 
-   Run `npx -y summer-engine@latest list templates` if none fits.
+   Run `npx -y summer-engine@latest list templates` if none fits. If `summer dev` is an unknown command (an older summer-engine on npm), run these instead: `npx -y summer-engine@latest install`, then `create <template> <folder>`, then `run <folder>`.
 2. **Install, create and open: one command**, after the user's OK from step 2: `npx -y summer-engine@latest dev --yes <template> <folder>` (`--yes` is that OK; without it, `summer dev` installs nothing and asks you to ask). Give it a 10-minute timeout: it downloads the engine first when it is missing, then waits until the editor answers and prints one `Connected:` line. If it says the editor is still opening, wait 30 seconds and call `summer_get_project_context`: the `summer-engine` tools find the project `summer dev` opened and wait for it.
 3. **Make it theirs, then play.** Activate the `using-summer` skill. Call `summer_get_project_context`, make one small change that matches the idea (the title, the player's colour or speed, one enemy), then verify it: `summer_play`, `summer_screenshot` with `target: "game"`, `summer_get_diagnostics`, `summer_stop`. Show what you saw; tell them to press Play in the editor.
 

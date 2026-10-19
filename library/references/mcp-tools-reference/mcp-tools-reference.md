@@ -27,7 +27,7 @@ No shell needed (Claude Desktop, chat apps); the `summer dev` command does both 
 
 | Tool | Use |
 |---|---|
-| `summer_projects_create_local` | Write a new project from a template to this computer (`3d-basic` by default: sky, sun, ground and a hero). `dir`, or `name` in the session's folder (`~/Documents` when there is none). A folder that already holds `project.godot` is left as it is. Returns `projectPath`. |
+| `summer_projects_create_local` | Write a new project from a template to this computer (`3d-basic` by default: sky, sun, ground and a hero). `dir`, or `name` next to the session's project, in the session's folder, or in `~/Documents/Summer`; never inside another project. A folder that already holds `project.godot` is left as it is. Returns `projectPath`. |
 | `summer_projects_open_local` | Open a project in Summer Engine in the background and wait until it connects; the session's engine tools then work on it. Engine missing: answers `engine_not_running`; ask the person, and only with their yes call again with `install: true` (about 660 MB, free). A slow first open answers "call again in 30 seconds". |
 
 ### Project files (4)

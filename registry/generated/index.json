@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "ffbfc1600b7a464189708280ba06c7e89453844b5ed139204eaf3e555e5265c4",
+      "content_hash": "fb90ff14613b57545a06e992fcc50603bd4c743cd3c731886d4600abfb2627e5",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -8946,7 +8946,7 @@
       "id": "tool/projects-create-local",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "a7ae06f6688b7ded22644066e7cb1c069b1964482382217f920b749b978f5928",
+      "content_hash": "032118a011df8c638e47198fe8bac00564fe4f684e6b3cef87dc8b208192da1d",
       "summary": "Create a project on this computer. Writes a template (3d-basic by default) to a folder, no shell needed. Returns projectPath. Next: projects.open_local.",
       "use_when": [
         "\"make me a game\"",

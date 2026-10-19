@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { createInterface } from "node:readline/promises";
 import { existsSync, statSync } from "fs";
 import { basename, join, resolve } from "path";
 import { noteCliError } from "../../core/cli-usage.js";
@@ -7,7 +8,7 @@ import { launchEditor, resolveRunBinary } from "../../core/engine-launch.js";
 import { resolveLaunchPosture } from "../../core/launch-posture.js";
 import { getTemplateRegistry, resolveTemplate, type TemplateEntry } from "../../core/templates.js";
 import { EngineInstallError, installEngine } from "../../core/engine-installer.js";
-import { createProject, isEmptyProjectFolder } from "../../core/local-project.js";
+import { createProject, isEmptyProjectFolder, isHomeOrRoot, projectRootAbove } from "../../core/local-project.js";
 
 /**
  * `summer dev [template] [dir]`: from nothing to an editor an agent can
@@ -28,21 +29,21 @@ const DEFAULT_FOLDER = "my-game";
 
 export type DevPlan =
   | { kind: "open"; dir: string; note?: string }
-  | { kind: "create"; dir: string; entry: TemplateEntry }
+  | { kind: "create"; dir: string; entry: TemplateEntry; note: string }
   | { kind: "error"; code: string; message: string };
 
 function isFolderArgument(arg: string, cwd: string): boolean {
   if (arg === "." || arg === ".." || /[\\/]/.test(arg)) return true;
-  const path = resolve(cwd, arg);
-  return existsSync(path) && statSync(path).isDirectory();
+  return existsSync(resolve(cwd, arg));
 }
 
 /**
  * What `summer dev` does with its arguments. One argument is a folder when it
  * is `.`, a path or an existing folder; else a template when one matches;
- * else the name of a new folder. Without a folder: the current one when it
- * is a project, empty or only dotfiles, else ./my-game (./<template> when a
- * template was named).
+ * else the name of a new folder. Without a folder: the project the current
+ * folder is in, else the current folder when it is empty or only dotfiles
+ * (never the home folder or a filesystem root), else ./my-game
+ * (./<template> when a template was named).
  */
 export function planDev(args: readonly string[], cwd: string, entries: readonly TemplateEntry[]): DevPlan {
   let [templateArg, dirArg] = args as Array<string | undefined>;
@@ -65,13 +66,13 @@ export function planDev(args: readonly string[], cwd: string, entries: readonly 
   const entry = named ?? (fallback.kind === "match" ? fallback.entry : undefined);
   if (!entry) return { kind: "error", code: "template", message: `The ${DEV_DEFAULT_TEMPLATE} template is missing from this CLI. Update it: npx -y summer-engine@latest dev` };
 
-  const dir =
-    dirArg !== undefined
-      ? resolve(cwd, dirArg)
-      : existsSync(join(cwd, "project.godot")) || isEmptyProjectFolder(cwd)
-        ? resolve(cwd)
-        : join(resolve(cwd), named ? named.slug : DEFAULT_FOLDER);
+  const around = dirArg === undefined ? projectRootAbove(cwd) : null;
+  const sub = join(resolve(cwd), named ? named.slug : DEFAULT_FOLDER);
+  const dir = dirArg !== undefined ? resolve(cwd, dirArg) : (around ?? (isEmptyProjectFolder(cwd) && !isHomeOrRoot(cwd) ? resolve(cwd) : sub));
 
+  if (existsSync(dir) && !statSync(dir).isDirectory()) {
+    return { kind: "error", code: "not_empty", message: `${dir} is a file, not a folder. Name a folder: npx -y summer-engine@latest dev ${entry.slug} <folder>` };
+  }
   if (existsSync(join(dir, "project.godot"))) {
     return named ? { kind: "open", dir, note: `${dir} is already a Summer project: opening it as it is (${named.slug} was not applied).` } : { kind: "open", dir };
   }
@@ -82,7 +83,8 @@ export function planDev(args: readonly string[], cwd: string, entries: readonly 
       message: `${dir} has files but no project.godot. Pick a new folder: npx -y summer-engine@latest dev ${entry.slug} <new-folder>`,
     };
   }
-  return { kind: "create", dir, entry };
+  const note = dir === sub && dirArg === undefined && isHomeOrRoot(cwd) ? `Creating it in ${dir}, not in ${resolve(cwd)} itself.` : "";
+  return { kind: "create", dir, entry, note };
 }
 
 /** The one line an agent reads when the editor is up. */
@@ -98,10 +100,15 @@ export interface DevOptions {
   focus?: boolean;
   background?: boolean;
   bin?: string;
+  /** The person already said yes to installing Summer Engine. */
+  yes?: boolean;
 }
 
 export interface DevDeps {
   cwd?: string;
+  /** A person at a terminal can answer the install question (default: stdin is a TTY). */
+  isTTY?: boolean;
+  confirm?: (question: string) => Promise<boolean>;
   install?: typeof installEngine;
   launch?: typeof launchEditor;
   waitMs?: number;
@@ -133,10 +140,24 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
   if (plan.kind === "error") return fail(plan.code, plan.message);
 
   // The engine first: a named build (--bin, SUMMER_BIN) must exist; otherwise
-  // install the released one when none is installed.
+  // install the released one when none is installed, never without a yes:
+  // --yes (an agent asked the person), or the person at this terminal.
   if (resolveRunBinary(options.bin).binary === null) {
     const named = options.bin?.trim() || process.env[ENGINE_BIN_ENV]?.trim();
     if (named) return fail("no_binary", (resolveRunBinary(options.bin) as { error: string }).error);
+    if (!options.yes) {
+      if (!(deps.isTTY ?? process.stdin.isTTY === true)) {
+        const again = ["npx -y summer-engine@latest dev --yes", ...args.map((arg) => (/^[\w./:@+=-]+$/.test(arg) ? arg : `"${arg}"`))].join(" ");
+        return fail(
+          "needs_confirmation",
+          "Summer Engine is not installed, and installing it needs the person's OK. Ask them: " +
+            `"I'll download and install Summer Engine (about 660 MB, free) and open a starter project. OK?" With their OK, run: ${again}`
+        );
+      }
+      if (!(await (deps.confirm ?? confirmOnTerminal)("Summer Engine is not installed. Download and install it now (about 660 MB, free)?"))) {
+        return fail("needs_confirmation", "Nothing was installed.");
+      }
+    }
     log("Summer Engine is not installed yet. Installing it (free, about 660 MB, once)...");
     try {
       await (deps.install ?? installEngine)({ log });
@@ -147,6 +168,7 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
   }
 
   if (plan.kind === "create") {
+    if (plan.note) log(plan.note);
     try {
       await createProject(plan.entry, plan.dir, { name: basename(plan.dir), log });
     } catch (err) {
@@ -156,14 +178,20 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
     log(plan.note);
   }
 
-  const result = await (deps.launch ?? launchEditor)({
-    projectPath: plan.dir,
-    posture,
-    bin: options.bin,
-    waitMs: deps.waitMs ?? DEV_WAIT_MS,
-    progressEveryMs: DEV_PROGRESS_MS,
-    out: { log, error },
-  });
+  let result: Awaited<ReturnType<typeof launchEditor>>;
+  try {
+    result = await (deps.launch ?? launchEditor)({
+      projectPath: plan.dir,
+      posture,
+      bin: options.bin,
+      waitMs: deps.waitMs ?? DEV_WAIT_MS,
+      progressEveryMs: DEV_PROGRESS_MS,
+      out: { log, error },
+    });
+  } catch (err) {
+    // The launch lock is busy (another `summer dev` or the MCP is opening an editor), or the launch broke.
+    return fail("launch", (err as Error).message);
+  }
   switch (result.status) {
     case "running":
       log(connectedLine(result.health.version, plan.dir));
@@ -171,8 +199,9 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
     case "starting":
       return fail(
         "timeout",
-        `Summer Engine is still starting with ${plan.dir} (the first open imports every asset). ` +
-          "Check again in a minute: npx -y summer-engine@latest status"
+        `Summer Engine is still opening ${plan.dir} (the first open imports every asset). ` +
+          "The summer-engine tools wait for it: call summer_get_project_context again in 30 seconds " +
+          "(from a shell: npx -y summer-engine@latest status)."
       );
     case "other_project":
       return fail("other_project");
@@ -183,6 +212,15 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
   }
 }
 
+async function confirmOnTerminal(question: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return /^y(es)?$/i.test((await rl.question(`${question} [y/N] `)).trim());
+  } finally {
+    rl.close();
+  }
+}
+
 export const devCommand = new Command("dev")
   .description(
     "Start a game in one step: install Summer Engine if it is missing, create a starter project " +
@@ -190,10 +228,11 @@ export const devCommand = new Command("dev")
       "and wait until your agent can drive it. A folder with project.godot is just opened."
   )
   .argument("[template]", `Template slug (default ${DEV_DEFAULT_TEMPLATE}); or a folder, e.g. \`summer dev .\``)
-  .argument("[dir]", `Project folder (default: this folder when it is a project, empty or only dotfiles; else ./${DEFAULT_FOLDER})`)
+  .argument("[dir]", `Project folder (default: the project this folder is in, else this folder when it is empty or only dotfiles, else ./${DEFAULT_FOLDER})`)
   .option("--background", "Open the editor without taking focus (default when an agent runs this)")
   .option("--focus", "Open the editor in front (default in a terminal)")
   .option("--bin <path>", `Engine executable to launch instead of the installed one (env: ${ENGINE_BIN_ENV})`)
+  .option("--yes", "Install Summer Engine when it is missing without asking (only after the person said yes)")
   .action(async (template: string | undefined, dir: string | undefined, options: DevOptions) => {
     const args = [template, dir].filter((arg): arg is string => arg !== undefined);
     process.exitCode = await runDev(args, options);

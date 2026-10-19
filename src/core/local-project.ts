@@ -4,8 +4,9 @@
  * agent instruction files. Shared by `summer create`, `summer dev` and the
  * MCP's projects.create_local.
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "fs";
-import { join } from "path";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "fs";
+import { homedir } from "os";
+import { dirname, join, resolve } from "path";
 import { checkEngineHealth, getApiPort } from "./engine.js";
 import { PACKAGE_ROOT } from "./package-root.js";
 import { SUMMER_ENGINE_COMPATIBILITY } from "./summer-compatibility.js";
@@ -67,7 +68,26 @@ export function scaffoldAutopilot(projectDir: string): boolean {
  *  dotfiles (.git, .claude, .vscode, ...). */
 export function isEmptyProjectFolder(dir: string): boolean {
   if (!existsSync(dir)) return true;
-  return readdirSync(dir).every((name) => name.startsWith("."));
+  if (!statSync(dir).isDirectory()) return false;
+  // .summer is Summer's own folder (in the home folder, its config): never a place to create in.
+  return readdirSync(dir).every((name) => name.startsWith(".") && name !== ".summer");
+}
+
+/** The home folder or a filesystem root: never a project folder by default. */
+export function isHomeOrRoot(dir: string, home: string = homedir()): boolean {
+  const full = resolve(dir);
+  return full === resolve(home) || full === resolve(full, "/");
+}
+
+/** The project that holds `dir` (project.godot here or above, never above the home folder), or null. */
+export function projectRootAbove(dir: string, home: string = homedir()): string | null {
+  let current = resolve(dir);
+  while (true) {
+    if (existsSync(join(current, "project.godot"))) return current;
+    const parent = dirname(current);
+    if (parent === current || current === resolve(home)) return null;
+    current = parent;
+  }
 }
 
 export interface CreatedProject {
@@ -110,8 +130,15 @@ export async function createProject(
   const materialized = await fetchPinnedTemplate(entry, { targetDir: staging ?? fullPath, keepGit: options.keepGit, log });
   if (staging) {
     for (const name of readdirSync(staging)) {
-      if (existsSync(join(fullPath, name))) log(`Kept the existing ${name}; the template's copy was not used.`);
-      else renameSync(join(staging, name), join(fullPath, name));
+      const mine = join(fullPath, name);
+      if (!existsSync(mine)) renameSync(join(staging, name), mine);
+      else if (name === ".gitignore") {
+        // Keep both: the template's lines (.godot/ and the rest) after the folder's own.
+        const have = new Set(readFileSync(mine, "utf8").split(/\r?\n/));
+        const add = readFileSync(join(staging, name), "utf8").split(/\r?\n/).filter((line) => line.trim() && !have.has(line));
+        if (add.length) appendFileSync(mine, `\n# From the ${entry.slug} template\n${add.join("\n")}\n`);
+        log(`Added the template's .gitignore lines to the existing .gitignore.`);
+      } else log(`Kept the existing ${name}; the template's ${name} was not used.`);
     }
     rmSync(staging, { recursive: true, force: true });
   }

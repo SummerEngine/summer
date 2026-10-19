@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -95,6 +95,25 @@ describe("planDev: where `summer dev` works", () => {
     expect(planDev(["space-game"], root, entries)).toMatchObject({ kind: "create", dir: join(root, "space-game"), entry: { slug: "3d-basic" } });
   });
 
+  it("never makes the home folder the project by default, and .summer is not an ignorable dotfile", () => {
+    const home = homedir();
+    mkdirSync(join(home, ".config"), { recursive: true });
+    const plan = planDev([], home, entries);
+    expect(plan).toMatchObject({ kind: "create", dir: join(home, "my-game") });
+    expect((plan as { note: string }).note).toContain(`not in ${home} itself`);
+    const summerDir = folder("with-summer-dir");
+    mkdirSync(join(summerDir, ".summer"));
+    expect(planDev(["."], summerDir, entries)).toMatchObject({ kind: "error", code: "not_empty" });
+  });
+
+  it("inside a project's subfolder it opens that project; a file is not a folder", () => {
+    const project = folder("game", { "project.godot": "" });
+    const scenes = folder("game/scenes", { "main.tscn": "" });
+    expect(planDev([], scenes, entries)).toEqual({ kind: "open", dir: project });
+    folder("files", { "notes.txt": "hi" });
+    expect(planDev([join(root, "files", "notes.txt")], root, entries)).toMatchObject({ kind: "error", code: "not_empty" });
+  });
+
   it("refuses a folder with files but no project, and an ambiguous or unknown template", () => {
     const busy = folder("busy", { "notes.txt": "hi" });
     expect(planDev(["."], busy, entries)).toMatchObject({ kind: "error", code: "not_empty" });
@@ -125,9 +144,29 @@ describe("runDev: install, create, open, wait", () => {
     const install = vi.fn(async () => ({ binary: "/x/Summer", version: "0.9.9", destination: "/x", alreadyInstalled: false }));
     const launch = launcher({ status: "running", launched: true, port: 6551, health: up });
 
-    expect(await runDev([folder("new")], {}, { cwd: root, install, launch, ...io })).toBe(0);
+    expect(await runDev([folder("new")], { yes: true }, { cwd: root, install, launch, ...io })).toBe(0);
     expect(install).toHaveBeenCalledTimes(1);
     expect(logs.join("\n")).toContain("Installing it");
+  });
+
+  it("never installs without a yes: an agent gets needs_confirmation and the exact question; a person at a terminal is asked", async () => {
+    findEngineBinaryMock.mockReturnValue(null);
+    const install = vi.fn(async () => ({ binary: "/x/Summer", version: "0.9.9", destination: "/x", alreadyInstalled: false }));
+    const launch = launcher({ status: "running", launched: true, port: 6551, health: up });
+
+    expect(await runDev(["3d-basic", "space game"], {}, { cwd: root, isTTY: false, install, launch, ...io })).toBe(1);
+    expect(install).not.toHaveBeenCalled();
+    expect(noteCliErrorMock).toHaveBeenCalledWith("needs_confirmation");
+    expect(errors.join("\n")).toContain('Ask them: "I\'ll download and install Summer Engine (about 660 MB, free)');
+    expect(errors.join("\n")).toContain('run: npx -y summer-engine@latest dev --yes 3d-basic "space game"');
+    expect(existsSync(join(root, "space game"))).toBe(false);
+
+    const declined = vi.fn(async () => false);
+    expect(await runDev([folder("tty")], {}, { cwd: root, isTTY: true, confirm: declined, install, launch, ...io })).toBe(1);
+    expect(install).not.toHaveBeenCalled();
+    const agreed = vi.fn(async () => true);
+    expect(await runDev([folder("tty")], {}, { cwd: root, isTTY: true, confirm: agreed, install, launch, ...io })).toBe(0);
+    expect(install).toHaveBeenCalledTimes(1);
   });
 
   it("a failed install stops before any project is written, with its reason in the usage line", async () => {
@@ -138,7 +177,7 @@ describe("runDev: install, create, open, wait", () => {
     const launch = launcher({ status: "running", launched: true, port: 6551, health: up });
     const target = join(root, "never");
 
-    expect(await runDev([target], {}, { cwd: root, install, launch, ...io })).toBe(1);
+    expect(await runDev([target], { yes: true }, { cwd: root, install, launch, ...io })).toBe(1);
     expect(noteCliErrorMock).toHaveBeenCalledWith("disk_space");
     expect(errors.join("\n")).toContain("Not enough free space");
     expect(existsSync(join(target, "project.godot"))).toBe(false);
@@ -159,12 +198,17 @@ describe("runDev: install, create, open, wait", () => {
       [{ status: "other_project", project: "Other (/o)" }, "other_project"],
       [{ status: "spawn_failed", binary: "/x", code: "EACCES" }, "launch"],
     ];
+    const lockBusy = vi.fn(async (): Promise<LaunchEditorResult> => {
+      throw new Error("Another `summer run` launch is still in progress. Try again in a few seconds.");
+    });
+    expect(await runDev([project], {}, { cwd: root, install: noInstall, launch: lockBusy, ...io })).toBe(1);
+    expect(noteCliErrorMock).toHaveBeenCalledWith("launch");
     for (const [result, code] of cases) {
       noteCliErrorMock.mockReset();
       expect(await runDev([project], {}, { cwd: root, install: noInstall, launch: launcher(result), ...io })).toBe(1);
       expect(noteCliErrorMock).toHaveBeenCalledWith(code);
     }
-    expect(errors.join("\n")).toContain("still starting");
+    expect(errors.join("\n")).toContain("still opening");
   });
 });
 

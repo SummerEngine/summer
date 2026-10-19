@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d
 user-invocable: true
-allowed-tools: Read Write Edit Bash summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_run_script summer_save_scene summer_screenshot summer_play summer_stop summer_get_script_errors summer_assets_generate_image summer_assets_generate_video summer_jobs_wait summer_import_from_url summer_call
+allowed-tools: Read Write Edit Bash summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_run_script summer_save_scene summer_screenshot summer_play summer_stop summer_get_script_errors summer_assets_generate_image summer_get_project_context summer_jobs_wait summer_import_from_url summer_call
 paths: ["painted/**", "**/*.gdshader", "**/*.gd", "**/*.tscn"]
 ---
 
@@ -36,14 +36,15 @@ continue. The blockout, the camera and the projection cost nothing.
 
 1. **Scale.** Doors 2.5 m. Hero height = door height / 1.15 (2.15 m). One-storey eaves 3.5-4 m, two-storey about
    6 m. Check the hero against a door in the first screenshot.
-2. **Speed from the sheet's natural speeds.** A cycle's natural speed is the ground speed at which its feet stick
-   (stride per cycle x cycles per second, scaled to the hero height). Generated walk cycles take short steps
-   (about 1.1-1.2 m/s at 2.15 m); jog/run cycles are natural at about 3.5 m/s. Default movement = the jog/run
-   cycle at 1.1-1.3x natural (about 4.2 m/s); Shift sprints up to 1.8x natural; the walk cycle only for slow
-   movement (Alt stroll about 1.6 m/s, NPCs), never above 1.5x natural. Slower than 4 m/s feels sluggish.
-3. **Animation speed follows ground speed.** Each sheet json carries `height_m`, `stride_m` and `cycles_per_s`
-   per kind; `speed_scale = speed / natural speed`, clamped. The feet must not slide. Never one fixed fps for
-   every speed.
+2. **The gait follows the game type.** Cozy, exploration and RPG games walk by default (about 2 m/s, walk cycle)
+   and run on Shift (about 4 m/s, run cycle). Action games may run by default (about 4.2 m/s, run cycle). Never
+   play the run cycle for the default gait of a cozy game. `painted_player.gd`: `move_speed`, `sprint_speed`,
+   `run_cycle_from` (3 m/s).
+3. **Animation speed follows ground speed.** A cycle's natural speed is the ground speed at which its feet stick
+   (stride per cycle x cycles per second, scaled to the hero height). Each sheet json carries `height_m`,
+   `stride_m` and `cycles_per_s` per kind; `speed_scale = speed / natural speed`, clamped. The feet must not
+   slide. Never one fixed fps for every speed. Generated walk cycles take short steps (natural about 1.2 m/s at
+   2.15 m): ask new walk clips for long strides so 2 m/s plays near natural.
 4. **Framing.** The game camera shows about 16 m across (7-8 hero heights). Clamp it inside the painting with
    the real viewport aspect, never an assumed 16:9. The clear colour is the painting's edge colour, per location.
    Rooms are framed whole, like a stage.
@@ -62,9 +63,20 @@ continue. The blockout, the camera and the projection cost nothing.
 
 ## Steps
 
+### 0. The project and the engine
+
+- No project yet: `summer create empty <name>` (or write a plain `project.godot`), open it with
+  `summer run <path>`, and check that `summer_get_project_context` answers for that project.
+- `engine_not_running` while an editor is open: the editor was started with another HOME, or the MCP is bound to
+  a different editor. Start this project's editor with `summer run <path>`, or drive it from a shell with the CLI
+  and `SUMMER_ENGINE_PROJECT=<path>` set.
+- Image generation through Summer: always pass an `idempotencyKey` and `numImages: 1`. A call that answers
+  `outcome_unknown` (a timeout) may still run and charge: retry with the **same** key, never a new one.
+
 ### 1. Concept (one image)
 
-`summer_assets_generate_image`, 16:9, the highest size the model gives (`width` 4096, `height` 2304):
+`summer_assets_generate_image` with `model: "seedream-5-pro"`, `width` 2048, `height` 1152 (the largest 16:9
+image Summer's models return; the others stop near 1024x576):
 
 ```
 Hand-painted illustration of <place>, rich detail, warm painterly light, seen from a high three-quarter
@@ -81,7 +93,8 @@ Pick the image the user likes. It is the art direction and the layout.
 Write one GDScript or scene that rebuilds the concept **one to one** from the fixed camera: the same building
 positions and footprints, roof shapes (gable, hip, dormers on the slope, thatch overhang), chimneys, the well, the
 stall, fences, paths, trees and bushes where the concept has them. Use `MeshInstance3D` with `BoxMesh`,
-`PrismMesh`, `CylinderMesh`, `SphereMesh` (or CSG). Give each material one flat colour (red = tile roof, yellow =
+`PrismMesh`, `CylinderMesh`, `SphereMesh` (not CSG: only MeshInstance3D nodes get the painting). Give each
+material one flat colour (red = tile roof, yellow =
 thatch, dark blue = slate, cream = plaster walls, grey = stone, brown = wood, tall brown slabs = doors, green =
 grass, pink low blocks = flower beds): the colours tell the painter what each block is, and the paint-over prompt
 repeats them as a colour key. Name door and step slabs `..._door` / `..._steps`: they are hidden in the game.
@@ -92,15 +105,33 @@ World (Node3D, painted_world.gd: player_path, start_location)
     PaintCamera Camera3D  ORTHOGONAL, KEEP_WIDTH, size = frame width in metres (40 for a village square)
                 rotation_degrees = Vector3(-30, 45, 0)   # 30 down, 45 around; never change it later
                 position = frame centre - forward * 60, far = 200
-    Painted     Node3D    every block: StaticBody3D + CollisionShape3D + MeshInstance3D(s), Ground walkable
+    Painted     Node3D    every block (or blockout_builder.gd reading a spec), Ground walkable
   Cottage       Node3D, painted_location.gd (frame_whole = true), 100 m off to the side
-    PaintCamera same rotation, size 12-14
+    PaintCamera same rotation, size 14 for a 9 x 7.5 m room
     Painted     ...
   DoorIn        Area3D, painted_door.gd (to = Cottage, spawn = a Marker3D inside the room)
   DoorOut       Area3D, painted_door.gd (to = Village, spawn = a Marker3D outside the village door)
   GameCamera    Camera3D
   Player        CharacterBody3D, painted_player.gd (sheet, sheet_json)
 ```
+
+One world script owns the player, the camera and the doors; locations never move the player themselves.
+`painted_world.gd` sets the player up after every child is ready, so the node order is free.
+
+In a `.tscn`, the paint camera line for 30 down, 45 around is (Godot writes the basis by rows; hand-written
+columns give a wrong camera):
+`transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, cx + 36.742, cy + 30, cz + 36.742)`
+for a frame centred on (cx, cy, cz), 60 m back along the view.
+
+**Write the blockout as a spec** (`_building-blocks/blockout_builder.gd` documents the JSON: box, prism, cyl,
+sphere, poly ground, invisible wall blockers). The same file drives the engine (the builder is the location's
+`Painted` node) and an engine-free wireframe preview over the concept (`tools/preview.py`), so the fitting loop
+needs no engine runs.
+
+- **Gable roofs are two parts:** a wall-coloured prism for the gable triangle plus two thin slanted roof slabs
+  with an overhang. A single roof-coloured prism makes the painter paint roof on the gable wall.
+- **Edges and water:** put invisible `wall` blockers along water and ledge edges, with gaps at pier roots and
+  doorways. Ground made from a polygon is one-sided: use the spec's `poly` (two-sided collision) or a box.
 
 Solid things get a `StaticBody3D` and a box/cylinder shape: walls, trunks, fence posts, the well, furniture.
 Things the player walks behind need real height (houses, trees, stalls).
@@ -109,7 +140,8 @@ Things the player walks behind need real height (houses, trees, stalls).
 flower beds, barrels, crates, benches, lanterns and window boxes wherever the concept has them; a sparse blockout
 comes back as a sparse painting. Only truly flat detail (cobbles, rugs, grass) can stay paint-only.
 
-**Match the concept.** Read positions straight from the concept by inverting the orthographic camera. With the
+**Match the concept.** Read positions straight from the concept by inverting the orthographic camera
+(`tools/cam.py <height> <px,py> ...` does it). With the
 concept W x H pixels, `s` = pixels per metre (W / frame width), `elev` = 30 degrees and a pixel (sx, sy) on the
 ground (a wall's bottom corner):
 
@@ -120,22 +152,25 @@ height = dy / (s * cos(elev))           # a vertical edge dy pixels long (wall, 
 world = target + right_ground * u + far_ground * v
 ```
 
-Three wall-bottom corners give a footprint; the ridge gives the roof height. Then render the blockout from
-`PaintCamera` (step 3), overlay its edges in red on the concept and move blocks until the silhouettes line up.
+Three wall-bottom corners give a footprint; the ridge gives the roof height. Draw the spec over the concept with
+`tools/preview.py` and move blocks until the red silhouettes line up, then build it in the engine.
 If the blockout does not match the concept, the painting will not match the blocks.
 
 ### 3. Render the blockout from the paint camera
 
-- Quick look: `summer_screenshot` with `target: "scene"`, `framing: "camera"`, `camera_path:
-  "Village/PaintCamera"`.
-- Or play with the location's `paint` left empty: the world then shows the plain blockout through that
-  `PaintCamera`; `summer_screenshot` `target: "game"` captures it.
+- Play with the location's `paint` left empty: `painted_world.gd` then shows the blockout through that
+  `PaintCamera`, lit by a sun and ambient light so its faces read (an unlit blockout comes out near black).
+  `summer_screenshot` `target: "game"` captures it.
 - Exact PNG for the painter: copy `_building-blocks/capture_paint_view.gd`, make a scene with just that node
-  (`level` = the world scene, `camera_path` = the location's camera, `size` = 2048x1152 or larger at 16:9), and
-  play it (`summer_play` offscreen). It saves `res://painted/blockout.png` and quits.
+  (`level` = the world scene, `camera_path` = the location's camera, `size` = 2048x1152), and play it in a run
+  that renders (the editor, or a windowed run; `--headless` renders nothing). It saves
+  `res://painted/blockout.png` and quits.
+- `summer_screenshot` `target: "scene"` renders the saved scene without running scripts: a blockout built by a
+  script or the spec builder shows nothing there.
 
-Then upload it (`summer_call` `assets.upload_begin`, post the form, then `assets.upload_complete`, then
-`assets.get` for its `fileUrl`).
+Then upload it: `summer_call` `assets.upload_begin`, post its form fields plus the file to `uploadUrl`, then
+`assets.upload_complete` with `publicId`, `version`, `uploadSignature` (the `signature` of the upload's answer)
+and `format`. Its answer carries the `fileUrl`.
 
 ### 4. Paint-over (strict image to image)
 
@@ -167,9 +202,12 @@ rich textures>. No characters, no text, no border.
 ```
 
 `summer_assets_generate_image` takes one `referenceImageUrl` (the blockout render): put the material and
-style description into the prompt in words, keep the colour key, and use `gpt-image-2` or `nano-banana-2`.
+style description into the prompt in words and keep the colour key. Use `model: "seedream-5-pro"`, `width`
+2048, `height` 1152, `numImages: 1` and an `idempotencyKey`: it holds pixel alignment well and is the only
+Summer model that returns 2048 px.
 
-**Check alignment before you use it.** Overlay the blockout's edges (red) on the painting and look: roof lines,
+**Check alignment before you use it.** Overlay the blockout's edges (red) on the painting
+(`tools/overlay.py <blockout.png> <painting.png> <out.png>`) and look: roof lines,
 wall corners, the well and the stall must sit on the red lines. Reject any painting where objects moved, were
 added, or the framing zoomed; generate again rather than project a drifted painting.
 
@@ -178,6 +216,11 @@ added, or the framing zoomed; generate again rather than project a drifted paint
 Painting pixels per metre must be at least the screen's pixels per metre. A 4K painting (about 5500 px) over a
 40 m frame gives 137 px/m; a 16 m view on a 1080p-class game view needs about 96-120 px/m, so it stays sharp. A
 2048 px painting over 32 m (64 px/m) is soft at that view. For bigger worlds use more frames, not a wider frame.
+
+**4K through Summer:** no Summer image model returns 4K. `tools/detail4k.py <painting_2k.png> <out_dir> "<style
+words>"` upscales the 2K paint-over 2x, cuts nine overlapping 2048x1152 tiles, runs a strict "redraw sharper,
+pixel-aligned" image-to-image pass on each with `seedream-5-pro` and blends them back. Nine generations; the
+alignment holds.
 
 ### 6. Projection in the engine
 
@@ -188,8 +231,8 @@ position in that location's paint camera frame as its UV. No UV unwrapping, no b
 
 - Keep the scene's tonemap **Linear**, exposure 1, no glow, no fog: the painting already holds the light.
 - Import the painting lossless (Import dock: Compress Mode Lossless, mipmaps on); VRAM compression smears it.
-- Verify: `summer_screenshot` `framing: "camera"` through the `PaintCamera` must look exactly like the painting.
-  Then play and look at the real window (hard rule 9).
+- Verify: `_building-blocks/paintcam_check.gd` renders the painted world through a `PaintCamera` to a PNG; it
+  must match the painting. Then play and look at the real window (hard rule 9).
 
 ### 7. Camera rules
 
@@ -204,7 +247,8 @@ position in that location's paint camera frame as its UV. No UV unwrapping, no b
 ### 8. Interiors
 
 Every village gets at least one enterable building. Each interior is its own location far away (for example 100 m
-off to the side) with the **same** camera direction and a smaller frame (12-14 m), `frame_whole = true`. Lower
+off to the side) with the **same** camera direction and a frame that holds the whole room with its back walls
+(14 m for a 9 x 7.5 m room; 12 m cut the walls off), `frame_whole = true`. Lower
 the two walls nearest the camera to knee height (a dollhouse cut-away) and leave a door gap of about 1.8 m.
 Blockout, render, paint over (its own 4K paint-over, the same rules and colour key: warm floorboards, plaster,
 beams, fireplace, bed, shelves, rug, "keep the area outside the room plain flat dark") and project exactly like
@@ -212,8 +256,10 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
 
 ### 9. Characters
 
-1. **Ready-made:** search the library for the painted plug-in characters first (`summer_docs_search`
-   "painted 2.5D character sprite sheet").
+1. **Ready-made:** find the painted plug-in characters first (`summer_docs_search` "painted 2.5D character
+   sprite sheet"): a man, a woman, the man with a sword and an old man, 8 directions, idle, walk and run, one
+   8.6-14 MB sheet each. Copy a character folder to `res://characters/<id>/` (its `.tres` expects that path) and
+   set `sheet` = `<id>_sheet.png`, `sheet_json` = `<id>_sheet.json` on `painted_player.gd`. Not found: make one.
 2. **New character:** generate an 8-pose turnaround (or two 4-pose sheets) in the world's style on flat pure
    green:
    ```
@@ -222,8 +268,9 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
    up-right, right, down-right. Seen from a high three-quarter top-down camera. Plain flat pure green
    background (#00FF00), no ground, no shadows, no text.
    ```
-   Crop each pose, pad it to 9:16 with the same green, upload it, then `summer_assets_generate_video`
-   (`model: "minimax-h3-max"`, `aspectRatio: "9:16"`, 5 s): one clip per direction and animation:
+   Crop each pose, pad it to 9:16 with the same green, upload it, then `summer_call` `assets.generate_video`
+   (`model: "minimax-h3-max"`, `aspectRatio: "9:16"`, 5 s, an `idempotencyKey`): one clip per direction and
+   animation:
    ```
    The character, <facing>, walks in place on the spot with a steady, simple game walk cycle. The character
    stays exactly centred at the same size and never moves across the frame or turns. Static locked camera, no
@@ -242,8 +289,8 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
    Without video: `summer_call` `assets.generate_sprite_sheet` (8-frame walk from one picture, per direction).
 4. **In the game:** `painted_player.gd` makes an `AnimatedSprite3D`: Y-billboard, unshaded, alpha cut (so painted
    walls hide the character), height stretched by `1 / cos(camera pitch)`, 8 facings by 45 degree sectors (a
-   missing diagonal falls back to its side row), move 4.2 m/s on the jog cycle, sprint 6.3, stroll 1.6 on the
-   walk cycle, animation speed = speed / natural speed.
+   missing diagonal falls back to its side row), the game-type gait (hard rule 2), animation speed = speed /
+   natural speed.
    Spawn points 0.5 m or more away from walls, or the flat card cuts into them.
 
 ### 10. Weapons
@@ -260,8 +307,10 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
 - **A sparse blockout:** the painting comes back sparse. Add low blocks for flower beds, crates, barrels, benches.
 - **35 degrees against a generated concept:** generated "isometric" art is 30 degrees down; the blocks will not fit.
 - **A tiny or giant hero:** check the hero against a door (door = hero x 1.15) in the first screenshot.
-- **Sliding feet or slow walking:** move on the jog cycle at about 4.2 m/s, speed_scale = speed / natural; never a
-  walk cycle above 1.5x natural.
+- **Sliding feet or the wrong gait:** speed_scale = speed / natural; cozy games walk by default and run on Shift.
+- **4096 px asked from Summer's image models:** refused. 2048x1152 with seedream-5-pro, then the tiled 4K pass.
+- **A new idempotencyKey after a timeout:** pays twice. Retry with the same key; keep numImages 1.
+- **An unlit blockout capture, CSG blocks, a one-sided polygon ground, no water blockers:** see steps 2 and 3.
 - **Long baked shadows:** they lie on the ground while the hero walks through them. Contact shadows only.
 - **Floating dormers, blockout door slabs left visible:** dormers on the slope; hide door and step slabs.
 - **Rotating the game camera:** shows painted detail on the wrong surfaces. Translate only.
@@ -286,13 +335,13 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | In this skill | Command |
 |---|---|
 | `summer_assets_generate_image` | `summer assets generate-image` |
-| `summer_assets_generate_video` | `summer assets generate-video` |
-| `assets.get` | `summer assets get` |
+| `assets.generate_video` | `summer assets generate-video` |
 | `assets.upload_begin` | `summer assets upload-begin` |
 | `assets.upload_complete` | `summer assets upload-complete` |
 | `summer_docs_search` | `summer docs search` |
 | `summer_add_node` | `summer engine add-node` |
 | `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_project_context` | `summer engine get-project-context` |
 | `summer_get_script_errors` | `summer engine get-script-errors` |
 | `summer_import_from_url` | `summer engine import-from-url` |
 | `summer_play` | `summer engine play` |

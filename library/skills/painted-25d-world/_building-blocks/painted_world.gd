@@ -26,8 +26,7 @@ var full_view := false
 func _ready() -> void:
 	location = get_node(start_location)
 	if location.paint == null:
-		location.paint_cam.make_current()   # blockout capture mode
-		set_physics_process(false)
+		_capture_mode()
 		return
 	game_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	game_cam.keep_aspect = Camera3D.KEEP_WIDTH
@@ -39,6 +38,26 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			_take_shots.call_deferred(arg.trim_prefix("--shots="))
+
+## No painting yet: show the plain blockout through the paint camera, lit so its faces read for the painter
+## (the painted game itself stays unshaded). Play it and capture the frame for the paint-over.
+func _capture_mode() -> void:
+	location.paint_cam.make_current()
+	set_physics_process(false)
+	if player.has_method("setup"):
+		player.setup(location.paint_cam.global_basis)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-50, 20, 0)
+	sun.light_energy = 1.2
+	add_child(sun)
+	var env := WorldEnvironment.new()
+	env.environment = Environment.new()
+	env.environment.background_mode = Environment.BG_COLOR
+	env.environment.background_color = Color(0.1, 0.1, 0.12)
+	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.environment.ambient_light_color = Color.WHITE
+	env.environment.ambient_light_energy = 0.55
+	add_child(env)
 
 ## Doors call this: move the player into another painted location.
 func go(to: Node3D, spawn: Vector3) -> void:

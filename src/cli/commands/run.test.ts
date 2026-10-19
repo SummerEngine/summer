@@ -38,12 +38,17 @@ vi.mock("child_process", async (importOriginal) => {
  *  `summer run` touches: unref() and the async "error" event. Set
  *  `nextSpawnError` before the call to emit ENOENT/EACCES on the next tick. */
 let nextSpawnError: NodeJS.ErrnoException | null = null;
+/** Set before the call: the child exits with this code on the next tick (a crash on open). */
+let nextExitCode: number | null = null;
 function fakeChild() {
   const child = new EventEmitter() as EventEmitter & { unref: () => void };
   child.unref = vi.fn();
   const error = nextSpawnError;
   nextSpawnError = null;
   if (error) setTimeout(() => child.emit("error", error), 0);
+  const exit = nextExitCode;
+  nextExitCode = null;
+  if (exit !== null) setTimeout(() => child.emit("exit", exit, null), 0);
   return child;
 }
 
@@ -95,6 +100,7 @@ beforeEach(async () => {
   checkEngineHealthMock.mockResolvedValue(null);
   spawnMock.mockClear();
   nextSpawnError = null;
+  nextExitCode = null;
   detectMock.mockReset();
   engineSupport(null);
   // Existing tests assume a human at a terminal (focus, no posture flags).
@@ -155,6 +161,18 @@ describe("summer run engine resolution", () => {
     expect(process.exitCode).toBeUndefined();
     expect(logs.join("\n")).toContain("Summer Engine running (v0.9.0) on port 6543");
     expect(logs.join("\n")).toContain("Project: Demo");
+  });
+
+  it("stops waiting at once when the editor exits before its API answers (no display, a crash on open)", async () => {
+    findEngineBinaryMock.mockReturnValue("/opt/prebuilt/summer-linux-x86_64");
+    nextExitCode = 1;
+    const started = Date.now();
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("Summer Engine binary failed to start: exited with code 1");
   });
 
   it("reports a binary that fails to start instead of crashing with a raw stack", async () => {
@@ -365,6 +383,33 @@ describe("summer run with an editor already open (the instance registry)", () =>
     } finally {
       starting.kill();
     }
+  });
+
+  it("a registered editor on the project that does not answer (busy) is waited on, never doubled", async () => {
+    const game = await project("game");
+    await registerEditor(game, "Game");
+    findEngineBinaryMock.mockReturnValue(binary);
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.7.3" } as never);
+
+    await runCommand.parseAsync([game], { from: "user" });
+
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(logs.join("\n")).toContain(`already starting with ${game}`);
+    expect(logs.join("\n")).toContain("Summer Engine running (v0.7.3)");
+  });
+
+  it("the last launch on the project, while its process lives, is waited on before it registers", async () => {
+    const game = await project("game");
+    const { mkdir: mk, writeFile: wf } = await import("node:fs/promises");
+    await mk(join(root, ".summer"), { recursive: true });
+    await wf(join(root, ".summer", "last-launch.json"), JSON.stringify({ projectPath: game, pid: process.pid, at: Date.now() }));
+    findEngineBinaryMock.mockReturnValue(binary);
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.7.3" } as never);
+
+    await runCommand.parseAsync([game], { from: "user" });
+
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(logs.join("\n")).toContain(`already starting with ${game}`);
   });
 
   it("refuses a second editor and names the project that is open", async () => {

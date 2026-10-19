@@ -16,8 +16,8 @@ vi.mock("./engine.js", async (importOriginal) => {
 import type { EngineApiClient } from "./api-client.js";
 import { checkEngineHealth } from "./engine.js";
 import { findEngineBinary } from "./engine-install.js";
-import type { LaunchEditorOptions, LaunchEditorResult } from "./engine-launch.js";
-import { _resetSelfStartForTests, DEV_COMMAND, selfStartEngine, SELF_START_RECOVERY } from "./engine-self-start.js";
+import { LaunchLockBusyError, type LaunchEditorOptions, type LaunchEditorResult } from "./engine-launch.js";
+import { _resetSelfStartForTests, DEV_COMMAND, hasNoDisplay, selfStartEngine, SELF_START_RECOVERY, sessionProject } from "./engine-self-start.js";
 import { EngineNotRunningError } from "./error-codes.js";
 import { setSummerDirForTests } from "./store.js";
 
@@ -26,7 +26,8 @@ const healthMock = vi.mocked(checkEngineHealth);
 const up = { ok: true, engine: "summer", version: "0.9.9", port: 6551, instanceId: "fake-1" };
 const notRunning = () => new EngineNotRunningError("Summer Engine is not running.", "no api-token found");
 const fakeClient = { fake: true } as unknown as EngineApiClient;
-const on = { SUMMER_AUTO_LAUNCH: "1" } as NodeJS.ProcessEnv;
+/** Auto-launch on, in a desktop session on every platform (Linux CI has no DISPLAY). */
+const on = { SUMMER_AUTO_LAUNCH: "1", DISPLAY: ":0" } as NodeJS.ProcessEnv;
 
 let root = "";
 let project = "";
@@ -155,6 +156,59 @@ describe("the MCP opens the session's project when no editor runs", () => {
     const error = await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: { SUMMER_AUTO_LAUNCH: "0" }, launch }));
     expect(error.recovery).toBe(SELF_START_RECOVERY.autoLaunchOff(project));
     expect(launch).not.toHaveBeenCalled();
+  });
+
+  it("a registered editor that does not answer is busy: no launch, call again", async () => {
+    const launch = launcher({ status: "running", launched: true, port: 1, health: up as never });
+    const busy = new EngineNotRunningError("Summer Engine is not responding on port 6551.", "Summer Engine instance abc is not responding on port 6551.");
+    const error = await failureOf(selfStartEngine({ cwd: project }, busy, { env: on, launch }));
+    expect(error.recovery).toBe(SELF_START_RECOVERY.busy);
+    expect(launch).not.toHaveBeenCalled();
+  });
+
+  it("Linux with no display answers at once instead of launching a window that cannot open", async () => {
+    const launch = launcher({ status: "running", launched: true, port: 1, health: up as never });
+    const error = await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: { SUMMER_AUTO_LAUNCH: "1" }, launch }));
+    if (process.platform === "linux") {
+      expect(error.recovery).toBe(SELF_START_RECOVERY.noDisplay);
+      expect(launch).not.toHaveBeenCalled();
+    }
+    expect(hasNoDisplay({}, "linux")).toBe(true);
+    expect(hasNoDisplay({ WAYLAND_DISPLAY: "wayland-0" }, "linux")).toBe(false);
+    expect(hasNoDisplay({}, "darwin")).toBe(false);
+  });
+
+  it("only a busy launch lock means starting; another launch failure says so", async () => {
+    const lockBusy = vi.fn(async (_options: LaunchEditorOptions): Promise<LaunchEditorResult> => {
+      throw new LaunchLockBusyError();
+    });
+    expect((await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: lockBusy }))).recovery).toBe(SELF_START_RECOVERY.starting(project));
+    _resetSelfStartForTests();
+    const broken = vi.fn(async (_options: LaunchEditorOptions): Promise<LaunchEditorResult> => {
+      throw new Error("EACCES: ~/.summer");
+    });
+    expect((await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: broken }))).recovery).toBe(SELF_START_RECOVERY.launchFailed("EACCES: ~/.summer"));
+  });
+
+  it("a launch whose editor died is not waited on: the next call launches again", async () => {
+    let clock = 1_000_000;
+    const now = () => clock;
+    const launch = launcher({ status: "starting", binary: "/fake/Summer", pid: 2 ** 30 });
+    const connect = vi.fn(async (): Promise<EngineApiClient> => {
+      throw new Error("not yet");
+    });
+    await failureOf(selfStartEngine({ projectPath: project }, notRunning(), { env: on, launch, connect, now, waitMs: 0 }));
+    clock += 30_000;
+    await failureOf(selfStartEngine({ projectPath: project }, notRunning(), { env: on, launch, connect, now, waitMs: 0 }));
+    expect(launch).toHaveBeenCalledTimes(2);
+  });
+
+  it("with no project in the agent's folder, the project the last summer dev opened is the session's while its editor runs", async () => {
+    mkdirSync(join(root, ".summer"), { recursive: true });
+    writeFileSync(join(root, ".summer", "last-launch.json"), JSON.stringify({ projectPath: project, pid: process.pid, at: Date.now() }));
+    expect(await sessionProject({ cwd: elsewhere })).toBe(project);
+    writeFileSync(join(root, ".summer", "last-launch.json"), JSON.stringify({ projectPath: project, pid: 2 ** 30, at: Date.now() }));
+    expect(await sessionProject({ cwd: elsewhere })).toBeNull();
   });
 
   it("a binary that fails to start says how to repair it", async () => {

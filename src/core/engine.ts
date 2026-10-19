@@ -180,7 +180,10 @@ function parseEngineInstance(value: unknown): EngineInstance | null {
 
 export async function listEngineInstances(
   nowMs = Date.now(),
-  summerDir = getSummerDir()
+  summerDir = getSummerDir(),
+  /** Keep entries whose heartbeat is old: an editor that is alive but busy
+   *  (a long import) stops beating; the launcher must still not start a second one. */
+  options: { anyHeartbeat?: boolean } = {}
 ): Promise<EngineInstance[]> {
   const instancesDir = join(summerDir, "instances");
   try {
@@ -209,7 +212,7 @@ export async function listEngineInstances(
         JSON.parse(await readFile(path, "utf-8"))
       );
       if (!parsed || !processIsAlive(parsed.pid)) continue;
-      if (nowMs - parsed.heartbeatAt * 1000 > INSTANCE_STALE_MS) continue;
+      if (!options.anyHeartbeat && nowMs - parsed.heartbeatAt * 1000 > INSTANCE_STALE_MS) continue;
       parsed.resourceRoot = await canonicalPath(parsed.resourceRoot);
       instances.push(parsed);
     } catch {

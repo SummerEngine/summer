@@ -6,10 +6,11 @@
  * already open.
  */
 import { execFileSync, spawn } from "child_process";
-import { realpathSync } from "fs";
+import { readFileSync, realpathSync } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
+import { writeStoreJson } from "./store.js";
 import { checkEngineHealth, getApiPort, listEngineInstances, type EngineHealth } from "./engine.js";
 import {
   describeEngineExecutableProblem,
@@ -55,6 +56,14 @@ async function removeStaleLaunchLock(lockDir: string): Promise<boolean> {
   return true;
 }
 
+/** Another launch holds ~/.summer/launch.lock: it is starting an editor right now. */
+export class LaunchLockBusyError extends Error {
+  constructor() {
+    super("Another `summer run` launch is still in progress. Try again in a few seconds.");
+    this.name = "LaunchLockBusyError";
+  }
+}
+
 /** Hold ~/.summer/launch.lock while `fn` runs. A launch that waits longer
  *  than the stale age calls `heartbeat` so other launchers keep waiting. */
 export async function withLaunchLock<T>(fn: (heartbeat: () => Promise<void>) => Promise<T>): Promise<T> {
@@ -90,9 +99,7 @@ export async function withLaunchLock<T>(fn: (heartbeat: () => Promise<void>) => 
       }
 
       if (Date.now() - startedAt > LAUNCH_LOCK_WAIT_MS) {
-        throw new Error(
-          "Another `summer run` launch is still in progress. Try again in a few seconds."
-        );
+        throw new LaunchLockBusyError();
       }
 
       await sleep(100);
@@ -149,27 +156,56 @@ function canonical(path: string): string {
   }
 }
 
+/** The editor the last `summer dev` / `summer run` / MCP launch started: ~/.summer/last-launch.json. */
+export const LAST_LAUNCH_FILE = "last-launch.json";
+
+export interface LastLaunch {
+  projectPath: string;
+  pid: number;
+  at: number;
+}
+
+/** The last launch while its editor process is alive, else null. */
+export function lastLaunch(): LastLaunch | null {
+  try {
+    const record = JSON.parse(readFileSync(join(getSummerDir(), LAST_LAUNCH_FILE), "utf-8")) as Partial<LastLaunch>;
+    if (typeof record.projectPath !== "string" || typeof record.pid !== "number" || typeof record.at !== "number") return null;
+    return processIsAlive(record.pid) ? (record as LastLaunch) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type OpenEditor =
   | { kind: "none" }
   | { kind: "this"; port: number; health: EngineHealth }
+  /** An editor process has this project but does not answer: busy, or still importing. */
+  | { kind: "starting"; port: number | null }
   | { kind: "other"; port: number; health: EngineHealth; project: string };
 
 /**
  * Whether an editor already has this project open, has another project open,
- * or nothing answers. Live editors publish ~/.summer/instances/<id>.json with
- * their project root; older engines only the global port pointer, whose
- * /api/health does not say which project is open (so any editor there counts
- * as "another project" unless no project was asked for).
+ * is starting on it, or nothing answers. Live editors publish
+ * ~/.summer/instances/<id>.json with their project root; an entry whose
+ * process is alive counts as this project's editor even when it does not
+ * answer (a long import), and so does the last launch while its process
+ * lives (it registers only once it is up). Older engines publish only the
+ * global port pointer, whose /api/health does not say which project is open
+ * (so any editor there counts as "another project" unless no project was asked for).
  */
 export async function findOpenEditor(projectPath: string | null): Promise<OpenEditor> {
   if (projectPath) {
     const root = canonical(projectPath);
-    const instances = await listEngineInstances();
-    const ordered = [...instances.filter((i) => i.resourceRoot === root), ...instances.filter((i) => i.resourceRoot !== root)];
-    for (const instance of ordered) {
+    const instances = await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true });
+    for (const instance of instances.filter((i) => i.resourceRoot === root)) {
+      const health = await checkEngineHealth(instance.port);
+      return health ? { kind: "this", port: instance.port, health } : { kind: "starting", port: instance.port };
+    }
+    const last = lastLaunch();
+    if ((last && canonical(last.projectPath) === root) || editorStartingFor(root)) return { kind: "starting", port: null };
+    for (const instance of instances) {
       const health = await checkEngineHealth(instance.port);
       if (!health) continue;
-      if (instance.resourceRoot === root) return { kind: "this", port: instance.port, health };
       const project = instance.projectName ? `${instance.projectName} (${instance.resourceRoot})` : instance.resourceRoot;
       return { kind: "other", port: instance.port, health, project };
     }
@@ -213,12 +249,12 @@ export interface LaunchEditorOptions {
 }
 
 export type LaunchEditorResult =
-  | { status: "running"; launched: boolean; port: number; health: EngineHealth }
+  | { status: "running"; launched: boolean; port: number; health: EngineHealth; pid?: number }
   | { status: "other_project"; project: string }
   | { status: "no_binary"; error: string }
   | { status: "spawn_failed"; binary: string; code: string }
-  /** Launched, but the API did not answer within waitMs (a first import can take minutes). */
-  | { status: "starting"; binary: string };
+  /** Launched (or found starting), but the API did not answer within waitMs (a first import can take minutes). */
+  | { status: "starting"; binary: string | null; pid?: number };
 
 /**
  * Open the project in an editor unless one already has it: refuse a second
@@ -233,9 +269,10 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
   const progressEveryMs = options.progressEveryMs ?? 0;
 
   return withLaunchLock(async (heartbeat) => {
-    // Poll /api/health until the editor answers or waitMs passes; `onUp`
-    // adds the caller's lines once it does.
+    // Poll /api/health (the instance's port when known, else the pointer)
+    // until the editor answers or waitMs passes; `onUp` adds the caller's lines.
     const waitForApi = async (
+      port: number | null,
       failed: () => LaunchEditorResult | null,
       onUp: (health: EngineHealth) => void
     ): Promise<LaunchEditorResult | null> => {
@@ -246,15 +283,15 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
         await sleep(500);
         const failure = failed();
         if (failure) return failure;
-        const port = await getApiPort();
-        const health = await checkEngineHealth(port);
+        const probe = port ?? (await getApiPort());
+        const health = await checkEngineHealth(probe);
         if (health) {
-          out.log(`Summer Engine running (v${health.version}) on port ${port}`);
+          out.log(`Summer Engine running (v${health.version}) on port ${probe}`);
           if (health.project_name) {
             out.log(`  Project: ${health.project_name}`);
           }
           onUp(health);
-          return { status: "running", launched: true, port, health };
+          return { status: "running", launched: true, port: probe, health };
         }
         if (progressEveryMs > 0 && Date.now() >= nextProgress) {
           out.log(`  Still starting (${Math.round((Date.now() - startTime) / 1000)} s); the first open imports the project's assets...`);
@@ -284,6 +321,13 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       );
       return { status: "other_project", project: open.project };
     }
+    // An editor already has this project but does not answer yet (importing,
+    // or busy): wait for it, never start a second one.
+    if (open.kind === "starting") {
+      out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
+      const waited = await waitForApi(open.port, () => null, () => {});
+      return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null });
+    }
 
     const resolved = resolveRunBinary(options.bin);
     if (resolved.binary === null) {
@@ -293,13 +337,6 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     const binary = resolved.binary;
     if (resolved.source !== "installed") {
       out.log(`Using engine from ${resolved.source}: ${binary}`);
-    }
-
-    // An editor started on this project (by another `summer dev` or MCP) that
-    // does not answer yet is still importing: wait for it, never start a second.
-    if (projectPath && editorStartingFor(projectPath)) {
-      out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
-      return (await waitForApi(() => null, () => {})) ?? { status: "starting", binary };
     }
 
     // The engine is not running yet, so /api/health cannot tell us whether
@@ -328,16 +365,26 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     const child = spawn(binary, args, { detached: true, stdio: "ignore" });
     // A stale or non-executable binary surfaces as an async "error" event
     // (ENOENT/EACCES). Without a listener Node raises it as an uncaught
-    // exception with a raw stack; catch it and report the path instead.
-    const spawnState: { error: NodeJS.ErrnoException | null } = { error: null };
+    // exception with a raw stack; catch it and report the path instead. An
+    // editor that exits with an error before its API answers (no display, a
+    // crash on open, killed by the system) ends the wait at once.
+    const spawnState: { error: NodeJS.ErrnoException | null; exit: string | null } = { error: null, exit: null };
     child.on("error", (error: NodeJS.ErrnoException) => {
       spawnState.error = error;
     });
+    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      if (code !== 0) spawnState.exit = signal ? `killed by ${signal}` : `exited with code ${code}`;
+    });
     child.unref();
+    if (projectPath && child.pid) {
+      // Other launchers (another `summer dev`, the MCP) wait for this editor
+      // until it registers, and the MCP finds the project through it.
+      await writeStoreJson(LAST_LAUNCH_FILE, { projectPath, pid: child.pid, at: Date.now() } satisfies LastLaunch).catch(() => undefined);
+    }
 
     const spawnFailed = (): LaunchEditorResult | null => {
-      if (!spawnState.error) return null;
-      const code = spawnState.error.code ?? spawnState.error.message;
+      const code = spawnState.error ? (spawnState.error.code ?? spawnState.error.message) : spawnState.exit;
+      if (!code) return null;
       out.error(
         `Summer Engine binary failed to start: ${code} (${binary})\n` +
           "Re-run 'summer install' to repair the installation, or check the binary path."
@@ -345,7 +392,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
       return { status: "spawn_failed", binary, code };
     };
 
-    const result = await waitForApi(spawnFailed, (health) => {
+    const result = await waitForApi(null, spawnFailed, (health) => {
       // Background was wanted but the flag was withheld, and the running
       // engine now says (capabilities.launchPostures, else its version)
       // that it would have honoured it: say so, so the next launch can be
@@ -360,6 +407,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
         }
       }
     });
-    return result ?? { status: "starting", binary };
+    if (result?.status === "running") return { ...result, pid: child.pid };
+    return result ?? { status: "starting", binary, pid: child.pid };
   });
 }

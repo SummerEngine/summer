@@ -24,6 +24,8 @@ import { createLocalProject, defaultProjectParent, LocalProjectError, openLocalP
 const findEngineBinaryMock = vi.mocked(findEngineBinary);
 const up = { ok: true, engine: "summer", version: "0.9.9", port: 6551, instanceId: "fake-1" } as never;
 const fakeClient = { getEngineVersion: () => "0.9.9" } as unknown as EngineApiClient;
+/** A desktop session on every platform (Linux CI has no DISPLAY). */
+const display = { DISPLAY: ":0" } as NodeJS.ProcessEnv;
 
 let root = "";
 
@@ -106,7 +108,7 @@ describe("projects.open_local", () => {
     const connect = vi.fn(async () => fakeClient);
     const onOpen = vi.fn();
 
-    const result = await openLocalProject({ path: join(game, "scenes") }, { cwd: root }, { launch, connect }, onOpen);
+    const result = await openLocalProject({ path: join(game, "scenes") }, { cwd: root }, { launch, connect, env: display }, onOpen);
 
     expect(result).toEqual({ ok: true, projectPath: game, engineVersion: "0.9.9", next: "Call summer_get_project_context, then build the scene." });
     expect(launch.mock.calls[0][0]).toMatchObject({ projectPath: game, posture: "background" });
@@ -126,7 +128,7 @@ describe("projects.open_local", () => {
     const launch = vi.fn(async (_options: LaunchEditorOptions) => ({ status: "running" as const, launched: true, port: 6551, health: up }));
     const connect = vi.fn(async () => fakeClient);
 
-    const refused = await failureOf(openLocalProject({ path: game }, undefined, { launch, connect }), EngineNotRunningError);
+    const refused = await failureOf(openLocalProject({ path: game }, undefined, { launch, connect, env: display }), EngineNotRunningError);
     expect(refused.recovery).toBe(SELF_START_RECOVERY.notInstalledHere);
 
     let finish: () => void = () => {};
@@ -138,13 +140,13 @@ describe("projects.open_local", () => {
         return { binary: "/x", version: "0.9.9", destination: "/x", alreadyInstalled: false };
       }
     );
-    const installing = await failureOf(openLocalProject({ path: game, install: true }, undefined, { launch, connect, install, waitMs: 20 }), EngineNotRunningError);
+    const installing = await failureOf(openLocalProject({ path: game, install: true }, undefined, { launch, connect, install, waitMs: 20, env: display }), EngineNotRunningError);
     expect(installing.message).toBe("Summer Engine is installing.");
     expect(installing.recovery).toBe(SELF_START_RECOVERY.installing("40% (260.0MB)"));
     expect(launch).not.toHaveBeenCalled();
 
     finish();
-    const result = await openLocalProject({ path: game, install: true }, undefined, { launch, connect, install, waitMs: 20 });
+    const result = await openLocalProject({ path: game, install: true }, undefined, { launch, connect, install, waitMs: 20, env: display });
     expect(result.projectPath).toBe(game);
     expect(install).toHaveBeenCalledTimes(1);
     expect(launch).toHaveBeenCalledTimes(1);

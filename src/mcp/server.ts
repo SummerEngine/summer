@@ -150,7 +150,8 @@ export function logEngineSelfStart(line: string): void {
   writeMcpStderr("mcp:engine_self_start", { line });
 }
 
-export async function getClient(): Promise<EngineApiClient> {
+/** `launch: false`: connect only, never open the editor (summer_open lists and prints with no side effects). */
+export async function getClient(options: { launch?: boolean } = {}): Promise<EngineApiClient> {
   // Opt-in per-project routing (editor -> live worker -> spawned worker).
   // OFF by default: with the flag unset this block is skipped entirely and
   // src/core/headless/ is never even loaded (dynamic import). With the flag
@@ -191,6 +192,7 @@ export async function getClient(): Promise<EngineApiClient> {
     // (engine_not_running). Anything else (several editors open, …) already
     // says how to pick one.
     const notRunning = engineNotRunningFromConnectError(reason);
+    if (notRunning && options.launch === false) throw notRunning;
     if (notRunning) {
       // Open the session's project ourselves when we can, else a coded
       // error with the one command that gets there (core/engine-self-start.ts).

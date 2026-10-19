@@ -36,9 +36,13 @@ continue. The blockout, the camera and the projection cost nothing.
 
 1. **Scale.** Doors 2.5 m. Hero height = door height / 1.15 (2.15 m). One-storey eaves 3.5-4 m, two-storey about
    6 m. Check the hero against a door in the first screenshot.
-2. **Speed.** Walk 4-4.5 m/s, run (Shift) 7.5-8 m/s. Slower feels sluggish at this camera.
-3. **Animation speed follows ground speed.** Each sheet json carries `stride_m` per animation kind (metres per
-   cycle); `speed_scale = speed / (stride_m * fps / frames)`. The feet must not slide. Never one fixed fps for
+2. **Speed from the sheet's natural speeds.** A cycle's natural speed is the ground speed at which its feet stick
+   (stride per cycle x cycles per second, scaled to the hero height). Generated walk cycles take short steps
+   (about 1.1-1.2 m/s at 2.15 m); jog/run cycles are natural at about 3.5 m/s. Default movement = the jog/run
+   cycle at 1.1-1.3x natural (about 4.2 m/s); Shift sprints up to 1.8x natural; the walk cycle only for slow
+   movement (Alt stroll about 1.6 m/s, NPCs), never above 1.5x natural. Slower than 4 m/s feels sluggish.
+3. **Animation speed follows ground speed.** Each sheet json carries `height_m`, `stride_m` and `cycles_per_s`
+   per kind; `speed_scale = speed / natural speed`, clamped. The feet must not slide. Never one fixed fps for
    every speed.
 4. **Framing.** The game camera shows about 16 m across (7-8 hero heights). Clamp it inside the painting with
    the real viewport aspect, never an assumed 16:9. The clear colour is the painting's edge colour, per location.
@@ -225,18 +229,21 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
    stays exactly centred at the same size and never moves across the frame or turns. Static locked camera, no
    zoom. The plain flat pure green background stays perfectly flat and unchanged. Seamless loop.
    ```
+   Add "long confident strides, heel to toe" to walk clips: generated walks otherwise take short steps.
    Idle: "stands still in a relaxed idle: gentle breathing, one blink, feet planted". Run: "runs in place".
 3. **Clip to sheet** (host with a shell and ffmpeg): key out the green by colour, take one cycle (skip the
    first second), sample 8 frames evenly, crop every frame of every clip with the **same** box so the feet stay
    on one line, and tile them into one sheet: one row per animation and direction (`idle_down`,
    `walk_up_left`, `run_right`, ...). Write the json beside it: `{"cell_w", "cell_h", "frames", "rows",
-   "fps": {"idle", "walk", "run"}, "stride_m": {"walk", "run"}}`. Measure `stride_m` once per kind: the
-   distance a planted foot slides back during one cycle, scaled to the hero height. Look at every frame;
-   regenerate a clip with a broken frame.
+   "fps": {"idle", "walk", "run"}, "height_m", "stride_m": {"walk", "run"}, "cycles_per_s": {"walk", "run"}}`.
+   Measure once per kind: `stride_m` = how far a planted foot slides back during one cycle at `height_m`,
+   `cycles_per_s` = cycles per second at the sheet's fps. Look at every frame; regenerate a clip with a broken
+   frame.
    Without video: `summer_call` `assets.generate_sprite_sheet` (8-frame walk from one picture, per direction).
 4. **In the game:** `painted_player.gd` makes an `AnimatedSprite3D`: Y-billboard, unshaded, alpha cut (so painted
    walls hide the character), height stretched by `1 / cos(camera pitch)`, 8 facings by 45 degree sectors (a
-   missing diagonal falls back to its side row), walk 4.2 and run 7.8 m/s, animation speed from `stride_m`.
+   missing diagonal falls back to its side row), move 4.2 m/s on the jog cycle, sprint 6.3, stroll 1.6 on the
+   walk cycle, animation speed = speed / natural speed.
    Spawn points 0.5 m or more away from walls, or the flat card cuts into them.
 
 ### 10. Weapons
@@ -253,7 +260,8 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
 - **A sparse blockout:** the painting comes back sparse. Add low blocks for flower beds, crates, barrels, benches.
 - **35 degrees against a generated concept:** generated "isometric" art is 30 degrees down; the blocks will not fit.
 - **A tiny or giant hero:** check the hero against a door (door = hero x 1.15) in the first screenshot.
-- **Sliding feet or slow walking:** speed 4.2 / 7.8 m/s and animation speed from `stride_m`.
+- **Sliding feet or slow walking:** move on the jog cycle at about 4.2 m/s, speed_scale = speed / natural; never a
+  walk cycle above 1.5x natural.
 - **Long baked shadows:** they lie on the ground while the hero walks through them. Contact shadows only.
 - **Floating dormers, blockout door slabs left visible:** dormers on the slope; hide door and step slabs.
 - **Rotating the game camera:** shows painted detail on the wrong surfaces. Translate only.

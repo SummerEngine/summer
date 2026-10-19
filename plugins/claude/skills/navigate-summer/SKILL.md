@@ -24,10 +24,10 @@ Rigid skill: follow the rules below exactly.
 | The user wants to… | Do |
 |---|---|
 | **see / check / decide** — plan and billing (money), their published games and releases, usage, pricing, the MCP setup guide for their agent, docs, the scene or node you just built ("show me") | **Open the surface** with `studio.open` |
-| **get a result** — add a node, set a property, import an asset, run the game, publish | **Act through Summer tools** (mutation tools, `summer_play`, `store.publish`); do not open the editor to do by hand what a tool does |
+| **get a result** — add a node, set a property, import an asset, run the game, publish | **Act through Summer tools** (mutation tools, `summer_play`, `store.publish`); do not click through the editor by hand to do what a tool does |
 | **both** ("add a camera and show me") | act first, then open the scene / select the node so the user sees the result |
 
-Never open a browser or switch the editor's tab as a side effect of building. Opening is a user-visible action — do it because the user asked to look, and say what will open before it opens.
+Never open a browser or switch the editor's tab as a side effect of building. Opening a page or panel is a user-visible action — do it because the user asked to look, and say what will open before it opens. Playing the game and taking screenshots to check your own work is different: that is allowed and expected (`summer_play`, then `summer_screenshot` or `summer_frame_shot`).
 
 ## How to call it
 
@@ -70,9 +70,11 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | In this skill | Command |
 |---|---|
 | `summer_docs_read` | `summer docs read` |
+| `summer_frame_shot` | `summer engine frame-shot` |
 | `summer_get_project_context` | `summer engine get-project-context` |
 | `summer_is_running` | `summer engine is-running` |
 | `summer_play` | `summer engine play` |
+| `summer_screenshot` | `summer engine screenshot` |
 | `store.publish` | `summer store publish` |
 | `studio.open`, `summer_open` | `summer studio open` |
 <!-- /shell-commands -->

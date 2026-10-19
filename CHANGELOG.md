@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **The MCP says agents may open the editor and play the game in a window.** The server instructions (v4 and 3.x), the agent playbook and the `summer_play`, `summer_screenshot` and `summer_frame_shot` texts say it is allowed and expected: play, then look with a screenshot or frame shot, close what you opened, one editor at a time. `headless-scripting` now scopes its `--headless` rule to engine processes started from a shell, and `navigate-summer` no longer reads as "do not open the editor". No behavior changes.
+
 ## [4.4.0] - 2026-10-18
 
 The store skills say how an item really becomes buyable and name items by slug, area commands answer `--help`, and `summer content make` follows the live make-request ops.

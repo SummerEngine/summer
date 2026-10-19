@@ -2,6 +2,8 @@
 
 Start the game. With no parameters it runs QUIETLY inside Summer Engine's viewport (the 'main' instance); scene runs one level or UI screen instead of the main scene.
 
+Playing the game in the editor's real window is allowed and expected: then summer_screenshot target:'game' to see it, summer_stop when done. One editor at a time.
+
 QUIET BY DEFAULT (focus:false, PlayGame agent:true): the user usually works on the same machine, so the EDITOR stays put. It does not switch to the Game tab or take keyboard focus (nor follow the game's later focus report), and skips the render-health self-check that would misread the untouched Game view as a GPU failure and flip the user's embed setting. Quiet play does NOT hide the game: it runs embedded in the Game view (visible if that tab is open) and is the running game for summer_is_running / summer_screenshot target:'game' / summer_get_diagnostics. With "Embed Game on Play" off the game gets its own OS window; engines with --summer-background (0.5.66+) open it without taking focus. The result echoes agent_quiet:true when honoured; without agent_quiet the engine predates quiet play and most likely took focus (posture_note says so). focus:true launches like the toolbar Play button (Game tab + focus): ONLY when the user is watching and asked to see the game come up.
 
 After starting, confirm boot with summer_is_running (boot time varies; never sleep a guessed delay), then summer_get_diagnostics for runtime errors.

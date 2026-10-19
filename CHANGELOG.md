@@ -19,6 +19,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
     - the plug-in character paths.
   - New building blocks: `blockout_builder.gd` (a JSON blockout spec), `paintcam_check.gd`, and `tools/` (`cam.py` pixel-to-ground, `preview.py` wireframe over the concept, `overlay.py` alignment check, `detail4k.py` tiled 4K pass).
   - Gait: cozy, exploration and RPG games walk by default (about 2 m/s, walk cycle) and run on Shift (about 4 m/s, run cycle). Action games may run by default. Playback stays speed / natural speed.
+
 ## [4.5.0] - 2026-10-19
 
 4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.

@@ -80,6 +80,7 @@
     "./library/skills/generate-motion/",
     "./library/skills/grow-analytics/",
     "./library/skills/headless-scripting/",
+    "./library/skills/hero-art/",
     "./library/skills/in-game-purchases/",
     "./library/skills/instantiate-asset-pack/",
     "./library/skills/investigating-bugs/",

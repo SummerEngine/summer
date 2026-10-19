@@ -1,7 +1,7 @@
 id: skill/summer-assets
 kind: skill
 version: 1.0.1
-summary: "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app."
+summary: "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video."
 use_when:
   - starting a session that has the Summer assets profile (generation tools, no engine tools)
   - the person wants assets for their own engine or web app, not a game built in Summer Engine

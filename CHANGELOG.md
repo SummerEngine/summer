@@ -4,6 +4,9 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **New skill: `hero-art`.** Hero splash art, living splash loops and rigged animated heroes, in three parts an agent reads as needed. Splash art: invent or redo a hero in the exact style of 2 reference splashes placed side by side in one reference image, fix one region by paste-edit so the face never changes, check weapons and hands up close, and let the person name the exact image. Splash loop: the splash as both the first and the last frame of a 15 s image-to-video clip (`assets.generate_video` with `endImageUrl`; a ping-pong fallback where the server has no end frame), motion that only sways and returns (anything that spins or travels cannot finish its cycle and shows at the seam), a measured seam check, Theora `.ogv` desktop and phone encodes, and a select-screen player that shows the still at once, loads late, plays only the hero on screen and frees the stream when hidden. Hero character: a rig-ready T-pose sheet with spread fingers and hair hanging clear, multi-view image-to-3D, a raw-mesh gate (5 + 5 fingers, nothing fused: regenerate, never repair), a skeleton-fit rule for reused clips, motion QA on video including the neck gap test, baked body and runtime hair secondary motion, smooth normals, 4 bone weights and per-platform triangle budgets, async loading, and shipping the hero visible. `animated-loop` points character splashes to it.
+- **Shorter routing summaries for `summer-assets`, `summer-store` and `concept-to-level`**, so every installed skill description still fits the 12,000-character host budget.
+
 ## [4.4.0] - 2026-10-18
 
 The store skills say how an item really becomes buyable and name items by slug, area commands answer `--help`, and `summer content make` follows the live make-request ops.

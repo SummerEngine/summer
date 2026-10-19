@@ -77,6 +77,7 @@
     "./skills/generate-motion/",
     "./skills/grow-analytics/",
     "./skills/headless-scripting/",
+    "./skills/hero-art/",
     "./skills/in-game-purchases/",
     "./skills/instantiate-asset-pack/",
     "./skills/investigating-bugs/",

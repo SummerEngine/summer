@@ -23,6 +23,12 @@ queries:
   # ── 2D assets ──────────────────────────────────────────────────────────
   - query: "draw a portrait of my wizard for the dialogue box"
     expected: [skill/character-portrait]
+  - query: "paint splash art for my new champion in the same style as the others"
+    expected: [skill/hero-art]
+  - query: "make the hero splash art on the character select screen move like a living painting"
+    expected: [skill/hero-art]
+  - query: "my generated hero has six fingers and tears at the shoulders when it animates"
+    expected: [skill/hero-art]
   - query: "show me a few different art styles for the main character before we commit"
     expected: [skill/concept-art]
   - query: "make me a 32x32 pixel art sword icon"

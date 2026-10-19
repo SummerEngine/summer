@@ -1,0 +1,51 @@
+id: skill/hero-art
+kind: skill
+version: 1.0.0
+summary: "Hero splash art, seamless splash loops and rigged animated heroes, gated."
+use_when:
+  - "making splash art for a hero, champion or playable class: character select, hero page, loading screen"
+  - "one splash looks weaker or more generic than the rest of the roster and must be redone in the same style"
+  - "animating splash art: an animated splash, a living painting, a seamless looping character-select background"
+  - "building a playable hero from approved concept art to a rigged, animated, game-ready model with secondary motion and per-platform budgets"
+  - "a generated character has six fingers, fused hair, tears in motion, warps on its skeleton or looks low poly in game"
+do_not_use_when:
+  - "a quick NPC or enemy where the auto-rig is enough (use character-model)"
+  - "a square dialogue or codex bust (use character-portrait)"
+  - "a title-screen backdrop with no character (use animated-loop)"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - 3d
+    - animation
+    - video
+    - pipeline
+    - assets
+  modalities:
+    - images
+    - video
+    - 3d-models
+    - animation
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-model
+    - skill/character-portrait
+    - skill/concept-art
+    - skill/animated-loop
+    - skill/retarget
+    - skill/character-animation-wiring
+    - skill/animation-tree
+  tools:
+    - tool/generate-image
+    - tool/generate-video
+    - tool/generate-3d
+    - tool/generate-motion
+    - tool/run-script
+source: official
+license: MIT
+status: preview
+recommended: false

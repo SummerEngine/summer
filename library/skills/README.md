@@ -1,6 +1,6 @@
 # Summer skills
 
-> 129 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 130 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -8,7 +8,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 ## Domains
 
-- [2d](#2d) (10)
+- [2d](#2d) (11)
 - [3d](#3d) (6)
 - [agent-workflow](#agent-workflow) (19)
 - [ai](#ai) (2)
@@ -41,6 +41,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [character-portrait](./character-portrait/SKILL.md) ★ | Generate one polished character bust for dialogue UI, character select, lore cards or codex entries. | assets |
 | [concept-art](./concept-art/SKILL.md) ★ | Explore art direction with 3-4 rough concept variants of a character, environment or prop. | assets |
 | [create-asset-sheet](./create-asset-sheet/SKILL.md) | Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced. | assets |
+| [*hero-art*](./hero-art/SKILL.md) (preview) | Hero splash art, seamless splash loops and rigged animated heroes, gated. | 3d, animation, video, pipeline, assets |
 | [instantiate-asset-pack](./instantiate-asset-pack/SKILL.md) | Lay out a whole create-asset-sheet pack in the scene: composites, paint order, Sprite2D and NinePatch. | assets |
 | [pixel-art](./pixel-art/SKILL.md) ★ | Generate pixel-art sprites, items, tiles and portraits at a set resolution with a limited palette. | assets |
 | [skybox-panorama](./skybox-panorama/SKILL.md) | Generate a 360-degree sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment. | assets |
@@ -110,7 +111,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation. | pipeline |
 | [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) (library only) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
 | [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) (library only) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
-| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app. | agent-workflow |
+| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video. | agent-workflow |
 
 ## audio
 
@@ -175,7 +176,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step. | 3d, world-building, agent-workflow |
+| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision. | 3d, world-building, agent-workflow |
 | [design-level](./design-level/SKILL.md) ★ | Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton. | game-design |
 | [scene-to-level](./scene-to-level/SKILL.md) | Turn a reference image or concept art into a playable scene: concept, asset pack, terrain, assembly. | game-design |
 
@@ -196,7 +197,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*summer-matchmaking*](./summer-matchmaking/SKILL.md) (preview) | Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures. | ux |
 | [*summer-parties*](./summer-parties/SKILL.md) (preview) | Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only. | ui |
 | [summer-player-data](./summer-player-data/SKILL.md) | Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries. | scripting |
-| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks. | gameplay |
+| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority. | gameplay |
 | [*summer-world-chat*](./summer-world-chat/SKILL.md) (preview) | Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only. | ui |
 | [*summer-world-saves*](./summer-world-saves/SKILL.md) (preview) | Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save. | scripting |
 

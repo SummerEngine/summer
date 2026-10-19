@@ -29,6 +29,7 @@ If the user wants a 5s punchy marketing shot, that's `trailer-shot`. If they wan
 ## When NOT to use
 
 - Marketing shot for a trailer (5-10s with punch) — `trailer-shot`.
+- A hero or champion splash that should come alive (a living painting on the select screen) — `hero-art`.
 - Narrative cutscene with a beginning and end — `cinematic-cutscene`.
 - Static splash image — generate with `concept-art` and use a `TextureRect`. A still is cheaper, lighter, and never seams.
 - UI element animation (icons, button states) — those are GDScript `Tween` or sprite sheets, not video.

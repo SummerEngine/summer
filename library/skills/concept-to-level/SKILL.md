@@ -1,6 +1,6 @@
 ---
 name: concept-to-level
-description: "Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step."
+description: "Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design

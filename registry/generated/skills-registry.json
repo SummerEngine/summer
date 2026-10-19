@@ -338,7 +338,7 @@
     {
       "id": "skill/concept-to-level",
       "name": "concept-to-level",
-      "description": "Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step.",
+      "description": "Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -625,6 +625,23 @@
       "domains": [
         "agent-workflow",
         "headless"
+      ]
+    },
+    {
+      "id": "skill/hero-art",
+      "name": "hero-art",
+      "description": "Hero splash art, seamless splash loops and rigged animated heroes, gated.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/hero-art/",
+      "domains": [
+        "2d",
+        "3d",
+        "animation",
+        "video",
+        "pipeline",
+        "assets"
       ]
     },
     {
@@ -1254,7 +1271,7 @@
     {
       "id": "skill/summer-assets",
       "name": "summer-assets",
-      "description": "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app.",
+      "description": "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1359,7 +1376,7 @@
     {
       "id": "skill/summer-store",
       "name": "summer-store",
-      "description": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
+      "description": "Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

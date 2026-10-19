@@ -458,8 +458,8 @@
     {
       "id": "skill/animated-loop",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "a77ed069c8772941291f9feafce5bbc98ba06c0ae98b62ea905b8743608a660c",
+      "version": "1.0.5",
+      "content_hash": "39addd45841aa873cb1b89c2a99010c7c3daaaefaf34191ed974197d9dcccdac",
       "summary": "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -483,7 +483,8 @@
       },
       "related": {
         "skills": [
-          "skill/asset-strategy"
+          "skill/asset-strategy",
+          "skill/hero-art"
         ]
       },
       "status": "stable",
@@ -1239,8 +1240,8 @@
       "id": "skill/concept-to-level",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "26233b708f6aa93cd92a678703dac9123e1b52ff918b002c0d8d2d47b16cd359",
-      "summary": "Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step.",
+      "content_hash": "6168329f631eb0d9ffbc077ceaf92cb6e1bef041319443a647e260198f46d4c5",
+      "summary": "Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision.",
       "use_when": [
         "polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects",
         "reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map",
@@ -2051,6 +2052,63 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/hero-art",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "fba31a70a01701b6da0b23d71087f7eaee12b2e3e10adafd94be0981795e7db7",
+      "summary": "Hero splash art, seamless splash loops and rigged animated heroes, gated.",
+      "use_when": [
+        "making splash art for a hero, champion or playable class: character select, hero page, loading screen",
+        "one splash looks weaker or more generic than the rest of the roster and must be redone in the same style",
+        "animating splash art: an animated splash, a living painting, a seamless looping character-select background",
+        "building a playable hero from approved concept art to a rigged, animated, game-ready model with secondary motion and per-platform budgets",
+        "a generated character has six fingers, fused hair, tears in motion, warps on its skeleton or looks low poly in game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "2d",
+          "3d",
+          "animation",
+          "video",
+          "pipeline",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "video",
+          "3d-models",
+          "animation",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/character-model",
+          "skill/character-portrait",
+          "skill/concept-art",
+          "skill/animated-loop",
+          "skill/retarget",
+          "skill/character-animation-wiring",
+          "skill/animation-tree"
+        ],
+        "tools": [
+          "tool/generate-image",
+          "tool/generate-video",
+          "tool/generate-3d",
+          "tool/generate-motion",
+          "tool/run-script"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/in-game-purchases",
@@ -3855,8 +3913,8 @@
       "id": "skill/summer-assets",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "2a52ea8260720b3aa81d30dc29439e285afd5ff41592334b957ab4ffbb1f1807",
-      "summary": "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app.",
+      "content_hash": "1d6c1bde82da0ed0a28df6afafe91a1d265bfc842960b7f29178aaf6ce11589e",
+      "summary": "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video.",
       "use_when": [
         "starting a session that has the Summer assets profile (generation tools, no engine tools)",
         "the person wants assets for their own engine or web app, not a game built in Summer Engine",
@@ -4173,8 +4231,8 @@
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.2.0",
-      "content_hash": "62a3a62c2346d35b78ccdc6dd5aa3062318ffec5bc77ea498b69b77f8a40dbdf",
-      "summary": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
+      "content_hash": "beb29b0d607373cf4b06255648da4a66c647fd082ae0c31686196550ea5bf65c",
+      "summary": "Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
         "checking on the authority that a player really owns an item before letting them use or equip it",

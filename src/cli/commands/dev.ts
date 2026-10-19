@@ -7,7 +7,8 @@ import { ENGINE_BIN_ENV } from "../../core/engine-install.js";
 import { launchEditor, resolveRunBinary } from "../../core/engine-launch.js";
 import { resolveLaunchPosture } from "../../core/launch-posture.js";
 import { getTemplateRegistry, resolveTemplate, type TemplateEntry } from "../../core/templates.js";
-import { EngineInstallError, installEngine } from "../../core/engine-installer.js";
+import { installEngine } from "../../core/engine-installer.js";
+import { installCommandFailure } from "./install.js";
 import { createProject, isEmptyProjectFolder, isHomeOrRoot, projectRootAbove } from "../../core/local-project.js";
 
 /**
@@ -162,7 +163,9 @@ export async function runDev(args: readonly string[], options: DevOptions, deps:
     try {
       await (deps.install ?? installEngine)({ log });
     } catch (err) {
-      if (err instanceof EngineInstallError) return fail(err.reason, err.message);
+      // The same coded failures as `summer install` (a raw EACCES or ENOSPC included).
+      const failure = installCommandFailure(err);
+      if (failure) return fail(failure.reason, failure.message);
       throw err;
     }
   }

@@ -71,6 +71,8 @@ Keep Summer Engine running on the project while the agent works:
 npx -y summer-engine@latest run path/to/project
 ```
 
+To let Codex see the game in its in-app browser, run `npx -y summer-engine@latest preview` in the project folder and open `http://127.0.0.1:5199`: the running game, or the editor viewport when no game runs.
+
 ## Prompt Seed
 
 Ask Codex to use the installed Summer skills and Summer MCP for project operations. Scripts and text files should use `summer_read_file`, `summer_replace_text`, or guarded `summer_write_file`; live scene hierarchy changes should use Summer scene tools and then be saved.

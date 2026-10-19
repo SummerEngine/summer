@@ -99,3 +99,13 @@ Run the engine before asking Claude Code to modify scenes:
 ```bash
 npx -y summer-engine@latest run path/to/project
 ```
+
+## See the game in the Browser pane
+
+Claude Code Desktop's Browser pane can show the running game, so Claude screenshots and checks it after each edit, as it does for a web app. In the project folder:
+
+```bash
+npx -y summer-engine@latest preview
+```
+
+Run it in the folder the Desktop session started in (the project, or the folder above it). It serves `http://127.0.0.1:5199`: the running game, or the editor viewport when no game runs. It also adds a `summer-preview` entry to `.claude/launch.json` in that folder (other entries stay as they are), so Desktop starts the preview by itself next time and verifies changes with it. Game frames come about every 20 s so the game keeps running smoothly; the Refresh button takes one now. Clicks and keys on the frame go to the running game.

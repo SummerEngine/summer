@@ -16,6 +16,7 @@ import { planCommand } from "./commands/plan.js";
 import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { eventsCommand } from "./commands/events.js";
+import { previewCommand } from "./commands/preview.js";
 import { toolCommand } from "./commands/tool.js";
 import { opsCliCommands } from "./commands/ops.js";
 import { getBanner } from "./banner.js";
@@ -59,6 +60,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(planCommand);
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
+  program.addCommand(previewCommand);
   program.addCommand(toolCommand);
   // The 4.0 operation catalog (`summer <area> <action>`); SUMMER_SURFACE=v3 leaves it out.
   if (resolveSurface(undefined) === "v4") {

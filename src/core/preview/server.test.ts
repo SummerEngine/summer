@@ -315,6 +315,21 @@ describe("summer preview server", () => {
     expect(click.status).toBe(409);
   });
 
+  it("answers a failure with a fixed text and keeps the details in the local log", async () => {
+    const lines: string[] = [];
+    preview = await startPreviewServer({
+      port: 0,
+      strictPort: true,
+      connect: () => EngineApiClient.connect(undefined, { summerDir, env: {}, cwd: root }),
+      log: (line) => lines.push(line),
+    });
+    preview.source.frame = () => Promise.reject(new Error("secret detail at /Users/someone"));
+    const res = await get("/api/frame");
+    expect(res.status).toBe(500);
+    expect(JSON.parse(res.body.toString("utf-8"))).toEqual({ ok: false, error: "internal_error" });
+    expect(lines.join("\n")).toContain("secret detail");
+  });
+
   it("refuses a request that names another host (DNS rebinding)", async () => {
     await startPreview();
     const res = await get("/api/frame", { host: `evil.example:${preview!.port}` });
@@ -454,7 +469,10 @@ describe("scheduleInputBatch", () => {
 
 describe("the page script", () => {
   it("compiles", () => {
-    const script = /<script>([\s\S]*)<\/script>/.exec(PREVIEW_PAGE_HTML)![1]!;
+    const lower = PREVIEW_PAGE_HTML.toLowerCase();
+    const start = lower.indexOf("<script>") + "<script>".length;
+    const script = PREVIEW_PAGE_HTML.slice(start, lower.lastIndexOf("</script>"));
+    expect(script.length).toBeGreaterThan(1000);
     expect(() => new Function(script)).not.toThrow();
   });
 });

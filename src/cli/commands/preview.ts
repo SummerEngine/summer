@@ -152,7 +152,7 @@ export async function runPreview(opts: PreviewCommandOptions, io: PreviewIo): Pr
 
   let server: PreviewServer;
   try {
-    server = await startPreviewServer({ port, strictPort: strict, connect: () => io.connect(selection) });
+    server = await startPreviewServer({ port, strictPort: strict, connect: () => io.connect(selection), log: io.err });
   } catch (err) {
     if (err instanceof PortInUseError) {
       throw new Error(

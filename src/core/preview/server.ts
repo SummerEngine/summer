@@ -42,6 +42,8 @@ export interface PreviewServerOptions {
   strictPort: boolean;
   connect: () => Promise<PreviewEngine>;
   now?: () => number;
+  /** Where failure details go (default stderr); the page gets a short fixed text. */
+  log?: (line: string) => void;
 }
 
 export interface PreviewServer {
@@ -183,21 +185,23 @@ function closeServer(server: Server): Promise<void> {
   });
 }
 
-function safe(handle: ReturnType<typeof handler>) {
+function safe(handle: ReturnType<typeof handler>, log: (line: string) => void) {
   return (req: IncomingMessage, res: ServerResponse): void => {
     handle(req, res).catch((err: unknown) => {
+      // Details stay in the local log; the page gets a fixed answer.
+      log(`summer preview: ${req.method} ${(req.url ?? "/").split("?")[0]} failed: ${err instanceof Error ? err.message : "unknown error"}`);
       if (res.headersSent) res.end();
-      else sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
+      else sendJson(res, 500, { ok: false, error: "internal_error" });
     });
   };
 }
 
 /** Bind 127.0.0.1 (required) and ::1 (when the machine has IPv6) on one port. */
-async function bindPair(port: number, handle: ReturnType<typeof handler>): Promise<Server[]> {
-  const v4 = createServer(safe(handle));
+async function bindPair(port: number, handle: ReturnType<typeof handler>, log: (line: string) => void): Promise<Server[]> {
+  const v4 = createServer(safe(handle, log));
   await listen(v4, port, PREVIEW_HOST);
   const bound = (v4.address() as AddressInfo).port;
-  const v6 = createServer(safe(handle));
+  const v6 = createServer(safe(handle, log));
   try {
     await listen(v6, bound, "::1");
     return [v4, v6];
@@ -214,14 +218,15 @@ async function bindPair(port: number, handle: ReturnType<typeof handler>): Promi
 }
 
 export async function startPreviewServer(options: PreviewServerOptions): Promise<PreviewServer> {
-  const source = new PreviewSource({ connect: options.connect, now: options.now });
+  const log = options.log ?? ((line: string) => process.stderr.write(`${line}\n`));
+  const source = new PreviewSource({ connect: options.connect, now: options.now, log });
   let port = options.port;
   const handle = handler(source, () => port);
   const last = options.strictPort || options.port === 0 ? options.port : options.port + PORT_SEARCH_SPAN;
   let servers: Server[] | null = null;
   for (let candidate = options.port; candidate <= last; candidate += 1) {
     try {
-      servers = await bindPair(candidate, handle);
+      servers = await bindPair(candidate, handle, log);
       port = (servers[0]!.address() as AddressInfo).port;
       break;
     } catch (err) {

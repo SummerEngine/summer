@@ -123,12 +123,14 @@ export type InputResult = { ok: true; sent: number } | { ok: false; error: strin
 export interface PreviewSourceOptions {
   connect: () => Promise<PreviewEngine>;
   now?: () => number;
+  /** Where failure details go; what the page sees stays short. */
+  log?: (line: string) => void;
 }
 
 const EWMA_WEIGHT = 0.3;
 
 function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return err instanceof Error ? err.message : "unknown error";
 }
 
 function firstResult(value: unknown): Record<string, unknown> | null {
@@ -162,6 +164,7 @@ export function scheduleInputBatch(events: Record<string, unknown>[]): Record<st
 export class PreviewSource {
   private readonly connectEngine: () => Promise<PreviewEngine>;
   private readonly now: () => number;
+  private readonly log: (line: string) => void;
   private client: PreviewEngine | null = null;
   private attempted = false;
   private lastConnectAt = -Infinity;
@@ -188,6 +191,7 @@ export class PreviewSource {
   constructor(options: PreviewSourceOptions) {
     this.connectEngine = options.connect;
     this.now = options.now ?? (() => Date.now());
+    this.log = options.log ?? (() => undefined);
   }
 
   /** The current state, without asking the engine anything. */
@@ -258,7 +262,8 @@ export class PreviewSource {
         const failure = extractOpError(result);
         return failure ? { ok: false, error: failure } : { ok: true, sent: batch.length };
       } catch (err) {
-        return { ok: false, error: errorMessage(err) };
+        this.log(`summer preview: input not sent: ${errorMessage(err)}`);
+        return { ok: false, error: "The engine did not answer; check that the game still runs." };
       }
     });
     this.inputChain = run.catch(() => undefined);

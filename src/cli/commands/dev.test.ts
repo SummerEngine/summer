@@ -19,7 +19,7 @@ import { EngineInstallError, findEngineBinary } from "../../core/engine-install.
 import type { LaunchEditorOptions, LaunchEditorResult } from "../../core/engine-launch.js";
 import { setSummerDirForTests } from "../../core/store.js";
 import { getTemplateRegistry } from "../../core/templates.js";
-import { connectedLine, planDev, runDev } from "./dev.js";
+import { connectedLine, planDev, registerPreview, runDev } from "./dev.js";
 
 const findEngineBinaryMock = vi.mocked(findEngineBinary);
 const noteCliErrorMock = vi.mocked(noteCliError);
@@ -209,6 +209,37 @@ describe("runDev: install, create, open, wait", () => {
       expect(noteCliErrorMock).toHaveBeenCalledWith(code);
     }
     expect(errors.join("\n")).toContain("still opening");
+  });
+});
+
+describe("summer dev registers the preview for Claude Code Desktop's Browser pane", () => {
+  const readLaunch = (dir: string) => JSON.parse(readFileSync(join(dir, ".claude", "launch.json"), "utf8"));
+
+  it("a project in the session folder: summer-preview with no cwd, and the URL in the connected line", async () => {
+    const here = folder("here");
+    const launch = launcher({ status: "running", launched: true, port: 6551, health: up });
+    expect(await runDev([], {}, { cwd: here, install: noInstall, launch, ...io })).toBe(0);
+    expect(readLaunch(here)).toMatchObject({ autoVerify: true, configurations: [{ name: "summer-preview", port: 5199 }] });
+    expect(readLaunch(here).configurations[0].cwd).toBeUndefined();
+    expect(logs.join("\n")).toContain("Claude Code Desktop's Browser pane shows the game");
+    expect(logs.at(-1)).toContain("See the game at http://localhost:5199");
+  });
+
+  it("a project below the session folder gets cwd; one above needs none; --no-launch-json writes nothing", async () => {
+    expect(registerPreview(root, join(root, "games", "space"))?.entry.cwd).toBe("games/space");
+    const game = folder("game", { "project.godot": "" });
+    const scenes = folder("game/scenes");
+    expect(registerPreview(scenes, game)?.entry.cwd).toBeUndefined();
+    expect(registerPreview(folder("elsewhere"), game)).toBeNull();
+
+    const quiet = folder("quiet");
+    const launch = launcher({ status: "running", launched: true, port: 6551, health: up });
+    expect(await runDev([], { launchJson: false }, { cwd: quiet, install: noInstall, launch, ...io })).toBe(0);
+    expect(existsSync(join(quiet, ".claude"))).toBe(false);
+  });
+
+  it("never in the home folder (~/.claude is Claude Code's own config)", () => {
+    expect(registerPreview(homedir(), join(homedir(), "my-game"))).toBeNull();
   });
 });
 

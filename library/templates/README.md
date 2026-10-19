@@ -18,6 +18,11 @@ runtime (`src/core/templates.ts`).
    2. Recompute `tree_digest` with the formula below and **refuse** on mismatch — the
       directory is removed and nothing is written.
    3. `git checkout <commit>` (detached). `.git` is removed unless `--keep-git`.
+
+   Without `--keep-git`, a github.com pin is first tried without git: the codeload
+   tarball of exactly `commit` is unpacked beside the target, the same digest is
+   computed from the archive (blob ids, bytewise path order, git's default path
+   quoting) and must match strictly; any failure falls back to the git steps above.
 3. **Built-in template** (`builtin: true`, no pin): generated in-process by
    `BUILTIN_GENERATORS` in `src/cli/commands/create.ts` — no download.
 4. **Record** the pin into the project's `.summer/project.json`

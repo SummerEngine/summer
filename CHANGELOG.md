@@ -4,6 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`painted-25d-world`: hard rules from a playtest of the detailed run.** Hero scale from door height (2.5 m doors, 2.15 m hero), walk 4.2 / run 7.8 m/s, animation speed from each sheet's `stride_m` so the feet do not slide, a 16 m outdoor view clamped with the real viewport aspect and the painting's edge colour as the clear colour, rooms framed whole, at least one enterable building per village (cut-away room, own paint-over, doors both ways), eight facings by 45 degree sectors (mirroring only where every frame holds up), dormers on the roof slope and door/step slabs hidden in game, contact shadows only in the paint, and a `--shots=<dir>` run that walks the hero through the level and saves frames from the real window. New building blocks: `painted_location.gd` (one painted frame) and `painted_door.gd`; `painted_world.gd` now manages locations, doors and shots; `painted_player.gd` does eight facings, run and stride-matched animation speed.
 - **`painted-25d-world` updated from the second, detailed lab run.**
   - The paint-over no longer passes the whole concept: frontier edit models copied it even over a one-to-one blockout. It passes a 2x2 sheet of material close-ups cropped from the concept, marked style-only, and adds a colour key to the prompt.
   - New rule: paint richness follows blockout density (low blocks for flower beds, crates, barrels, benches, window boxes).

@@ -662,7 +662,7 @@ export const inputEventSchema = z.object({
   pressed: z.boolean().optional().describe("type:'action'|'key' — press (default true) or release."),
   strength: z.number().optional().describe("type:'action' — press strength 0..1 (default 1). type:'axis' — signed strength; negative selects action_negative."),
   hold_ms: z.number().int().optional().describe("type:'action'|'key' — auto-release after this many ms (0 = stays pressed until a release event)."),
-  keycode: z.number().int().optional().describe("type:'key' — Godot Key enum value (e.g. 32 = Space, 4194320 = Right arrow)."),
+  keycode: z.number().int().optional().describe("type:'key' — Godot Key enum value (e.g. 32 = Space, 4194321 = Right arrow)."),
   physical_keycode: z.number().int().optional().describe("type:'key' — physical Key enum value (alternative to keycode)."),
   position: z
     .tuple([z.number(), z.number()])

@@ -13,6 +13,7 @@ import { memoryCommand } from "./commands/memory.js";
 import { openCommand } from "./commands/open.js";
 import { opsCliCommands } from "./commands/ops.js";
 import { planCommand } from "./commands/plan.js";
+import { previewCommand } from "./commands/preview.js";
 import { runCommand } from "./commands/run.js";
 import { setupCommand } from "./commands/setup.js";
 import { skillsCommand } from "./commands/skills.js";
@@ -52,6 +53,7 @@ const NOT_READS: Record<string, string> = {
   "config set": "changes one value",
   "config unset": "removes one value",
   tool: "prints JSON already; its --json is the deprecated alias of --args",
+  preview: "serves a page until stopped; its --json prints the start line as JSON",
   ops: "prints help",
 };
 
@@ -81,6 +83,7 @@ function cliProgram(): Command {
     planCommand,
     configCommand,
     eventsCommand,
+    previewCommand,
     toolCommand,
     ...opsCliCommands(),
   ];

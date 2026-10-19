@@ -12,8 +12,9 @@ export const ENGINE_NOT_RUNNING_STEP: NextStep = {
   say: "Open the project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>",
 };
 
-export function engineNotRunning(): Answer {
-  return errorAnswer("engine_not_running", "Summer Engine is not running, or no project is open.", { next: ENGINE_NOT_RUNNING_STEP });
+/** `recovery`: the 3.x result's own next step (not installed, no project, still starting, ...). */
+export function engineNotRunning(recovery?: string): Answer {
+  return errorAnswer("engine_not_running", "Summer Engine is not running, or no project is open.", { next: recovery ? { say: recovery } : ENGINE_NOT_RUNNING_STEP });
 }
 
 type Content = { type?: string; text?: unknown };
@@ -73,7 +74,7 @@ export function engineFailure(text: string, op: string, options: { effect: "read
 
   const code = str(body?.code) as ErrorCode | undefined;
   const reason = str(body?.failure_reason);
-  if (code === "engine_not_running" || NOT_RUNNING.test(text)) return engineNotRunning();
+  if (code === "engine_not_running" || NOT_RUNNING.test(text)) return engineNotRunning(code === "engine_not_running" ? str(body?.recovery) : undefined);
   if (SEVERAL_EDITORS.test(text)) return errorAnswer("conflict", message, { next: SEVERAL_EDITORS_STEP, details });
   if (NO_PROJECT.test(text)) return errorAnswer("not_found", message, { next: { say: "Name the folder that holds project.godot, or open the project in Summer Engine." }, details });
   if (code === "engine_lacks_op" || reason === "engine_lacks_op" || reason === "engine_lacks_events" || /engine_lacks_op/.test(text)) {

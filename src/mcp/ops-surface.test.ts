@@ -370,7 +370,8 @@ describe("v4 engine operations", () => {
       expect(result.isError).toBe(true);
       expect(answerOf(result)).toEqual({
         ok: false,
-        error: { code: "engine_not_running", message: "Summer Engine is not running, or no project is open.", next: { say: expect.stringContaining("Open the project in Summer Engine") }, retry: "safe" },
+        // No project in this test's folder: the step is `summer dev` (it installs, creates and opens).
+        error: { code: "engine_not_running", message: "Summer Engine is not running, or no project is open.", next: { say: expect.stringContaining("npx -y summer-engine@latest dev") }, retry: "safe" },
       });
       expect(result.structuredContent).toEqual(answerOf(result));
     } finally {

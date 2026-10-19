@@ -69,6 +69,7 @@ import {
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
+import { selfStartEngine } from "../core/engine-self-start.js";
 import { resolveSurface, type SurfaceVersion } from "../core/tool-profiles.js";
 import { OAuthError } from "../core/oauth.js";
 
@@ -172,7 +173,17 @@ export async function getClient(): Promise<EngineApiClient> {
     // (engine_not_running). Anything else (several editors open, …) already
     // says how to pick one.
     const notRunning = engineNotRunningFromConnectError(reason);
-    if (notRunning) throw notRunning;
+    if (notRunning) {
+      // Open the session's project ourselves when we can, else a coded
+      // error with the one command that gets there (core/engine-self-start.ts).
+      cachedClient = await selfStartEngine(engineSelection, notRunning, {
+        log: (line) => {
+          appendMcpLogEvent("mcp:engine_self_start", { line });
+          writeMcpStderr("mcp:engine_self_start", { line });
+        },
+      });
+      return cachedClient;
+    }
     throw new Error(
       reason + "\n" +
         "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>\n" +

@@ -224,7 +224,7 @@ export async function withEngine<T>(
 export function engineNotRunningResult(error: EngineNotRunningError): ToolResult {
   return {
     isError: true,
-    content: [{ type: "text", text: JSON.stringify(codedFailure(error.code, error.message, { hint: ENGINE_FREE_NOTE }), null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(codedFailure(error.code, error.message, { hint: ENGINE_FREE_NOTE }, error.recovery), null, 2) }],
   };
 }
 

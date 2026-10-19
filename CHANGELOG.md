@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Telemetry: a few more fields, a first-run notice, and a README section listing every field.** The first `summer` command on a computer prints a one-time notice to stderr and sends one anonymous line (a random install id, the command name, the agent app and the operating system; not in CI). Signing in joins that line to the account. Signed-in tool-call and command lines now add, when they apply, the project id hash the engine already uses for routing (never the name or path), the catalog template id (and its library domains on `summer create`), how many game clients `engine.play` started, and four yes/no engine facts on `engine_not_running`. Still never prompts, code, paths, project names or arguments; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it all off.
+
 ## [4.5.0] - 2026-10-19
 
 4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.

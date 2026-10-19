@@ -11,6 +11,7 @@ import { checkEngineHealth, getApiPort } from "./engine.js";
 import { PACKAGE_ROOT } from "./package-root.js";
 import { SUMMER_ENGINE_COMPATIBILITY } from "./summer-compatibility.js";
 import { fetchPinnedTemplate, type TemplateEntry } from "./templates.js";
+import { noteToolUsage, templateTags } from "./usage-fields.js";
 import { writeProjectManifest } from "../project-memory/project-manifest.js";
 import { writeAgentInstructions, type InstructionFileResult } from "../project-memory/agent-instructions.js";
 
@@ -108,6 +109,8 @@ export async function createProject(
   options: { name: string; keepGit?: boolean; log: (line: string) => void }
 ): Promise<CreatedProject> {
   const { log } = options;
+  // The usage line names the catalog template and its library domains, never the project name or folder.
+  noteToolUsage({ templateId: entry.slug, templateTags: templateTags(entry.slug) });
   if (entry.builtin) {
     const generate = BUILTIN_GENERATORS[entry.slug];
     if (!generate) throw new Error(`${entry.id} is declared builtin but this CLI has no generator for it. Update the CLI.`);

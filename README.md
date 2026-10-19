@@ -408,6 +408,39 @@ Official entries land in this repo by PR, gated by schema validation and the cap
 - Agents can report how an entry worked (`summer_call` with `docs.feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
 - Today those reports land in a write-only mailbox that maintainers read. Only verified outcomes count; popularity never ranks an entry.
 
+## Telemetry
+
+Summer sends a few usage lines so we can see which tools and commands work, in which agent apps. **It never sends prompts, code, file contents, file paths, project names, tool arguments or results, or anything you typed.** Turn all of it off with `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`.
+
+The first `summer` command on a computer (any command, `summer mcp` too) prints this notice once, to stderr:
+
+```
+Summer collects usage data to improve its tools: which commands and tools run, whether they worked, and which agent app ran them.
+No prompts, code, file names or project names. Opt out: SUMMER_NO_TELEMETRY=1
+Details: https://github.com/summerengine/summer#telemetry
+```
+
+Every line goes to `/api/mcp/log-local-call` on the Summer server. Every request also names this package's version in a header.
+
+| Line | When | Fields |
+|---|---|---|
+| First run | Once per computer, with the notice. Not in CI. The only line sent without a sign-in. | `installId` (a random id in `~/.summer/feedback-install-id`, the same one the library feedback uses; no hardware, user or project identity), `command` (the command name, e.g. `dev`), `mcpClient` (the agent app, e.g. `claude-code`), `os` (`darwin`, `win32` or `linux`) |
+| Session | Signed in: the first tool call of each MCP server | `mcpClient` (the host app name from the MCP handshake), `installId` (so the first-run line joins your account) |
+| Tool call | Signed in: each local MCP tool call | `tool`, `op` (the Summer operation), `ok`, `error` (a short code such as `engine_not_running`, never the message), `durationMs`, `mcpClient`, `surfaceVersion`, `profile`, and the fields below when they apply |
+| Command | Signed in (a saved sign-in or `SUMMER_TOKEN`): each `summer` command that runs on your computer | `tool` (the command or operation name), `op`, `ok`, `error`, `durationMs`, `mcpClient` (from the environment), and the fields below when they apply; after `summer login` also `installId` |
+
+Fields a tool call or command adds when they apply:
+
+| Field | Example | What it is |
+|---|---|---|
+| `projectIdHash` | `9f2c…e41a` (64 hex characters) | The id Summer Engine already uses to route requests to a project: the sha256 of a random id the engine stores in the project (`.summer/local/.project_id`). Not the name or path. |
+| `templateId` | `2d-platformer` | The library template the project started from (`.summer/project.json`). Only ids from the shipped catalog. |
+| `templateTags` | `["2d", "platformer"]` | `summer create` only: that template's library domains. |
+| `instanceCount` | `3` | `engine.play` only: how many game clients the play started (1 for a normal run; Local Play players plus spectators). |
+| `engineState` | `{"desktopInstalled": true, "engineRunning": false, "projectOpen": false, "signedIn": true}` | `engine_not_running` failures only: four yes/no answers from local files. |
+
+The [library feedback mailbox](#library-feedback) is separate and described above. Requests to Summer's servers (generation, assets, the store) also name your agent app, its version and the tool in headers; the same two variables remove them.
+
 ## What gets downloaded
 
 We tell you before we touch your disk.
@@ -423,7 +456,7 @@ We tell you before we touch your disk.
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded, not collected:
-- No telemetry beyond these reports. Diagnostics stay local. Two network reports exist, both off with `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`: the library feedback mailbox described above, and, only when you are signed in, a usage line when an MCP session starts, one per tool call (the tool name, success or its error code, duration and your agent app's name; never arguments, results, code or file names) and one per `summer` command that runs on your computer (the command or operation name, success or its error code, duration, CLI version and agent app; never arguments or paths; `SUMMER_TOKEN` counts as signed in) with your account token, so Summer can see which tools and commands work in which agents. Requests to Summer's servers (generation, assets, the store) also name your agent app, its version and the tool in headers; the same two variables remove them.
+- No telemetry beyond what [Telemetry](#telemetry) lists. Diagnostics stay local.
 - No silent engine updates. `summer install` checks the installed version and asks before replacing it (or needs `--yes`); nothing updates the engine behind your back.
 - No model weights. AI generation runs in Summer Engine Studio (cloud), never on your machine.
 

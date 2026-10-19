@@ -31,6 +31,7 @@ import { z } from "zod";
 import { ToolInputError } from "../tool-errors.js";
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { extractOpError, getFailureReason, withOldEngineHint } from "./engine-receipt.js";
+import { noteToolUsage } from "../usage-fields.js";
 
 // ---------------------------------------------------------------------------
 // Op kinds
@@ -1221,6 +1222,30 @@ export interface PlayGameClient extends CapabilityAdvertisingClient {
  * `scene` into the op and would drop agent/seed/instance.
  */
 export async function playGame(client: PlayGameClient, args: PlayGameArgs): Promise<unknown> {
+  const result = await playGameOnce(client, args);
+  const instanceCount = playClientCount(result);
+  if (instanceCount !== null) noteToolUsage({ instanceCount });
+  return result;
+}
+
+/**
+ * How many game clients a play started, for the usage line: the Local Play
+ * echo's players + spectators, else 1. Null when the play failed.
+ */
+export function playClientCount(result: unknown): number | null {
+  if (!result || typeof result !== "object" || extractOpError(result)) return null;
+  const envelope = result as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
+  if (envelope.ok === false) return null;
+  const payload = envelope.results?.[0] ?? envelope;
+  const local = payload.local_play as Record<string, unknown> | undefined;
+  if (local && typeof local === "object" && local.applied === true) {
+    const count = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 0);
+    return Math.max(1, count(local.players) + count(local.spectators));
+  }
+  return 1;
+}
+
+async function playGameOnce(client: PlayGameClient, args: PlayGameArgs): Promise<unknown> {
   if (!playNeedsOp(args)) return client.play(args.scene);
   // Validate the combination first (nothing sent); then, because an engine
   // without the runtime-control wave would start the MAIN game and silently

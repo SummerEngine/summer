@@ -10,6 +10,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 From adding Summer to an agent to editing a good-looking scene with one OK: `summer dev` installs the engine (with the person's yes), creates a starter project and opens it; the MCP opens the project itself; agents with no shell use `projects.create_local` and `projects.open_local`; Claude Code Desktop's Browser pane shows the game; and `summer preview` serves the running game to the agent's own browser.
 
+- **`painted-25d-world` plug-in characters are public:** `SummerEngine/painted-characters` (man, woman, man with a sword, old man; 8 directions; idle, walk, run), pinned in the skill with raw-URL imports.
 - **`painted-25d-world`: a 1.8 m/s default walk, and a walk clip whose stride fits it.** Cozy, exploration and RPG games walk at about 1.8 m/s and run on Shift at about 4 m/s. The walk cycle's playback stays within about 1.5x its natural speed: when a clip's natural walk is too slow, regenerate it with the brisk long-stride prompt (now the skill's walk prompt, word for word) instead of over-speeding a short-step clip. Stride examples updated to the plug-in sheets (walk 0.94 m per cycle at 1.8 m).
 - **`painted-25d-world` after a blind test run and a gait rule.**
   - A first-time agent built a harbour from the skill alone. Its findings are in:

@@ -260,10 +260,14 @@ the outside. `painted_door.gd` triggers go both ways; put each spawn marker clea
 
 ### 9. Characters
 
-1. **Ready-made:** find the painted plug-in characters first (`summer_docs_search` "painted 2.5D character
-   sprite sheet"): a man, a woman, the man with a sword and an old man, 8 directions, idle, walk and run, one
-   8.6-14 MB sheet each. Copy a character folder to `res://characters/<id>/` (its `.tres` expects that path) and
-   set `sheet` = `<id>_sheet.png`, `sheet_json` = `<id>_sheet.json` on `painted_player.gd`. Not found: make one.
+1. **Ready-made:** use the painted plug-in characters first: a man, a woman, the man with a sword and an old man,
+   8 directions, idle, walk and run (`hero_m_sword`: idle and walk). They live in the public repo
+   `SummerEngine/painted-characters`, pinned at commit `c70dae1b4043656ad23d5ab6d76fe992f593b6ba`. For `<id>`, import
+   `https://raw.githubusercontent.com/SummerEngine/painted-characters/c70dae1b4043656ad23d5ab6d76fe992f593b6ba/characters/<id>/<file>`
+   for the three files `<id>_sheet.png`, `<id>_sheet.json` and `<id>_frames.tres` into `res://characters/<id>/`
+   (`summer_import_from_url`; the `.tres` expects that path), then set `sheet` = `<id>_sheet.png` and
+   `sheet_json` = `<id>_sheet.json` on `painted_player.gd`. With a shell, `git clone` the repo and copy
+   `characters/` to the project root. Need a different look: make one.
 2. **New character:** generate an 8-pose turnaround (or two 4-pose sheets) in the world's style on flat pure
    green:
    ```
@@ -345,7 +349,6 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `assets.generate_video` | `summer assets generate-video` |
 | `assets.upload_begin` | `summer assets upload-begin` |
 | `assets.upload_complete` | `summer assets upload-complete` |
-| `summer_docs_search` | `summer docs search` |
 | `summer_add_node` | `summer engine add-node` |
 | `summer_create_scene` | `summer engine create-scene` |
 | `summer_get_project_context` | `summer engine get-project-context` |

@@ -3,7 +3,8 @@
  *
  *   GET  /            the page (./page.ts)
  *   GET  /api/frame   the newest frame (image bytes, status in x-summer-status),
- *                     or 503 + the status as JSON while no editor answers
+ *                     or 503 + the status as JSON while no editor answers;
+ *                     ?fresh=1 captures now (a check that needs the game as it is)
  *   GET  /api/status  the status as JSON, without capturing
  *   POST /api/input   {inputs:[{kind:"key",code,pressed} | {kind:"click",x,y,button}]}
  *                     to the running game
@@ -11,8 +12,13 @@
  * Listens on 127.0.0.1 and, where the machine has it, on ::1 at the same port,
  * so http://localhost:<port> (what Claude Code Desktop's Browser pane opens)
  * reaches it either way. Requests must name a loopback Host (stops a web page
- * from reaching it through DNS rebinding); input must be a same-origin JSON
- * POST (stops another site from typing into the game).
+ * from reaching it through DNS rebinding); the API refuses requests a browser
+ * marks as coming from another site (Sec-Fetch-Site), so another page cannot
+ * make it capture with an <img>; input must be a same-origin JSON POST.
+ *
+ * No frame-ancestors in the CSP: Desktop's docs do not say how the Browser
+ * pane hosts a page, and a frame-ancestors rule would blank it if the pane
+ * frames it. Instead the page itself sends no input while it is framed.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -79,7 +85,12 @@ function handler(source: PreviewSource, getPort: () => number) {
       sendJson(res, 403, { ok: false, error: "Open the preview at http://127.0.0.1:" + port });
       return;
     }
-    const path = (req.url ?? "/").split("?")[0];
+    const [path, query = ""] = (req.url ?? "/").split("?");
+    const site = req.headers["sec-fetch-site"];
+    if (path!.startsWith("/api/") && (site === "cross-site" || site === "same-site")) {
+      sendJson(res, 403, { ok: false, error: "The preview API answers only its own page." });
+      return;
+    }
 
     if (req.method === "GET" && (path === "/" || path === "/index.html")) {
       res.writeHead(200, {
@@ -99,7 +110,7 @@ function handler(source: PreviewSource, getPort: () => number) {
     }
 
     if (req.method === "GET" && path === "/api/frame") {
-      const frame = await source.frame();
+      const frame = await source.frame({ fresh: new URLSearchParams(query).get("fresh") === "1" });
       const status = source.status();
       if (!frame || status.state === "no_editor") {
         sendJson(res, 503, status);

@@ -5,7 +5,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { EngineApiClient } from "../api-client.js";
-import { MIN_FRAME_INTERVAL_MS, MAX_FRAME_INTERVAL_MS, NO_EDITOR_MESSAGE, frameIntervalMs } from "./preview-source.js";
+import { PREVIEW_PAGE_HTML } from "./page.js";
+import {
+  EDITOR_IDLE_INTERVAL_MS,
+  MAX_FRAME_INTERVAL_MS,
+  MIN_FRAME_INTERVAL_MS,
+  NO_EDITOR_MESSAGE,
+  PreviewSource,
+  frameIntervalMs,
+  scheduleInputBatch,
+  type PreviewEngine,
+} from "./preview-source.js";
 import { startPreviewServer, type PreviewServer } from "./server.js";
 
 /**
@@ -272,6 +282,39 @@ describe("summer preview server", () => {
     expect(NO_EDITOR_MESSAGE).toBe("Editor not running: run npx -y summer-engine@latest dev");
   });
 
+  it("captures a fresh frame on ?fresh=1 instead of sharing the last one", async () => {
+    await startPreview();
+    await get("/api/frame");
+    await get("/api/frame");
+    expect(engine.snapshots).toEqual(["viewport"]);
+    clock += 2500;
+    await get("/api/frame?fresh=1");
+    expect(engine.snapshots).toEqual(["viewport", "viewport"]);
+  });
+
+  it("refuses API requests another site makes (Sec-Fetch-Site), so an <img> elsewhere cannot make it capture", async () => {
+    await startPreview();
+    for (const site of ["cross-site", "same-site"]) {
+      const res = await get("/api/frame", { "sec-fetch-site": site });
+      expect(res.status).toBe(403);
+    }
+    expect(engine.snapshots).toEqual([]);
+    expect((await get("/api/frame", { "sec-fetch-site": "same-origin" })).status).toBe(200);
+    expect((await get("/", { "sec-fetch-site": "none" })).status).toBe(200);
+  });
+
+  it("still takes a key release while the game's frames cannot be read, so no key stays held", async () => {
+    await startPreview();
+    engine.playing = true;
+    engine.gameFrameFails = true;
+    const res = await get("/api/frame");
+    expect(statusOf(res)).toMatchObject({ state: "editor", input: true });
+    const release = await post("/api/input", { inputs: [{ kind: "key", code: "KeyW", pressed: false }] });
+    expect(await release.json()).toEqual({ ok: true, sent: 1 });
+    const click = await post("/api/input", { inputs: [{ kind: "click", x: 0, y: 0 }] });
+    expect(click.status).toBe(409);
+  });
+
   it("refuses a request that names another host (DNS rebinding)", async () => {
     await startPreview();
     const res = await get("/api/frame", { host: `evil.example:${preview!.port}` });
@@ -295,8 +338,8 @@ describe("summer preview server", () => {
       op: "SimulateInputScript",
       wait: false,
       events: [
-        { type: "mouse_click", position: [960, 540], button: 1 },
-        { type: "key", keycode: 4194321, physical_keycode: 4194321, pressed: true },
+        { type: "mouse_click", position: [960, 540], button: 1, at_frame: 0 },
+        { type: "key", keycode: 4194321, physical_keycode: 4194321, pressed: true, at_frame: 0 },
       ],
     });
   });
@@ -329,12 +372,90 @@ describe("summer preview server", () => {
 });
 
 describe("capture pace", () => {
-  it("is at most 5 frames a second; capture takes at most half the editor's time and a quarter of the game's", () => {
+  it("is at most 5 frames a second; capture takes at most half the editor's time and a sixteenth of the game's", () => {
     expect(frameIntervalMs(null)).toBe(MIN_FRAME_INTERVAL_MS);
     expect(frameIntervalMs(45)).toBe(200);
     expect(frameIntervalMs(150)).toBe(300);
-    expect(frameIntervalMs(1263, "game")).toBe(5052);
+    expect(frameIntervalMs(45, "editor", true)).toBe(EDITOR_IDLE_INTERVAL_MS);
+    expect(frameIntervalMs(1300, "game")).toBe(20_800);
     expect(frameIntervalMs(60_000, "game")).toBe(MAX_FRAME_INTERVAL_MS);
+  });
+
+  /** A PreviewSource over a scripted engine whose captures take time on the fake clock. */
+  function scripted(options: { playing: boolean; captureMs: number; frames?: () => string }) {
+    let clock = 1_000_000;
+    let captures = 0;
+    const snap = async (): Promise<Awaited<ReturnType<PreviewEngine["viewportSnapshot"]>>> => {
+      captures += 1;
+      clock += options.captureMs;
+      const bytes = options.frames ? options.frames() : `frame-${captures}`;
+      return { ok: true, base64: Buffer.from(bytes).toString("base64"), mime: "image/jpeg", width: 4, height: 3 };
+    };
+    const engine: PreviewEngine = {
+      viewportSnapshot: snap,
+      gameSnapshot: snap,
+      executeOps: async () => ({ results: [{ ok: true, op: "IsGameRunning", playing: options.playing, scene: "res://main.tscn" }] }),
+      getProjectState: async () => ({}),
+      getSceneState: async () => ({}),
+      credentialsChanged: async () => false,
+    };
+    const source = new PreviewSource({ connect: async () => engine, now: () => clock });
+    return {
+      source,
+      captures: () => captures,
+      advance: (ms: number) => {
+        clock += ms;
+      },
+    };
+  }
+
+  it("reads a running game about every 20 s, and a fresh frame on demand at most every 2 s", async () => {
+    const run = scripted({ playing: true, captureMs: 1300 });
+    await run.source.frame();
+    expect(run.source.status()).toMatchObject({ state: "game", intervalMs: 20_800 });
+    run.advance(5000);
+    await run.source.frame();
+    expect(run.captures()).toBe(1);
+    await run.source.frame({ fresh: true });
+    expect(run.captures()).toBe(2);
+    await run.source.frame({ fresh: true });
+    expect(run.captures()).toBe(2);
+    run.advance(16_000);
+    await run.source.frame();
+    expect(run.captures()).toBe(3);
+  });
+
+  it("slows the editor to 2 fps while its view does not change, and speeds up when it does", async () => {
+    let picture = "still";
+    const run = scripted({ playing: false, captureMs: 45, frames: () => picture });
+    for (let i = 0; i < 3; i += 1) {
+      await run.source.frame();
+      run.advance(500);
+    }
+    expect(run.source.status().intervalMs).toBe(EDITOR_IDLE_INTERVAL_MS);
+    picture = "moved";
+    await run.source.frame();
+    expect(run.source.status().intervalMs).toBe(MIN_FRAME_INTERVAL_MS);
+  });
+});
+
+describe("scheduleInputBatch", () => {
+  it("puts the second event of a fast tap one frame later", () => {
+    const events = scheduleInputBatch([
+      { type: "key", keycode: 65, pressed: true },
+      { type: "key", keycode: 65, pressed: false },
+      { type: "key", keycode: 66, pressed: true },
+      { type: "mouse_click", position: [1, 1], button: 1 },
+      { type: "key", keycode: 66, pressed: false },
+    ]);
+    expect(events.map((event) => event.at_frame)).toEqual([0, 1, 1, 1, 2]);
+  });
+});
+
+describe("the page script", () => {
+  it("compiles", () => {
+    const script = /<script>([\s\S]*)<\/script>/.exec(PREVIEW_PAGE_HTML)![1]!;
+    expect(() => new Function(script)).not.toThrow();
   });
 });
 

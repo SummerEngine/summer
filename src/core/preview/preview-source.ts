@@ -15,9 +15,13 @@
  *    main thread: captured back to back, a game at 117 fps fell to 13 fps;
  *  - IsGameRunning 13 ms; a game snapshot with no game 12 ms (not_running).
  * So the pace comes from the measured capture time, never a fixed rate: one
- * frame every max(200 ms, share x the recent capture time), share 2 for the
- * editor (capture at most half the time; 4-5 fps) and 4 for the game (it
- * keeps running smoothly three quarters of the time; one frame every ~5 s).
+ * frame every max(200 ms, share x the recent capture time). The editor's
+ * share is 2 (4-5 fps while the view changes, 2 fps once two frames in a row
+ * come back identical). The game's share is 16: a frame about every 20 s, so
+ * the game is held for well under a tenth of the time and a person playing
+ * it does not feel the preview. A check that needs the game as it is now asks
+ * for a fresh frame (/api/frame?fresh=1, the page's first frame, its Refresh
+ * button), at most one every 2 s.
  *
  * Status is read on a slower clock: whether a game runs (1 s), the project
  * and scene names (5 s), and a fresh connection attempt while no editor
@@ -47,10 +51,16 @@ export interface PreviewEngine {
 /** Fastest pace: 5 frames a second. */
 export const MIN_FRAME_INTERVAL_MS = 200;
 /** Slowest pace while a frame still comes back. */
-export const MAX_FRAME_INTERVAL_MS = 6000;
+export const MAX_FRAME_INTERVAL_MS = 30_000;
 /** Capture may take at most 1/share of the time: the editor's viewport
  *  read is light; a game frame stalls the game while it is read. */
-export const LATENCY_SHARE: Readonly<Record<"game" | "editor", number>> = { editor: 2, game: 4 };
+export const LATENCY_SHARE: Readonly<Record<"game" | "editor", number>> = { editor: 2, game: 16 };
+/** Editor pace once the view has stopped changing (2 fps). */
+export const EDITOR_IDLE_INTERVAL_MS = 500;
+/** Identical frames in a row before the editor counts as idle. */
+export const IDLE_AFTER_SAME_FRAMES = 2;
+/** Fresh frames on demand: at most one capture start this often. */
+export const FRESH_MIN_GAP_MS = 2000;
 /** Pace of the page while no editor answers. */
 export const NO_EDITOR_INTERVAL_MS = 2000;
 export const PLAY_CHECK_MS = 1000;
@@ -104,7 +114,7 @@ export interface PreviewStatus {
   latencyMs: number | null;
   /** How long the page waits between frames (from the measured latency). */
   intervalMs: number;
-  /** Clicks and keys on the frame reach the running game. */
+  /** Keys (and clicks on a game frame) reach the running game. */
   input: boolean;
 }
 
@@ -126,11 +136,27 @@ function firstResult(value: unknown): Record<string, unknown> | null {
   return Array.isArray(results) ? asRecord(results[0]) : null;
 }
 
-/** The pace for a `source` capture that takes `latencyMs`. */
-export function frameIntervalMs(latencyMs: number | null, source: "game" | "editor" = "editor"): number {
-  if (latencyMs === null) return MIN_FRAME_INTERVAL_MS;
+/** The pace for a `source` capture that takes `latencyMs`; `idle` = the
+ *  editor view has stopped changing. */
+export function frameIntervalMs(latencyMs: number | null, source: "game" | "editor" = "editor", idle = false): number {
+  const floor = source === "editor" && idle ? EDITOR_IDLE_INTERVAL_MS : MIN_FRAME_INTERVAL_MS;
+  if (latencyMs === null) return floor;
   const paced = Math.round(latencyMs * LATENCY_SHARE[source]);
-  return Math.min(MAX_FRAME_INTERVAL_MS, Math.max(MIN_FRAME_INTERVAL_MS, paced));
+  return Math.min(MAX_FRAME_INTERVAL_MS, Math.max(floor, paced));
+}
+
+/** Schedule a batch frame by frame: a key pressed and released (or released
+ *  and pressed again) in the same batch gets the second event one frame later,
+ *  so a fast tap still reads as a press in the game. */
+export function scheduleInputBatch(events: Record<string, unknown>[]): Record<string, unknown>[] {
+  let frame = 0;
+  const lastFrame = new Map<number, number>();
+  return events.map((event) => {
+    const key = event.type === "key" && typeof event.keycode === "number" ? event.keycode : null;
+    if (key !== null && lastFrame.get(key) === frame) frame += 1;
+    if (key !== null) lastFrame.set(key, frame);
+    return { ...event, at_frame: frame };
+  });
 }
 
 export class PreviewSource {
@@ -155,6 +181,7 @@ export class PreviewSource {
   private seq = 0;
   private inflight: Promise<PreviewFrame | null> | null = null;
   private lastCaptureAt = -Infinity;
+  private sameFrames = 0;
   private inputChain: Promise<unknown> = Promise.resolve();
   private inputQueue: Record<string, unknown>[] = [];
 
@@ -186,18 +213,18 @@ export class PreviewSource {
           }
         : null,
       latencyMs: latency === null ? null : Math.round(latency),
-      intervalMs:
-        state === "no_editor" || state === "connecting" ? NO_EDITOR_INTERVAL_MS : frameIntervalMs(latency, frame?.source),
-      input: state === "game" && this.inputSupported,
+      intervalMs: state === "no_editor" || state === "connecting" ? NO_EDITOR_INTERVAL_MS : this.pace(),
+      input: this.client !== null && this.playing && this.inputSupported,
     };
   }
 
   /** The newest frame: captured now, or the last one when another viewer
-   *  asked moments ago. Null while no editor answers. One capture at a time. */
-  async frame(): Promise<PreviewFrame | null> {
+   *  asked moments ago. `fresh` captures now unless a capture started in the
+   *  last FRESH_MIN_GAP_MS. Null while no editor answers. One capture at a time. */
+  async frame(options: { fresh?: boolean } = {}): Promise<PreviewFrame | null> {
     if (this.inflight) return this.inflight;
-    const pace = this.current ? frameIntervalMs(this.latency[this.current.source], this.current.source) : MIN_FRAME_INTERVAL_MS;
-    if (this.current && this.client && this.now() - this.lastCaptureAt < pace * SHARE_FRAME_FRACTION) return this.current;
+    const reuseWithinMs = options.fresh ? FRESH_MIN_GAP_MS : this.pace() * SHARE_FRAME_FRACTION;
+    if (this.current && this.client && this.now() - this.lastCaptureAt < reuseWithinMs) return this.current;
     this.lastCaptureAt = this.now();
     this.inflight = this.capture().finally(() => {
       this.inflight = null;
@@ -205,16 +232,17 @@ export class PreviewSource {
     return this.inflight;
   }
 
-  /** Send clicks and keys to the running game. Calls are sent one at a time,
+  /** Send clicks and keys to the running game, also while its frames cannot
+   *  be read (a key release must never be lost). Calls are sent one at a time,
    *  in order; input that arrives meanwhile goes out as one script. */
   async sendInput(inputs: PreviewInput[]): Promise<InputResult> {
-    if (!this.client || this.state() !== "game") {
+    if (!this.client || !this.playing) {
       return { ok: false, error: "No game is running; clicks and keys go only to a running game." };
     }
     if (!this.inputSupported) {
       return { ok: false, error: "This Summer Engine build cannot take input from the preview (it predates SimulateInputScript)." };
     }
-    const geometry = this.current;
+    const geometry = this.current?.source === "game" ? this.current : null;
     const events = inputs
       .map((input) => engineInputEvent(input, geometry))
       .filter((event): event is Record<string, unknown> => event !== null);
@@ -224,7 +252,7 @@ export class PreviewSource {
     const run = this.inputChain.then(async (): Promise<InputResult> => {
       const batch = this.inputQueue.splice(0);
       if (batch.length === 0) return { ok: true, sent: 0 };
-      const built = buildGameInputOp({ action: "script", events: batch as InputEvent[], wait: false });
+      const built = buildGameInputOp({ action: "script", events: scheduleInputBatch(batch) as InputEvent[], wait: false });
       try {
         const result = await client.executeOps([built.op], undefined, built.timeoutMs);
         const failure = extractOpError(result);
@@ -235,6 +263,12 @@ export class PreviewSource {
     });
     this.inputChain = run.catch(() => undefined);
     return run;
+  }
+
+  private pace(): number {
+    const frame = this.current;
+    if (!frame) return MIN_FRAME_INTERVAL_MS;
+    return frameIntervalMs(this.latency[frame.source], frame.source, this.sameFrames >= IDLE_AFTER_SAME_FRAMES);
   }
 
   private state(): PreviewState {
@@ -374,6 +408,8 @@ export class PreviewSource {
     this.latency[source] = previous === null ? latencyMs : previous + EWMA_WEIGHT * (latencyMs - previous);
     if (source === "game") this.gameNote = null;
     const bytes = Buffer.from(snap.base64, "base64");
+    const same = this.current?.source === source && this.current.bytes.equals(bytes);
+    this.sameFrames = same ? this.sameFrames + 1 : 0;
     this.seq += 1;
     this.current = {
       seq: this.seq,

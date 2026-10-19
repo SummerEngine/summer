@@ -7,11 +7,17 @@
  * Loop: fetch /api/frame, show it, wait the interval the server derived from
  * the measured capture time, repeat. Hidden tab = no requests. Each frame
  * response carries the status (x-summer-status) so one request a frame is all
- * the page makes. While the game runs, clicks and keys on the frame go to it.
+ * the page makes. The first frame after the page loads or comes back into
+ * view, and the Refresh button, ask for a fresh one (?fresh=1): game frames
+ * are otherwise about 20 s apart, and the header says how old the frame is.
+ * While the game runs, keys and clicks on the frame go to it; a key release is
+ * always sent, so no key stays held in the game. A page framed inside another
+ * page sends no input.
  *
  * For agents checking the page: <body data-state> is connecting, no_editor,
- * editor or game; #status holds the status line; the page logs nothing to the
- * console in normal operation, so a console error is a real one.
+ * editor or game; #status holds the status line; #refresh fetches a fresh
+ * frame; the page logs nothing to the console in normal operation, so a
+ * console error is a real one.
  */
 export const PREVIEW_PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -35,6 +41,8 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
   #source { color: #fff; background: var(--cobalt); border-radius: 4px; padding: 1px 8px; font-weight: 600; }
   #source:empty { display: none; }
   #rate { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #refresh { font: inherit; color: var(--cobalt); background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 1px 8px; cursor: pointer; }
+  body[data-state="no_editor"] #refresh, body[data-state="connecting"] #refresh { display: none; }
   main { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; outline: none; }
   #frame { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
   body[data-state="game"] #frame { cursor: crosshair; }
@@ -54,6 +62,7 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
   <span class="spacer"></span>
   <span id="source"></span>
   <span id="rate"></span>
+  <button id="refresh" type="button" title="Capture a fresh frame now">Refresh</button>
 </header>
 <main id="stage" tabindex="0">
   <img id="frame" alt="Live frame from Summer Engine">
@@ -68,6 +77,7 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
   const $ = (id) => document.getElementById(id);
   const frame = $("frame");
   const stage = $("stage");
+  const framed = window.top !== window.self;
   let status = null;
   let timer = null;
   let loop = 0;
@@ -78,6 +88,7 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
   function render() {
     const s = status;
     if (!s) return;
+    const message = typeof s.message === "string" ? s.message : "";
     document.body.dataset.state = s.state;
     document.body.dataset.source = s.frame ? s.frame.source : "";
     $("project").textContent = s.project || "";
@@ -87,11 +98,12 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
     while (shown.length > 2 && now - shown[0] > 12000) shown.shift();
     const fps = shown.length > 1 ? (shown.length - 1) / ((shown[shown.length - 1] - shown[0]) / 1000) : 0;
     const rate = [];
-    if (s.frame && fps) rate.push(fps.toFixed(1) + " fps");
+    if (s.frame && s.frame.source === "game") rate.push("frame " + Math.max(0, Math.round((now - s.frame.capturedAt) / 1000)) + " s old");
+    else if (s.frame && fps) rate.push(fps.toFixed(1) + " fps");
     if (s.frame && s.latencyMs != null) rate.push(s.latencyMs + " ms per frame");
     $("rate").textContent = rate.join(" · ");
-    $("status").textContent = note && now < note.until ? note.text : s.message;
-    const parts = s.message.split(": run ");
+    $("status").textContent = note && now < note.until ? note.text : message;
+    const parts = message.split(": run ");
     $("empty-title").textContent = s.state === "connecting" ? "Looking for Summer Engine" : parts[0];
     const empty = $("empty-text");
     empty.textContent = "";
@@ -114,34 +126,44 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
     shown.push(Date.now());
   }
 
-  async function tick(id) {
+  function readStatus(value) {
+    return value && typeof value === "object" && typeof value.state === "string" ? value : null;
+  }
+
+  async function tick(id, fresh) {
     if (id !== loop || document.hidden) return;
     const started = performance.now();
     let wait = 2000;
     try {
-      const res = await fetch("/api/frame", { cache: "no-store" });
+      const res = await fetch(fresh ? "/api/frame?fresh=1" : "/api/frame", { cache: "no-store" });
       const header = res.headers.get("x-summer-status");
+      let next = null;
       if (res.status === 200) {
-        if (header) status = JSON.parse(decodeURIComponent(header));
+        if (header) next = readStatus(JSON.parse(decodeURIComponent(header)));
         await show(await res.blob());
       } else {
-        status = await res.json();
+        next = readStatus(await res.json().catch(() => null));
       }
-      wait = status ? status.intervalMs : 2000;
+      if (next) {
+        status = next;
+        wait = status.intervalMs || 2000;
+      }
     } catch (_) {
       status = { state: "no_editor", message: "The preview server stopped: run npx -y summer-engine@latest preview", frame: null };
     }
-    render();
+    try { render(); } catch (_) {}
     if (id !== loop || document.hidden) return;
-    timer = setTimeout(() => tick(id), Math.max(0, wait - (performance.now() - started)));
+    timer = setTimeout(() => tick(id, false), Math.max(0, wait - (performance.now() - started)));
   }
 
   function start() {
     clearTimeout(timer);
     loop += 1;
-    if (!document.hidden) tick(loop);
+    if (!document.hidden) tick(loop, true);
   }
   document.addEventListener("visibilitychange", start);
+  $("refresh").addEventListener("click", start);
+  setInterval(() => { if (!document.hidden) { try { render(); } catch (_) {} } }, 1000);
 
   function framePoint(event) {
     const rect = frame.getBoundingClientRect();
@@ -153,43 +175,53 @@ export const PREVIEW_PAGE_HTML = `<!doctype html>
     return x < 0 || y < 0 || x > w || y > h ? null : { x: x, y: y };
   }
 
-  async function send(inputs) {
-    if (!status || !status.input) return;
+  function inputOn() {
+    return !framed && status && status.input;
+  }
+
+  // Releases go out even while input is off, so a key never stays held.
+  async function send(inputs, release) {
+    if (framed || (!release && !inputOn())) return;
     try {
       const res = await fetch("/api/input", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ inputs: inputs }) });
       const body = await res.json();
-      note = body.ok ? null : { text: "Input not sent: " + body.error, until: Date.now() + 4000 };
+      note = body.ok || release ? null : { text: "Input not sent: " + body.error, until: Date.now() + 4000 };
     } catch (_) {
       note = { text: "Input not sent: the preview server did not answer", until: Date.now() + 4000 };
     }
-    render();
+    try { render(); } catch (_) {}
   }
 
   frame.addEventListener("click", (event) => {
     const point = framePoint(event);
     stage.focus();
-    if (point) send([{ kind: "click", x: point.x, y: point.y, button: 1 }]);
+    if (point && status && status.state === "game") send([{ kind: "click", x: point.x, y: point.y, button: 1 }], false);
   });
   frame.addEventListener("contextmenu", (event) => {
-    if (!status || !status.input) return;
+    if (!inputOn() || status.state !== "game") return;
     event.preventDefault();
     const point = framePoint(event);
-    if (point) send([{ kind: "click", x: point.x, y: point.y, button: 2 }]);
+    if (point) send([{ kind: "click", x: point.x, y: point.y, button: 2 }], false);
   });
   const held = new Set();
   function onKey(event, pressed) {
-    if (!status || !status.input || event.metaKey) return;
-    if (pressed && held.has(event.code)) { event.preventDefault(); return; }
-    if (pressed) held.add(event.code); else held.delete(event.code);
-    event.preventDefault();
-    send([{ kind: "key", code: event.code, pressed: pressed }]);
+    if (pressed) {
+      if (!inputOn() || event.metaKey) return;
+      event.preventDefault();
+      if (held.has(event.code)) return;
+      held.add(event.code);
+      send([{ kind: "key", code: event.code, pressed: true }], false);
+    } else if (held.delete(event.code)) {
+      event.preventDefault();
+      send([{ kind: "key", code: event.code, pressed: false }], true);
+    }
   }
   stage.addEventListener("keydown", (event) => onKey(event, true));
   stage.addEventListener("keyup", (event) => onKey(event, false));
   stage.addEventListener("blur", () => {
     const codes = Array.from(held);
     held.clear();
-    if (codes.length) send(codes.map((code) => ({ kind: "key", code: code, pressed: false })));
+    if (codes.length) send(codes.map((code) => ({ kind: "key", code: code, pressed: false })), true);
   });
 
   start();

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -82,6 +82,23 @@ describe("writeClaudeLaunchConfig", () => {
     writeLaunch(JSON.stringify({ configurations: { name: "web" } }));
     expect(writeClaudeLaunchConfig(project)).toMatchObject({ status: "skipped" });
     expect(readLaunch()).toEqual({ configurations: { name: "web" } });
+  });
+
+  it("keeps the file's indentation and trailing newline", () => {
+    writeLaunch(`{\n    "version": "0.0.1",\n    "configurations": []\n}`);
+    writeClaudeLaunchConfig(project);
+    const text = readFileSync(launchPath(), "utf-8");
+    expect(text.startsWith(`{\n    "version": "0.0.1",\n    "configurations": [\n        {\n`)).toBe(true);
+    expect(text.endsWith("}")).toBe(true);
+    writeLaunch(`{\n\t"configurations": []\n}\n`);
+    writeClaudeLaunchConfig(project);
+    expect(readFileSync(launchPath(), "utf-8")).toMatch(/^\{\n\t"configurations": \[\n\t\t\{/);
+    expect(readdirSync(join(project, ".claude"))).toEqual(["launch.json"]);
+  });
+
+  it("names the project's folder when it sits below the session folder", () => {
+    writeClaudeLaunchConfig(project, { entry: previewLaunchEntry(5199, "game") });
+    expect((readLaunch().configurations as unknown[])[0]).toMatchObject({ name: "summer-preview", cwd: "game", port: 5199 });
   });
 
   it("takes another entry for callers such as summer dev", () => {

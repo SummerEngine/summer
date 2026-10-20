@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "0fb333608ca8054e5d57611ee7e325b82047c436ede33ed9535aab05424d8971",
+      "content_hash": "a96e7758787500aedfca23f720be8b7901ae88e8db18b4adffb93538851458c0",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2962,11 +2962,11 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "65b76f7bd230f618288deb1e33f87059d531802d1fff91a79a5d46e560fbc241",
-      "summary": "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link.",
+      "content_hash": "f84356d4133182f01563b85f9fe53bbc20e996b3e6b839360fc88d946f609e64",
+      "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
-        "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
-        "taking a built Summer game to a submitted store page: listing text, art, build upload, store.publish and the owner's approval link",
+        "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
+        "taking a built Summer game to live: listing text, art, build upload, the release checklist and summer_go_live",
         "an agent publishes for the owner end to end and needs the order of the store.* operations"
       ],
       "facets": {
@@ -2986,7 +2986,8 @@
           "skill/store-listing",
           "skill/store-art",
           "skill/grow-analytics",
-          "skill/export-and-ship"
+          "skill/export-and-ship",
+          "skill/release-checklist"
         ]
       },
       "status": "stable",
@@ -3031,11 +3032,57 @@
       "recommended": false
     },
     {
+      "id": "skill/release-checklist",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "57207b95a202e00579e46d73dcabca637546bde1a74dd2efb17dce77c1f46ca2",
+      "summary": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
+      "use_when": [
+        "the user says 'is it ready to go live', 'check everything before launch' or 'what is missing from my store page'",
+        "before summer_go_live, or when it answers blocked: checking the export, the upload's automated checks, the store art and the listing fields",
+        "summer_publish_build reports a failed platform check, or store.get_listing says readyToPublish is false",
+        "checking the export holds the fixed bundle layout, the right Summer version and a server pack for a hosted build",
+        "filling the age rating, content questionnaire, AI disclosure, genres or support link before launch"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-readiness",
+          "skill/publish-your-game",
+          "skill/store-art",
+          "skill/store-listing",
+          "skill/multiplayer-publish"
+        ],
+        "tools": [
+          "tool/export-game",
+          "tool/publish-build",
+          "tool/go-live",
+          "tool/store-set-details"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "7898fd68b42aac1b6d95ab4c466f44016d1d6718e8e341a2b34bda31b72c9d2b",
-      "summary": "Before releasing a Summer game version, prove players can play it: server, online join, progress, files.",
+      "content_hash": "78a84d914a132911c09f74ef677240d1e7bcdda7f617e9a0704264e827ae70e3",
+      "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
         "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works",
@@ -3714,8 +3761,8 @@
       "id": "skill/store-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "45b646f2e8a79d9ac9304304bd61308c92fce5f07c3e8553688d04715fb962b5",
-      "summary": "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules.",
+      "content_hash": "9a18c2f57992bb611648d0cda988e4a6cf119ac3f64db09426cc84bc540c7b51",
+      "summary": "Make Summer Games store art per slot: key art, icons, screenshots, trailer, sizes.",
       "use_when": [
         "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
         "store.set_art rejects an image for its shape or size, or store.get_listing says an art slot is missing",
@@ -3753,8 +3800,8 @@
       "id": "skill/store-listing",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9b4f34c590bf0db3c7d20c5201e8c5990849bcb3bb543bc76b8546ad99c6384c",
-      "summary": "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write.",
+      "content_hash": "1e4f6bd9b8464f02e39d279b8bc0b60c0e9c290a9e06019088d002c409903d9c",
+      "summary": "Write a Summer Games store page: title, tagline, descriptions, tags, what never to write.",
       "use_when": [
         "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags",
         "store.update_listing or store.get_listing says a text field is missing or wrong",
@@ -8026,6 +8073,49 @@
       }
     },
     {
+      "id": "tool/go-live",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "813f78551d698464e36057a229c5093ee763a64cc6e354ff5afc81ef9c882c2c",
+      "summary": "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated.",
+      "use_when": [
+        "\"make my game live\"",
+        "\"publish my game to players now\"",
+        "\"is my game live yet\"",
+        "\"release the build I uploaded\"",
+        "after summer_publish_build reports every automated check passed",
+        "watching a game until players get it, or finding which automated check failed"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/publish-your-game"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_go_live",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
+      }
+    },
+    {
       "id": "tool/grep",
       "kind": "tool",
       "version": "1.0.0",
@@ -9017,8 +9107,8 @@
       "id": "tool/publish-build",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "2f9c5ce45a996d922b2f51f66acfc6c67c99bbd82c2fd3c7babaee29e5d9f914",
-      "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
+      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",
         "\"publish this build to my store page\"",
@@ -10337,6 +10427,49 @@
         "filesystem": false,
         "editor_mutation": true,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/store-set-details",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "b7c0c8d03eb860940f157d099f8af42bae21fe19d6347a0f5b0b53645afe3005",
+      "summary": "Fill store page sections update_listing lacks: genres, features, credits, languages, requirements, content survey, AI disclosure. Never publishes.",
+      "use_when": [
+        "\"fill in the age rating questionnaire\"",
+        "\"add the AI disclosure to my store page\"",
+        "\"set my game's genres and features\"",
+        "\"list the languages my game supports\"",
+        "\"add system requirements to the store page\"",
+        "store.get_listing shows contentSurvey, aiDisclosure, genres or credits empty"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/store-listing"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_store_set_details",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

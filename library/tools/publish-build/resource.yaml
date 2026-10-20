@@ -1,7 +1,7 @@
 id: tool/publish-build
 kind: tool
 version: 1.0.1
-summary: Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.
+summary: "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download."
 use_when:
   - '"upload my game to summer.games"'
   - '"publish this build to my store page"'
@@ -14,7 +14,7 @@ do_not_use_when:
   - the user has not approved the exact game, file, digest, version and publish choice
   - the game is not exported yet — summer_export_game first
   - store page text, art or price — store.update_listing, store.set_art (hosted, after summer login --store)
-  - making the build live — store.publish (the owner approves publishing), then store.release
+  - making the build live — summer_go_live
   - what players get now — store.status
 facets:
   lifecycle:
@@ -51,7 +51,7 @@ input_schema:
     publish:
       type: boolean
       default: false
-      description: "Bundles only: also approve the Build for players. A game that has not passed review keeps it as a preview; an agent needs the owner's approval."
+      description: "Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."
     platform:
       type: string
       enum:

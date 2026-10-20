@@ -7,13 +7,32 @@ import { readZipEntries, readZipEntry, ZipReadError, type ZipEntry } from "../ut
  * summer-bundle.json, client.pck, and for a game with a host server.pck plus
  * config/. This reads what the build upload declares; the Platform verifies
  * the uploaded bytes again. Same rules as Studio's browser check.
+ *
+ * Two layouts, chosen by the manifest's schema (summer-platform
+ * docs/build-publications.md, "summer.games bundle layout"):
+ * - summer.bundle.v2 (Summer Engine 0.7.4 and newer) is fixed: exactly the
+ *   paths in BUNDLE_V2_PATHS and nothing else, whatever the game declares.
+ * - summer.bundle.v1 (older engines): a hosted game's configuration may be
+ *   any number of config/ files.
  */
 
-export const BUNDLE_SCHEMA = "summer.bundle.v1";
+export const BUNDLE_SCHEMA_V1 = "summer.bundle.v1";
+export const BUNDLE_SCHEMA_V2 = "summer.bundle.v2";
+export const BUNDLE_SCHEMAS = [BUNDLE_SCHEMA_V1, BUNDLE_SCHEMA_V2] as const;
+export type BundleSchema = (typeof BUNDLE_SCHEMAS)[number];
 export const BUNDLE_MANIFEST = "summer-bundle.json";
 const BUNDLE_CLIENT = "client.pck";
 const BUNDLE_SERVER = "server.pck";
 const BUNDLE_BUILD = "config/summer.build.json";
+/** Every path a summer.bundle.v2 export may hold; the store refuses any other entry by name. */
+export const BUNDLE_V2_PATHS = [
+  BUNDLE_MANIFEST,
+  BUNDLE_CLIENT,
+  BUNDLE_SERVER,
+  BUNDLE_BUILD,
+  "config/world-definitions.json",
+  "config/world-support.json",
+] as const;
 
 /** The same platforms, in any order. */
 export function samePlatforms(a: readonly string[], b: readonly string[]): boolean {
@@ -76,7 +95,7 @@ export interface BundleFile {
 }
 
 export interface SummerBundle {
-  schema: typeof BUNDLE_SCHEMA;
+  schema: BundleSchema;
   summerVersion: string | null;
   engineSha: string | null;
   /** res:// scene the client pack opens. */
@@ -135,8 +154,9 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
   }
   const client = manifest?.client;
   const mainScene = typeof client?.mainScene === "string" ? client.mainScene : null;
+  const schema = manifest?.schema as BundleSchema;
   if (
-    manifest?.schema !== BUNDLE_SCHEMA ||
+    !BUNDLE_SCHEMAS.includes(schema) ||
     client?.path !== BUNDLE_CLIENT ||
     !mainScene?.startsWith("res://") ||
     !Array.isArray(client?.targetPlatforms) ||
@@ -145,8 +165,12 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
   ) {
     throw new BuildToolError(
       "bundle_invalid",
-      `${BUNDLE_MANIFEST} is not a ${BUNDLE_SCHEMA} manifest.`,
-      "Recovery: update Summer Engine and export again."
+      typeof manifest?.schema === "string" && /^summer\.bundle\.v\d+$/.test(manifest.schema) && !BUNDLE_SCHEMAS.includes(schema)
+        ? `${BUNDLE_MANIFEST} is a ${manifest.schema} manifest, newer than this summer-engine package reads (${BUNDLE_SCHEMAS.join(", ")}).`
+        : `${BUNDLE_MANIFEST} is not a ${BUNDLE_SCHEMAS.join(" or ")} manifest.`,
+      typeof manifest?.schema === "string" && /^summer\.bundle\.v\d+$/.test(manifest.schema) && !BUNDLE_SCHEMAS.includes(schema)
+        ? "Recovery: update the summer-engine package (npx -y summer-engine@latest), then upload the same export."
+        : "Recovery: update Summer Engine and export again."
     );
   }
 
@@ -168,9 +192,20 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
     name === BUNDLE_MANIFEST ||
     name === BUNDLE_CLIENT ||
     name === BUNDLE_BUILD ||
-    (hosted && (name === BUNDLE_SERVER || name.startsWith("config/")));
+    (hosted &&
+      (name === BUNDLE_SERVER ||
+        (schema === BUNDLE_SCHEMA_V2 ? (BUNDLE_V2_PATHS as readonly string[]).includes(name) : name.startsWith("config/"))));
   const extra = entries.find((entry) => !allowed(entry.name));
-  if (extra) throw bundleError(`The export contains ${extra.name}, which a summer.games export never has.`);
+  if (extra) {
+    throw bundleError(
+      schema === BUNDLE_SCHEMA_V2
+        ? `The export contains ${extra.name}, which is not part of the ${BUNDLE_SCHEMA_V2} layout (${BUNDLE_V2_PATHS.join(", ")}).`
+        : `The export contains ${extra.name}, which a summer.games export never has.`
+    );
+  }
+  if (schema === BUNDLE_SCHEMA_V2 && !byName.has(BUNDLE_BUILD)) {
+    throw bundleError(`A ${BUNDLE_SCHEMA_V2} export always holds ${BUNDLE_BUILD}, and this one does not.`);
+  }
 
   const files: BundleFile[] = [];
   for (const item of manifest.files as Array<Record<string, unknown>>) {
@@ -215,7 +250,7 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
   }
 
   return {
-    schema: BUNDLE_SCHEMA,
+    schema,
     summerVersion: typeof manifest.export?.summerVersion === "string" ? manifest.export.summerVersion : null,
     engineSha: typeof manifest.export?.engineSha === "string" ? manifest.export.engineSha : null,
     mainScene: mainScene!,

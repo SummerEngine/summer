@@ -98,6 +98,10 @@ export interface BundleFixtureOptions {
   declaredPlatforms?: string[];
   clientPack?: Buffer;
   zip64?: boolean;
+  /** The manifest schema (default summer.bundle.v1). A v2 export always carries config/summer.build.json. */
+  schema?: "summer.bundle.v1" | "summer.bundle.v2" | string;
+  /** Extra entries, listed in the manifest like every other file. */
+  extraFiles?: ZipFixtureEntry[];
   /** Edit the manifest before it is written. */
   manifest?: (manifest: Record<string, any>) => void;
 }
@@ -106,7 +110,7 @@ export function buildSummerBundle(options: BundleFixtureOptions = {}): Buffer {
   const client = options.clientPack ?? Buffer.from("GDPC".padEnd(4096, "c"));
   const files: ZipFixtureEntry[] = [{ name: "client.pck", data: client }];
   const manifest: Record<string, any> = {
-    schema: "summer.bundle.v1",
+    schema: options.schema ?? "summer.bundle.v1",
     export: { summerVersion: "0.7.0", engineSha: "abc123" },
     client: { path: "client.pck", mainScene: "res://main.tscn", targetPlatforms: options.targetPlatforms ?? ["ios"] },
     server: null,
@@ -118,7 +122,10 @@ export function buildSummerBundle(options: BundleFixtureOptions = {}): Buffer {
     files.push({ name: "server.pck", data: server }, { name: "config/summer.build.json", data: build, deflate: true });
     manifest.server = { path: "server.pck", mainScene: "res://authority/main.tscn" };
     manifest.compositionPath = "res://network/composition.tres";
+  } else if (options.schema === "summer.bundle.v2") {
+    files.push({ name: "config/summer.build.json", data: Buffer.from(JSON.stringify({ gameId: "game-1", executionMode: "standalone" })) });
   }
+  files.push(...(options.extraFiles ?? []));
   manifest.files = files.map((file) => ({ path: file.name, sha256: sha(file.data), size: file.data.length }));
   options.manifest?.(manifest);
   return buildZip(

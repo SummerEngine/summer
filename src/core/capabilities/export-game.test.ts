@@ -84,7 +84,7 @@ describe("exportGame", () => {
       preset: "summer.games",
       debug: false,
       engine,
-      bundle: { schema: "summer.bundle.v1", mainScene: "res://main.tscn", targetPlatforms: ["ios"], hosted: false, fileCount: 1 },
+      bundle: { schema: "summer.bundle.v1", mainScene: "res://main.tscn", targetPlatforms: ["ios"], hosted: false, fileCount: 1, paths: ["client.pck", "summer-bundle.json"] },
     });
     expect(result.sha256).toMatch(/^sha256:[0-9a-f]{64}$/);
     // The export folder stays out of the editor's scan and out of git.

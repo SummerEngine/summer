@@ -1,7 +1,7 @@
 id: skill/release-readiness
 kind: skill
 version: 1.0.0
-summary: "Before releasing a Summer game version, prove players can play it: server, online join, progress, files."
+summary: "Prove players can play a Summer release: server, online join, progress, files."
 use_when:
   - "before uploading, promoting or releasing a new version to players: is it ready to release"
   - "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works"

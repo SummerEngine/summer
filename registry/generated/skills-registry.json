@@ -942,7 +942,7 @@
     {
       "id": "skill/publish-your-game",
       "name": "publish-your-game",
-      "description": "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link.",
+      "description": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -967,9 +967,22 @@
       "bundled": false
     },
     {
+      "id": "skill/release-checklist",
+      "name": "release-checklist",
+      "description": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/release-checklist/",
+      "domains": [
+        "creator",
+        "deployment"
+      ]
+    },
+    {
       "id": "skill/release-readiness",
       "name": "release-readiness",
-      "description": "Before releasing a Summer game version, prove players can play it: server, online join, progress, files.",
+      "description": "Prove players can play a Summer release: server, online join, progress, files.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1204,7 +1217,7 @@
     {
       "id": "skill/store-art",
       "name": "store-art",
-      "description": "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules.",
+      "description": "Make Summer Games store art per slot: key art, icons, screenshots, trailer, sizes.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1217,7 +1230,7 @@
     {
       "id": "skill/store-listing",
       "name": "store-listing",
-      "description": "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write.",
+      "description": "Write a Summer Games store page: title, tagline, descriptions, tags, what never to write.",
       "clients": "all",
       "recommended": false,
       "status": "stable",

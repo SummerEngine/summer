@@ -40,7 +40,7 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
     "summer_get_asset",
     "summer_get_asset_download_url",
   ],
-  ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_capture_gameplay"],
+  ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_go_live", "summer_store_set_details", "summer_capture_gameplay"],
   ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree"],
   // Create and open a project on this computer with no shell (the full profile;
   // the engine profile's clients have a shell, `summer dev`, and a tool cap).
@@ -123,9 +123,20 @@ export function resolveToolSelection(
   return { profile, toolsets: new Set<Toolset>([...PROFILES[profile], ...extra]), ignored };
 }
 
+/**
+ * Hosted 3.x status tools a limited profile leaves out because summer_go_live
+ * answers the same question (what players get now on each platform, and
+ * where each upload and download stands), so the local go-live tools fit
+ * under PROFILE_TOOL_LIMIT without pushing hosted store tools over it. The
+ * full profile keeps them, and store.status answers it on the v4 surface.
+ */
+export const SUPERSEDED_HOSTED_TOOLS: ReadonlySet<string> = new Set(["summer_store_releases", "summer_store_version_status"]);
+
 /** True when the selection keeps this tool. */
 export function selectionIncludes(selection: ToolSelection, name: string, local: boolean): boolean {
-  return selection.toolsets === null || selection.toolsets.has(toolsetOf(name, local));
+  if (selection.toolsets === null) return true;
+  if (!local && SUPERSEDED_HOSTED_TOOLS.has(name)) return false;
+  return selection.toolsets.has(toolsetOf(name, local));
 }
 
 // ── Annotations ──────────────────────────────────────────────────────────────
@@ -168,6 +179,7 @@ const NETWORK_WRITES = new Set([
   "summer_app_report_gap",
   "summer_app_update",
   "summer_slice_asset_sheet",
+  "summer_store_set_details",
 ]);
 
 /** Changes that only add something new, or only touch the editor view or the running game. */
@@ -212,6 +224,7 @@ const ADDITIVE_OR_TRANSIENT = new Set([
 
 /** Changes where a second identical call has no further effect. */
 const IDEMPOTENT_WRITES = new Set([
+  "summer_store_set_details",
   "summer_set_prop",
   "summer_set_resource_property",
   "summer_project_setting",

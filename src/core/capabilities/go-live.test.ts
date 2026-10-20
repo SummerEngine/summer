@@ -42,6 +42,8 @@ function fakeStore(options: {
   drop?: Array<Record<string, unknown>>;
   /** The platform refuses the release: "now" answers the publish with 409, "rollout" fails the deploy afterwards. */
   serverOnly?: "now" | "rollout";
+  /** Newer clients the release does not use (notUsedTargets): those platforms keep a live client of another Build. */
+  notUsed?: Array<Record<string, unknown>>;
   /** The platform's message with that refusal; absent, it sends none. */
   serverOnlyMessage?: string;
 } = {}) {
@@ -115,11 +117,13 @@ function fakeStore(options: {
           status: "active",
           targets: Object.entries(calls.find((call) => call.url === `${ENV}/release-drafts`)!.body.targets)
             .filter(([name]) => name !== "server" && !dropped.some((drop) => drop.target === name))
-            .map(([name, target]: [string, any]) => ({ target: name, buildId: target.buildId, qualificationId: target.qualificationId })),
+            // A client the release did not use stays on the live client of the server's Build.
+            .map(([name, target]: [string, any]) => ({ target: name, buildId: options.notUsed?.some((item) => item.target === name) ? "build-0" : target.buildId, qualificationId: target.qualificationId })),
           ...(options.drop ? { droppedTargets: dropped } : {}),
+          ...(options.notUsed ? { notUsedTargets: options.notUsed } : {}),
         };
       }
-      return json(202, { operationId: "op-release", releaseId: "rel-1", ...(options.drop ? { droppedTargets: dropped } : {}) });
+      return json(202, { operationId: "op-release", releaseId: "rel-1", ...(options.drop ? { droppedTargets: dropped } : {}), ...(options.notUsed ? { notUsedTargets: options.notUsed } : {}) });
     }
     if (method === "POST" && url === `${GAME}/revisions/rev-1:publish`) {
       if (options.pagePublish) return json(options.pagePublish.status, { error: { code: options.pagePublish.code, message: options.pagePublish.message ?? "refused", ...(options.pagePublish.missing ? { missing: options.pagePublish.missing } : {}) } });
@@ -200,6 +204,21 @@ describe("goLive", () => {
       notIncluded: [{ platform: "ios", reason: "client_check_failed", checkErrorCode: "ios_runtime_unsupported", message: "iOS isn't included: this build couldn't be checked for iPhone." }],
     });
     expect(String(result.next)).toContain("iOS isn't included: this build couldn't be checked for iPhone.");
+  });
+
+  it("goes live and names a newer client the release did not use, in the platform's words", async () => {
+    const said = "Your newer Windows build wasn't used because it's built for a newer server. Publish the server too.";
+    const store = fakeStore({
+      checks: [
+        { id: "v1", platform: "ios", state: "ready", qualificationId: "q-ios" },
+        { id: "v2", platform: "windows", state: "ready", qualificationId: "q-windows" },
+      ],
+      notUsed: [{ target: "windows", buildId: "build-1", qualificationId: "q-windows", reason: "client_newer_than_server", message: said }],
+    });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "live", build: { livePlatforms: ["ios"] }, notUsed: [{ platform: "windows", reason: "client_newer_than_server", message: said }] });
+    expect(result).not.toHaveProperty("notIncluded");
+    expect(String(result.next)).toContain(said);
   });
 
   it.each(["now", "rollout"] as const)("asks for a build with the game's apps when the platform refuses a server-only release (%s)", async (serverOnly) => {

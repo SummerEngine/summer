@@ -54,6 +54,31 @@ function messageOf(platform: string, reason: string): string {
   }
 }
 
+/**
+ * A newer client the release did not use (summer-platform notUsedTargets,
+ * SUM-1107): a client-only publish kept the live client of the server's Build,
+ * so the platform stays live with its current client. The platform's message
+ * says why; a reason without one gets a line naming the platform.
+ */
+export interface NotUsedPlatform {
+  platform: string;
+  reason: string;
+  message: string;
+}
+
+/** The unused newer clients of a publish answer or release read; anything but a list reads as none. */
+export function notUsedPlatforms(value: unknown): NotUsedPlatform[] {
+  if (!Array.isArray(value)) return [];
+  const out: NotUsedPlatform[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || typeof item.target !== "string" || !item.target) continue;
+    const said = typeof item.message === "string" ? item.message.trim() : "";
+    const name = NAMES[item.target]?.name ?? item.target;
+    out.push({ platform: item.target, reason: typeof item.reason === "string" ? item.reason : "", message: said || `Your newer ${name} build wasn't used in this version; players keep the current one.` });
+  }
+  return out;
+}
+
 /** The dropped platforms of a publish answer or release read; anything but a list reads as none. */
 export function droppedPlatforms(value: unknown): DroppedPlatform[] {
   if (!Array.isArray(value)) return [];

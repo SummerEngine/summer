@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { droppedPlatforms, serverOnlyRefusal } from "./release-drops.js";
+import { droppedPlatforms, notUsedPlatforms, serverOnlyRefusal } from "./release-drops.js";
 
 const drop = (target: string, reason: string, extra: Record<string, unknown> = {}) => ({ target, buildId: "build-1", qualificationId: "q-1", reason, ...extra });
 
@@ -30,5 +30,20 @@ describe("droppedPlatforms", () => {
 
   it("reads a platform without the field, or a malformed one, as nothing left out", () => {
     for (const value of [undefined, null, {}, "ios", [null, { reason: "client_not_checked" }]]) expect(droppedPlatforms(value)).toEqual([]);
+  });
+});
+
+describe("notUsedPlatforms", () => {
+  it("passes on the platform's message for a newer client the release did not use", () => {
+    const message = "Your newer Windows build wasn't used because it's built for a newer server. Publish the server too.";
+    expect(notUsedPlatforms([{ target: "windows", buildId: "b", qualificationId: "q", reason: "client_newer_than_server", message }])).toEqual([{ platform: "windows", reason: "client_newer_than_server", message }]);
+  });
+
+  it("names the platform when the platform sends no message", () => {
+    expect(notUsedPlatforms([{ target: "ios", reason: "a_reason_added_later" }])).toEqual([{ platform: "ios", reason: "a_reason_added_later", message: "Your newer iOS build wasn't used in this version; players keep the current one." }]);
+  });
+
+  it("reads a platform without the field, or a malformed one, as nothing unused", () => {
+    for (const value of [undefined, null, {}, "ios", [null, { message: "x" }]]) expect(notUsedPlatforms(value)).toEqual([]);
   });
 });

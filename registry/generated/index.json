@@ -8225,13 +8225,12 @@
       "id": "tool/import-from-url",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "cc195ff6219a1c9da32aaa4db9c1bf3550e608e4a46c19ac1188fd5c9f40c214",
+      "content_hash": "c9df60fadce2263a91127d6bbbe3bcfb192d6b63d5822e331bd18e4f032e5d2b",
       "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
         "\"grab this .glb from the link and add it to my project\"",
-        "\"download this texture from the web into res://\"",
-        "importing a video (.mp4, .mov, .webm) - it is converted to Ogg Theora (.ogv), the one video Summer Engine plays"
+        "\"download this texture from the web into res://\""
       ],
       "facets": {
         "lifecycle": [

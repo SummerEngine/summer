@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
 import { createStore, defaultDependencies, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
-import { droppedPlatforms, serverOnlyRefusal, type DroppedPlatform } from "./release-drops.js";
+import { droppedPlatforms, notUsedPlatforms, serverOnlyRefusal, type DroppedPlatform, type NotUsedPlatform } from "./release-drops.js";
 import { describeFailure, summarizeChecks, type PlatformCheck } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
 
@@ -99,6 +99,8 @@ interface Snapshot {
   pending: Record<string, any> | null;
   /** Client platforms the release left out (the pending release's, else the active one's); none on a platform before SUM-1107. */
   dropped: DroppedPlatform[];
+  /** Newer clients the release did not use: those platforms stay live with their current client. */
+  notUsed: NotUsedPlatform[];
   versions: Array<{ platform: string; status: string; reason?: string }>;
 }
 
@@ -147,11 +149,12 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
 interface Requested {
   releaseId: string | null;
   dropped: DroppedPlatform[];
+  notUsed: NotUsedPlatform[];
   /** The platform refused the release; its message, when it gave one. */
   refused: { message: string | null } | null;
 }
 
-const fresh = (): Requested => ({ releaseId: null, dropped: [], refused: null });
+const fresh = (): Requested => ({ releaseId: null, dropped: [], notUsed: [], refused: null });
 
 /**
  * A store page whose platforms the release cannot serve keeps the previous
@@ -185,6 +188,8 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
   const pending = pendingId ? await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}/releases/${seg(pendingId)}`)) : null;
   const listed = droppedPlatforms((pending ?? release)?.droppedTargets);
   const dropped = listed.length ? listed : requested.dropped;
+  const unused = notUsedPlatforms((pending ?? release)?.notUsedTargets);
+  const notUsed = unused.length ? unused : requested.notUsed;
 
   const exported = (publications.items ?? []).filter((item) => item?.source?.kind === "exported-game" || item?.source?.kind === undefined);
   let chosen: Record<string, any> | null = null;
@@ -218,7 +223,7 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
     status: String(item.status ?? ""),
     ...(text(item.rejectionReason) ? { reason: String(item.rejectionReason) } : {}),
   }));
-  return { game, page, review, latestReview, build, environment, release, pending, dropped, versions: versionRows };
+  return { game, page, review, latestReview, build, environment, release, pending, dropped, notUsed, versions: versionRows };
 }
 
 /**
@@ -314,6 +319,7 @@ function view(snapshot: Snapshot) {
       : null,
     downloads: snapshot.versions,
     ...(snapshot.dropped.length ? { notIncluded: snapshot.dropped } : {}),
+    ...(snapshot.notUsed.length ? { notUsed: snapshot.notUsed } : {}),
     review: snapshot.review
       ? { outcome: text(snapshot.review.outcome), takenDown: snapshot.review.takenDown === true, ...(stillCheckingSince(snapshot) ? { stillCheckingSince: stillCheckingSince(snapshot) } : {}) }
       : null,
@@ -323,14 +329,17 @@ function view(snapshot: Snapshot) {
 function isLive(snapshot: Snapshot): boolean {
   if (snapshot.page?.state !== "PUBLISHED") return false;
   if (!snapshot.build) return true;
-  // A platform the release left out is never served from it; it is reported, not waited for.
-  const wanted = releasable(snapshot.build).targets.filter((platform) => !snapshot.dropped.some((drop) => drop.platform === platform));
+  // A platform the release left out, or kept on its current client, never gets this Build: it is reported, not waited for.
+  const reported = [...snapshot.dropped, ...snapshot.notUsed].map((item) => item.platform);
+  const wanted = releasable(snapshot.build).targets.filter((platform) => !reported.includes(platform));
   return wanted.length > 0 && wanted.every((platform) => snapshot.build!.livePlatforms.includes(platform));
 }
 
 /** The creator-facing line for the platforms a release left out, or "". */
 function droppedLine(snapshot: Snapshot): string {
-  return snapshot.dropped.length ? ` Not included: ${snapshot.dropped.map((drop) => drop.message).join(" ")}` : "";
+  const dropped = snapshot.dropped.length ? ` Not included: ${snapshot.dropped.map((drop) => drop.message).join(" ")}` : "";
+  const unused = snapshot.notUsed.length ? ` Not used: ${snapshot.notUsed.map((item) => item.message).join(" ")}` : "";
+  return dropped + unused;
 }
 
 /** Refusals no publish call can get past: each is a fix for the creator. */
@@ -419,6 +428,7 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
   }
   requested.releaseId = text(accepted?.releaseId);
   requested.dropped = droppedPlatforms(accepted?.droppedTargets);
+  requested.notUsed = notUsedPlatforms(accepted?.notUsedTargets);
   return null;
 }
 
@@ -505,7 +515,7 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
     if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
     if (requested.refused) {
-      return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
+      return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped, notUsed: requested.notUsed }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
     }
     const refused = await publishPage(store, gameId, snapshot);
     if (refused) return { ...view(snapshot), ...refused };

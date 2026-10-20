@@ -21,12 +21,13 @@ interface Call {
 /**
  * A fake creator store with the platform's state: one store page revision,
  * one exported Build with per-platform checks, the production environment
- * and the Game's approval. Publishing moves the state the way the platform
- * does, or holds it as the options say.
+ * and Summer's review. Publishing moves the state the way the platform does,
+ * or holds it as the options say.
  */
 function fakeStore(options: {
   page?: Record<string, unknown>;
-  approval?: Record<string, unknown>;
+  /** The deprecated GET games/{g}/approval; absent answers 404, as once the platform deletes it. A number answers that error status. */
+  approval?: Record<string, unknown> | number;
   /** Summer's review after live (GET games/{g}/review); absent answers 404, as a platform before it. */
   review?: Record<string, unknown>;
   hosted?: boolean;
@@ -76,7 +77,10 @@ function fakeStore(options: {
     calls.push({ method, url, headers, body });
     if (method === "GET" && url === GAME) return json(200, { id: "game-1", name: "Star Weavers" });
     if (method === "GET" && url === `${GAME}/revisions?limit=20`) return json(200, { items: [page] });
-    if (method === "GET" && url === `${GAME}/approval`) return json(200, options.approval ?? { gameId: "game-1", state: options.hold ? "PENDING" : "APPROVED", scope: "game-publication-v1" });
+    if (method === "GET" && url === `${GAME}/approval`) {
+      if (options.approval === undefined) return json(404, { error: { code: "not_found" } });
+      return typeof options.approval === "number" ? json(options.approval, { error: { code: "internal" } }) : json(200, options.approval);
+    }
     if (method === "GET" && url === `${GAME}/review`) return options.review ? json(200, options.review) : json(404, { error: { code: "not_found" } });
     if (method === "GET" && url === `${GAME}/build-publications`) return json(200, { items: options.noBuild ? [] : [{ ...publication, clientPackage: undefined }] });
     if (method === "GET" && url === `${GAME}/build-publications/pub-1`) return json(200, publication);
@@ -182,7 +186,7 @@ describe("goLive", () => {
   it("reports a platform hold as Summer's, with nothing to fix, and never as a review to wait for", async () => {
     const store = fakeStore({ hold: true });
     const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
-    expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer", approvalState: "PENDING" } });
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer" } });
     expect(JSON.stringify(result)).not.toMatch(/wait(ing)? for (a |the )?review|in review|until Summer approves/i);
     // A second call continues: it asks with the same keys, so the platform replays instead of asking twice.
     const again = fakeStore({ hold: true, page: { state: "SUBMITTED", etagRevision: 5 } });
@@ -212,14 +216,48 @@ describe("goLive", () => {
     expect(String(result.next)).toMatch(/Agent permissions/);
   });
 
+  it("says Summer is still checking, with nothing to do, when a Publish's checks run long", async () => {
+    const store = fakeStore({ hold: true, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
+    const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z" }, review: { stillCheckingSince: "2026-10-19T09:00:00Z" } });
+    expect(String(result.next)).toContain("Summer is still checking this; nothing to do on your side.");
+    expect(JSON.stringify(result)).not.toMatch(/wait(ing)? for (a |the )?review|in review|until Summer approves/i);
+  });
+
   it("reports Summer's decision and feedback when the page was sent back", async () => {
     const store = fakeStore({
       page: { state: "CHANGES_REQUESTED" },
+      review: {
+        gameId: "game-1",
+        outcome: "not_live",
+        takenDown: false,
+        message: "",
+        latestReview: { decision: "CHANGES_REQUESTED", decidedBy: "automated_checks", feedback: "Use real gameplay screenshots.", review: "store_page", decidedAt: "2026-10-19T09:00:00Z" },
+      },
+    });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "needs_changes", decision: { decision: "CHANGES_REQUESTED", decidedBy: "automated_checks", feedback: "Use real gameplay screenshots." } });
+    expect(writes(store.calls)).toEqual([]);
+  });
+
+  it("reads a sent-back page's decision from the older approval route when the platform's review lacks it", async () => {
+    const store = fakeStore({
+      page: { state: "CHANGES_REQUESTED" },
+      review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "" },
       approval: { gameId: "game-1", state: "PENDING", latestReview: { decision: "CHANGES_REQUESTED", decidedBy: "staff", feedback: "Use real gameplay screenshots." } },
     });
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
-    expect(result).toMatchObject({ status: "needs_changes", decision: { feedback: "Use real gameplay screenshots." } });
-    expect(writes(store.calls)).toEqual([]);
+    expect(result).toMatchObject({ status: "needs_changes", decision: { decidedBy: "staff", feedback: "Use real gameplay screenshots." } });
+  });
+
+  it("still reports a sent-back page when neither route has its decision", async () => {
+    for (const approval of [undefined, 500]) {
+      const store = fakeStore({ page: { state: "REJECTED" }, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "" }, approval });
+      const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+      expect(result).toMatchObject({ status: "needs_changes", decision: null });
+      expect(String(result.next)).toMatch(/store.status/);
+      expect(writes(store.calls)).toEqual([]);
+    }
   });
 
   it("reports a live game Summer put on hold with the changes to make, and publishes nothing", async () => {

@@ -521,6 +521,15 @@ export async function platformHold(store: Store, gameId: string): Promise<Record
       message: "Summer reviewed this game and put it on hold until the changes in feedback are made. Make them on the store page, then publish it again; a new build alone does not lift the hold.",
     };
   }
+  // Set when a Publish's automated checks have run over an hour; a platform before it omits the field.
+  const since = typeof review?.stillCheckingSince === "string" && review.stillCheckingSince ? review.stillCheckingSince : null;
+  if (since) {
+    return {
+      by: "summer",
+      stillCheckingSince: since,
+      message: "Summer is still checking this; nothing to do on your side. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+    };
+  }
   return {
     by: "summer",
     message:

@@ -107,23 +107,14 @@ If three regenerations don't seam-close, accept a small crossfade in the engine:
 
 ### 6. Import and wire as a looping VideoStreamPlayer
 
-**Transcode to Ogg Theora first.** The generated clip is an `.mp4`, and Summer Engine cannot load `.mp4`. `.ogv` is the only video container in the build — there is no bundled WebM or MP4 plugin, and nothing transcodes on your behalf. Measured against the shipped binary (4.6.1):
+**Import the `.mp4` as it is; the import converts it.** Summer Engine plays video only as Ogg Theora (`.ogv`) — there is no MP4 or WebM loader in the build — so every Summer import tool converts a video on the way in: `summer_import_from_url`, its batch, `summer_import_asset_by_id` and `summer_import_asset`. A clip Summer generated or stores converts on Summer's media host; any other video converts with ffmpeg on this computer when it has Theora, else on summerengine.com. The `.ogv` lands at the path you asked for with the extension swapped, and the answer names it in `videoConversions` and `note`:
 
 ```
-$ Summer --headless --path <proj> -s res://probe.gd
-VideoStream exts: ["ogv", "tres", "res"]
-ERROR: No loader found for resource: res://clip.mp4 (expected type: unknown)
+summer_import_asset_by_id(assetId="<the clip's asset id>", path="res://assets/video/loops/title_screen_bg.mp4")
+→ importedTo: res://assets/video/loops/title_screen_bg.ogv
 ```
 
-`summer_import_from_url` downloads the bytes, runs the engine's import pipeline, and *fails the import* if the file never becomes a loadable resource — so importing the `.mp4` does not quietly half-work, it is rejected and rolled back. Convert first:
-
-```
-ffmpeg -i title_screen_bg.mp4 -c:v libtheora -q:v 8 -an title_screen_bg.ogv
-```
-
-```
-summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/loops/title_screen_bg.ogv")
-```
+Load the `.ogv` path from the answer, never the `.mp4`.
 
 Then wire it in one script. `scenePath` is the exact scene to change:
 
@@ -188,11 +179,12 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 - **Forgetting `loop=true` on the `VideoStreamPlayer`.** The clip will play once and freeze on the last frame.
 - **Forgetting to mute baked audio.** If audio is on, the loop point becomes audible even if it's invisible.
 - **Expecting `aspectRatio` to reframe an image-to-video call.** It is applied on the text-to-video path only. A portrait splash needs a portrait *reference image* — the argument does nothing here.
-- **Importing the `.mp4` as-is.** `.ogv` is the only video container the engine can load; there is no bundled WebM or MP4 plugin. An un-transcoded import fails and is rolled back.
+- **Loading the `.mp4` path after an import.** The import converted the clip to `.ogv` and saved it under that name; `load()` the `.ogv` path the answer names.
+- **Converting by hand.** The import tools convert; a hand-made ffmpeg command also fails on builds without libtheora (Homebrew's default ffmpeg has none).
 
 ## Edge cases
 
-- **Splash loop must be tiny in build size.** Loops compress aggressively because of low motion. Target ≤2MB by exporting at 720p, low bitrate, in DaVinci. Studio's import doesn't re-encode by default.
+- **Splash loop must be tiny in build size.** Loops compress aggressively because of low motion. Target ≤2MB by exporting at 720p, low bitrate, in DaVinci. The import's conversion keeps quality high (Theora at quality 8, at most 1080p), so a small file starts from a 720p clip.
 - **Mobile portrait splash.** The reference image must be portrait — `aspectRatio` is ignored on the image-to-video path, and MCP image generation is square-only, so make the reference in the Summer dashboard or crop it. Anchors preset 15 still works.
 - **Loop must sync to a music beat.** The video model doesn't know your BPM. Generate at the duration matching one bar at the menu music tempo (e.g. 120 BPM × 4 beats = 2s, or 8 beats = 4s) and confirm visually.
 - **Loop is behind translucent UI.** Generate with extra contrast headroom — the model tends toward mid-grey, and translucent UI on mid-grey reads muddy. Push for `high contrast cinematic` in the prompt.
@@ -209,7 +201,7 @@ If the MCP server isn't running, route the user to the Summer dashboard:
 1. Image tab → generate the reference still (the loop's "neutral frame").
 2. Video tab → image-to-video with `ltx`, duration 5s, aspect ratio per target.
 3. Prompt with the loopable-motion vocabulary above and `"looping, seamless"`.
-4. Download the result, transcode to `.ogv` if needed, place under `assets/video/loops/`.
+4. Import the clip's URL from a shell while Summer Engine runs: `summer tool import-from-url --args '{"url":"<clip url>","path":"res://assets/video/loops/<name>.ogv"}'`. It converts the clip to Ogg Theora (`.ogv`), the only video Summer Engine plays.
 
 Print the exact prompt + model + duration + aspect ratio so the user can paste it into the dashboard.
 
@@ -244,6 +236,8 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_assets_search` | `summer assets search` |
 | `summer_docs_read` | `summer docs read` |
 | `summer_add_node` | `summer engine add-node` |
+| `summer_import_asset` | `summer engine import-asset` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
 | `summer_import_from_url` | `summer engine import-from-url` |
 | `summer_run_script` | `summer engine run-script` |
 | `summer_set_prop` | `summer engine set-prop` |

@@ -59,8 +59,8 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
   // Files (summer_write_file / summer_replace_text / summer_create_scene)
   "WriteFile",
-  // Import
-  "ImportFromUrl", "ImportFromUrlBatch",
+  // Import (RenameFile registers a video converted on this computer: core/capabilities/video-ogv.ts)
+  "ImportFromUrl", "ImportFromUrlBatch", "RenameFile",
   // Diagnostics + runtime control
   "GetConsoleOutput", "ClearConsoleOutput", "GetDebuggerErrors", "IsGameRunning",
   // summer_play / summer_stop send these as ops for the instance-aware and

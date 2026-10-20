@@ -30,6 +30,8 @@ A call written `area.action({...})` is the tool `summer_area_action` when your c
 6. `summer_go_live({ gameId, publicationId })` shows the plan; after the owner approves going live, call it again with `confirm: true`. It releases the Build to the platforms that passed, publishes the store page and watches until players get it, or names the failing check and its fix. Web builds and downloads go live with the page. It needs no owner approval link while the person's Agent permissions allow Publish (the default); with Publish off it answers `needs_permission`, and `store.publish` returns a link for the owner instead.
 7. `store.status({ gameId })` shows every upload, what players get now on each platform, and Summer's decision when there is one.
 
+To have the agent gather everything from the project and do these steps itself (export and upload, real screenshots, store art, listing text and details), with one confirmation before going live, use the `launch-ready` skill (`summer_docs_read` with id `skill/launch-ready`).
+
 The one rule to keep even before you load it: a game goes live as soon as Summer's automated checks pass. Summer's staff review it after it is live, so never tell the creator to wait for a review. When `summer_go_live` answers `waiting` with `waitingOn: "summer"`, every check passed and the platform is still holding the launch on Summer's side: nothing to fix, and it goes live by itself; call again to keep watching.
 
 When Summer sends the page back (`needs_changes`, or `store.status` `review.needsChanges`), fix every point in the feedback with `store.update_listing`, then call `summer_go_live` again. If there is no written feedback, say so and ask the owner instead of guessing.

@@ -668,6 +668,21 @@
       ]
     },
     {
+      "id": "skill/launch-ready",
+      "name": "launch-ready",
+      "description": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/launch-ready/",
+      "domains": [
+        "creator",
+        "deployment",
+        "assets"
+      ],
+      "bundled": false
+    },
+    {
       "id": "skill/lumera-single-image-scene-reconstruction",
       "name": "lumera-single-image-scene-reconstruction",
       "description": "Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop.",

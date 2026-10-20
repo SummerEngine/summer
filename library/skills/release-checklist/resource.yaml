@@ -23,6 +23,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/launch-ready
     - skill/release-readiness
     - skill/publish-your-game
     - skill/store-art

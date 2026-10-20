@@ -30,6 +30,11 @@ This checklist checks files and fields. Whether a player can actually play
 the release (online join, saves, phones) is the `release-readiness` skill:
 run it on the same `.zip` before you upload.
 
+To have the agent make every failing rule pass (export and upload, capture
+screenshots, make the art, write the listing, then go live with one
+confirmation), use the `launch-ready` skill (`summer_docs_read` with id
+`skill/launch-ready`).
+
 ## Going live has no staff wait
 
 A game goes live as soon as Summer's automated checks pass: the malware scan,
@@ -166,6 +171,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 
 | In this skill | Command |
 |---|---|
+| `summer_docs_read` | `summer docs read` |
 | `summer_capture_gameplay` | `summer engine capture-gameplay` |
 | `summer_export_game` | `summer engine export-game` |
 | `pricing.get` | `summer pricing get` |

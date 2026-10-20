@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **The `launch-ready` skill: get a game ready to launch and take it live.** Where `release-checklist` reports what is missing, `launch-ready` makes it pass: it exports and uploads the build, captures real gameplay screenshots with `summer_capture_gameplay`, makes the key art, icons, tall cover and capsules from a real capture under the `store-art` rules, writes the store text and fills every listing detail from the project (GameSoul, project memory, README, what it saw in play), runs the checklist again until it passes, shows the creator the preview link, every image and all text, and goes live with `summer_go_live` after one yes. It asks the creator once, before anything is uploaded or spent, for what the project can't tell (price, support contact, developer name, release stage), and has the creator confirm the content rating, the content questionnaire and the AI disclosure. It never invents a fact, never edits a screenshot and picks only true tags, genres and features. Library-only, because the installed-description budget is full: `release-checklist`, `publish-your-game` and `/summer` point to it. It uses only operations the engine profile already has, so the tool count does not change.
+
 ## [4.5.0] - 2026-10-19
 
 4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.

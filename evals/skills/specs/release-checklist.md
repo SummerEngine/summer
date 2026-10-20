@@ -56,7 +56,7 @@ runner: manual   # /skill-test today; no automated harness yet
 
 ## Case 3: Edge, the platform holds the launch
 
-**Fixture change:** every check passes; `summer_go_live` with `confirm: true` answers `status: "waiting"`, `waitingOn: "summer"`, `hold.approvalState: "PENDING"`.
+**Fixture change:** every check passes; `summer_go_live` with `confirm: true` answers `status: "waiting"`, `waitingOn: "summer"`, `hold.by: "summer"`.
 
 **Input:** "Everything passed, make it live."
 

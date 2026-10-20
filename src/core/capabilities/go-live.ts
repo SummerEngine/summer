@@ -11,6 +11,7 @@ import { BuildToolError } from "./summer-bundle.js";
  * then watch until players get it or a check fails.
  *
  *   GET  games/{g}, games/{g}/revisions, games/{g}/review        the page and Summer's review
+ *   GET  games/{g}/approval                                       only a sent-back page's decision, on a platform whose /review lacks latestReview
  *   GET  games/{g}/build-publications, store/versions             the uploads and their checks
  *   GET  games/{g}/environments/env_production (+ releases/{id})  what players get now
  *   POST build-publications/{p}:publish                           a preview Build, made ready for players
@@ -86,9 +87,10 @@ interface BuildState {
 interface Snapshot {
   game: Record<string, any>;
   page: PageState | null;
-  approval: Record<string, any> | null;
-  /** Summer staff's review after live (GET games/{g}/review); null on a platform that predates it. */
+  /** Summer's review (GET games/{g}/review); null on a platform that predates it. */
   review: Record<string, any> | null;
+  /** The newest decision on the store page: /review's latestReview, else the deprecated /approval's (read only for a sent-back page). */
+  latestReview: Record<string, any> | null;
   build: BuildState | null;
   environment: Record<string, any> | null;
   release: Record<string, any> | null;
@@ -138,15 +140,15 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
 
 async function read(store: Store, gameId: string, publicationId: string | undefined): Promise<Snapshot> {
   const game = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}`);
-  const [revisions, approval, review, publications, versions, environment] = await Promise.all([
+  const [revisions, review, publications, versions, environment] = await Promise.all([
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/revisions?limit=20`),
-    optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`)),
     optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/review`)),
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/build-publications`),
     optional(() => store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/store/versions`)),
     optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}`)),
   ]);
   const page = pageOf(newest(revisions.items ?? [], (item) => Number(item.sequence ?? 0)));
+  const latestReview = await latestReviewOf(store, gameId, review, page);
   const release = environment?.activeReleaseId
     ? await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}/releases/${seg(String(environment.activeReleaseId))}`))
     : null;
@@ -183,18 +185,40 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
     status: String(item.status ?? ""),
     ...(text(item.rejectionReason) ? { reason: String(item.rejectionReason) } : {}),
   }));
-  return { game, page, approval, review, build, environment, release, versions: versionRows };
+  return { game, page, review, latestReview, build, environment, release, versions: versionRows };
 }
 
+/**
+ * The decision on a sent-back store page. /review carries it as latestReview;
+ * a platform that predates that field only has it on the deprecated /approval,
+ * read best effort: a missing decision still reports the page as sent back.
+ */
+async function latestReviewOf(store: Store, gameId: string, review: Record<string, any> | null, page: PageState | null): Promise<Record<string, any> | null> {
+  if (review?.latestReview && typeof review.latestReview === "object") return review.latestReview;
+  if (!page || !SENT_BACK.includes(page.state)) return null;
+  try {
+    const approval = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`);
+    return approval?.latestReview && typeof approval.latestReview === "object" ? approval.latestReview : null;
+  } catch {
+    return null;
+  }
+}
+
+const STILL_CHECKING = "Summer is still checking this; nothing to do on your side.";
+
+/** When a Publish's automated checks have run over an hour, the platform says since when. */
+const stillCheckingSince = (snapshot: Snapshot): string | null => text(snapshot.review?.stillCheckingSince);
+
 /** What the platform is waiting on, said so an agent never tells a creator to wait for a review. */
-function summerHold(approval: Record<string, any> | null): Record<string, unknown> {
-  const state = text(approval?.state) ?? "unknown";
+function summerHold(snapshot: Snapshot): Record<string, unknown> {
+  const since = stillCheckingSince(snapshot);
   return {
     by: "summer",
-    approvalState: state,
-    message:
-      "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
-      "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
+    ...(since ? { stillCheckingSince: since } : {}),
+    message: since
+      ? `${STILL_CHECKING} This request stays in place and goes live by itself once the checks finish.`
+      : "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
+        "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
   };
 }
 
@@ -219,7 +243,7 @@ function onHold(snapshot: Snapshot): GoLiveResult | null {
 }
 
 function sentBack(snapshot: Snapshot): GoLiveResult | null {
-  const review = snapshot.approval?.latestReview;
+  const review = snapshot.latestReview;
   if (!snapshot.page || !SENT_BACK.includes(snapshot.page.state)) return null;
   return {
     ok: true,
@@ -256,8 +280,9 @@ function view(snapshot: Snapshot) {
         }
       : null,
     downloads: snapshot.versions,
-    approvalState: text(snapshot.approval?.state),
-    review: snapshot.review ? { outcome: text(snapshot.review.outcome), takenDown: snapshot.review.takenDown === true } : null,
+    review: snapshot.review
+      ? { outcome: text(snapshot.review.outcome), takenDown: snapshot.review.takenDown === true, ...(stillCheckingSince(snapshot) ? { stillCheckingSince: stillCheckingSince(snapshot) } : {}) }
+      : null,
   };
 }
 
@@ -310,7 +335,7 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
     try {
       await store.call("POST", `${publicationPath}:publish`, { body: {}, key: keyOf(gameId, "prepare", build.publicationId) });
     } catch (error) {
-      if (error instanceof BuildToolError && error.status === 409 && error.code === "deployment_not_actionable") return summerHold(snapshot.approval);
+      if (error instanceof BuildToolError && error.status === 409 && error.code === "deployment_not_actionable") return summerHold(snapshot);
       throw error;
     }
     while (detail.status !== "ready" && deps.now() < deadline) {
@@ -418,7 +443,8 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
       snapshot = await read(store, gameId, snapshot.build.publicationId);
     }
     if (snapshot.build?.checks.state === "checking") {
-      return { ok: true, status: "waiting", waitingOn: "automated_checks", ...view(snapshot), next: "Summer's automated checks are still running. Call summer_go_live again with confirm=true to keep going; nothing is asked twice." };
+      const since = stillCheckingSince(snapshot) ? `${STILL_CHECKING} ` : "";
+      return { ok: true, status: "waiting", waitingOn: "automated_checks", ...view(snapshot), next: `${since}Summer's automated checks are still running. Call summer_go_live again with confirm=true to keep going; nothing is asked twice.` };
     }
     const stopped = blockers(snapshot);
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
@@ -457,17 +483,20 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (deps.now() >= deadline) break;
     await deps.sleep(POLL_MS);
   }
-  // A platform that predates review after live may still hold a first launch
-  // for its Game approval; that hold is Summer's.
-  const approved = snapshot.review !== null || text(snapshot.approval?.state) === "APPROVED";
+  // Nothing blocks going live any more. A platform that predates review after
+  // live may still hold a first launch, and a Publish's checks may run long:
+  // either is Summer's, with nothing for the creator to do.
+  const activating = snapshot.review !== null && !hold && !stillCheckingSince(snapshot);
   return {
     ok: true,
     status: "waiting",
-    waitingOn: approved && !hold ? "activation" : "summer",
+    waitingOn: activating ? "activation" : "summer",
     ...view(snapshot),
-    ...(approved && !hold ? {} : { hold: hold ?? summerHold(snapshot.approval) }),
-    next: approved && !hold
+    ...(activating ? {} : { hold: hold ?? summerHold(snapshot) }),
+    next: activating
       ? "The platform is activating it. Call summer_go_live again with confirm=true to keep watching; nothing is asked twice."
-      : "Nothing to fix. Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.",
+      : stillCheckingSince(snapshot)
+        ? `${STILL_CHECKING} Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.`
+        : "Nothing to fix. Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.",
   };
 }

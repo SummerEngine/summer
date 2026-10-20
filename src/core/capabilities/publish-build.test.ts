@@ -271,6 +271,12 @@ describe("publishBuild", () => {
     expect(String((result.hold as Record<string, unknown>).message)).toMatch(/new build alone does not/);
   });
 
+  it("says Summer is still checking, with nothing to do, when the platform reports long-running checks", async () => {
+    const store = fakeStore({ publishStatus: 409, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.hold).toMatchObject({ by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z", message: expect.stringContaining("Summer is still checking this; nothing to do on your side.") });
+  });
+
   it("waits for the per-platform checks and reports each one", async () => {
     const store = fakeStore({ checkingPolls: 2 });
     const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));

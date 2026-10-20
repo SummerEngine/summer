@@ -30,7 +30,7 @@ export const CHECK_FIXES: Record<string, CheckFix> = {
     fix: "The export came from a Summer Engine build Summer never released (a development or nightly build). Install the released Summer Engine, export again and upload.",
   },
   attempts_exhausted: { owner: "creator", fix: "Summer could not read the upload in five tries, usually because it is very large. Make the export smaller (remove unused assets), export again and upload with a new clientVersion." },
-  approval_denied: { owner: "creator", fix: "Summer declined this game. Read the decision and its feedback with store.status before uploading again." },
+  approval_denied: { owner: "creator", fix: "Summer took this game down, so it can't take new builds. Read Summer's message with store.status, and contact Summer support to have it restored." },
   malware_detected: { owner: "creator", fix: "The malware scan found a threat in the upload. Check the project's files, plugins and add-ons, export again on a clean machine and upload with a new clientVersion." },
   malware_scan_unsupported: { owner: "creator", fix: "The malware scanner could not read this file. Upload the .zip exactly as summer_export_game wrote it (no re-zipping, no password)." },
   materializing_failed: { owner: "creator", fix: "Summer could not unpack the game's server. Read errorMessage, fix the server export, export again and upload with a new clientVersion." },

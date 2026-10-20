@@ -54,7 +54,7 @@ export function renderAgentsBlock(commands: string = projectCommands()): string 
     "",
     "## Publishing",
     "",
-    "The `publish-your-game` skill has the steps; `summer ops search \"publish my game\"` finds each operation. `summer store publish` sends the game to Summer's store review, and the game's owner approves it: give them the link it prints. Nothing goes live until they approve.",
+    "The `publish-your-game` skill has the steps; `summer ops search \"publish my game\"` finds each operation. `summer store publish` asks the game's owner to approve publishing: give them the link it prints. Once the owner approves, the game goes live as soon as Summer's automatic checks pass.",
     SUMMER_BLOCK_END,
   ].join("\n");
 }

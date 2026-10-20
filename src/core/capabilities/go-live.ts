@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
 import { createStore, defaultDependencies, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
+import { droppedPlatforms, notUsedPlatforms, serverOnlyRefusal, type DroppedPlatform, type NotUsedPlatform } from "./release-drops.js";
 import { describeFailure, summarizeChecks, type PlatformCheck } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
 
@@ -10,9 +11,10 @@ import { BuildToolError } from "./summer-bundle.js";
  * store routes Studio uses (PSE /api/creator-store/* -> /v1/management/*),
  * then watch until players get it or a check fails.
  *
- *   GET  games/{g}, games/{g}/revisions, games/{g}/approval      the page and Summer's decision
+ *   GET  games/{g}, games/{g}/revisions, games/{g}/review        the page and Summer's review
+ *   GET  games/{g}/approval                                       only a sent-back page's decision, on a platform whose /review lacks latestReview
  *   GET  games/{g}/build-publications, store/versions             the uploads and their checks
- *   GET  games/{g}/environments/env_production (+ releases/{id})  what players get now
+ *   GET  games/{g}/environments/env_production (+ releases/{id})  what players get now, and a release on its way
  *   POST build-publications/{p}:publish                           a preview Build, made ready for players
  *   POST environments/env_production/release-drafts (+ :publish)  release the Build to players
  *   POST revisions/{r}:publish (If-Match)                         publish the store page
@@ -20,11 +22,12 @@ import { BuildToolError } from "./summer-bundle.js";
  * An agent credential may call the three :publish actions without an owner
  * approval while the person's Agent permissions allow Publish (the platform
  * default; summer-platform internal/management/agent_gate.go). The platform
- * still runs every automated check, and today it holds a game's first launch
- * for Summer's review; that hold is reported as Summer's, never as a step the
- * creator waits on or fixes, because staff review is becoming a step after
- * launch. Calling again continues: the same idempotency keys replay what was
- * already asked, so nothing is requested twice.
+ * runs every automated check, and a game goes live as soon as they pass:
+ * Summer's staff review it afterwards (review after live). A staff hold is
+ * reported with what to change; a platform hold is reported as Summer's, never
+ * as a step the creator waits on. Calling again continues: the same
+ * idempotency keys replay what was already asked, so nothing is requested
+ * twice.
  */
 
 const ENVIRONMENT = "env_production";
@@ -85,10 +88,19 @@ interface BuildState {
 interface Snapshot {
   game: Record<string, any>;
   page: PageState | null;
-  approval: Record<string, any> | null;
+  /** Summer's review (GET games/{g}/review); null on a platform that predates it. */
+  review: Record<string, any> | null;
+  /** The newest decision on the store page: /review's latestReview, else the deprecated /approval's (read only for a sent-back page). */
+  latestReview: Record<string, any> | null;
   build: BuildState | null;
   environment: Record<string, any> | null;
   release: Record<string, any> | null;
+  /** The release on its way (the environment's desired release, while it is not the active one). */
+  pending: Record<string, any> | null;
+  /** Client platforms the release left out (the pending release's, else the active one's); none on a platform before SUM-1107. */
+  dropped: DroppedPlatform[];
+  /** Newer clients the release did not use: those platforms stay live with their current client. */
+  notUsed: NotUsedPlatform[];
   versions: Array<{ platform: string; status: string; reason?: string }>;
 }
 
@@ -133,19 +145,51 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
   return release.targets.filter((target: Record<string, any>) => target?.buildId === buildId).map((target: Record<string, any>) => String(target.target));
 }
 
-async function read(store: Store, gameId: string, publicationId: string | undefined): Promise<Snapshot> {
+/** What go-live asked for: the release it requested, the platforms its answer left out, and a refusal of the release. */
+interface Requested {
+  releaseId: string | null;
+  dropped: DroppedPlatform[];
+  notUsed: NotUsedPlatform[];
+  /** The platform refused the release; its message, when it gave one. */
+  refused: { message: string | null } | null;
+}
+
+const fresh = (): Requested => ({ releaseId: null, dropped: [], notUsed: [], refused: null });
+
+/**
+ * A store page whose platforms the release cannot serve keeps the previous
+ * release. The platform's message says what to do (a build with the apps, or
+ * the server too); without one, the creator uploads a build with the apps.
+ */
+const serverOnlyFailure = (message?: unknown) => ({
+  field: "build",
+  code: "playable_release_required",
+  fix: `${serverOnlyRefusal(message)} Then call summer_go_live again (or set release stage coming_soon with store.update_listing).`,
+});
+
+async function read(store: Store, gameId: string, publicationId: string | undefined, requested: Requested = fresh()): Promise<Snapshot> {
   const game = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}`);
-  const [revisions, approval, publications, versions, environment] = await Promise.all([
+  const [revisions, review, publications, versions, environment] = await Promise.all([
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/revisions?limit=20`),
-    optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`)),
+    optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/review`)),
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/build-publications`),
     optional(() => store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/store/versions`)),
     optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}`)),
   ]);
   const page = pageOf(newest(revisions.items ?? [], (item) => Number(item.sequence ?? 0)));
+  const latestReview = await latestReviewOf(store, gameId, review, page);
   const release = environment?.activeReleaseId
     ? await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}/releases/${seg(String(environment.activeReleaseId))}`))
     : null;
+  // The release on its way; once the platform gives up on it (desiredReleaseId cleared), the one go-live asked for, to read why.
+  const pendingId = environment?.desiredReleaseId && environment.desiredReleaseId !== environment.activeReleaseId
+    ? String(environment.desiredReleaseId)
+    : requested.releaseId && requested.releaseId !== environment?.activeReleaseId ? requested.releaseId : null;
+  const pending = pendingId ? await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}/releases/${seg(pendingId)}`)) : null;
+  const listed = droppedPlatforms((pending ?? release)?.droppedTargets);
+  const dropped = listed.length ? listed : requested.dropped;
+  const unused = notUsedPlatforms((pending ?? release)?.notUsedTargets);
+  const notUsed = unused.length ? unused : requested.notUsed;
 
   const exported = (publications.items ?? []).filter((item) => item?.source?.kind === "exported-game" || item?.source?.kind === undefined);
   let chosen: Record<string, any> | null = null;
@@ -179,23 +223,65 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
     status: String(item.status ?? ""),
     ...(text(item.rejectionReason) ? { reason: String(item.rejectionReason) } : {}),
   }));
-  return { game, page, approval, build, environment, release, versions: versionRows };
+  return { game, page, review, latestReview, build, environment, release, pending, dropped, notUsed, versions: versionRows };
 }
 
+/**
+ * The decision on a sent-back store page. /review carries it as latestReview;
+ * a platform that predates that field only has it on the deprecated /approval,
+ * read best effort: a missing decision still reports the page as sent back.
+ */
+async function latestReviewOf(store: Store, gameId: string, review: Record<string, any> | null, page: PageState | null): Promise<Record<string, any> | null> {
+  if (review?.latestReview && typeof review.latestReview === "object") return review.latestReview;
+  if (!page || !SENT_BACK.includes(page.state)) return null;
+  try {
+    const approval = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`);
+    return approval?.latestReview && typeof approval.latestReview === "object" ? approval.latestReview : null;
+  } catch {
+    return null;
+  }
+}
+
+const STILL_CHECKING = "Summer is still checking this; nothing to do on your side.";
+
+/** When a Publish's automated checks have run over an hour, the platform says since when. */
+const stillCheckingSince = (snapshot: Snapshot): string | null => text(snapshot.review?.stillCheckingSince);
+
 /** What the platform is waiting on, said so an agent never tells a creator to wait for a review. */
-function summerHold(approval: Record<string, any> | null): Record<string, unknown> {
-  const state = text(approval?.state) ?? "unknown";
+function summerHold(snapshot: Snapshot): Record<string, unknown> {
+  const since = stillCheckingSince(snapshot);
   return {
     by: "summer",
-    approvalState: state,
-    message:
-      "Every automated check passed. The platform still holds a game's first launch on Summer's side; there is nothing to fix and nothing to ask for. " +
-      "This request stays in place and goes live by itself once the platform releases it (Summer's review is becoming a step after launch).",
+    ...(since ? { stillCheckingSince: since } : {}),
+    message: since
+      ? `${STILL_CHECKING} This request stays in place and goes live by itself once the checks finish.`
+      : "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
+        "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
+  };
+}
+
+/**
+ * Summer staff put the live game on hold after reviewing it and asked for
+ * changes. Only a newer store page published now lifts the hold, so this is
+ * reported while the newest page is the one staff reviewed; once the creator
+ * has made a newer draft, go-live publishes it.
+ */
+function onHold(snapshot: Snapshot): GoLiveResult | null {
+  const review = snapshot.review;
+  if (review?.outcome !== "rejected" || !snapshot.page || snapshot.page.revisionId !== review.reviewedRevisionId) return null;
+  return {
+    ok: true,
+    status: "on_hold",
+    ...view(snapshot),
+    review: { outcome: "rejected", message: text(review.message) },
+    next: text(review.message)
+      ? "Summer reviewed this live game and put it on hold until these changes are made: review.message. Make them with store.update_listing (a new draft), then call summer_go_live again; publishing the newer store page lifts the hold. A new build alone does not."
+      : "Summer reviewed this live game and put it on hold without a written note: tell the owner and ask what to change; then edit with store.update_listing and call summer_go_live again.",
   };
 }
 
 function sentBack(snapshot: Snapshot): GoLiveResult | null {
-  const review = snapshot.approval?.latestReview;
+  const review = snapshot.latestReview;
   if (!snapshot.page || !SENT_BACK.includes(snapshot.page.state)) return null;
   return {
     ok: true,
@@ -205,7 +291,7 @@ function sentBack(snapshot: Snapshot): GoLiveResult | null {
     decision: review ? { decision: review.decision ?? null, decidedBy: review.decidedBy ?? null, feedback: text(review.feedback) } : null,
     next: text(review?.feedback)
       ? "Fix every point in decision.feedback with store.update_listing (it starts a new draft), then call summer_go_live again."
-      : "Summer sent the page back without written feedback: tell the owner and ask what to change; then edit with store.update_listing and call summer_go_live again.",
+      : "Summer's automatic checks found a problem with this store page: read store.status for what failed, fix it with store.update_listing, then call summer_go_live again.",
   };
 }
 
@@ -232,20 +318,36 @@ function view(snapshot: Snapshot) {
         }
       : null,
     downloads: snapshot.versions,
-    approvalState: text(snapshot.approval?.state),
+    ...(snapshot.dropped.length ? { notIncluded: snapshot.dropped } : {}),
+    ...(snapshot.notUsed.length ? { notUsed: snapshot.notUsed } : {}),
+    review: snapshot.review
+      ? { outcome: text(snapshot.review.outcome), takenDown: snapshot.review.takenDown === true, ...(stillCheckingSince(snapshot) ? { stillCheckingSince: stillCheckingSince(snapshot) } : {}) }
+      : null,
   };
 }
 
 function isLive(snapshot: Snapshot): boolean {
   if (snapshot.page?.state !== "PUBLISHED") return false;
   if (!snapshot.build) return true;
-  const { targets } = releasable(snapshot.build);
-  return targets.length > 0 && targets.every((platform) => snapshot.build!.livePlatforms.includes(platform));
+  // A platform the release left out, or kept on its current client, never gets this Build: it is reported, not waited for.
+  const reported = [...snapshot.dropped, ...snapshot.notUsed].map((item) => item.platform);
+  const wanted = releasable(snapshot.build).targets.filter((platform) => !reported.includes(platform));
+  return wanted.length > 0 && wanted.every((platform) => snapshot.build!.livePlatforms.includes(platform));
+}
+
+/** The creator-facing line for the platforms a release left out, or "". */
+function droppedLine(snapshot: Snapshot): string {
+  const dropped = snapshot.dropped.length ? ` Not included: ${snapshot.dropped.map((drop) => drop.message).join(" ")}` : "";
+  const unused = snapshot.notUsed.length ? ` Not used: ${snapshot.notUsed.map((item) => item.message).join(" ")}` : "";
+  return dropped + unused;
 }
 
 /** Refusals no publish call can get past: each is a fix for the creator. */
 function blockers(snapshot: Snapshot): Array<Record<string, unknown>> {
   const out: Array<Record<string, unknown>> = [];
+  if (snapshot.review?.takenDown === true) {
+    out.push({ field: "game", code: "taken_down", ...(text(snapshot.review.message) ? { message: snapshot.review.message } : {}), fix: "Summer took this game down: players can't find or play it. Your builds and private versions are kept. Read the message, and contact Summer support to have it restored." });
+  }
   if (!snapshot.page) out.push({ field: "store page", fix: "This game has no store page yet: create it with games.create, or fill it with store.update_listing." });
   for (const problem of snapshot.page?.problems ?? []) out.push(problem);
   const build = snapshot.build;
@@ -255,6 +357,8 @@ function blockers(snapshot: Snapshot): Array<Record<string, unknown>> {
     out.push({ field: "build", code: "no_platform_passed", fix: "No phone or desktop platform of this Build passed its checks. Apply each check's fix, export again and upload with summer_publish_build." });
     for (const check of releasable(build).held) out.push({ field: `build ${check.platform}`, ...check });
   }
+  // The release go-live asked for was refused: the page lists only platforms it left out.
+  if (snapshot.pending?.rollout?.errorCode === "playable_release_required") out.push(serverOnlyFailure(snapshot.pending.rollout.message));
   for (const version of snapshot.versions.filter((row) => row.status === "rejected")) {
     out.push({ field: `download ${version.platform}`, code: "store_version_rejected", ...(version.reason ? { message: version.reason } : {}), fix: "Fix what the reason names, export the download again and upload it with summer_publish_build." });
   }
@@ -272,7 +376,7 @@ function permissionRefused(): GoLiveResult {
 }
 
 /** Make the Build ready for players and ask for its release; returns a hold when the platform declines. */
-async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, deps: PublishBuildDependencies, deadline: number): Promise<Record<string, unknown> | null> {
+async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, deps: PublishBuildDependencies, deadline: number, requested: Requested): Promise<Record<string, unknown> | null> {
   const build = snapshot.build!;
   const { targets } = releasable(build);
   if (!build.buildId || !targets.length || targets.every((platform) => build.livePlatforms.includes(platform))) return null;
@@ -282,7 +386,7 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
     try {
       await store.call("POST", `${publicationPath}:publish`, { body: {}, key: keyOf(gameId, "prepare", build.publicationId) });
     } catch (error) {
-      if (error instanceof BuildToolError && error.status === 409 && error.code === "deployment_not_actionable") return summerHold(snapshot.approval);
+      if (error instanceof BuildToolError && error.status === 409 && error.code === "deployment_not_actionable") return summerHold(snapshot);
       throw error;
     }
     while (detail.status !== "ready" && deps.now() < deadline) {
@@ -307,12 +411,24 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
     body: { title: build.version ?? "Release", notes: "", targets: selection },
     key: keyOf(gameId, "draft", build.publicationId, base),
   });
-  await store.call("POST", `games/${seg(gameId)}/environments/${ENVIRONMENT}/release-drafts/${seg(String(draft.id))}:publish`, {
-    body: { targets: Object.keys(selection), replaceTargets: true },
-    key: keyOf(gameId, "release", build.publicationId, base),
-    // The proxy forwards x-summer-revision as If-Match (it passes no other header but idempotency-key).
-    headers: { [REVISION_HEADER]: `"${draft.revision}"` },
-  });
+  let accepted: Record<string, any> | null;
+  try {
+    accepted = await store.call<Record<string, any>>("POST", `games/${seg(gameId)}/environments/${ENVIRONMENT}/release-drafts/${seg(String(draft.id))}:publish`, {
+      body: { targets: Object.keys(selection), replaceTargets: true },
+      key: keyOf(gameId, "release", build.publicationId, base),
+      // The proxy forwards x-summer-revision as If-Match (it passes no other header but idempotency-key).
+      headers: { [REVISION_HEADER]: `"${draft.revision}"` },
+    });
+  } catch (error) {
+    if (error instanceof BuildToolError && error.code === "playable_release_required") {
+      requested.refused = { message: text(error.detail?.message) };
+      return null;
+    }
+    throw error;
+  }
+  requested.releaseId = text(accepted?.releaseId);
+  requested.dropped = droppedPlatforms(accepted?.droppedTargets);
+  requested.notUsed = notUsedPlatforms(accepted?.notUsedTargets);
   return null;
 }
 
@@ -346,7 +462,8 @@ async function publishPage(store: Store, gameId: string, snapshot: Snapshot): Pr
         ok: true,
         status: "blocked",
         gameId,
-        failures: [{ field: "build", code: error.code, fix: "A released page needs a build players can play on a platform it lists: upload one with summer_publish_build (or set release stage coming_soon with store.update_listing), then call summer_go_live again." }],
+        failures: [serverOnlyFailure(error.detail?.message)],
+        next: `${serverOnlyRefusal(error.detail?.message)} Then call summer_go_live again.`,
       };
     }
     throw error;
@@ -362,6 +479,8 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
   const deadline = deps.now() + Math.min(Math.max(input.waitSeconds ?? DEFAULT_WAIT_SECONDS, 0), 1800) * 1000;
   let snapshot = await read(store, gameId, input.publicationId);
 
+  const held = onHold(snapshot);
+  if (held) return held;
   const back = sentBack(snapshot);
   if (back) return back;
   if (isLive(snapshot)) return { ok: true, status: "live", ...view(snapshot), next: "Players get it now. Confirm it as a player on summer.games and in the Summer Games apps." };
@@ -381,6 +500,7 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
   const audit = { at: new Date(deps.now()).toISOString(), operation: "go_live", face: input.face, gameId, revisionId: snapshot.page!.revisionId, publicationId: snapshot.build?.publicationId ?? null };
   await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
   let hold: Record<string, unknown> | null = null;
+  const requested = fresh();
   try {
     // The Build first: a released page needs a playable release (or one on its way).
     while (snapshot.build && snapshot.build.checks.state === "checking" && deps.now() < deadline) {
@@ -388,11 +508,15 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
       snapshot = await read(store, gameId, snapshot.build.publicationId);
     }
     if (snapshot.build?.checks.state === "checking") {
-      return { ok: true, status: "waiting", waitingOn: "automated_checks", ...view(snapshot), next: "Summer's automated checks are still running. Call summer_go_live again with confirm=true to keep going; nothing is asked twice." };
+      const since = stillCheckingSince(snapshot) ? `${STILL_CHECKING} ` : "";
+      return { ok: true, status: "waiting", waitingOn: "automated_checks", ...view(snapshot), next: `${since}Summer's automated checks are still running. Call summer_go_live again with confirm=true to keep going; nothing is asked twice.` };
     }
     const stopped = blockers(snapshot);
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
-    if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline);
+    if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
+    if (requested.refused) {
+      return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped, notUsed: requested.notUsed }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
+    }
     const refused = await publishPage(store, gameId, snapshot);
     if (refused) return { ...view(snapshot), ...refused };
   } catch (error) {
@@ -404,7 +528,9 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
 
   // Watch until players get it, a check fails or the wait ends.
   for (;;) {
-    snapshot = await read(store, gameId, snapshot.build?.publicationId);
+    snapshot = await read(store, gameId, snapshot.build?.publicationId, requested);
+    const stillHeld = onHold(snapshot);
+    if (stillHeld) return stillHeld;
     const again = sentBack(snapshot);
     if (again) return again;
     if (isLive(snapshot)) {
@@ -416,8 +542,8 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
         ...view(snapshot),
         ...(held.length ? { notReleased: held } : {}),
         next: held.length
-          ? `Live. ${held.map((check) => check.platform).join(", ")} did not pass its checks and is not released: apply each fix and upload a new version.`
-          : "Live: players get it now. Confirm it as a player on summer.games and in the Summer Games apps.",
+          ? `Live. ${held.map((check) => check.platform).join(", ")} did not pass its checks and is not released: apply each fix and upload a new version.${droppedLine(snapshot)}`
+          : `Live: players get it now. Confirm it as a player on summer.games and in the Summer Games apps.${droppedLine(snapshot)}`,
       };
     }
     const failed = blockers(snapshot);
@@ -425,15 +551,20 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (deps.now() >= deadline) break;
     await deps.sleep(POLL_MS);
   }
-  const approved = text(snapshot.approval?.state) === "APPROVED";
+  // Nothing blocks going live any more. A platform that predates review after
+  // live may still hold a first launch, and a Publish's checks may run long:
+  // either is Summer's, with nothing for the creator to do.
+  const activating = snapshot.review !== null && !hold && !stillCheckingSince(snapshot);
   return {
     ok: true,
     status: "waiting",
-    waitingOn: approved ? "activation" : "summer",
+    waitingOn: activating ? "activation" : "summer",
     ...view(snapshot),
-    ...(approved ? {} : { hold: hold ?? summerHold(snapshot.approval) }),
-    next: approved
+    ...(activating ? {} : { hold: hold ?? summerHold(snapshot) }),
+    next: activating
       ? "The platform is activating it. Call summer_go_live again with confirm=true to keep watching; nothing is asked twice."
-      : "Nothing to fix. Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.",
+      : stillCheckingSince(snapshot)
+        ? `${STILL_CHECKING} Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.`
+        : "Nothing to fix. Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.",
   };
 }

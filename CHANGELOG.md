@@ -4,6 +4,16 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-10-19
+
+4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.
+
+New since the first 4.5.0 cut: privacy-safe telemetry v2 with a one-time notice, videos (MP4, MOV, WebM) that convert to `.ogv` on import, and a game that goes from export to live over MCP with no staff wait.
+
+- **Telemetry: a few more fields and a one-time notice.** Every field is listed in the README section "Telemetry". Summer never sends prompts, code, file contents, file names or paths, project names, tool arguments or results. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns all of it off.
+  - **First run:** the first `summer` command on a computer (`summer mcp` too) prints a one-time notice to stderr and sends one anonymous `cli_first_run` line: a random install id, the command name, the agent app and the operating system. Not in CI. Signing in joins that line to the account.
+  - **New fields on signed-in tool-call and command lines, when they apply:** `projectIdHash` (the hash of the random project id the engine already uses for routing; never the project name or path), `templateId` (the catalog template the project started from; on `summer create` also its library domains), `instanceCount` (how many game clients `engine.play` started) and `engineState` (four yes/no facts on `engine_not_running`: engine installed, engine running, project open, signed in).
+
 - **Videos import as Ogg Theora by themselves.** Summer Engine plays video only as `.ogv`, and an `.mp4`, `.mov` or `.webm` import used to fail and roll back. `summer_import_from_url`, its batch, `summer_import_asset_by_id` and `summer_import_asset` now convert a video on the way in: a video Summer generated or stores imports as its Theora rendition from Summer's media host; any other video converts with ffmpeg on this computer when it has Theora (video quality 8, Vorbis audio, same frame rate, at most 1920x1080), else on summerengine.com (needs the Summer sign-in). The `.ogv` lands at the requested path with the extension swapped, and the answer says so (`videoConversions`, `note`). A generated video saved with `out` into a Godot project saves as `.ogv` too. The `animated-loop`, `cinematic-cutscene` and `trailer-shot` skills no longer tell agents to run ffmpeg by hand.
 
 - **From export to live over MCP, with no staff wait.** A game goes live as soon as Summer's automated checks pass; Summer's staff review it afterwards, and no tool or skill tells a creator to wait for a review any more.
@@ -13,12 +23,6 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
   - **`summer.bundle.v2` exports are read.** `summer_export_game` and `summer_publish_build` refused every export from Summer Engine 0.7.4 and newer (the fixed layout); they now take v2 with its six paths and still take v1. `summer_export_game` reports the export's paths.
   - **The `release-checklist` skill:** before going live, check the export (preset, Summer version, the fixed layout, a server pack for a game with a server), the upload and its checks, the store art per slot and every required listing field, each rule with its MCP check, its fix and the platform rule it comes from.
   - The engine profile leaves out the hosted `summer_store_releases` and `summer_store_version_status`, which `summer_go_live` supersedes, so the two new tools fit its tool limit.
-
-- **Telemetry: a few more fields, a first-run notice, and a README section listing every field.** The first `summer` command on a computer prints a one-time notice to stderr and sends one anonymous line (a random install id, the command name, the agent app and the operating system; not in CI). Signing in joins that line to the account. Signed-in tool-call and command lines now add, when they apply, the project id hash the engine already uses for routing (never the name or path), the catalog template id (and its library domains on `summer create`), how many game clients `engine.play` started, and four yes/no engine facts on `engine_not_running`. Still never prompts, code, paths, project names or arguments; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it all off.
-
-## [4.5.0] - 2026-10-19
-
-4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.
 
 From adding Summer to an agent to editing a good-looking scene with one OK: `summer dev` installs the engine (with the person's yes), creates a starter project and opens it; the MCP opens the project itself; agents with no shell use `projects.create_local` and `projects.open_local`; Claude Code Desktop's Browser pane shows the game; and `summer preview` serves the running game to the agent's own browser.
 

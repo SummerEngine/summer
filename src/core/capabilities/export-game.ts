@@ -21,7 +21,7 @@ import {
   type StoreTarget,
 } from "./export-presets.js";
 import { engineTemplateInfo, findInstalledTemplate, templateFileFor, type TemplatesDependencies } from "./export-templates.js";
-import { BuildToolError, declarationMismatch, hashFile, readSummerBundle, samePlatforms, type SummerBundle } from "./summer-bundle.js";
+import { BUNDLE_MANIFEST, BuildToolError, declarationMismatch, hashFile, readSummerBundle, samePlatforms, type SummerBundle } from "./summer-bundle.js";
 
 export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
 
@@ -31,7 +31,8 @@ export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
  *
  *   <engine> --headless --summer-no-api --path <project> --export-release "<preset>" <out>
  *
- * format "bundle" (default): the summer.bundle.v1 .zip for build-publications
+ * format "bundle" (default): the summer.bundle.v2 .zip (summer.bundle.v1 from
+ * engines before 0.7.4) for build-publications
  * (summer_publish_build). Summer runs its client.pck on its own templates in
  * the Summer Games apps, so no template and no signing. Without targets the
  * engine's in-memory "summer.games" preset is used as is (every platform
@@ -107,7 +108,8 @@ export interface ExportGameResult {
   engine: string;
   durationMs: number;
   /** Bundle format: the bundle manifest. */
-  bundle?: Omit<SummerBundle, "hostedBuild" | "files"> & { fileCount: number };
+  /** paths: every entry of the .zip, summer-bundle.json included (the fixed layout a release checklist compares). */
+  bundle?: Omit<SummerBundle, "hostedBuild" | "files"> & { fileCount: number; paths: string[] };
   /** Download format: the store versions platform id (web, macos-universal, windows-x64). */
   storePlatform?: string;
   /** Download format: files in the zip. */
@@ -572,7 +574,7 @@ export async function exportGame(
     debug,
     engine: binary,
     durationMs: deps.now().getTime() - started.getTime(),
-    bundle: { ...summary, fileCount: files.length },
+    bundle: { ...summary, fileCount: files.length, paths: [BUNDLE_MANIFEST, ...files.map((file) => file.path)].sort() },
     ...(projectChanges.length ? { projectChanges } : {}),
     ...(warnings.length ? { warnings } : {}),
     next: "Upload it to the game's store listing with summer_publish_build (gameId, clientVersion).",

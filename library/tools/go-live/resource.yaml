@@ -1,0 +1,67 @@
+id: tool/go-live
+kind: tool
+version: 1.0.0
+summary: "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated."
+use_when:
+  - '"make my game live"'
+  - '"publish my game to players now"'
+  - '"is my game live yet"'
+  - '"release the build I uploaded"'
+  - after summer_publish_build reports every automated check passed
+  - watching a game until players get it, or finding which automated check failed
+do_not_use_when:
+  - the user has not approved taking this exact store page and Build live
+  - the game is not uploaded yet - summer_export_game, then summer_publish_build
+  - store page text, art or price - store.update_listing, store.set_art, pricing.set_base
+  - the release checklist before going live - skill/release-checklist
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/release-checklist
+    - skill/publish-your-game
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_go_live
+implementation:
+  module: src/core/capabilities/go-live.ts
+  export: goLive
+surfaces:
+  mcp:
+    tool_name: summer_go_live
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: The store game id (from games.list). Without it the call fails with game_required and lists your store games.
+    publicationId:
+      type: string
+      description: "The bundle Build to release: publicationId from summer_publish_build. Default: the newest uploaded export."
+    confirm:
+      type: boolean
+      default: false
+      description: Set true only after the user approves taking this exact page and Build live.
+    waitSeconds:
+      type: integer
+      minimum: 0
+      maximum: 1800
+      description: How long to watch before answering (default 600). On waiting, call again to keep watching.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: true
+evidence_checks:
+  - none

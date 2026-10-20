@@ -53,7 +53,14 @@ let entriesCache: CatalogEntry[] | null = null;
  * account and the store sign-in `summer login` makes; `summer login --store`
  * for the store sign-in alone). Every other local one works signed out.
  */
-const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "apps.publish_folder", "content.make"]);
+const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "store.go_live", "store.set_details", "apps.publish_folder", "content.make"]);
+
+/**
+ * Local operations that change Summer's records although their registry
+ * authority names no local file or publish: store.set_details saves the store
+ * page draft (players see nothing until it goes live).
+ */
+const REMOTE_WRITE_LOCAL_OPS: ReadonlySet<string> = new Set(["store.set_details"]);
 
 type IndexedTool = ReturnType<typeof loadLibraryIndex>[number];
 
@@ -61,7 +68,7 @@ function entryFor(op: string, toolName: string, tool: IndexedTool, legacy: strin
   // Engine operations carry their own title, summary and effect (engine.ts);
   // other local operations fall back to the descriptor.
   const def = engineOpDef(op);
-  const effect = def?.effect ?? effectOf(tool.authority as Authority | undefined);
+  const effect = def?.effect ?? (REMOTE_WRITE_LOCAL_OPS.has(op) ? "write" : effectOf(tool.authority as Authority | undefined));
   const summary = def?.summary ?? (tool.summary ?? "").slice(0, 300);
   return {
     name: op,

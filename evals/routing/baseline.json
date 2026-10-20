@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19",
+  "generated_at": "2026-10-20",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 281,
-  "query_count": 142,
+  "corpus_size": 284,
+  "query_count": 145,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8275,
-  "mrr_at_5": 0.9316,
+  "mean_recall_at_1": 0.831,
+  "mrr_at_5": 0.9364,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,17 +14,17 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 119,
-      "hit": 119,
+      "expected": 122,
+      "hit": 122,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 40,
-      "hit": 40,
+      "expected": 42,
+      "hit": 42,
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 17,
+  "hijacked_queries": 16,
   "per_query": {
     "make me a cozy 2D village game where I can walk into the houses": 1,
     "I want a top-down 2.5D RPG that looks hand painted": 1,
@@ -120,6 +120,9 @@
     "it used to run at 60fps, now it's 30 after my last change": 1,
     "the jump works but it feels floaty and mushy": 1,
     "publish my game": 1,
+    "is my game ready to go live on summer.games, what is missing from my store page": 1,
+    "fill in the age rating questionnaire and the AI disclosure for my store page": 1,
+    "make my uploaded game live for players now": 1,
     "export a windows build I can send to my friend": 1,
     "test the game on my phone": 1,
     "I want to make a game but I'm not sure what yet": 1,

@@ -90,7 +90,7 @@ export const getCachedBootDriftNotice = getCachedNotice;
  * calls. Kept under 800 characters so it costs a few hundred tokens once; the
  * full operating guide stays in the summer_agent_playbook prompt /
  * summer_get_agent_playbook tool. The publish sentence names the publishing
- * path, the owner-approval rule and where review feedback is read; the last
+ * path, the user's confirmation and that going live has no staff wait; the last
  * says an agent may open the editor and play the game in a window.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
@@ -100,7 +100,7 @@ export const SUMMER_MCP_INSTRUCTIONS =
   "After play: summer_get_diagnostics, not only summer_get_console. " +
   "All-black screenshot: no redraw yet, recapture. " +
   "Report verified entries via summer_library_feedback. " +
-  "Publish: summer_export_game, summer_publish_build, summer_store_*; never alone: summer_store_submit returns the owner's approval link, summer_store_review the feedback. " +
+  "Publish: summer_export_game, summer_publish_build, skill/release-checklist, summer_go_live, each confirmed. Live once automated checks pass: never say wait for review. " +
   "Opening the editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot; close what you opened, one editor at a time.";
 
 /** The same first-turn habits for a profile without engine tools (`--profile assets`). */

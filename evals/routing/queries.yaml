@@ -236,6 +236,12 @@ queries:
   # ── Project lifecycle ──────────────────────────────────────────────────
   - query: "publish my game"
     expected: [skill/publish-your-game, skill/export-and-ship]
+  - query: "is my game ready to go live on summer.games, what is missing from my store page"
+    expected: [skill/release-checklist]
+  - query: "fill in the age rating questionnaire and the AI disclosure for my store page"
+    expected: [tool/store-set-details, skill/release-checklist]
+  - query: "make my uploaded game live for players now"
+    expected: [tool/go-live, skill/publish-your-game]
   - query: "export a windows build I can send to my friend"
     expected: [skill/export-and-ship]
   - query: "test the game on my phone"

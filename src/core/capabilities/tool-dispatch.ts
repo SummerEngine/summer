@@ -153,7 +153,9 @@ import { shapeEngineLogResponse } from "../log-filters.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
+import { goLive } from "./go-live.js";
 import { publishBuild } from "./publish-build.js";
+import { DETAIL_SECTIONS, setStoreDetails } from "./store-details.js";
 import { syncItems } from "./sync-items.js";
 import { contentMake, contentMakeInput } from "./content-make/index.js";
 import { createLocalProject, LocalProjectError, localProjectFailure, openLocalProject } from "./projects-local.js";
@@ -1039,6 +1041,26 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
       face: "cli",
     })
+  ),
+  entry("summer_go_live", "Take your store game live: release its Build and publish its page, then watch until players get it (confirm-gated)", false, (args) =>
+    structuredBuildFailure(() =>
+      goLive({
+        gameId: optStr(args, "gameId"),
+        publicationId: optStr(args, "publicationId"),
+        confirm: args.confirm === true,
+        ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
+        face: "cli",
+      })
+    )
+  ),
+  entry("summer_store_set_details", "Fill store page sections: genres, features, credits, languages, requirements, content survey, AI disclosure", false, (args) =>
+    structuredBuildFailure(() =>
+      setStoreDetails({
+        gameId: optStr(args, "gameId"),
+        ...Object.fromEntries(DETAIL_SECTIONS.filter((section) => args[section] !== undefined).map((section) => [section, args[section]])),
+        face: "cli",
+      })
+    )
   ),
   entry("summer_sync_items", "Sync summer.items.json to your store game by slug; the owner approves (confirm-gated)", false, (args) =>
     // The same structured failure the MCP face gives (a manifest's whole problem list), printed whole.

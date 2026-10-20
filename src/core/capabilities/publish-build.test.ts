@@ -31,11 +31,21 @@ function fakeStore(options: {
   refusePartOnce?: number;
   neverDone?: boolean;
   gameTargets?: string[];
+  /** Per-platform client pack checks once settled (default: ios passed). */
+  checks?: Array<Record<string, unknown>>;
+  /** Polls that answer before the checks settle (default 0); Infinity never settles. */
+  checkingPolls?: number;
+  /** Answers to :source-complete with 409 malware_scan_pending this many times first. */
+  scanPendingSeals?: number;
+  approval?: Record<string, unknown>;
 } = {}) {
   const calls: Call[] = [];
   const parts = new Map<number, Buffer>();
   let sealed = options.startPhase === "inspecting";
   let polls = 0;
+  let donePolls = 0;
+  let seals = 0;
+  let named = false;
   let refused = false;
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -63,7 +73,19 @@ function fakeStore(options: {
       if (!sealed) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "upload" } });
       polls += 1;
       if (options.neverDone || polls < 2) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "inspecting" } });
-      return json(200, { id: "pub-1", buildId: "build-1", state: options.finalState ?? "preview_ready", errorCode: options.errorCode ?? null });
+      if (named) donePolls += 1;
+      const settled = donePolls > (options.checkingPolls ?? 0);
+      const verifications = settled
+        ? options.checks ?? [{ id: "ver-1", platform: "ios", state: "ready", qualificationId: "qual-1" }]
+        : [{ id: "ver-1", platform: "ios", state: "checking" }];
+      return json(200, {
+        id: "pub-1",
+        buildId: "build-1",
+        state: options.finalState ?? "preview_ready",
+        errorCode: options.errorCode ?? null,
+        // The pack appears once the upload named it.
+        ...(named ? { clientPackage: { id: "pack-1", state: "uploaded", verifications } } : {}),
+      });
     }
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:source-upload`) {
       const size = Number((globalThis as any).__bundleSize);
@@ -82,12 +104,16 @@ function fakeStore(options: {
       });
     }
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:source-complete`) {
+      seals += 1;
+      if (seals <= (options.scanPendingSeals ?? 0)) return json(409, { error: { code: "malware_scan_pending", message: "The malware scan is still running." } });
       sealed = true;
       return json(200, {});
     }
     if (method === "POST" && url === `${STORE}/games/game-1/builds/build-1/client-packages`) {
+      named = true;
       return json(201, { package: { id: "pack-1" } });
     }
+    if (method === "GET" && url === `${STORE}/games/game-1/approval`) return json(200, options.approval ?? { gameId: "game-1", state: "PENDING", scope: "game-publication-v1" });
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:publish`) {
       return options.publishStatus === 409
         ? json(409, { error: { code: "deployment_not_actionable", message: "runtime approval pending" } })
@@ -221,16 +247,72 @@ describe("publishBuild", () => {
     expect(second.calls.some((call) => call.url.endsWith(":source-upload") || call.url.startsWith("https://r2.test/"))).toBe(false);
   });
 
-  it("publishes when asked, and says when the game still waits for review", async () => {
+  it("publishes when asked, and reports a platform hold as Summer's, never as a review to wait for", async () => {
     const approved = fakeStore();
     expect(
       await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(approved.fetch))
-    ).toMatchObject({ status: "published", published: true });
+    ).toMatchObject({ status: "published", published: true, checksState: "passed" });
 
-    const waiting = fakeStore({ publishStatus: 409 });
-    expect(
-      await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(waiting.fetch))
-    ).toMatchObject({ status: "uploaded", published: false, publishNote: expect.stringContaining("review") });
+    const held = fakeStore({ publishStatus: 409 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(held.fetch));
+    expect(result).toMatchObject({ status: "uploaded", published: false, hold: { by: "summer", approvalState: "PENDING" } });
+    const said = JSON.stringify(result);
+    expect(said).not.toMatch(/wait(s|ing)? for (the )?review|passed review|until Summer approves/i);
+  });
+
+  it("names Summer's decision and its feedback when the game was sent back", async () => {
+    const store = fakeStore({
+      publishStatus: 409,
+      approval: { gameId: "game-1", state: "REJECTED", latestReview: { decision: "CHANGES_REQUESTED", decidedBy: "staff", feedback: "Add real screenshots." } },
+    });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.hold).toMatchObject({ by: "summer_decision", feedback: "Add real screenshots." });
+  });
+
+  it("waits for the per-platform checks and reports each one", async () => {
+    const store = fakeStore({ checkingPolls: 2 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", checksState: "passed", checks: [{ platform: "ios", state: "passed" }] });
+    expect(String(result.next)).toContain("summer_go_live");
+  });
+
+  it("reports a failed platform check with its code and the fix, and does not publish", async () => {
+    const store = fakeStore({
+      checks: [
+        { id: "ver-1", platform: "ios", state: "ready", qualificationId: "qual-1" },
+        { id: "ver-2", platform: "android", state: "failed", errorCode: "package_not_verified", errorMessage: "main scene res://main.tscn did not open" },
+      ],
+    });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "checks_failed", checksState: "failed", published: false });
+    expect(result.checks).toContainEqual(expect.objectContaining({ platform: "android", state: "failed", code: "package_not_verified", owner: "creator", fix: expect.stringContaining("main scene") }));
+    expect(store.calls.some((call) => call.url.endsWith(":publish"))).toBe(false);
+  });
+
+  it("keeps waiting, then says to call again, while the checks run past the wait", async () => {
+    let clock = 0;
+    const store = fakeStore({ checkingPolls: Infinity });
+    const result = await publishBuild(
+      { gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, waitSeconds: 30, face: "mcp" },
+      deps(store.fetch, { now: () => clock, sleep: async (ms) => void (clock += ms) })
+    );
+    expect(result).toMatchObject({ status: "uploaded", checksState: "checking" });
+    expect(String(result.next)).toMatch(/call summer_publish_build again/i);
+  });
+
+  it("treats a running malware scan at seal time as a wait, not a failure", async () => {
+    const store = fakeStore({ scanPendingSeals: 2 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("uploaded");
+    expect(store.calls.filter((call) => call.url.endsWith(":source-complete")).length).toBe(3);
+  });
+
+  it("gives a creator-side fix for an intake failure the platform names", async () => {
+    const store = fakeStore({ finalState: "failed", errorCode: "engine_build_unreleased" });
+    const error = await failure(publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("engine_build_unreleased");
+    expect(error.recovery).toMatch(/released Summer Engine/);
+    expect(error.detail).toMatchObject({ failedCheck: { owner: "creator" } });
   });
 
   it("passes the store's reason for a refused sign-in through, and does not send people round a re-login loop", async () => {

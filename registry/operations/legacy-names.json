@@ -476,6 +476,11 @@
       "note": "",
       "op": "docs.workflows"
     },
+    "summer_go_live": {
+      "kind": "same",
+      "note": "local: releases the checked Build and publishes the store page over the creator store routes, then watches until live",
+      "op": "store.go_live"
+    },
     "summer_grep": {
       "kind": "keep",
       "note": "",
@@ -985,6 +990,11 @@
       "kind": "same",
       "note": "",
       "op": "store.set_bundles"
+    },
+    "summer_store_set_details": {
+      "kind": "same",
+      "note": "local: the store page sections store.update_listing does not edit (genres, features, credits, languages, requirements, content survey, AI disclosure)",
+      "op": "store.set_details"
     },
     "summer_store_set_sales": {
       "kind": "same",

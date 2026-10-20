@@ -66,7 +66,7 @@ In three short lines: what they have now, how to keep going, and one suggested n
 
 - Keep building: `/summer <what you want>` routes to the right skill (`make-game` for the full game loop, `brainstorm-game` to plan, `play` to test).
 - Assets: images, 3D models, sounds and music come from the Summer tools; generation spends Summer credits, so say what you will make and get an OK first.
-- Publishing: the `publish-your-game` skill. A store page starts as a draft, and nothing goes live until the owner clicks **Approve publishing** in Summer Studio and Summer reviews it.
+- Publishing: the `launch-ready` skill gathers the build, screenshots, store art and listing, then takes the game live once they say yes; `publish-your-game` has the steps. A store page starts as a draft, and a game goes live as soon as Summer's automated checks pass.
 
 ## Rules
 

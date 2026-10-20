@@ -2154,6 +2154,56 @@
       "recommended": true
     },
     {
+      "id": "skill/launch-ready",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "79c2ea3a6199b153789d430d055d8cdb530656860de3bc03237d8df7829757f2",
+      "summary": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
+      "use_when": [
+        "the user says 'get my game ready to launch', 'make my store page', 'publish my game to summer.games' or 'do everything it needs to go live'",
+        "the release checklist fails and the agent should fix it: upload the game, capture gameplay screenshots, make key art and icons, write the store text",
+        "filling a whole store page from the project itself: GameSoul and project memory, README, real gameplay captures",
+        "drafting the content rating, content questionnaire and AI disclosure from the project, for the creator to confirm before launch"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "docs",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/store-art",
+          "skill/store-listing",
+          "skill/publish-your-game",
+          "skill/release-readiness"
+        ],
+        "tools": [
+          "tool/export-game",
+          "tool/publish-build",
+          "tool/capture-gameplay",
+          "tool/store-set-details",
+          "tool/go-live",
+          "tool/get-project-context"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/lumera-single-image-scene-reconstruction",
       "kind": "skill",
       "version": "0.1.1",
@@ -2962,7 +3012,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "f84356d4133182f01563b85f9fe53bbc20e996b3e6b839360fc88d946f609e64",
+      "content_hash": "4df3b701521322da2214529969ef2fc38ddf5d463c43401e615942634a045a46",
       "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
@@ -3035,7 +3085,7 @@
       "id": "skill/release-checklist",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "57207b95a202e00579e46d73dcabca637546bde1a74dd2efb17dce77c1f46ca2",
+      "content_hash": "2f152075ba758a592d15773118d6dec2b2eb04839235b32a012ea121116b1ce0",
       "summary": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
       "use_when": [
         "the user says 'is it ready to go live', 'check everything before launch' or 'what is missing from my store page'",
@@ -3061,6 +3111,7 @@
       },
       "related": {
         "skills": [
+          "skill/launch-ready",
           "skill/release-readiness",
           "skill/publish-your-game",
           "skill/store-art",

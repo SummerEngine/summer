@@ -242,6 +242,12 @@ queries:
     expected: [tool/store-set-details, skill/release-checklist]
   - query: "make my uploaded game live for players now"
     expected: [tool/go-live, skill/publish-your-game]
+  - query: "get my game ready to launch"
+    expected: [skill/launch-ready]
+  - query: "make my store page"
+    expected: [skill/launch-ready, skill/store-listing, skill/store-art]
+  - query: "publish my game to summer.games"
+    expected: [skill/launch-ready, skill/publish-your-game]
   - query: "export a windows build I can send to my friend"
     expected: [skill/export-and-ship]
   - query: "test the game on my phone"

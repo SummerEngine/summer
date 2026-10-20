@@ -1,6 +1,6 @@
 # Summer skills
 
-> 131 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 132 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -16,7 +16,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [assets](#assets) (4)
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (2)
-- [creator](#creator) (6)
+- [creator](#creator) (7)
 - [debug](#debug) (1)
 - [deployment](#deployment) (3)
 - [editor](#editor) (1)
@@ -136,6 +136,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [grow-analytics](./grow-analytics/SKILL.md) | Read a creator's Summer Grow numbers (page views, launches, sessions, play time), compare windows. | deployment |
+| [*launch-ready*](./launch-ready/SKILL.md) (preview) (library only) | Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in. | deployment, assets |
 | [make-content](./make-content/SKILL.md) | Make a finished, postable video of your game, cut per platform and saved for review. | video |
 | [publish-your-game](./publish-your-game/SKILL.md) | Publish a game on Summer Games over MCP: store page, art, build upload, go live. | deployment |
 | [*release-checklist*](./release-checklist/SKILL.md) (preview) | Pre-launch check for Summer Games: export, upload checks, store art, listing fields. | deployment |

@@ -106,6 +106,8 @@ describe("library-only skills", () => {
       "skintokens-auto-rigging",
       // routed from make-game and new-project; the installed-description budget is full
       "painted-25d-world",
+      // routed from release-checklist, publish-your-game and /summer; same budget
+      "launch-ready",
     ];
     const registry = getSkillRegistry();
     expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());

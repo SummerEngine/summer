@@ -35,13 +35,15 @@ function fakeStore(options: {
   buildStatus?: string;
   /** The platform holds the launch: the page stays SUBMITTED and no release activates. */
   hold?: boolean;
-  pagePublish?: { status: number; code: string; missing?: string[] };
+  pagePublish?: { status: number; code: string; missing?: string[]; message?: string };
   live?: boolean;
   noBuild?: boolean;
   /** Client platforms the release leaves out (DroppedReleaseTarget), on the publish answer and the release read. */
   drop?: Array<Record<string, unknown>>;
   /** The platform refuses the release: "now" answers the publish with 409, "rollout" fails the deploy afterwards. */
   serverOnly?: "now" | "rollout";
+  /** The platform's message with that refusal; absent, it sends none. */
+  serverOnlyMessage?: string;
 } = {}) {
   const calls: Call[] = [];
   const page: Record<string, any> = {
@@ -98,11 +100,11 @@ function fakeStore(options: {
     }
     if (method === "POST" && url === `${ENV}/release-drafts`) return json(200, { id: "draft-1", revision: 2, gameId: "game-1", baseEnvironmentRevision: 7, targets: body.targets });
     if (method === "POST" && url === `${ENV}/release-drafts/draft-1:publish`) {
-      if (options.serverOnly === "now") return json(409, { error: { code: "playable_release_required", message: "no playable release" } });
+      if (options.serverOnly === "now") return json(409, { error: { code: "playable_release_required", ...(options.serverOnlyMessage ? { message: options.serverOnlyMessage } : {}), retryable: false } });
       const dropped = options.drop ?? [];
       if (options.serverOnly === "rollout") {
         // The deploy fails: the environment forgets the desired release, which keeps its failed rollout.
-        release = { id: "rel-1", status: "failed", targets: [], ...(options.drop ? { droppedTargets: dropped } : {}), rollout: { operationId: "op-release", kind: "release.deploy", state: "failed", errorCode: "playable_release_required" } };
+        release = { id: "rel-1", status: "failed", targets: [], ...(options.drop ? { droppedTargets: dropped } : {}), rollout: { operationId: "op-release", kind: "release.deploy", state: "failed", errorCode: "playable_release_required", ...(options.serverOnlyMessage ? { message: options.serverOnlyMessage } : {}) } };
         return json(202, { releaseId: "rel-1", operationId: "op-release", state: "pending", ...(options.drop ? { droppedTargets: dropped } : {}) });
       }
       environment.desiredReleaseId = "rel-1";
@@ -120,7 +122,7 @@ function fakeStore(options: {
       return json(202, { operationId: "op-release", releaseId: "rel-1", ...(options.drop ? { droppedTargets: dropped } : {}) });
     }
     if (method === "POST" && url === `${GAME}/revisions/rev-1:publish`) {
-      if (options.pagePublish) return json(options.pagePublish.status, { error: { code: options.pagePublish.code, message: "refused", ...(options.pagePublish.missing ? { missing: options.pagePublish.missing } : {}) } });
+      if (options.pagePublish) return json(options.pagePublish.status, { error: { code: options.pagePublish.code, message: options.pagePublish.message ?? "refused", ...(options.pagePublish.missing ? { missing: options.pagePublish.missing } : {}) } });
       page.state = options.hold ? "SUBMITTED" : "PUBLISHED";
       return json(202, { publicationId: "gp-1", state: options.hold ? "WAITING_VERIFICATION" : "ACTIVATED" });
     }
@@ -209,11 +211,21 @@ describe("goLive", () => {
     const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
     expect(result.status).toBe("blocked");
     expect(result.failures).toContainEqual(expect.objectContaining({ code: "playable_release_required", fix: expect.stringContaining("Upload a build that includes your game's apps so they can be checked against the new server.") }));
-    if (serverOnly === "rollout") expect(result.notIncluded).toEqual([expect.objectContaining({ platform: "ios", message: "iOS isn't included: select this build's iPhone app." })]);
+    if (serverOnly === "rollout") expect(result.notIncluded).toEqual([expect.objectContaining({ platform: "ios", message: "iOS isn't included: select this build's iPhone client." })]);
+  });
+
+  it.each(["now", "rollout"] as const)("passes on the platform's own words for a refused release (%s)", async (serverOnly) => {
+    const said = "These apps were built for a newer server than the live one. Publish the server too.";
+    const store = fakeStore({ hosted: true, serverOnly, serverOnlyMessage: said, drop: [{ target: "ios", buildId: "build-1", qualificationId: "q-ios", reason: "client_newer_than_server" }] });
+    const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("blocked");
+    expect(result.failures).toContainEqual(expect.objectContaining({ code: "playable_release_required", fix: expect.stringContaining(said) }));
+    expect(JSON.stringify(result)).not.toContain("Upload a build that includes");
   });
 
   it("asks for a build with the game's apps when the platform refuses the page for lack of a playable release", async () => {
-    const store = fakeStore({ noBuild: true, pagePublish: { status: 409, code: "playable_release_required" } });
+    // Without a message of its own, the refusal asks for a build with the apps.
+    const store = fakeStore({ noBuild: true, pagePublish: { status: 409, code: "playable_release_required", message: "" } });
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "blocked", failures: [expect.objectContaining({ code: "playable_release_required" })] });
     expect(String(result.next)).toContain("Upload a build that includes your game's apps so they can be checked against the new server.");

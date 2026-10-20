@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
 import { createStore, defaultDependencies, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
-import { droppedPlatforms, SERVER_ONLY_REFUSAL, type DroppedPlatform } from "./release-drops.js";
+import { droppedPlatforms, serverOnlyRefusal, type DroppedPlatform } from "./release-drops.js";
 import { describeFailure, summarizeChecks, type PlatformCheck } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
 
@@ -147,16 +147,21 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
 interface Requested {
   releaseId: string | null;
   dropped: DroppedPlatform[];
-  refused: boolean;
+  /** The platform refused the release; its message, when it gave one. */
+  refused: { message: string | null } | null;
 }
 
-const fresh = (): Requested => ({ releaseId: null, dropped: [], refused: false });
+const fresh = (): Requested => ({ releaseId: null, dropped: [], refused: null });
 
-/** A store page whose platforms the release cannot serve keeps the previous release: the creator uploads a build with the apps. */
-const serverOnlyFailure = () => ({
+/**
+ * A store page whose platforms the release cannot serve keeps the previous
+ * release. The platform's message says what to do (a build with the apps, or
+ * the server too); without one, the creator uploads a build with the apps.
+ */
+const serverOnlyFailure = (message?: unknown) => ({
   field: "build",
   code: "playable_release_required",
-  fix: `${SERVER_ONLY_REFUSAL} Export with the apps, upload with summer_publish_build, then call summer_go_live again (or set release stage coming_soon with store.update_listing).`,
+  fix: `${serverOnlyRefusal(message)} Then call summer_go_live again (or set release stage coming_soon with store.update_listing).`,
 });
 
 async function read(store: Store, gameId: string, publicationId: string | undefined, requested: Requested = fresh()): Promise<Snapshot> {
@@ -344,7 +349,7 @@ function blockers(snapshot: Snapshot): Array<Record<string, unknown>> {
     for (const check of releasable(build).held) out.push({ field: `build ${check.platform}`, ...check });
   }
   // The release go-live asked for was refused: the page lists only platforms it left out.
-  if (snapshot.pending?.rollout?.errorCode === "playable_release_required") out.push(serverOnlyFailure());
+  if (snapshot.pending?.rollout?.errorCode === "playable_release_required") out.push(serverOnlyFailure(snapshot.pending.rollout.message));
   for (const version of snapshot.versions.filter((row) => row.status === "rejected")) {
     out.push({ field: `download ${version.platform}`, code: "store_version_rejected", ...(version.reason ? { message: version.reason } : {}), fix: "Fix what the reason names, export the download again and upload it with summer_publish_build." });
   }
@@ -407,7 +412,7 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
     });
   } catch (error) {
     if (error instanceof BuildToolError && error.code === "playable_release_required") {
-      requested.refused = true;
+      requested.refused = { message: text(error.detail?.message) };
       return null;
     }
     throw error;
@@ -447,8 +452,8 @@ async function publishPage(store: Store, gameId: string, snapshot: Snapshot): Pr
         ok: true,
         status: "blocked",
         gameId,
-        failures: [serverOnlyFailure()],
-        next: `${SERVER_ONLY_REFUSAL} Then call summer_go_live again.`,
+        failures: [serverOnlyFailure(error.detail?.message)],
+        next: `${serverOnlyRefusal(error.detail?.message)} Then call summer_go_live again.`,
       };
     }
     throw error;
@@ -500,7 +505,7 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
     if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
     if (requested.refused) {
-      return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped }), failures: [serverOnlyFailure()], next: `${SERVER_ONLY_REFUSAL} Then call summer_go_live again.` };
+      return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
     }
     const refused = await publishPage(store, gameId, snapshot);
     if (refused) return { ...view(snapshot), ...refused };

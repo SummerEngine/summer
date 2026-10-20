@@ -15,29 +15,40 @@ export interface DroppedPlatform {
 }
 
 /** The platform's name, and what its app is called for players. */
-const NAMES: Record<string, { name: string; device: string; app: string }> = {
-  ios: { name: "iOS", device: "iPhone", app: "iPhone app" },
-  android: { name: "Android", device: "Android", app: "Android app" },
-  macos: { name: "macOS", device: "Mac", app: "Mac app" },
-  windows: { name: "Windows", device: "Windows", app: "Windows app" },
-  linux: { name: "Linux", device: "Linux", app: "Linux app" },
-  web: { name: "Web", device: "the web", app: "web build" },
+const NAMES: Record<string, { name: string; device: string }> = {
+  ios: { name: "iOS", device: "iPhone" },
+  android: { name: "Android", device: "Android" },
+  macos: { name: "macOS", device: "Mac" },
+  windows: { name: "Windows", device: "Windows" },
+  linux: { name: "Linux", device: "Linux" },
+  web: { name: "Web", device: "web" },
 };
 
 /** A store page that lists only dropped platforms keeps the previous release, refused with playable_release_required. */
 export const SERVER_ONLY_REFUSAL = "Upload a build that includes your game's apps so they can be checked against the new server.";
 
+/**
+ * What to tell the creator about a playable_release_required refusal: the
+ * platform's own message (it names the newer-server case), else the upload text.
+ */
+export function serverOnlyRefusal(message: unknown): string {
+  const said = typeof message === "string" ? message.trim() : "";
+  return said && said !== "playable_release_required" ? said : SERVER_ONLY_REFUSAL;
+}
+
 function messageOf(platform: string, reason: string): string {
-  const named = NAMES[platform] ?? { name: platform, device: platform, app: `${platform} app` };
+  const named = NAMES[platform] ?? { name: platform, device: platform };
   switch (reason) {
     case "client_check_failed":
       return `${named.name} isn't included: this build couldn't be checked for ${named.device}.`;
     case "client_check_pending":
-      return `${named.name} isn't included: its check is still running. Publish again to include ${named.name}.`;
+      return `${named.name} isn't included: this build's ${named.device} check is still running. Publish again when it finishes to include ${named.name}.`;
     case "client_not_checked":
-      return `${named.name} isn't included: this build has no ${named.app}.`;
+      return `${named.name} isn't included: this build has no ${named.device} client.`;
     case "client_other_build":
-      return `${named.name} isn't included: select this build's ${named.app}.`;
+      return `${named.name} isn't included: select this build's ${named.device} client.`;
+    case "client_newer_than_server":
+      return `${named.name} isn't included: it was built for a newer server than the live one. Publish the server too.`;
     default:
       return `${named.name} isn't included in this version.`;
   }

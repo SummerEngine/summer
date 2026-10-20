@@ -127,6 +127,10 @@ export function storeError(status: number, code: string, message: string | undef
   if (status === 404 && code === "not_found") {
     return new BuildToolError("store_not_found", "The Summer store has no such game, or this part of the store is not open for this account.", "Recovery: check gameId (Studio shows it in the store page URL).", status);
   }
+  if (code === "playable_release_required") {
+    // Every platform the store page lists is left out of the new server's release (SUM-1107); the message says why.
+    return new BuildToolError(code, message || "No platform the store page lists can be released.", "Recovery: upload a build with the game's apps, then publish again.", status, { ...(requestId ? { requestId } : {}), ...(message ? { message } : {}), ...detail });
+  }
   if (status === 503 || code === "store_unavailable") {
     return new BuildToolError("store_unavailable", message || "Summer Games is not reachable right now.", "Recovery: try again in a few minutes.", status);
   }

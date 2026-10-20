@@ -56,7 +56,7 @@ const INTAKE_FAILURES: Record<string, string> = {
     "Summer Games cannot run this Summer version yet. If you exported with the newest Summer Engine, Summer Games may still be turning that version on: retry the same upload later, there is nothing to update. With an older engine, update Summer Engine and export again.",
   client_version_conflict: "This version number already belongs to a different export. Use a new clientVersion.",
   artifact_exists: "This exact export is already uploaded for this game. Export a new version and upload that.",
-  approval_denied: "Summer Games declined this game, so it cannot take new builds.",
+  approval_denied: "This game was taken down, so it can't take new builds.",
   capacity_limit_reached: "Summer Games is busy right now. Try again in a few minutes.",
 };
 
@@ -498,31 +498,31 @@ async function sealWhenScanned(store: Store, publicationPath: string, key: strin
 }
 
 /**
- * Why the platform did not take a Build to players when asked: the Game's
- * approval state as the platform reports it. Staff review is becoming a
- * step after launch, so a pending review is reported as Summer's hold, not
- * as something the creator waits on or fixes.
+ * Why the platform did not take a Build to players when asked. A game goes
+ * live once its automated checks pass and Summer's staff review it afterwards
+ * (review after live): a staff hold or take-down is reported with what to do,
+ * anything else as Summer's own hold that needs nothing from the creator.
  */
 export async function platformHold(store: Store, gameId: string): Promise<Record<string, unknown>> {
-  let approval: Record<string, any> = {};
+  let review: Record<string, any> | null = null;
   try {
-    approval = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`);
+    review = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/review`);
   } catch {
-    // The hold is still reported without the approval state.
+    // A platform before review after live, or a failed read: the hold is still reported.
   }
-  const state = typeof approval.state === "string" ? approval.state : "unknown";
-  const review = approval.latestReview && typeof approval.latestReview === "object" ? approval.latestReview : null;
-  if (state === "REJECTED" || state === "REVOKED" || review?.decision === "CHANGES_REQUESTED") {
+  if (review?.takenDown === true) {
+    return { by: "summer_decision", review: "taken_down", message: "Summer took this game down: players can't find or play it. Contact Summer support to have it restored.", ...(review.message ? { feedback: review.message } : {}) };
+  }
+  if (review?.outcome === "rejected") {
     return {
       by: "summer_decision",
-      approvalState: state,
-      ...(review ? { decision: review.decision, decidedBy: review.decidedBy ?? null, feedback: review.feedback || null } : {}),
-      message: "Summer decided against this game going live as it is. Apply the feedback (store.status shows it in full), then publish again.",
+      review: "on_hold",
+      ...(review.message ? { feedback: review.message } : {}),
+      message: "Summer reviewed this game and put it on hold until the changes in feedback are made. Make them on the store page, then publish it again; a new build alone does not lift the hold.",
     };
   }
   return {
     by: "summer",
-    approvalState: state,
     message:
       "Every automated check is done; the platform has not released this game's builds yet. That is on Summer's side and needs nothing from you. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
   };

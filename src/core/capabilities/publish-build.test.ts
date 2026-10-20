@@ -37,7 +37,8 @@ function fakeStore(options: {
   checkingPolls?: number;
   /** Answers to :source-complete with 409 malware_scan_pending this many times first. */
   scanPendingSeals?: number;
-  approval?: Record<string, unknown>;
+  /** Summer's review after live (GET games/{g}/review); absent answers 404, as a platform before it. */
+  review?: Record<string, unknown>;
 } = {}) {
   const calls: Call[] = [];
   const parts = new Map<number, Buffer>();
@@ -113,7 +114,7 @@ function fakeStore(options: {
       named = true;
       return json(201, { package: { id: "pack-1" } });
     }
-    if (method === "GET" && url === `${STORE}/games/game-1/approval`) return json(200, options.approval ?? { gameId: "game-1", state: "PENDING", scope: "game-publication-v1" });
+    if (method === "GET" && url === `${STORE}/games/game-1/review`) return options.review ? json(200, options.review) : json(404, { error: { code: "not_found" } });
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:publish`) {
       return options.publishStatus === 409
         ? json(409, { error: { code: "deployment_not_actionable", message: "runtime approval pending" } })
@@ -255,18 +256,19 @@ describe("publishBuild", () => {
 
     const held = fakeStore({ publishStatus: 409 });
     const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(held.fetch));
-    expect(result).toMatchObject({ status: "uploaded", published: false, hold: { by: "summer", approvalState: "PENDING" } });
+    expect(result).toMatchObject({ status: "uploaded", published: false, hold: { by: "summer" } });
     const said = JSON.stringify(result);
     expect(said).not.toMatch(/wait(s|ing)? for (the )?review|passed review|until Summer approves/i);
   });
 
-  it("names Summer's decision and its feedback when the game was sent back", async () => {
+  it("names the changes Summer asked for when staff put the live game on hold", async () => {
     const store = fakeStore({
       publishStatus: 409,
-      approval: { gameId: "game-1", state: "REJECTED", latestReview: { decision: "CHANGES_REQUESTED", decidedBy: "staff", feedback: "Add real screenshots." } },
+      review: { gameId: "game-1", outcome: "rejected", takenDown: false, message: "Add real screenshots.", reviewedRevisionId: "rev-1" },
     });
     const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
-    expect(result.hold).toMatchObject({ by: "summer_decision", feedback: "Add real screenshots." });
+    expect(result.hold).toMatchObject({ by: "summer_decision", review: "on_hold", feedback: "Add real screenshots." });
+    expect(String((result.hold as Record<string, unknown>).message)).toMatch(/new build alone does not/);
   });
 
   it("waits for the per-platform checks and reports each one", async () => {

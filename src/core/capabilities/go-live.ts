@@ -10,7 +10,7 @@ import { BuildToolError } from "./summer-bundle.js";
  * store routes Studio uses (PSE /api/creator-store/* -> /v1/management/*),
  * then watch until players get it or a check fails.
  *
- *   GET  games/{g}, games/{g}/revisions, games/{g}/approval      the page and Summer's decision
+ *   GET  games/{g}, games/{g}/revisions, games/{g}/review        the page and Summer's review
  *   GET  games/{g}/build-publications, store/versions             the uploads and their checks
  *   GET  games/{g}/environments/env_production (+ releases/{id})  what players get now
  *   POST build-publications/{p}:publish                           a preview Build, made ready for players
@@ -20,11 +20,12 @@ import { BuildToolError } from "./summer-bundle.js";
  * An agent credential may call the three :publish actions without an owner
  * approval while the person's Agent permissions allow Publish (the platform
  * default; summer-platform internal/management/agent_gate.go). The platform
- * still runs every automated check, and today it holds a game's first launch
- * for Summer's review; that hold is reported as Summer's, never as a step the
- * creator waits on or fixes, because staff review is becoming a step after
- * launch. Calling again continues: the same idempotency keys replay what was
- * already asked, so nothing is requested twice.
+ * runs every automated check, and a game goes live as soon as they pass:
+ * Summer's staff review it afterwards (review after live). A staff hold is
+ * reported with what to change; a platform hold is reported as Summer's, never
+ * as a step the creator waits on. Calling again continues: the same
+ * idempotency keys replay what was already asked, so nothing is requested
+ * twice.
  */
 
 const ENVIRONMENT = "env_production";
@@ -86,6 +87,8 @@ interface Snapshot {
   game: Record<string, any>;
   page: PageState | null;
   approval: Record<string, any> | null;
+  /** Summer staff's review after live (GET games/{g}/review); null on a platform that predates it. */
+  review: Record<string, any> | null;
   build: BuildState | null;
   environment: Record<string, any> | null;
   release: Record<string, any> | null;
@@ -135,9 +138,10 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
 
 async function read(store: Store, gameId: string, publicationId: string | undefined): Promise<Snapshot> {
   const game = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}`);
-  const [revisions, approval, publications, versions, environment] = await Promise.all([
+  const [revisions, approval, review, publications, versions, environment] = await Promise.all([
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/revisions?limit=20`),
     optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/approval`)),
+    optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/review`)),
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/build-publications`),
     optional(() => store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/store/versions`)),
     optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/environments/${ENVIRONMENT}`)),
@@ -179,7 +183,7 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
     status: String(item.status ?? ""),
     ...(text(item.rejectionReason) ? { reason: String(item.rejectionReason) } : {}),
   }));
-  return { game, page, approval, build, environment, release, versions: versionRows };
+  return { game, page, approval, review, build, environment, release, versions: versionRows };
 }
 
 /** What the platform is waiting on, said so an agent never tells a creator to wait for a review. */
@@ -189,8 +193,28 @@ function summerHold(approval: Record<string, any> | null): Record<string, unknow
     by: "summer",
     approvalState: state,
     message:
-      "Every automated check passed. The platform still holds a game's first launch on Summer's side; there is nothing to fix and nothing to ask for. " +
-      "This request stays in place and goes live by itself once the platform releases it (Summer's review is becoming a step after launch).",
+      "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
+      "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
+  };
+}
+
+/**
+ * Summer staff put the live game on hold after reviewing it and asked for
+ * changes. Only a newer store page published now lifts the hold, so this is
+ * reported while the newest page is the one staff reviewed; once the creator
+ * has made a newer draft, go-live publishes it.
+ */
+function onHold(snapshot: Snapshot): GoLiveResult | null {
+  const review = snapshot.review;
+  if (review?.outcome !== "rejected" || !snapshot.page || snapshot.page.revisionId !== review.reviewedRevisionId) return null;
+  return {
+    ok: true,
+    status: "on_hold",
+    ...view(snapshot),
+    review: { outcome: "rejected", message: text(review.message) },
+    next: text(review.message)
+      ? "Summer reviewed this live game and put it on hold until these changes are made: review.message. Make them with store.update_listing (a new draft), then call summer_go_live again; publishing the newer store page lifts the hold. A new build alone does not."
+      : "Summer reviewed this live game and put it on hold without a written note: tell the owner and ask what to change; then edit with store.update_listing and call summer_go_live again.",
   };
 }
 
@@ -205,7 +229,7 @@ function sentBack(snapshot: Snapshot): GoLiveResult | null {
     decision: review ? { decision: review.decision ?? null, decidedBy: review.decidedBy ?? null, feedback: text(review.feedback) } : null,
     next: text(review?.feedback)
       ? "Fix every point in decision.feedback with store.update_listing (it starts a new draft), then call summer_go_live again."
-      : "Summer sent the page back without written feedback: tell the owner and ask what to change; then edit with store.update_listing and call summer_go_live again.",
+      : "Summer's automatic checks found a problem with this store page: read store.status for what failed, fix it with store.update_listing, then call summer_go_live again.",
   };
 }
 
@@ -233,6 +257,7 @@ function view(snapshot: Snapshot) {
       : null,
     downloads: snapshot.versions,
     approvalState: text(snapshot.approval?.state),
+    review: snapshot.review ? { outcome: text(snapshot.review.outcome), takenDown: snapshot.review.takenDown === true } : null,
   };
 }
 
@@ -246,6 +271,9 @@ function isLive(snapshot: Snapshot): boolean {
 /** Refusals no publish call can get past: each is a fix for the creator. */
 function blockers(snapshot: Snapshot): Array<Record<string, unknown>> {
   const out: Array<Record<string, unknown>> = [];
+  if (snapshot.review?.takenDown === true) {
+    out.push({ field: "game", code: "taken_down", ...(text(snapshot.review.message) ? { message: snapshot.review.message } : {}), fix: "Summer took this game down: players can't find or play it. Your builds and private versions are kept. Read the message, and contact Summer support to have it restored." });
+  }
   if (!snapshot.page) out.push({ field: "store page", fix: "This game has no store page yet: create it with games.create, or fill it with store.update_listing." });
   for (const problem of snapshot.page?.problems ?? []) out.push(problem);
   const build = snapshot.build;
@@ -362,6 +390,8 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
   const deadline = deps.now() + Math.min(Math.max(input.waitSeconds ?? DEFAULT_WAIT_SECONDS, 0), 1800) * 1000;
   let snapshot = await read(store, gameId, input.publicationId);
 
+  const held = onHold(snapshot);
+  if (held) return held;
   const back = sentBack(snapshot);
   if (back) return back;
   if (isLive(snapshot)) return { ok: true, status: "live", ...view(snapshot), next: "Players get it now. Confirm it as a player on summer.games and in the Summer Games apps." };
@@ -405,6 +435,8 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
   // Watch until players get it, a check fails or the wait ends.
   for (;;) {
     snapshot = await read(store, gameId, snapshot.build?.publicationId);
+    const stillHeld = onHold(snapshot);
+    if (stillHeld) return stillHeld;
     const again = sentBack(snapshot);
     if (again) return again;
     if (isLive(snapshot)) {
@@ -425,14 +457,16 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (deps.now() >= deadline) break;
     await deps.sleep(POLL_MS);
   }
-  const approved = text(snapshot.approval?.state) === "APPROVED";
+  // A platform that predates review after live may still hold a first launch
+  // for its Game approval; that hold is Summer's.
+  const approved = snapshot.review !== null || text(snapshot.approval?.state) === "APPROVED";
   return {
     ok: true,
     status: "waiting",
-    waitingOn: approved ? "activation" : "summer",
+    waitingOn: approved && !hold ? "activation" : "summer",
     ...view(snapshot),
-    ...(approved ? {} : { hold: hold ?? summerHold(snapshot.approval) }),
-    next: approved
+    ...(approved && !hold ? {} : { hold: hold ?? summerHold(snapshot.approval) }),
+    next: approved && !hold
       ? "The platform is activating it. Call summer_go_live again with confirm=true to keep watching; nothing is asked twice."
       : "Nothing to fix. Call summer_go_live again with confirm=true to keep watching; it reports the moment players get it.",
   };

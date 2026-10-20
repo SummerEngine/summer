@@ -63,7 +63,7 @@ With Summer installed, your agent can:
 - **Build real games**: scenes, scripts, physics and UI, through live MCP tools.
 - **Build multiplayer games** on Summer's own networking: matchmaking, parties, leaderboards, player data and world saves.
 - **Add analytics** to the game and read it back: store page views, launches, play sessions, play time and your own events.
-- **Publish games** to the [summer.games](https://summer.games) store: the store page, art, the build, a private preview link and the release. Summer's store review runs before anything goes live.
+- **Publish games** to the [summer.games](https://summer.games) store: the store page, art, the build, a private preview link and the release. Summer's automatic checks run before anything goes live; staff review games afterwards.
 - **Use proven recipes**: skills, templates and references, all searchable through one index.
 - **Check its own work**: play the game, take screenshots, read the debugger, press real keys.
 - **Resume any project**: `.summer/` project memory lets a fresh agent pick up where the last one stopped.
@@ -76,7 +76,7 @@ Studio > Settings > Agent permissions has six switches. They apply to every app 
 |---|---|---|
 | Make and build | on | Edit drafts, scenes, plans and uploads, and start builds. |
 | Spend credits | on | Generate assets and run paid builds, within your credits and your auto top-up limit. |
-| Publish | on | Publish store pages, versions and releases. Summer's store review still runs first. |
+| Publish | on | Publish store pages, versions and releases. Summer's automatic checks still run first. |
 | Prices and live changes | on | Change prices and sales, start or stop A/B tests, change member roles. |
 | Delete for good | off: asks | Delete games, assets, pages and releases. |
 | Contact people | off: asks | Send invites and other emails to real people. |
@@ -305,7 +305,7 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `store.upload_file` uploads it after you confirm the exact game, file and version. `store.update_listing`, `store.set_art` and `store.set_trailer` write the store page (text, tags, long description, support contact, release date, art, trailer); `store.preview_link` makes a private preview link; `store.publish` sends the game to Summer's store review; `store.status` shows the review and the releases; `store.release` ships an approved build. With the Publish switch off, the agent asks you first. |
+| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `store.upload_file` uploads it after you confirm the exact game, file and version. `store.update_listing`, `store.set_art` and `store.set_trailer` write the store page (text, tags, long description, support contact, release date, art, trailer); `store.preview_link` makes a private preview link; `store.publish` publishes the store page, live as soon as the automatic checks pass; `store.status` shows whether the game is live, its releases, and any note from Summer's review afterwards; `store.release` ships a checked build. With the Publish switch off, the agent asks you first. |
 | **Grow** | Available | `analytics.overview` and `analytics.summary` read store page views, launches, play sessions, play time and your game's own events (see the `summer-analytics` skill). `pricing.*` sets prices, country prices and sales; `experiments.*` runs store page A/B tests; `games.members` and the member operations manage who works on a game; `marketing.*` applies for Summer's growth services. |
 
 These are operations on the hosted Summer server; the local server runs them too after `summer login`.

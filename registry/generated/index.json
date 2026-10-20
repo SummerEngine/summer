@@ -459,7 +459,7 @@
       "id": "skill/animated-loop",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "a77ed069c8772941291f9feafce5bbc98ba06c0ae98b62ea905b8743608a660c",
+      "content_hash": "2b68856274c9e1b0a844b33a657e93bcf580f9c581b7666583c9b728dadce173",
       "summary": "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -1087,7 +1087,7 @@
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "ae5548277796e5feec36b997ad6fab7da25f5c5181c507721ba48cf6c1d3e9b8",
+      "content_hash": "3d7d48b3e15a4017599158accc46189f88bb02a9f297bb34390fd6b447d02ad4",
       "summary": "Generate a non-interactive cutscene: a reference-locked 5-10s video shot with optional voiced dialogue.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
@@ -4470,7 +4470,7 @@
       "id": "skill/trailer-shot",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "209654629eb54452128b954e07273623a67ba06b425b5db56fe259d9324d3d54",
+      "content_hash": "dd2855fb1e8f28db398d72ffbd727da08ac8c9bd86fcdde43a87f9f209964d32",
       "summary": "Generate trailer footage: slow-mo combat, establishing shots, hero beats, splash screens, 5-10 seconds.",
       "use_when": [
         "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll",
@@ -8225,12 +8225,13 @@
       "id": "tool/import-from-url",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "bfdfd497aba3d2513e041391028294510d2959bed94a4ad379c9246b6e0ad663",
+      "content_hash": "cc195ff6219a1c9da32aaa4db9c1bf3550e608e4a46c19ac1188fd5c9f40c214",
       "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
         "\"grab this .glb from the link and add it to my project\"",
-        "\"download this texture from the web into res://\""
+        "\"download this texture from the web into res://\"",
+        "importing a video (.mp4, .mov, .webm) - it is converted to Ogg Theora (.ogv), the one video Summer Engine plays"
       ],
       "facets": {
         "lifecycle": [
@@ -8259,7 +8260,7 @@
       "id": "tool/import-from-url-batch",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "f9537f4cc763cda04468622de95449b9eba54b54d7b06b600eed8c27e707ed53",
+      "content_hash": "0acf3a0be036c3b63793d907bdcf7cdf1fc86564f585a53b753ec70f24589968",
       "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",

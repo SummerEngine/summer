@@ -6,6 +6,7 @@ import { BlockList, isIP } from "node:net";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Answer } from "./contract.js";
+import { cloudinaryOgvUrl, isConvertibleVideo } from "../capabilities/video-ogv.js";
 
 type Done = Extract<Answer, { status: "done" }>;
 
@@ -50,7 +51,7 @@ const DOWNLOAD_TIMEOUT_MS = 120_000;
 export const MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 /** The file types a save writes: media and models, never code or a library a game engine would load. */
-const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp3", ".wav", ".ogg", ".mp4", ".webm", ".glb", ".gltf", ".fbx", ".obj"]);
+const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp3", ".wav", ".ogg", ".mp4", ".webm", ".ogv", ".glb", ".gltf", ".fbx", ".obj"]);
 const EXTENSIONS: Record<string, string> = {
   "image/png": ".png",
   "image/jpeg": ".jpg",
@@ -63,6 +64,7 @@ const EXTENSIONS: Record<string, string> = {
   "audio/ogg": ".ogg",
   "video/mp4": ".mp4",
   "video/webm": ".webm",
+  "video/ogg": ".ogv",
   "model/gltf-binary": ".glb",
   "model/gltf+json": ".gltf",
 };
@@ -125,6 +127,12 @@ function holdersOf(result: unknown): Record<string, unknown>[] {
   if (!record) return [];
   const list = [...(Array.isArray(record.assets) ? record.assets : []), record.asset, record];
   return list.map(asRecord).filter((holder): holder is Record<string, unknown> => holder !== null && urlOf(holder) !== undefined);
+}
+
+/** A video file Summer Engine cannot load as is (mime type, file name or URL). */
+function isVideoHolder(holder: Record<string, unknown>, url: string): boolean {
+  if (text(holder.mimeType)?.toLowerCase().startsWith("video/")) return true;
+  return [text(holder.fileName), url].some((name) => name !== undefined && isConvertibleVideo({ url: name }));
 }
 
 function withWarnings(answer: Answer, warnings: string[]): Answer {
@@ -301,18 +309,23 @@ export class FileSaver {
     if ("error" in target) return withWarnings(answer, [target.error]);
     const copy = structuredClone(answer);
     const warnings: string[] = [];
+    // Summer Engine plays video only as Ogg Theora: in a Godot project a stored video saves as its .ogv rendition.
+    const godot = (await findGameProject(target.dir))?.engine === "godot";
     // With out the caller asked for a copy there; without it, a file this session already saved is reused.
     const saved = out ? new Map<string, string>() : this.defaultSaves;
     let first = true;
     for (const holder of holdersOf(resultOf(copy))) {
-      const url = urlOf(holder)!;
+      const original = urlOf(holder)!;
+      const ogv = godot && isVideoHolder(holder, original) ? cloudinaryOgvUrl(text(holder.fileUrl) ?? original) : null;
+      const url = ogv ?? original;
       const known = saved.get(url);
       if (known && (await isFile(known))) {
         holder.localPath = known;
         continue;
       }
       try {
-        const path = await this.download(url, holder, target, first, warnings);
+        const path = await this.download(url, holder, target, first, warnings, ogv ? ".ogv" : undefined);
+        if (ogv) warnings.push(`Saved as ${path}: Summer Engine plays video only as Ogg Theora (.ogv).`);
         first = false;
         saved.set(url, path);
         holder.localPath = path;
@@ -351,15 +364,15 @@ export class FileSaver {
   }
 
   /** Download one file into the target under a free name; notes what changed from the caller's file name. */
-  private async download(url: string, holder: Record<string, unknown>, target: Target, first: boolean, warnings: string[]): Promise<string> {
+  private async download(url: string, holder: Record<string, unknown>, target: Target, first: boolean, warnings: string[], forcedExt?: string): Promise<string> {
     const { temp, finalUrl, contentType } = await this.fetchToTemp(url, target.dir);
     try {
-      const detected = allowed(extname(text(holder.fileName) ?? "")) ?? allowed(extname(finalUrl.pathname)) ?? EXTENSIONS[contentType ?? ""] ?? EXTENSIONS[text(holder.mimeType) ?? ""] ?? ".bin";
+      const detected = forcedExt ?? allowed(extname(text(holder.fileName) ?? "")) ?? allowed(extname(finalUrl.pathname)) ?? EXTENSIONS[contentType ?? ""] ?? EXTENSIONS[text(holder.mimeType) ?? ""] ?? ".bin";
       if (target.file) {
         const asked = extname(target.file);
-        const ext = allowed(asked) ?? detected;
+        const ext = forcedExt ?? allowed(asked) ?? detected;
         const path = await claimName(temp, target.dir, basename(target.file, asked), ext);
-        const wanted = join(target.dir, target.file);
+        const wanted = join(target.dir, forcedExt ? `${basename(target.file, asked)}${forcedExt}` : target.file);
         if (first && path !== wanted) {
           warnings.push(allowed(asked) ? `${wanted} already exists, so the file was saved as ${path}.` : `out: ${asked || "no extension"} is not a media or model file type, so the file was saved as ${path}.`);
         }
@@ -373,45 +386,53 @@ export class FileSaver {
     }
   }
 
-  /** The file in a hidden temp file in `dir` (engines skip dot files), from a public https host, within the size limit. */
-  private async fetchToTemp(url: string, dir: string): Promise<{ temp: string; finalUrl: URL; contentType?: string }> {
-    const lookupHost = this.options.lookup ?? lookupAll;
-    const fetchFile = this.options.fetch ?? fetch;
-    let current = await publicHttps(url, lookupHost);
-    let response: Response;
-    for (let hops = 0; ; hops++) {
-      response = await fetchFile(current.href, { redirect: "manual", signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
-      const location = response.headers.get("location");
-      if (response.status < 300 || response.status >= 400 || !location) break;
-      await response.body?.cancel().catch(() => undefined);
-      if (hops >= MAX_REDIRECTS) throw new Error("the download redirected too many times");
-      current = await publicHttps(new URL(location, current).href, lookupHost);
-    }
-    if (!response.ok) throw new Error(`the download answered HTTP ${response.status}`);
-    if (response.url) current = await publicHttps(response.url, lookupHost);
-    const maxBytes = this.options.maxBytes ?? MAX_DOWNLOAD_BYTES;
-    const limit = maxBytes >= 1024 * 1024 ? `${Math.floor(maxBytes / 1024 / 1024)} MB` : `${maxBytes} bytes`;
-    if (Number(response.headers.get("content-length") ?? 0) > maxBytes) throw new Error(`the file is larger than ${limit}`);
-    await mkdir(dir, { recursive: true });
-    const temp = join(dir, `.summer-download-${randomBytes(6).toString("hex")}.part`);
-    const handle = await open(temp, "wx");
-    try {
-      let size = 0;
-      if (response.body) {
-        for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
-          size += chunk.byteLength;
-          if (size > maxBytes) throw new Error(`the file is larger than ${limit}`);
-          await handle.write(chunk);
-        }
-      }
-      await handle.close();
-    } catch (error) {
-      await handle.close().catch(() => undefined);
-      await unlink(temp).catch(() => undefined);
-      throw error;
-    }
-    return { temp, finalUrl: current, contentType: response.headers.get("content-type")?.split(";")[0].trim() };
+  private fetchToTemp(url: string, dir: string): Promise<{ temp: string; finalUrl: URL; contentType?: string }> {
+    return fetchPublicToTemp(url, dir, this.options);
   }
+}
+
+/** The file in a hidden temp file in `dir` (engines skip dot files), from a public https host, within the size limit. */
+export async function fetchPublicToTemp(
+  url: string,
+  dir: string,
+  options: Pick<FileSaverOptions, "fetch" | "lookup" | "maxBytes"> = {}
+): Promise<{ temp: string; finalUrl: URL; contentType?: string }> {
+  const lookupHost = options.lookup ?? lookupAll;
+  const fetchFile = options.fetch ?? fetch;
+  let current = await publicHttps(url, lookupHost);
+  let response: Response;
+  for (let hops = 0; ; hops++) {
+    response = await fetchFile(current.href, { redirect: "manual", signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+    const location = response.headers.get("location");
+    if (response.status < 300 || response.status >= 400 || !location) break;
+    await response.body?.cancel().catch(() => undefined);
+    if (hops >= MAX_REDIRECTS) throw new Error("the download redirected too many times");
+    current = await publicHttps(new URL(location, current).href, lookupHost);
+  }
+  if (!response.ok) throw new Error(`the download answered HTTP ${response.status}`);
+  if (response.url) current = await publicHttps(response.url, lookupHost);
+  const maxBytes = options.maxBytes ?? MAX_DOWNLOAD_BYTES;
+  const limit = maxBytes >= 1024 * 1024 ? `${Math.floor(maxBytes / 1024 / 1024)} MB` : `${maxBytes} bytes`;
+  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) throw new Error(`the file is larger than ${limit}`);
+  await mkdir(dir, { recursive: true });
+  const temp = join(dir, `.summer-download-${randomBytes(6).toString("hex")}.part`);
+  const handle = await open(temp, "wx");
+  try {
+    let size = 0;
+    if (response.body) {
+      for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+        size += chunk.byteLength;
+        if (size > maxBytes) throw new Error(`the file is larger than ${limit}`);
+        await handle.write(chunk);
+      }
+    }
+    await handle.close();
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await unlink(temp).catch(() => undefined);
+    throw error;
+  }
+  return { temp, finalUrl: current, contentType: response.headers.get("content-type")?.split(";")[0].trim() };
 }
 
 /** ops.describe of an operation that takes `out`: its input shows `out` too. */

@@ -101,6 +101,21 @@ describe("out", () => {
     expect(assetsOf(godot)[0].localPath).toBe(join(root, "ui", "icon.png"));
   });
 
+  it("saves a stored video as its .ogv rendition in a Godot project, and as is elsewhere", async () => {
+    const clip = "https://res.cloudinary.com/summer/video/upload/v1/summer_art/u_clip_1.mp4";
+    const video = { asset: { assetId: "v1", title: "Title loop", fileUrl: clip, fileName: "clip.mp4", mimeType: "video/mp4" } };
+    const elsewhere = saver({ fetch: fakeFetch({ [clip]: { type: "video/mp4" } }) });
+    const plain = await elsewhere.finish("assets.generate_video", done(video), "clips/");
+    expect((plain as { result: { asset: { localPath: string } } }).result.asset.localPath).toBe(join(root, "clips", "clip.mp4"));
+
+    await writeFile(join(root, "project.godot"), "");
+    const fetch = fakeFetch({ [clip]: { type: "video/mp4" } });
+    const godot = await saver({ fetch }).finish("assets.generate_video", done(video), "res://ui/title_bg.mp4");
+    expect((godot as { result: { asset: { localPath: string } } }).result.asset.localPath).toBe(join(root, "ui", "title_bg.ogv"));
+    expect(String(fetch.mock.calls[0]![0])).toBe("https://res.cloudinary.com/summer/video/upload/c_limit,h_1080,w_1920/v1/summer_art/u_clip_1.ogv");
+    expect(warningsOf(godot).join(" ")).toContain("Ogg Theora");
+  });
+
   it("reads assets.get's downloadUrl and file name", async () => {
     const fetch = fakeFetch();
     const answer = await saver({ fetch }).finish(

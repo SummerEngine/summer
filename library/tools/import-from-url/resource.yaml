@@ -6,6 +6,7 @@ use_when:
   - importing a model, texture, or audio file from an external URL
   - '"grab this .glb from the link and add it to my project"'
   - '"download this texture from the web into res://"'
+  - importing a video (.mp4, .mov, .webm) - it is converted to Ogg Theora (.ogv), the one video Summer Engine plays
 do_not_use_when:
   - several files at once — summer_import_from_url_batch
   - searching the Summer library instead of a known URL — summer_import_asset

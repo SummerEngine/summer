@@ -45,6 +45,7 @@ import {
   waitForEventArgsSchema,
 } from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
+import { importUrls, type ImportEntry } from "./video-ogv.js";
 import {
   executeSceneMutation,
   occurrenceCount,
@@ -1530,17 +1531,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
   }),
   entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
-    const op: DispatchArgs = { op: "ImportFromUrl", url: str(args, "url") };
-    if (optStr(args, "path")) op.path = args.path;
-    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    const path = optStr(args, "path");
+    return requireEngineSuccess(await importUrls(await ctx.engine(), [{ url: str(args, "url"), ...(path ? { path } : {}) }], { batch: false }));
   }),
   entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
     if (!Array.isArray(args.imports)) {
       throw new ToolDispatchError("imports must be an array of {url, path} objects");
     }
-    return requireEngineSuccess(
-      await (await ctx.engine()).executeOps([{ op: "ImportFromUrlBatch", imports: args.imports }])
-    );
+    return requireEngineSuccess(await importUrls(await ctx.engine(), args.imports as ImportEntry[], { batch: true }));
   }),
 
   // --- scene ---

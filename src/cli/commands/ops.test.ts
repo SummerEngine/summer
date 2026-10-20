@@ -289,7 +289,7 @@ describe("summer ops search and describe signed out", () => {
   it("lists cloud operations from the shipped catalog, marked needs sign-in", async () => {
     const d = signedOut();
     await searchFromCli("publish my game", { limit: 3, json: false }, d);
-    expect(d.out[0]).toMatch(/^store\.publish\s+publish\s+Ask the owner to publish {2}\(needs sign-in\)$/);
+    expect(d.out[0]).toMatch(/^store\.publish\s+publish\s+Publish the game {2}\(needs sign-in\)$/);
     expect(d.err[0]).toMatch(/^Not signed in/);
   });
 

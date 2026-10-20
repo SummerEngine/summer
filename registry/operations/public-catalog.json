@@ -36537,7 +36537,7 @@
             "type": "string"
           },
           "page": {
-            "description": "The newest store page version; editing a published or sent-back page starts a new draft.",
+            "description": "The newest store page version; editing any page that is not a draft starts a new draft.",
             "anyOf": [
               {
                 "type": "object",
@@ -36914,8 +36914,8 @@
     },
     {
       "name": "store.publish",
-      "title": "Ask the owner to publish",
-      "summary": "Ask the owner to publish the store page draft with a build and price. Checks the publish checklist first. Never publishes alone: answers an approval link for the owner and a job. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
+      "title": "Publish the game",
+      "summary": "Publish the store page with a build and price: live once the automatic checks pass, never waiting on staff. Publishes now (a job) when the person's Agent permissions allow; else answers the owner's approval link. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -36962,7 +36962,7 @@
             ]
           },
           "note": {
-            "description": "A short note for the owner: what changed and why.",
+            "description": "A short note for the owner, shown when they are asked to approve: what changed and why.",
             "type": "string",
             "maxLength": 500
           },
@@ -37017,7 +37017,6 @@
         "go live",
         "launch",
         "release",
-        "review",
         "approval"
       ],
       "examples": [
@@ -37030,14 +37029,14 @@
             },
             "note": "First release."
           },
-          "note": "Ask the owner to publish at $4.99."
+          "note": "Publish at $4.99."
         }
       ]
     },
     {
       "name": "store.release",
-      "title": "Release the approved build",
-      "summary": "Release the bundle build the owner approved with store.publish to players, once Summer approved the game. Answers a job while it goes live (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
+      "title": "Release a build",
+      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. Never waits on staff, except a build asking for internet access. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -37058,6 +37057,12 @@
             "description": "From games.list.",
             "type": "string",
             "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "uploadId": {
+            "description": "The bundle build (b.) from store.status; by default the one the owner approved, else the newest ready one.",
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 140
           },
           "dryRun": {
             "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
@@ -37135,7 +37140,7 @@
           "input": {
             "gameId": "g_123"
           },
-          "note": "Ship the build the owner approved."
+          "note": "Ship the newest ready build."
         }
       ]
     },
@@ -37219,8 +37224,8 @@
     },
     {
       "name": "store.remove_file",
-      "title": "Remove a file kept for review",
-      "summary": "Remove a file that was kept privately for Summer review (store.status files): it leaves the list, and no build uses it. Asks the person first. Next: store.status.",
+      "title": "Remove a file kept privately",
+      "summary": "Remove a file that was kept privately (store.status files): it leaves the list, and no build uses it. Asks the person first. Next: store.status.",
       "effect": "destructive",
       "approval": "confirm",
       "permission": "delete",
@@ -37286,7 +37291,7 @@
         "remove",
         "delete",
         "archive",
-        "kept for review"
+        "kept privately"
       ],
       "examples": [
         {
@@ -37294,14 +37299,14 @@
             "gameId": "g_123",
             "fileId": "up_4"
           },
-          "note": "Remove an old file Summer kept for review."
+          "note": "Remove an old file kept privately."
         }
       ]
     },
     {
       "name": "store.remove_trailer",
       "title": "Remove the store trailer",
-      "summary": "Take the trailer off the store page draft. The live page keeps its trailer until the owner approves publishing the draft. Asks the person first. Next: store.get_listing.",
+      "summary": "Take the trailer off the store page draft. The live page keeps its trailer until the draft is published. Asks the person first. Next: store.get_listing.",
       "effect": "destructive",
       "approval": "confirm",
       "permission": "delete",
@@ -38147,7 +38152,7 @@
     {
       "name": "store.status",
       "title": "Check where a game stands",
-      "summary": "Read where a game stands on Summer Games in one call: the review and its feedback, a publish request waiting for the owner, every upload and its checks, and what players get now on each platform. Returns one next step.",
+      "summary": "Read where a game stands on Summer Games in one call: live or not, what the automatic checks found, Summer's staff review after going live, a publish request waiting for the owner, every upload and its checks, and what players get now on each platform. Returns one next step.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -38184,6 +38189,19 @@
           "storeUrl": {
             "type": "string"
           },
+          "status": {
+            "description": "not_live: not published yet. checks_running: published, the automatic checks are running; it goes live when they pass. live. needs_fix: the automatic checks found a problem (checks.found). in_development: Summer moved it to the In development page; still playable there. on_hold: Summer put it on hold (hidden, no new plays) until a new store page version is published. taken_down: Summer took it down.",
+            "type": "string",
+            "enum": [
+              "not_live",
+              "checks_running",
+              "live",
+              "needs_fix",
+              "in_development",
+              "on_hold",
+              "taken_down"
+            ]
+          },
           "page": {
             "anyOf": [
               {
@@ -38211,17 +38229,14 @@
               }
             ]
           },
-          "review": {
+          "checks": {
+            "description": "Set while the automatic checks sent the page back: fix it, then store.publish again.",
             "anyOf": [
               {
                 "type": "object",
                 "properties": {
-                  "state": {
-                    "description": "UNREVIEWED, PENDING, APPROVED, REJECTED or REVOKED.",
-                    "type": "string"
-                  },
-                  "decision": {
-                    "description": "The latest decision: APPROVED, CHANGES_REQUESTED, REJECTED or REVOKED.",
+                  "found": {
+                    "description": "What the automatic checks found on the page they sent back.",
                     "anyOf": [
                       {
                         "type": "string"
@@ -38231,7 +38246,42 @@
                       }
                     ]
                   },
-                  "decidedBy": {
+                  "decidedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "found",
+                  "decidedAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "description": "Summer staff review live games afterwards; it never holds up going live. not_live, unreviewed, approved (all clear, front page eligible), in_development or rejected (on hold).",
+                    "type": "string"
+                  },
+                  "takenDown": {
+                    "type": "boolean"
+                  },
+                  "message": {
+                    "description": "What Summer staff wrote to the creator.",
                     "anyOf": [
                       {
                         "type": "string"
@@ -38251,8 +38301,8 @@
                       }
                     ]
                   },
-                  "feedback": {
-                    "description": "What the reviewer asks the creator to fix.",
+                  "next": {
+                    "description": "What to do about it, if anything.",
                     "anyOf": [
                       {
                         "type": "string"
@@ -38261,18 +38311,14 @@
                         "type": "null"
                       }
                     ]
-                  },
-                  "needsChanges": {
-                    "type": "boolean"
                   }
                 },
                 "required": [
-                  "state",
-                  "decision",
-                  "decidedBy",
+                  "outcome",
+                  "takenDown",
+                  "message",
                   "decidedAt",
-                  "feedback",
-                  "needsChanges"
+                  "next"
                 ],
                 "additionalProperties": false
               },
@@ -38491,7 +38537,7 @@
             }
           },
           "files": {
-            "description": "Files kept privately for Summer review that are not builds (picked in Studio). store.remove_file removes one.",
+            "description": "Files kept privately that are not builds (picked in Studio). store.remove_file removes one.",
             "type": "array",
             "items": {
               "type": "object",
@@ -38551,7 +38597,9 @@
           "gameId",
           "name",
           "storeUrl",
+          "status",
           "page",
+          "checks",
           "review",
           "publishRequest",
           "live",
@@ -38570,21 +38618,22 @@
         "summer_store_version_status"
       ],
       "tags": [
-        "review",
-        "feedback",
         "live",
+        "checks",
+        "review",
+        "approved",
+        "on hold",
         "releases",
         "uploads",
         "builds",
-        "status",
-        "approved"
+        "status"
       ],
       "examples": [
         {
           "input": {
             "gameId": "g_123"
           },
-          "note": "Did Summer approve the game, and what do players get now?"
+          "note": "Is the game live, and what do players get now?"
         }
       ]
     },

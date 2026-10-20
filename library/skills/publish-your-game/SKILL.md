@@ -34,7 +34,7 @@ To have the agent gather everything from the project and do these steps itself (
 
 The one rule to keep even before you load it: a game goes live as soon as Summer's automated checks pass. Summer's staff review it after it is live, so never tell the creator to wait for a review. When `summer_go_live` answers `waiting` with `waitingOn: "summer"`, every check passed and the platform is still holding the launch on Summer's side: nothing to fix, and it goes live by itself; call again to keep watching.
 
-When Summer sends the page back (`needs_changes`, or `store.status` `review.needsChanges`), fix every point in the feedback with `store.update_listing`, then call `summer_go_live` again. If there is no written feedback, say so and ask the owner instead of guessing.
+When the automatic checks reject the store page (`needs_changes`), fix what `store.status` says failed with `store.update_listing`, then call `summer_go_live` again. When Summer's staff, reviewing the live game afterwards, put it on hold (`summer_go_live` answers `on_hold`, or `store.status` says the review is `rejected`), make the changes in their message with `store.update_listing` and call `summer_go_live` again: publishing the newer store page lifts the hold, and a new build alone does not. If there is no written message, say so and ask the owner instead of guessing. A game taken down (`taken_down`) needs Summer support.
 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell

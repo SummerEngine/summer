@@ -27,6 +27,8 @@ interface Call {
 function fakeStore(options: {
   page?: Record<string, unknown>;
   approval?: Record<string, unknown>;
+  /** Summer's review after live (GET games/{g}/review); absent answers 404, as a platform before it. */
+  review?: Record<string, unknown>;
   hosted?: boolean;
   checks?: Array<Record<string, unknown>>;
   buildStatus?: string;
@@ -75,6 +77,7 @@ function fakeStore(options: {
     if (method === "GET" && url === GAME) return json(200, { id: "game-1", name: "Star Weavers" });
     if (method === "GET" && url === `${GAME}/revisions?limit=20`) return json(200, { items: [page] });
     if (method === "GET" && url === `${GAME}/approval`) return json(200, options.approval ?? { gameId: "game-1", state: options.hold ? "PENDING" : "APPROVED", scope: "game-publication-v1" });
+    if (method === "GET" && url === `${GAME}/review`) return options.review ? json(200, options.review) : json(404, { error: { code: "not_found" } });
     if (method === "GET" && url === `${GAME}/build-publications`) return json(200, { items: options.noBuild ? [] : [{ ...publication, clientPackage: undefined }] });
     if (method === "GET" && url === `${GAME}/build-publications/pub-1`) return json(200, publication);
     if (method === "GET" && url === `${GAME}/store/versions`) return json(200, { items: [] });
@@ -216,6 +219,28 @@ describe("goLive", () => {
     });
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "needs_changes", decision: { feedback: "Use real gameplay screenshots." } });
+    expect(writes(store.calls)).toEqual([]);
+  });
+
+  it("reports a live game Summer put on hold with the changes to make, and publishes nothing", async () => {
+    const store = fakeStore({ live: true, review: { gameId: "game-1", outcome: "rejected", takenDown: false, message: "Replace the placeholder title art.", reviewedRevisionId: "rev-1" } });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "on_hold", review: { outcome: "rejected", message: "Replace the placeholder title art." } });
+    expect(String(result.next)).toMatch(/store.update_listing/);
+    expect(String(result.next)).toMatch(/new build alone does not/);
+    expect(writes(store.calls)).toEqual([]);
+  });
+
+  it("publishes a newer store page of a game on hold, which lifts the hold", async () => {
+    const store = fakeStore({ page: { revisionId: "rev-1", sequence: 2 }, review: { gameId: "game-1", outcome: "rejected", takenDown: false, message: "Replace the art.", reviewedRevisionId: "rev-0" } });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("live");
+  });
+
+  it("stops a taken-down game with what to do, and publishes nothing", async () => {
+    const store = fakeStore({ review: { gameId: "game-1", outcome: "approved", takenDown: true, message: "Breaks the community standards." } });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "blocked", failures: [expect.objectContaining({ field: "game", code: "taken_down", message: "Breaks the community standards." })] });
     expect(writes(store.calls)).toEqual([]);
   });
 

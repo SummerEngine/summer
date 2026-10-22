@@ -39,7 +39,7 @@ export function registerLocalProjectTools(server: McpServer): void {
 
   server.tool(
     "summer_projects_open_local",
-    "Open a project on this computer in Summer Engine, in the background, and wait until it connects (an editor that has it open is used as it is); this session's engine tools then work on it. When Summer Engine is not installed it answers engine_not_running: ask the person, and only with their yes call again with install: true (about 660 MB, free). A first open can take a few minutes: the answer says to call again. It adds summer-preview to the session folder's .claude/launch.json (Claude Code Desktop's Browser pane), and preview.url is where the game shows. Next: summer_get_project_context.",
+    "Open a project on this computer in Summer Engine, in the background, and wait until it connects (an editor that has it open is used as it is; an editor with another project open switches to it in the same window); this session's engine tools then work on it. When Summer Engine is not installed it answers engine_not_running: ask the person, and only with their yes call again with install: true (about 660 MB, free). A first open can take a few minutes: the answer says to call again. It adds summer-preview to the session folder's .claude/launch.json (Claude Code Desktop's Browser pane), and preview.url is where the game shows. Next: summer_get_project_context.",
     {
       path: z.string().max(1000).optional().describe("The project folder (holds project.godot), e.g. projectPath from summer_projects_create_local. Default this session's project."),
       install: z.boolean().default(false).describe("Install Summer Engine first when it is missing. Set true only after the person said yes."),

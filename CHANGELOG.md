@@ -4,6 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`projects.open_local` switches the running editor.** When Summer Engine already has another project open, that editor now opens the asked one in the same window (the engine's `SwitchProject` operation) instead of answering "another project is open". The MCP waits up to 2 s for the new editor to register, then connects to it. An editor without the operation keeps the old answer and names the open project. Other tools never switch the open project.
 - **Node 22+** (`engines.node >= 22`, was 20). Node 20 reached end of life on 2026-04-30 and gets no security fixes. `summer doctor` now fails on Node below 22, and CI runs the CLI on Node 22.23.4 (the 2026-10-21 security release) on macOS, Windows and Ubuntu.
 
 ## [4.6.0] - 2026-10-21

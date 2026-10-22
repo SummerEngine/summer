@@ -22,9 +22,12 @@ import {
   _resetSelfStartForTests,
   DEV_COMMAND,
   hasNoDisplay,
+  keepSaying,
+  OPEN_PROGRESS_EVERY_MS,
   openProjectInEditor,
   selfStartEngine,
   SELF_START_RECOVERY,
+  SELF_START_WAIT_MS,
   sessionProject,
   SWITCH_PROJECT_OP,
   SWITCH_REGISTER_MS,
@@ -326,8 +329,26 @@ describe("projects.open_local switches an editor that has another game open (J16
     expect(progress[0]!.at).toBeLessThan(1_000);
   });
 
-  it("waits the full boot of the new editor (registers after ~5 s) within the 10 s switch wait", () => {
-    expect(SWITCH_REGISTER_MS).toBe(10_000);
+  it("waits the full boot of the new editor (about 14 s on CI, J17) within the 30 s switch wait", () => {
+    expect(SWITCH_REGISTER_MS).toBe(30_000);
+    expect(SWITCH_REGISTER_MS).toBeLessThan(SELF_START_WAIT_MS);
+  });
+
+  it("says Opening <game>… at once and every few seconds until the game is open", () => {
+    vi.useFakeTimers();
+    try {
+      const said: string[] = [];
+      const stop = keepSaying((message) => said.push(message), "Opening game…");
+      expect(said).toEqual(["Opening game…"]);
+      vi.advanceTimersByTime(OPEN_PROGRESS_EVERY_MS * 4 + 10);
+      expect(said).toHaveLength(5);
+      stop();
+      vi.advanceTimersByTime(OPEN_PROGRESS_EVERY_MS * 3);
+      expect(said).toHaveLength(5);
+      expect(OPEN_PROGRESS_EVERY_MS).toBeLessThanOrEqual(5_000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("an editor without the switch operation keeps the old answer and names the open game", async () => {

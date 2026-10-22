@@ -74,17 +74,18 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            node: 22.23.4
+            node: 22
           - os: windows-latest
-            node: 22.23.4
+            node: 22
           - os: ubuntu-latest
-            node: 22.23.4
+            node: 22
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          # The 22.x security release of 2026-10-21; matrix.node names the line.
+          node-version: 22.23.4
           cache: npm
 
       - name: Install

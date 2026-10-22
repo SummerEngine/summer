@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { SUMMER_MCP_ASSETS_INSTRUCTIONS, SUMMER_MCP_INSTRUCTIONS, createMcpServer } from "./server.js";
 import { getSkillRegistry, selectSkillsForBulkInstall } from "../core/skills-registry.js";
 import { resolveToolSelection } from "./tool-surface.js";
-import { OPS_MCP_ASSETS_INSTRUCTIONS } from "./ops-surface.js";
+import { FIRST_GAME_LOOK_RULE, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS } from "./ops-surface.js";
 
 describe("MCP server instructions (initialize response)", () => {
   it("is one tight paragraph naming the five first-turn habits", () => {
@@ -37,6 +37,16 @@ describe("MCP server instructions (initialize response)", () => {
       await client.close();
       await server.close();
     }
+  });
+
+  it("opens the v4 engine instructions with the first-game look rule, inside the first 512 characters", () => {
+    // Codex keeps the first 512 characters; Claude Code cuts each server's instructions at 4,096.
+    const start = OPS_MCP_INSTRUCTIONS.indexOf(FIRST_GAME_LOOK_RULE);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(start + FIRST_GAME_LOOK_RULE.length).toBeLessThanOrEqual(512);
+    expect(OPS_MCP_INSTRUCTIONS.length).toBeLessThanOrEqual(2048);
+    expect(OPS_MCP_INSTRUCTIONS).not.toContain("\n");
+    expect(OPS_MCP_INSTRUCTIONS).toContain("summer_get_project_context");
   });
 
   it("tells an agent to script a run of scene edits", () => {

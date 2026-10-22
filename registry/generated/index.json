@@ -2626,7 +2626,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "bc51aa6ccf1eb32b2d0e409b5b62d04ab9d0cd047eea03541195e71d04848cee",
+      "content_hash": "914237c5f88f318eebbb0d5f44958dfac77e51922a30f42789b383ae008b3f50",
       "summary": "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -10822,8 +10822,8 @@
       "id": "tool/view-set",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "71a9a3a61acbebd046c103b74af0b1549650cf2eec9764bd52bef68fb7541ac2",
-      "summary": "Show the person what you are working on: the editor's view (home, chat, 3D, 2D, script, game, Studio), its right rail, and the node or file to focus.",
+      "content_hash": "f8986edfdd42e5de7dc9d58f67ad4d67acc05b18db211cff935dbb27cf342a2f",
+      "summary": "Show the person what you work on: the editor view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame.",
       "use_when": [
         "you start editing a scene and want the person to watch it change (3D view, Scene rail, the edited node framed)",
         "you edit a script and want it on screen (script view at that file)",

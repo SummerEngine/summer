@@ -57,11 +57,11 @@ The editor owns its own table of destinations (the `Navigate` op) and tells the 
 
 ## While you work: what to open when
 
-When you drive Summer Engine from outside (Claude Code, Codex, Cursor, the `summer` CLI), the person is not using the in-app chat. The editor is their window onto your work. A line at the bottom of it names your app and says what you are doing ("Claude Code · Placing 12 trees"). You choose what they see with `engine.view_set` (3.x `summer_view_set`): `view` (`3d`, `2d`, `script`, `game`, `chat`, `home`, `studio`), optional `rail` (`scene`, `inspector`, `files`, `output`, `none`) and optional `focus`. A node path in `focus` selects that node, and in 3D it frames the camera on it. A `res://` script opens at the file, and a `res://` scene opens. Switching is instant and changes nothing in the game.
+When you drive Summer Engine from outside (Claude Code, Codex, Cursor, the `summer` CLI), the person is not using the in-app chat. The editor is their window onto your work. A line at the bottom of it names your app and says what you are doing ("Claude Code · Placing 12 trees"). You choose what they see with `engine.view_set` (3.x `summer_view_set`): `view` (`3d`, `2d`, `script`, `game`, `chat`, `home`, `studio`), optional `rail` (`scene`, `inspector`, `files`, `output`, `none`), optional `focus` and optional `frame`. A node path in `focus` selects that node; a `res://` script or scene opens. `frame` lists the nodes to frame the camera on. Switching is instant and changes nothing in the game.
 
 | You are about to… | Show |
 |---|---|
-| Edit a scene (place, move, remove nodes) | `{"view": "3d", "rail": "scene", "focus": "<the node or group you edit>"}`; a 2D game uses `"2d"` |
+| Edit a scene (place, move, remove nodes) | `{"view": "3d", "rail": "scene", "focus": "<the node or group you edit>", "frame": ["<it>"]}`; a 2D game uses `"2d"` |
 | Write or fix a script | `{"view": "script", "focus": "res://<the script>.gd"}` |
 | Tune one node's properties | `{"view": "3d", "rail": "inspector", "focus": "<that node>"}` |
 | Playtest | `{"view": "game"}`, then play the game |

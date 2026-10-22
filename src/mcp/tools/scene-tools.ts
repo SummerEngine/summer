@@ -355,14 +355,15 @@ PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_
 
   server.tool(
     "summer_view_set",
-    "Show the person what you are working on: the editor's view (home, chat, 3d, 2d, script, game, studio), its right rail (files, scene, inspector, output, none) and what to focus (a res:// script or scene, or a node path; the 3D view frames the camera on that node). Changes only what is on screen. The navigate-summer skill says which view fits which moment.",
+    "Show the person what you are working on: the editor's view (home, chat, 3d, 2d, script, game, studio), its right rail (files, scene, inspector, output, none), what to focus (a res:// script or scene, or a node path) and the nodes to frame the camera on. Changes only what is on screen. The navigate-summer skill says which view fits which moment.",
     {
       view: z.enum(["home", "chat", "3d", "2d", "script", "game", "studio"]).describe("The view to show"),
       rail: z.enum(["files", "scene", "inspector", "output", "none"]).optional().describe("The right rail; none hides it"),
       focus: z.string().optional().describe("A res:// script or scene, or a node path"),
+      frame: z.array(z.string()).optional().describe("Node paths to frame the camera on"),
     },
-    async ({ view, rail, focus }) =>
-      withEngine(async (client) => client.executeOps([viewSetOp({ view, rail, focus })]))
+    async ({ view, rail, focus, frame }) =>
+      withEngine(async (client) => client.executeOps([viewSetOp({ view, rail, focus, frame })]))
   );
 
   server.tool(

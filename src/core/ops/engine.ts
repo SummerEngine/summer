@@ -269,9 +269,9 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.view_set": {
     title: "Show the person a view",
     summary:
-      "Switch what the person sees while you work: the view (3d, 2d, script, game, chat, home, studio), the right rail and the node or file in focus; the 3D view frames the camera on a focused node. Only the screen changes. Which view when: the navigate-summer skill.",
+      "Switch what the person sees while you work: the view (3d, 2d, script, game, chat, home, studio), the right rail, the node or file in focus and the nodes to frame. Only the screen changes. Which view when: the navigate-summer skill.",
     effect: "write",
-    example: { input: { view: "3d", rail: "scene", focus: "Track/Trees" }, note: "Watch the level while you place trees." },
+    example: { input: { view: "3d", rail: "scene", focus: "Track/Trees", frame: ["Track/Trees"] }, note: "Watch the level while you place trees." },
   },
   "engine.batch": {
     title: "Run engine ops in one call",

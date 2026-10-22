@@ -1,7 +1,7 @@
 id: tool/view-set
 kind: tool
 version: 1.0.0
-summary: "Show the person what you are working on: the editor's view (home, chat, 3D, 2D, script, game, Studio), its right rail, and the node or file to focus."
+summary: "Show the person what you work on: the editor view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame."
 use_when:
   - you start editing a scene and want the person to watch it change (3D view, Scene rail, the edited node framed)
   - you edit a script and want it on screen (script view at that file)
@@ -61,7 +61,12 @@ input_schema:
       description: The right rail beside a scene, script or game view. none hides it. Omit to keep it as it is.
     focus:
       type: string
-      description: What to focus. A res:// script opens at it, a res:// scene opens, a node path selects that node and, in the 3D view, frames the camera on it.
+      description: What to focus. A res:// script or scene opens; a node path selects that node.
+    frame:
+      type: array
+      items:
+        type: string
+      description: Node paths to frame the camera on (the scene views).
   required:
     - view
   additionalProperties: false

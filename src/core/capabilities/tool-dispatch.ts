@@ -1648,7 +1648,8 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
   entry("summer_view_set", "Show the person a view, rail and focus in the editor", true, async (args, ctx) => {
-    const op = viewSetOp({ view: str(args, "view"), rail: optStr(args, "rail"), focus: optStr(args, "focus") });
+    const frame = Array.isArray(args.frame) ? args.frame.filter((entry): entry is string => typeof entry === "string") : undefined;
+    const op = viewSetOp({ view: str(args, "view"), rail: optStr(args, "rail"), focus: optStr(args, "focus"), frame });
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
   entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {

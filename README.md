@@ -20,10 +20,10 @@
 
 ## Install
 
-- **Start a game now** (Node 20+): `npx -y summer-engine@latest dev`. It asks before it installs the Summer Engine app (about 660 MB, free) when it is missing, creates a starter project here (in `./my-game` when this folder has other files) and opens it, ready for your agent. No sign-in needed to build.
+- **Start a game now** (Node 22+): `npx -y summer-engine@latest dev`. It asks before it installs the Summer Engine app (about 660 MB, free) when it is missing, creates a starter project here (in `./my-game` when this folder has other files) and opens it, ready for your agent. No sign-in needed to build.
 - **Chat apps** (Claude, ChatGPT, Cursor...): add `https://mcp.summerengine.com/mcp`. Nothing to install.
 - **Homebrew:** `brew install summerengine/tap/summer`
-- **npm** (Node 20+): `npm install -g summer-engine`
+- **npm** (Node 22+): `npm install -g summer-engine`
 
 **CLI only** (summer-engine 4.2.0 or newer), no MCP server: `summer setup --cli`. `summer ops search "publish my game"` finds any operation, signed in or not.
 
@@ -40,7 +40,7 @@
 | Devin Desktop (formerly Windsurf) | add `"summer-cloud": {"serverUrl": "https://mcp.summerengine.com/mcp"}` under `mcpServers` in `~/.config/devin/mcp_config.json` (Windows `%APPDATA%\devin\mcp_config.json`) |
 | Claude Desktop, claude.ai | Settings > Connectors > Add custom connector, then paste the URL |
 
-**Engine work: `npx -y summer-engine@latest setup <agent> --yes`** (needs Node 20+). It writes the local server (`summer mcp`) into your agent's config with the skills. The local server drives the Summer Engine app on your machine: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login` it also runs every cloud operation, so your agent needs one server. Or paste the prompt in [Get started](#get-started-one-prompt) and your agent does every step.
+**Engine work: `npx -y summer-engine@latest setup <agent> --yes`** (needs Node 22+). It writes the local server (`summer mcp`) into your agent's config with the skills. The local server drives the Summer Engine app on your machine: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login` it also runs every cloud operation, so your agent needs one server. Or paste the prompt in [Get started](#get-started-one-prompt) and your agent does every step.
 
 **CLI only (summer-engine 4.2.0 or newer): `npx -y summer-engine@latest setup <agent> --cli --yes`.** No MCP server: your agent runs Summer as commands in its shell. Setup installs the skills for your agent, with `summer-cli`, the guide to the commands, and writes no MCP entry. Your agent signs you in with `summer login`, finds an operation with `summer ops search "<what you want>"` and runs it as `summer <area> <action> --<field> <value>`, with `--dry-run`, `--wait` and `--json`. Engine commands (`summer engine …`) drive the Summer Engine app on your machine. Each skill ends with a table of the command for every tool it names. Add `--assets-only` for only the asset skills. `--no-mcp` is the same as `--cli`.
 

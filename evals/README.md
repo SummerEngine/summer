@@ -47,7 +47,7 @@ npm run eval:routing -- --verbose          # includes the gap report
    (report only)
 6. `npm run eval:outcomes -- --dry-run` (task/assertion schema + golden drift; no engine)
 7. registry parity (`generate:registry -- --check`): the CONTRACT §6 drift gate
-8. a CLI smoke job on macOS and Windows (Node 22) and Ubuntu (Node 20): build, `--version`, `tool --list`, `doctor --json`, and the installer tests on macOS
+8. a CLI smoke job on macOS, Windows and Ubuntu (Node 22.23.4): build, `--version`, `tool --list`, `doctor --json`, and the installer tests on macOS
 
 The example-eval runner (`node evals/examples/runner-stub.ts`) is not in CI: it only reports SKIP until `library/examples/` exists.
 

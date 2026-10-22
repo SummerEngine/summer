@@ -6,7 +6,7 @@ Thanks for helping. This repo is the MIT-licensed part of Summer: the CLI, the M
 
 - Read [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md): the layout, the commands, and how to add a library entry, an MCP tool or an agent integration.
 - Read [`docs/design/CONTRACT.md`](docs/design/CONTRACT.md) for the rules every change is checked against.
-- Node 22 or newer for development (`.nvmrc`). The published package runs on Node 20+.
+- Node 22 or newer for development (`.nvmrc`). The published package runs on Node 22+.
 - For a bug, open an issue first with the output of `npx -y summer-engine@latest doctor --json`.
 
 ## Make the change

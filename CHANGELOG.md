@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Node 22+** (`engines.node >= 22`, was 20). Node 20 reached end of life on 2026-04-30 and gets no security fixes. `summer doctor` now fails on Node below 22, and CI runs the CLI on Node 22.23.4 (the 2026-10-21 security release) on macOS, Windows and Ubuntu.
+
 ## [4.6.0] - 2026-10-21
 
 A first game that looks finished, and `summer setup` for the Summer desktop app's one-click agent connect.

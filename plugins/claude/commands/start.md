@@ -17,7 +17,7 @@ $ARGUMENTS
 ## 1. Look before you ask (read-only, a few seconds)
 
 - Tools you already have: the `summer-engine` server (local, drives the Summer Engine desktop app; its tools include `summer_get_project_context`) and the `summer-cloud` server (hosted, Summer's cloud; its tools include `summer_whoami`, `summer_search` and `summer_call` once the user is signed in). A server that needs sign-in shows no tools yet.
-- `npx -y summer-engine@4.6.0 status` tells you whether the engine is running. If `npx` is missing, there is no Node: plan it first (3a) and have them install Node 20 or later (nodejs.org) for the build.
+- `npx -y summer-engine@4.6.0 status` tells you whether the engine is running. If `npx` is missing, there is no Node: plan it first (3a) and have them install Node 22 or later (nodejs.org) for the build.
 
 Do not run `summer setup claude-code` here: this plugin already brings the MCP servers and the skills, and a second copy of the skills only crowds the list.
 

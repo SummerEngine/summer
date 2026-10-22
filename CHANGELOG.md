@@ -5,6 +5,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 - **Signed out? Cloud tools answer with a sign-in link.** When an MCP tool needs the Summer sign-in (`not_signed_in`) or the store approval (`store_login_required`), its answer now ends with a link the agent shows to the person. The MCP starts the same browser sign-in `summer login` uses (`cli_session`) without opening anything, waits for it in the background, and saves the token to `~/.summer`, so the next call works with no restart or reinstall. Engine tools keep working signed out. One link per process until that sign-in finishes or expires (15 minutes).
+- **`projects.open_local` switches the running editor.** When Summer Engine already has another project open, that editor now opens the asked one in the same window (the engine's `SwitchProject` operation) instead of answering "another project is open". The MCP says "Opening <game>…" at once (MCP progress) and waits up to 10 s for the new editor to register, then connects to it. An editor without the operation keeps the old answer and names the open project. Other tools never switch the open project.
 - **Node 22+** (`engines.node >= 22`, was 20). Node 20 reached end of life on 2026-04-30 and gets no security fixes. `summer doctor` now fails on Node below 22, and CI runs the CLI on Node 22.23.4 (the 2026-10-21 security release) on macOS, Windows and Ubuntu.
 
 ## [4.6.0] - 2026-10-21

@@ -886,6 +886,11 @@
       "note": "",
       "op": "engine.select_node"
     },
+    "summer_view_set": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.view_set"
+    },
     "summer_set_prop": {
       "kind": "keep",
       "note": "",

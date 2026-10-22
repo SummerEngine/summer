@@ -16,6 +16,7 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { viewSetOp } from "./view-set.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
@@ -1644,6 +1645,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
     const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
+    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+  }),
+  entry("summer_view_set", "Show the person a view, rail and focus in the editor", true, async (args, ctx) => {
+    const frame = Array.isArray(args.frame) ? args.frame.filter((entry): entry is string => typeof entry === "string") : undefined;
+    const op = viewSetOp({ view: str(args, "view"), rail: optStr(args, "rail"), focus: optStr(args, "focus"), frame });
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
   entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {

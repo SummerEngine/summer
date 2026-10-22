@@ -1,11 +1,11 @@
 ---
 name: navigate-summer
-description: "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open."
+description: "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta
 user-invocable: true
-allowed-tools: summer_call summer_get_project_context summer_is_running
+allowed-tools: summer_call summer_get_project_context summer_is_running summer_view_set summer_frame_shot
 paths: ["**/project.godot", "**/*.tscn", "**/.summer/**"]
 ---
 
@@ -55,6 +55,26 @@ Use `open: false` (CLI: `--print`) and paste the `url` (or `login_url`) when the
 
 The editor owns its own table of destinations (the `Navigate` op) and tells the tool which ids it can open. `studio.open({})` lists every editor id with `availability`: `available` (Navigate op), `legacy` (an older engine serving it through its original op), `unavailable` (update Summer Engine), `unknown` (engine not running). Ids: `scene` (default = the project's main scene), `main-scene`, `node`, `script` (with `line`), `file`, `files`, `scene-tree`, `inspector`, `import-dock`, `signals-dock`, `changes-dock`, `screen-2d/3d/script/game/assetlib`, `viewport-show/hide`, `assistant`, `project-settings`, `editor-settings`, `output`, `debugger`, `editor-window`. On a legacy engine, `script` opens without taking focus — mention it if the user does not see it.
 
+## While you work: what to open when
+
+When you drive Summer Engine from outside (Claude Code, Codex, Cursor, the `summer` CLI), the person is not using the in-app chat. The editor is their window onto your work. A line at the bottom of it names your app and says what you are doing ("Claude Code · Placing 12 trees"). You choose what they see with `engine.view_set` (3.x `summer_view_set`): `view` (`3d`, `2d`, `script`, `game`, `chat`, `home`, `studio`), optional `rail` (`scene`, `inspector`, `files`, `output`, `none`), optional `focus` and optional `frame`. A node path in `focus` selects that node; a `res://` script or scene opens. `frame` lists the nodes to frame the camera on. Switching is instant and changes nothing in the game.
+
+| You are about to… | Show |
+|---|---|
+| Edit a scene (place, move, remove nodes) | `{"view": "3d", "rail": "scene", "focus": "<the node or group you edit>", "frame": ["<it>"]}`; a 2D game uses `"2d"` |
+| Write or fix a script | `{"view": "script", "focus": "res://<the script>.gd"}` |
+| Tune one node's properties | `{"view": "3d", "rail": "inspector", "focus": "<that node>"}` |
+| Playtest | `{"view": "game"}`, then play the game |
+| Review how it looks | a `summer_frame_shot` of the result |
+| Read errors or logs with the person | `{"view": "3d", "rail": "output"}` |
+| Finish | the best view of the result: the game in `game` for gameplay work, the framed scene in `3d` or `2d` for level and art work, the script for code-only changes |
+
+- Open the view before the first edit of a step, so the person watches the change happen.
+- Focus what you change, not the scene root; for a group, focus its parent.
+- Make one call when the kind of work changes, not one per edit.
+- End on the result, never on an empty or unrelated view.
+- When the person is using the in-app chat, let them choose the view.
+
 ## Anti-patterns
 
 - Opening `billing` or `pricing` when the user asked about a **feature**, not money.
@@ -75,6 +95,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_is_running` | `summer engine is-running` |
 | `summer_play` | `summer engine play` |
 | `summer_screenshot` | `summer engine screenshot` |
+| `engine.view_set`, `summer_view_set` | `summer engine view-set` |
 | `store.publish` | `summer store publish` |
 | `studio.open`, `summer_open` | `summer studio open` |
 <!-- /shell-commands -->

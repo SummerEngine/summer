@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (125 tools)
+## Tool surface (126 tools)
 
 ### Local projects (2)
 

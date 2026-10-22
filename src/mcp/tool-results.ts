@@ -1,4 +1,5 @@
 import { BATCH_EDIT_TOOLS, SINGLE_EDIT_TOOLS } from "./tool-surface.js";
+import { signInKindForCode, signInLinkText, type SignInKind } from "../core/sign-in-link.js";
 
 type Content = { type?: string; text?: unknown };
 
@@ -82,4 +83,26 @@ export function singleEditCounter(): (tool: string, isError: boolean) => string 
     if (run < SINGLE_EDIT_HINT_AT || (run - SINGLE_EDIT_HINT_AT) % SINGLE_EDIT_HINT_EVERY !== 0) return null;
     return `Tip: ${run} single scene edits in a row. More than 3 edits: write one summer_run_script instead (snapshot, script, diff, screenshot).`;
   };
+}
+
+/**
+ * A `not_signed_in` / `store_login_required` answer gets one more text block:
+ * the sign-in link for the person (core/sign-in-link.ts). Anything else, or
+ * no link, leaves the result as it is. Never throws.
+ */
+export async function withSignInLink(
+  result: unknown,
+  code: string | null,
+  links: { link: (kind: SignInKind) => Promise<string | null> }
+): Promise<unknown> {
+  const kind = signInKindForCode(code);
+  if (!kind || !result || typeof result !== "object" || !Array.isArray((result as { content?: unknown }).content)) return result;
+  try {
+    const url = await links.link(kind);
+    if (!url) return result;
+    const original = result as { content: Content[] };
+    return { ...original, content: [...original.content, { type: "text", text: signInLinkText(kind, url) }] };
+  } catch {
+    return result;
+  }
 }

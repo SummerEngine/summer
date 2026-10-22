@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capText, compactJsonText, shapeToolResult, singleEditCounter } from "./tool-results.js";
+import { capText, compactJsonText, shapeToolResult, singleEditCounter, withSignInLink } from "./tool-results.js";
 
 describe("compact JSON results", () => {
   it("re-serializes pretty JSON and leaves other text alone", () => {
@@ -64,5 +64,17 @@ describe("single scene edit hint", () => {
   it("adds the hint as its own text block", () => {
     const result = shapeToolResult({ content: [{ type: "text", text: '{"ok":true}' }] }, { hint: "Tip" }) as { content: Array<{ text: string }> };
     expect(result.content.map((part) => part.text)).toEqual(['{"ok":true}', "Tip"]);
+  });
+});
+
+describe("withSignInLink", () => {
+  it("adds the link to a not_signed_in tool answer and leaves other answers alone", async () => {
+    const links = { link: async () => "https://gateway.example/login?cli_session=abc" };
+    const failure = { isError: true, content: [{ type: "text", text: '{"ok":false,"code":"not_signed_in"}' }] };
+    const shaped = (await withSignInLink(failure, "not_signed_in", links)) as { content: Array<{ text: string }> };
+    expect(shaped.content).toHaveLength(2);
+    expect(shaped.content[1].text).toContain("https://gateway.example/login?cli_session=abc");
+    expect(await withSignInLink(failure, "no_credits", links)).toBe(failure);
+    expect(await withSignInLink(failure, "not_signed_in", { link: async () => null })).toBe(failure);
   });
 });

@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a96e7758787500aedfca23f720be8b7901ae88e8db18b4adffb93538851458c0",
+      "content_hash": "a7a7d05a54f03c701514865e895efffe8897a6f4eb043f83b6f29891b0a14307",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2626,12 +2626,13 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "cf3fcb80dbae1479a7fdea6a8e21f08d696d1d40e58ac24bf4f98ad414b7b584",
-      "summary": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open.",
+      "content_hash": "bc51aa6ccf1eb32b2d0e409b5b62d04ab9d0cd047eea03541195e71d04848cee",
+      "summary": "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
         "deciding whether to open a surface for the user or to do the work through Summer tools",
-        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser"
+        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser",
+        "you drive Summer Engine from outside (Claude Code, Codex, Cursor, the summer CLI) and the editor should show what you work on: the view, rail and focus for editing, scripting, playtesting, review and the end result"
       ],
       "facets": {
         "lifecycle": [
@@ -2653,7 +2654,8 @@
       },
       "related": {
         "tools": [
-          "tool/open"
+          "tool/open",
+          "tool/view-set"
         ],
         "references": [
           "reference/product-map"
@@ -10811,6 +10813,50 @@
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/view-set",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "71a9a3a61acbebd046c103b74af0b1549650cf2eec9764bd52bef68fb7541ac2",
+      "summary": "Show the person what you are working on: the editor's view (home, chat, 3D, 2D, script, game, Studio), its right rail, and the node or file to focus.",
+      "use_when": [
+        "you start editing a scene and want the person to watch it change (3D view, Scene rail, the edited node framed)",
+        "you edit a script and want it on screen (script view at that file)",
+        "you play the game or review the result (game view; a frame_shot for a review)",
+        "you finish and want to leave the person on the best view of the result"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "navigation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "tools": [
+          "tool/select-node",
+          "tool/frame-shot"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_view_set",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
         "network": false,
         "credentials": false,
         "publish": false

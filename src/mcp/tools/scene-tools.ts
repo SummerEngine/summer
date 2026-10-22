@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { viewSetOp } from "../../core/capabilities/view-set.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
 import { executeSceneMutation } from "../../core/capabilities/engine-ops.js";
@@ -350,6 +351,18 @@ PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_
         if (scenePath) op.scenePath = scenePath;
         return client.executeOps([op]);
       })
+  );
+
+  server.tool(
+    "summer_view_set",
+    "Show the person what you are working on: the editor's view (home, chat, 3d, 2d, script, game, studio), its right rail (files, scene, inspector, output, none) and what to focus (a res:// script or scene, or a node path; the 3D view frames the camera on that node). Changes only what is on screen. The navigate-summer skill says which view fits which moment.",
+    {
+      view: z.enum(["home", "chat", "3d", "2d", "script", "game", "studio"]).describe("The view to show"),
+      rail: z.enum(["files", "scene", "inspector", "output", "none"]).optional().describe("The right rail; none hides it"),
+      focus: z.string().optional().describe("A res:// script or scene, or a node path"),
+    },
+    async ({ view, rail, focus }) =>
+      withEngine(async (client) => client.executeOps([viewSetOp({ view, rail, focus })]))
   );
 
   server.tool(

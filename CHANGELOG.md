@@ -4,6 +4,11 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`summer setup` for installers: find the agents, read each step, run a bundled Node.js.** For the Summer desktop app's installer, which connects the person's coding agent in one click and ships its own Node.js (Claude Code and Codex install without one).
+  - **`summer setup --detect --json`** lists every supported agent: whether it is installed (`installed`, `programFound` and each hit in `detectedBy`: a command on PATH or in the usual install folders, a macOS app or Windows program, the agent's own folder, a VS Code extension), its MCP config file, and whether that file already lists `summer-engine`. It writes nothing.
+  - **`summer setup <agent> --yes --json` reports each step** in `steps`: the MCP entry, Summer Games, skills, project files and doctor, each with `ok`, a `status` and, on failure, an `error` with a `code` (`config_invalid`, `config_not_writable`, `skills_install_failed`, `runtime_not_found`, ...). A failed step no longer stops the others, and any failure exits 1. An error before setup starts (an unknown agent, a bad option) is one JSON document too. The output for people is unchanged.
+  - **`--runtime <node> --package-dir <dir>`** writes the MCP entry as `<node> <dir>/dist/bin/summer.js mcp` instead of `npx`, in every agent's file format. Setup checks that both exist and that the folder is the summer-engine package. Doctor's skills refresh keeps the bundled runtime.
+
 ## [4.5.0] - 2026-10-19
 
 4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.

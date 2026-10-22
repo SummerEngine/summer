@@ -399,6 +399,8 @@ export interface RecordedInstall {
    *  --cli`, or skills installed alone) and `setup --cli` can set the agent
    *  up: the refresh keeps it without an MCP server. */
   cliOnly?: boolean;
+  /** The bundled node executable the entry runs (`setup --runtime <node> --package-dir <dir>`); cliPath is then that package's dist/bin/summer.js. */
+  runtime?: string;
 }
 
 /** An npm dist-tag (`latest`, `next`) or an exact version (`3.9.1`). */
@@ -596,10 +598,32 @@ export function skillsRefreshCommand(agent: string, install: RecordedInstall | n
       ? `node ${install.cliPath} setup ${agent} --cli --yes --force`
       : `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --cli --yes --force`;
   }
+  if (install?.runtime && install.cliPath) {
+    // Keep the bundled runtime: the npx form needs a Node.js the person may not have.
+    const packageDir = install.cliPath.replace(/[\\/]dist[\\/]bin[\\/]summer\.js$/, "");
+    const runtime = shellArg(install.runtime);
+    return `${runtime} ${shellArg(install.cliPath)} setup ${agent} --runtime ${runtime} --package-dir ${shellArg(packageDir)} --yes --force`;
+  }
   if (install?.localDev && install.cliPath) {
     return `node ${install.cliPath} setup ${agent} --local-dev --yes --force`;
   }
   return `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --yes --force${channel === "latest" ? "" : ` --channel ${channel}`}`;
+}
+
+/** A path in a printed command: quoted when it has a space (~/Library/Application Support, C:\\Program Files). */
+function shellArg(value: string): string {
+  return /[\s"'$`]/.test(value) ? JSON.stringify(value) : value;
+}
+
+/** The shape `summer setup --runtime <node> --package-dir <dir>` writes:
+ *  `<absolute path to node> <dir>/dist/bin/summer.js mcp` (bundledRuntimeServerConfig). */
+export function isBundledRuntimeServerConfig(server: StdioMcpServerConfig): boolean {
+  return (
+    /^([a-z]:)?[\\/]/i.test(server.command) &&
+    /(^|[\\/])node(\.exe)?$/i.test(server.command) &&
+    /[\\/]dist[\\/]bin[\\/]summer\.js$/.test(server.args[0] ?? "") &&
+    server.args[1] === "mcp"
+  );
 }
 
 /** The shape `summer setup --local-dev` writes: `node <…>/dist/bin/summer.js mcp`
@@ -740,6 +764,9 @@ export async function detectRecordedInstall(agent: string): Promise<RecordedInst
       const text = existsSync(target.path) ? readFileSync(target.path, "utf-8") : "";
       const recorded = readRecordedMcpServer(text, target.format);
       if (recorded) {
+        if (isBundledRuntimeServerConfig(recorded)) {
+          return { localDev: false, cliPath: recorded.args[0], runtime: recorded.command, source: "agent-config" };
+        }
         const localDev = isLocalDevServerConfig(recorded);
         return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
       }

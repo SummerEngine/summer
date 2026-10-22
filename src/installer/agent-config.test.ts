@@ -12,9 +12,13 @@ import {
   normalizeChannel,
   parseAgent,
   resolveAgentSelection,
+  resolveBundledRuntime,
   resolvePackageRoot,
   topLevelKey,
 } from "./agent-config.js";
+import { readRecordedMcpServer } from "./version-check.js";
+import { SetupError } from "./setup-error.js";
+import { chmodSync } from "fs";
 
 const tmpDirs: string[] = [];
 
@@ -654,5 +658,96 @@ describe("Devin Desktop moved its MCP config to ~/.config/devin", () => {
     } finally {
       process.env.HOME = previousHome;
     }
+  });
+});
+
+describe("a bundled runtime (--runtime, --package-dir)", () => {
+  /** A node file and a summer-engine package folder, as the desktop installer ships them. */
+  function bundle(): { root: string; node: string; packageDir: string; cli: string } {
+    const dir = tmp();
+    const node = join(dir, "runtime", "bin", process.platform === "win32" ? "node.exe" : "node");
+    const packageDir = join(dir, "Summer Support", "summer-engine");
+    const cli = join(packageDir, "dist", "bin", "summer.js");
+    mkdirSync(dirname(node), { recursive: true });
+    writeFileSync(node, "");
+    chmodSync(node, 0o755);
+    mkdirSync(dirname(cli), { recursive: true });
+    writeFileSync(join(packageDir, "package.json"), JSON.stringify({ name: "summer-engine", version: "4.5.0" }));
+    writeFileSync(cli, "");
+    return { root: dir, node, packageDir, cli };
+  }
+
+  it("writes <node> <package>/dist/bin/summer.js mcp in every agent's file format", async () => {
+    const { node, packageDir, cli } = bundle();
+    const runtime = resolveBundledRuntime(node, packageDir)!;
+    for (const spec of allAgentSpecs()) {
+      const path = join(tmp(), `${spec.id}-config`);
+      const result = await configureAgentMcp({
+        agent: spec.id,
+        scope: "user",
+        runtime,
+        env: { [spec.envOverride]: path } as NodeJS.ProcessEnv,
+      });
+      expect(result.runtime, spec.id).toEqual({ node, packageDir });
+      expect(result.localDev, spec.id).toBe(false);
+      expect(readRecordedMcpServer(readFileSync(path, "utf-8"), spec.format), spec.id).toEqual({
+        command: node,
+        args: [cli, "mcp"],
+      });
+    }
+  });
+
+  it("keeps the agent's profile in the entry's env", async () => {
+    const { node, packageDir } = bundle();
+    const path = join(tmp(), "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "vscode-copilot",
+      scope: "user",
+      runtime: resolveBundledRuntime(node, packageDir)!,
+      env: { SUMMER_VSCODE_COPILOT_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.server).toMatchObject({ command: node, env: { SUMMER_PROFILE: "engine" } });
+  });
+
+  it("resolves relative paths to absolute ones", () => {
+    const { root, node, packageDir } = bundle();
+    const relativeNode = join("runtime", "bin", node.split(/[\\/]/).pop()!);
+    expect(resolveBundledRuntime(relativeNode, join("Summer Support", "summer-engine"), root)).toEqual({ node, packageDir });
+    expect(resolveBundledRuntime(undefined, undefined)).toBeNull();
+  });
+
+  it("refuses a missing or wrong runtime or package folder, with a code", () => {
+    const { node, packageDir } = bundle();
+    const code = (run: () => unknown) => {
+      try {
+        run();
+      } catch (error) {
+        return error instanceof SetupError ? error.code : "not-a-setup-error";
+      }
+      return "no-error";
+    };
+    expect(code(() => resolveBundledRuntime(node, undefined))).toBe("runtime_incomplete");
+    expect(code(() => resolveBundledRuntime(undefined, packageDir))).toBe("runtime_incomplete");
+    expect(code(() => resolveBundledRuntime(join(dirname(node), "missing"), packageDir))).toBe("runtime_not_found");
+    expect(code(() => resolveBundledRuntime(dirname(node), packageDir))).toBe("runtime_not_found");
+    if (process.platform !== "win32") {
+      chmodSync(node, 0o644);
+      expect(code(() => resolveBundledRuntime(node, packageDir))).toBe("runtime_not_executable");
+      chmodSync(node, 0o755);
+    }
+    expect(code(() => resolveBundledRuntime(node, join(packageDir, "missing")))).toBe("package_dir_not_found");
+    expect(code(() => resolveBundledRuntime(node, dirname(packageDir)))).toBe("package_dir_invalid");
+    rmSync(join(packageDir, "dist"), { recursive: true });
+    expect(code(() => resolveBundledRuntime(node, packageDir))).toBe("package_dir_invalid");
+  });
+});
+
+describe("config errors carry a code", () => {
+  it("an unparsable file is config_invalid", async () => {
+    const path = join(tmp(), ".claude.json");
+    writeFileSync(path, "{ not json");
+    await expect(
+      configureAgentMcp({ agent: "claude-code", scope: "user", env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv })
+    ).rejects.toMatchObject({ code: "config_invalid", message: expect.stringContaining("Could not parse JSON") });
   });
 });

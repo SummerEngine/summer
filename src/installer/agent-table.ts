@@ -166,6 +166,26 @@ export interface AgentSpec {
   /** null: no skills/rules mechanism — MCP only. */
   skills: SkillHome | null;
   noSkillsNote?: string;
+  /** How `summer setup --detect` tells the agent is on this computer (agent-detect.ts). */
+  detect: AgentDetect;
+}
+
+/**
+ * Where an agent shows up once it is installed, on macOS and Windows (Linux
+ * uses the bins and folders). Any one hit counts as installed; `--detect`
+ * names each hit, so a caller can tell a live binary from a leftover folder.
+ */
+export interface AgentDetect {
+  /** Commands: looked up on PATH and in the usual install folders a GUI app's short PATH misses (agent-detect.ts). */
+  bins?: readonly string[];
+  /** macOS app bundles, looked up in /Applications and ~/Applications. */
+  macApps?: readonly string[];
+  /** Windows executables, relative to %LOCALAPPDATA%, %ProgramFiles% and %ProgramFiles(x86)%. */
+  winApps?: readonly string[];
+  /** Folders the agent creates on install or first run (config, data or install folder). */
+  dirs?: (ctx: PathContext) => string[];
+  /** VS Code extension id prefixes, looked up in ~/.vscode/extensions (folders named <id>-<version>). */
+  vscodeExtensions?: readonly string[];
 }
 
 // ---- path helpers ---------------------------------------------------------
@@ -244,6 +264,11 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Claude Code, run /mcp, choose ${name} and sign in.`,
     },
     mcp: { user: home(".claude.json"), project: project(".mcp.json") },
+    detect: {
+      // The native installer puts claude in ~/.local/bin (macOS and Windows); older npm installs in ~/.claude/local.
+      bins: ["claude"],
+      dirs: (ctx) => [join(ctx.home, ".claude"), join(ctx.home, ".claude.json")],
+    },
     restart: "Restart Claude Code or run /mcp in a new session.",
     skills: skillDirs(home(".claude", "skills"), project(".claude", "skills")),
   },
@@ -258,6 +283,12 @@ const SPECS: readonly AgentSpec[] = [
     mcp: {
       user: (ctx) => join(appConfigRoot(ctx), "Claude", "claude_desktop_config.json"),
       project: null,
+    },
+    detect: {
+      macApps: ["Claude.app"],
+      // Squirrel install: %LOCALAPPDATA%/AnthropicClaude/claude.exe.
+      winApps: [join("AnthropicClaude", "claude.exe")],
+      dirs: (ctx) => [join(appConfigRoot(ctx), "Claude")],
     },
     restart: "Quit and reopen Claude Desktop; the summer-engine tools appear under the tools menu in a new chat.",
     skills: null,
@@ -281,6 +312,12 @@ const SPECS: readonly AgentSpec[] = [
       project: project(".codex", "config.toml"),
       projectNote: "Codex only loads project .codex/config.toml from trusted projects.",
     },
+    detect: {
+      // The codex CLI (npm or Homebrew) and the Codex desktop app share $CODEX_HOME (default ~/.codex).
+      bins: ["codex"],
+      macApps: ["Codex.app"],
+      dirs: (ctx) => [ctx.env.CODEX_HOME || join(ctx.home, ".codex")],
+    },
     restart: "Restart Codex or run /mcp in a new session.",
     skills: sharedSkills(),
   },
@@ -296,6 +333,12 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Cursor Settings, open MCP and click Connect (or Authenticate) next to ${name}.`,
     },
     mcp: { user: home(".cursor", "mcp.json"), project: project(".cursor", "mcp.json") },
+    detect: {
+      bins: ["cursor", "cursor-agent"],
+      macApps: ["Cursor.app"],
+      winApps: [join("Programs", "cursor", "Cursor.exe")],
+      dirs: (ctx) => [join(ctx.home, ".cursor")],
+    },
     restart: "Restart Cursor and enable the summer-engine MCP server if prompted.",
     skills: sharedSkills({
       reloadHint: "Cursor loads skills in the next chat. Summer 3.0 wrote rule files to .cursor/rules and 3.1.0 wrote .cursor/skills; `--force` removes both.",
@@ -320,6 +363,12 @@ const SPECS: readonly AgentSpec[] = [
       project: null,
       movedFrom: home(".codeium", "windsurf", "mcp_config.json"),
     },
+    detect: {
+      bins: ["windsurf", "devin"],
+      macApps: ["Windsurf.app", "Devin.app"],
+      winApps: [join("Programs", "Windsurf", "Windsurf.exe"), join("Programs", "Devin", "Devin.exe")],
+      dirs: (ctx) => [join(xdgOrAppData(ctx), "devin"), join(ctx.home, ".codeium", "windsurf")],
+    },
     restart: "Restart Devin Desktop (formerly Windsurf) and refresh MCP servers from the agent settings. Devin's docs say mcp_config.json configures the Cascade agent; for the Devin agent add the server in the app's MCP settings with the same command.",
     skills: sharedSkills({ legacyDirs: { user: home(".codeium", "windsurf", "skills"), project: project(".windsurf", "skills") } }),
   },
@@ -338,6 +387,12 @@ const SPECS: readonly AgentSpec[] = [
       user: home(".gemini", "config", "mcp_config.json"),
       project: project(".agents", "mcp_config.json"),
     },
+    detect: {
+      bins: ["antigravity", "agy"],
+      macApps: ["Antigravity.app"],
+      winApps: [join("Programs", "Antigravity", "Antigravity.exe")],
+      dirs: (ctx) => [join(ctx.home, ".gemini", "antigravity"), join(ctx.home, ".gemini", "config")],
+    },
     restart: "In Antigravity open the agent panel's MCP servers view and refresh; summer-engine appears in the list (IDE and CLI share this file).",
     skills: skillDirs(home(".gemini", "config", "skills"), project(".agents", "skills")),
   },
@@ -355,6 +410,7 @@ const SPECS: readonly AgentSpec[] = [
       user: home(".gemini", "extensions", "summer-engine", "gemini-extension.json"),
       project: null,
     },
+    detect: { bins: ["gemini"], dirs: (ctx) => [join(ctx.home, ".gemini", "extensions")] },
     restart:
       "Run `summer skills install --all --agent gemini` if skills were not installed, then restart Gemini CLI (or `gemini extensions enable summer-engine` if it is disabled).",
     skills: skillDirs(home(".gemini", "extensions", "summer-engine", "skills"), null),
@@ -374,6 +430,11 @@ const SPECS: readonly AgentSpec[] = [
       user: (ctx) => vsCodeGlobalStorage(ctx, "saoudrizwan.claude-dev", "cline_mcp_settings.json"),
       project: null,
     },
+    detect: {
+      // A VS Code extension: its install folder, or the storage it makes on first run.
+      vscodeExtensions: ["saoudrizwan.claude-dev-"],
+      dirs: (ctx) => [join(vsCodeUserDir(ctx), "globalStorage", "saoudrizwan.claude-dev")],
+    },
     restart: "Restart VS Code so Cline reloads its MCP config.",
     skills: skillDirs(home(".cline", "skills"), project(".cline", "skills")),
   },
@@ -389,6 +450,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Run \`cline mcp\`, pick ${name} and choose Authorize OAuth.`,
     },
     mcp: { user: home(".cline", "data", "settings", "cline_mcp_settings.json"), project: null },
+    detect: { bins: ["cline"], dirs: (ctx) => [join(ctx.home, ".cline", "data")] },
     restart: "Restart the Cline CLI so it reloads its MCP settings.",
     skills: skillDirs(home(".cline", "skills"), project(".cline", "skills")),
   },
@@ -404,6 +466,10 @@ const SPECS: readonly AgentSpec[] = [
     mcp: {
       user: (ctx) => vsCodeGlobalStorage(ctx, "rooveterinaryinc.roo-cline", "cline_mcp_settings.json"),
       project: null,
+    },
+    detect: {
+      vscodeExtensions: ["rooveterinaryinc.roo-cline-"],
+      dirs: (ctx) => [join(vsCodeUserDir(ctx), "globalStorage", "rooveterinaryinc.roo-cline")],
     },
     restart: "Restart VS Code so Roo Code reloads its MCP config.",
     skills: {
@@ -428,6 +494,12 @@ const SPECS: readonly AgentSpec[] = [
       user: (ctx) => join(xdgOrAppData(ctx), "kilo", "kilo.json"),
       project: project("kilo.json"),
     },
+    detect: {
+      // The kilo CLI, or the VS Code extension.
+      bins: ["kilo", "kilocode"],
+      vscodeExtensions: ["kilocode.kilo-code-"],
+      dirs: (ctx) => [join(xdgOrAppData(ctx), "kilo"), join(ctx.home, ".kilo")],
+    },
     restart: "Restart Kilo (CLI or the VS Code extension) so it reloads kilo.json.",
     skills: skillDirs(home(".kilo", "skills"), project(".kilo", "skills")),
   },
@@ -443,6 +515,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Copilot CLI opens summer.games to sign in when ${name} first connects; /mcp signs in again.`,
     },
     mcp: { user: home(".copilot", "mcp-config.json"), project: project(".mcp.json") },
+    detect: { bins: ["copilot"], dirs: (ctx) => [join(ctx.home, ".copilot")] },
     restart: "Restart Copilot CLI, or run /mcp reload and /skills reload in the active session.",
     skills: skillDirs(home(".copilot", "skills"), project(".github", "skills")),
   },
@@ -460,6 +533,13 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In VS Code, click Allow when ${name} asks to authenticate, then sign in on summer.games.`,
     },
     mcp: { user: (ctx) => join(vsCodeUserDir(ctx), "mcp.json"), project: project(".vscode", "mcp.json") },
+    detect: {
+      // Copilot Chat ships with VS Code, so VS Code itself is the signal.
+      bins: ["code"],
+      macApps: ["Visual Studio Code.app"],
+      winApps: [join("Programs", "Microsoft VS Code", "Code.exe"), join("Microsoft VS Code", "Code.exe")],
+      dirs: (ctx) => [vsCodeUserDir(ctx)],
+    },
     restart: "Restart VS Code or run MCP: List Servers, then start summer-engine in Copilot Agent mode.",
     skills: sharedSkills({ legacyDirs: { user: home(".copilot", "skills"), project: project(".github", "skills") } }),
   },
@@ -472,6 +552,10 @@ const SPECS: readonly AgentSpec[] = [
     format: "json-vscode",
     // No Summer Games entry: Visual Studio's OAuth redirect for MCP is not documented; not checked against api.summer.games.
     mcp: { user: home(".mcp.json"), project: project(".mcp.json") },
+    detect: {
+      // Windows only (Visual Studio for Mac is retired): the install root under Program Files.
+      winApps: [join("Microsoft Visual Studio", "Installer", "vswhere.exe")],
+    },
     restart: "Restart Visual Studio, open Copilot Chat in Agent mode, and enable summer-engine in the tools picker.",
     skills: null,
     noSkillsNote: "Visual Studio's Copilot has no skills folder yet; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
@@ -491,6 +575,10 @@ const SPECS: readonly AgentSpec[] = [
       user: (ctx) => join(xdgOrAppData(ctx), "github-copilot", "intellij", "mcp.json"),
       project: null,
     },
+    detect: {
+      // The Copilot plugin writes its settings here on first run; the IDE itself can be any JetBrains product.
+      dirs: (ctx) => [join(xdgOrAppData(ctx), "github-copilot", "intellij")],
+    },
     restart: "Restart the JetBrains IDE and open Copilot Chat in Agent mode; summer-engine shows in the tools list.",
     skills: null,
     noSkillsNote: "Copilot in JetBrains documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
@@ -509,6 +597,12 @@ const SPECS: readonly AgentSpec[] = [
     mcp: {
       user: (ctx) => join(xdgOrAppData(ctx), "opencode", "opencode.json"),
       project: project("opencode.json"),
+    },
+    detect: {
+      // The install script puts opencode in ~/.opencode/bin.
+      bins: ["opencode"],
+      macApps: ["OpenCode.app"],
+      dirs: (ctx) => [join(xdgOrAppData(ctx), "opencode"), join(ctx.home, ".opencode")],
     },
     restart: "Restart OpenCode so it reloads opencode.json.",
     skills: sharedSkills({
@@ -532,6 +626,12 @@ const SPECS: readonly AgentSpec[] = [
       user: (ctx) => join(xdgOrAppData(ctx), "zed", "settings.json"),
       project: null,
     },
+    detect: {
+      bins: ["zed"],
+      macApps: ["Zed.app", "Zed Preview.app"],
+      winApps: [join("Programs", "Zed", "Zed.exe")],
+      dirs: (ctx) => [join(xdgOrAppData(ctx), "zed")],
+    },
     restart: "Zed reloads settings.json live; open the Agent panel and check summer-engine under MCP servers.",
     skills: sharedSkills(),
   },
@@ -547,6 +647,12 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Kiro opens summer.games to sign in when ${name} connects (Kiro CLI: /mcp auth).`,
     },
     mcp: { user: home(".kiro", "settings", "mcp.json"), project: project(".kiro", "settings", "mcp.json") },
+    detect: {
+      bins: ["kiro", "kiro-cli"],
+      macApps: ["Kiro.app"],
+      winApps: [join("Programs", "Kiro", "Kiro.exe")],
+      dirs: (ctx) => [join(ctx.home, ".kiro")],
+    },
     restart: "Kiro reloads MCP config on save; open the MCP Servers view to confirm summer-engine is connected.",
     skills: skillDirs(home(".kiro", "skills"), project(".kiro", "skills")),
   },
@@ -577,6 +683,12 @@ const SPECS: readonly AgentSpec[] = [
           : join(xdgConfig(ctx), "goose", "config.yaml"),
       project: null,
     },
+    detect: {
+      bins: ["goose"],
+      macApps: ["Goose.app"],
+      winApps: [join("Programs", "Goose", "Goose.exe")],
+      dirs: (ctx) => [ctx.os === "win32" ? join(appData(ctx), "Block", "goose") : join(xdgConfig(ctx), "goose")],
+    },
     restart: "Restart Goose (CLI or Desktop); summer-engine is listed under Extensions.",
     skills: skillDirs((ctx) => join(xdgConfig(ctx), "agents", "skills"), project(".agents", "skills")),
   },
@@ -592,6 +704,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Run \`hermes mcp login ${name}\`, or sign in on summer.games when Hermes first connects.`,
     },
     mcp: { user: home(".hermes", "config.yaml"), project: null },
+    detect: { bins: ["hermes"], dirs: (ctx) => [join(ctx.home, ".hermes")] },
     restart: "Run /reload-mcp in Hermes Agent (or restart it).",
     skills: skillDirs(home(".hermes", "skills"), SHARED_SKILLS_PROJECT, {
       reloadHint: "Project skills need `hermes skills trust` before Hermes loads them.",
@@ -614,6 +727,12 @@ const SPECS: readonly AgentSpec[] = [
       project: project(".trae", "mcp.json"),
       projectNote: "Trae manages user-level MCP servers in its UI; writing the project file .trae/mcp.json instead.",
     },
+    detect: {
+      bins: ["trae"],
+      macApps: ["Trae.app"],
+      winApps: [join("Programs", "Trae", "Trae.exe")],
+      dirs: (ctx) => [join(appConfigRoot(ctx), "Trae"), join(ctx.home, ".trae")],
+    },
     restart: "Restart Trae and open the MCP settings; summer-engine should show as connected.",
     skills: null,
     noSkillsNote: "Trae documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
@@ -630,6 +749,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Qwen Code, run /mcp auth ${name} and sign in.`,
     },
     mcp: { user: home(".qwen", "settings.json"), project: project(".qwen", "settings.json") },
+    detect: { bins: ["qwen"], dirs: (ctx) => [join(ctx.home, ".qwen")] },
     restart: "Restart Qwen Code or run /mcp in a new session.",
     skills: skillDirs(home(".qwen", "skills"), project(".qwen", "skills")),
   },
@@ -645,6 +765,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Run \`kimi mcp auth ${name}\`; it opens summer.games to sign in.`,
     },
     mcp: { user: home(".kimi-code", "mcp.json"), project: project(".kimi-code", "mcp.json") },
+    detect: { bins: ["kimi"], dirs: (ctx) => [join(ctx.home, ".kimi-code"), join(ctx.home, ".kimi")] },
     restart: "Restart Kimi Code CLI so it reconnects its MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".kimi-code", "skills"), project: project(".kimi-code", "skills") } }),
   },
@@ -663,6 +784,7 @@ const SPECS: readonly AgentSpec[] = [
       user: home(".config", "crush", "crushrc"),
       project: project(".crushrc"),
     },
+    detect: { bins: ["crush"], dirs: (ctx) => [join(ctx.home, ".config", "crush"), join(ctx.home, ".local", "share", "crush")] },
     restart: "Restart Crush so it reloads crushrc.",
     skills: sharedSkills({ legacyDirs: { user: home(".config", "crush", "skills"), project: project(".crush", "skills") } }),
   },
@@ -678,6 +800,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Amp opens summer.games to sign in for ${name} when it starts.`,
     },
     mcp: { user: (ctx) => join(xdgOrAppData(ctx), "amp", "settings.json"), project: null },
+    detect: { bins: ["amp"], dirs: (ctx) => [join(xdgOrAppData(ctx), "amp")] },
     restart: "Restart Amp so it reloads settings.json.",
     skills: sharedSkills({ legacyDirs: { user: (ctx) => join(xdgOrAppData(ctx), "amp", "skills"), project: null } }),
   },
@@ -693,6 +816,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Droid, run /mcp, choose ${name} and Authenticate.`,
     },
     mcp: { user: home(".factory", "mcp.json"), project: project(".factory", "mcp.json") },
+    detect: { bins: ["droid"], dirs: (ctx) => [join(ctx.home, ".factory")] },
     restart: "Restart droid or run /mcp in the active session.",
     skills: sharedSkills({ legacyDirs: { user: home(".factory", "skills"), project: project(".factory", "skills") } }),
   },
@@ -708,6 +832,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Junie, run /mcp, open ${name} and choose Authorize.`,
     },
     mcp: { user: home(".junie", "mcp", "mcp.json"), project: project(".junie", "mcp", "mcp.json") },
+    detect: { bins: ["junie"], dirs: (ctx) => [join(ctx.home, ".junie")] },
     restart: "Restart the JetBrains IDE so Junie reloads its MCP config.",
     skills: null,
     noSkillsNote: "Junie has no skills folder; put project guidance in .junie/guidelines.md. The MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
@@ -724,6 +849,11 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `Warp opens summer.games to sign in when ${name} starts.`,
     },
     mcp: { user: home(".warp", ".mcp.json"), project: project(".warp", ".mcp.json") },
+    detect: {
+      macApps: ["Warp.app"],
+      winApps: [join("Programs", "Warp", "warp.exe")],
+      dirs: (ctx) => [join(ctx.home, ".warp")],
+    },
     restart: "Warp detects the file and spawns the server; check Settings > AI > MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".warp", "skills"), project: project(".warp", "skills") } }),
   },
@@ -736,6 +866,11 @@ const SPECS: readonly AgentSpec[] = [
     format: "json-transport",
     // No Summer Games entry: Rovo Dev CLI has no OAuth sign-in for remote MCP servers (headers only).
     mcp: { user: home(".rovodev", "mcp.json"), project: null },
+    detect: {
+      // Rovo Dev runs as `acli rovodev`; acli alone is the Atlassian CLI, so the ~/.rovodev folder is the firmer signal.
+      bins: ["acli"],
+      dirs: (ctx) => [join(ctx.home, ".rovodev")],
+    },
     restart: "Restart Rovo Dev CLI so it reconnects its MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".rovodev", "skills"), project: project(".rovodev", "skills") } }),
   },
@@ -748,6 +883,12 @@ const SPECS: readonly AgentSpec[] = [
     format: "json",
     // No Summer Games entry: Qoder's remote-server fields in settings.json are not documented.
     mcp: { user: home(".qoder", "settings.json"), project: project(".mcp.json") },
+    detect: {
+      bins: ["qodercli"],
+      macApps: ["Qoder.app"],
+      winApps: [join("Programs", "Qoder", "Qoder.exe")],
+      dirs: (ctx) => [join(ctx.home, ".qoder")],
+    },
     restart: "Restart Qoder CLI so it reloads its MCP settings (the Qoder IDE manages servers in its UI).",
     skills: skillDirs(home(".qoder", "skills"), project(".qoder", "skills")),
   },
@@ -763,6 +904,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Grok Build, run /mcps, select ${name} and press i to sign in.`,
     },
     mcp: { user: home(".grok", "config.toml"), project: project(".grok", "config.toml") },
+    detect: { bins: ["grok"], dirs: (ctx) => [join(ctx.home, ".grok")] },
     restart: "Restart Grok Build so it reloads config.toml (it also reads ~/.claude.json and .cursor/mcp.json).",
     skills: sharedSkills({ legacyDirs: { user: home(".grok", "skills"), project: project(".grok", "skills") } }),
   },
@@ -778,6 +920,7 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Vibe, run /mcp login ${name}.`,
     },
     mcp: { user: home(".vibe", "config.toml"), project: project(".vibe", "config.toml") },
+    detect: { bins: ["vibe"], dirs: (ctx) => [join(ctx.home, ".vibe")] },
     restart: "Restart Vibe so it reloads config.toml.",
     skills: skillDirs(home(".vibe", "skills"), SHARED_SKILLS_PROJECT, { legacyDirs: { user: home(".vibe", "skills"), project: project(".vibe", "skills") } }),
   },
@@ -790,6 +933,13 @@ const SPECS: readonly AgentSpec[] = [
     format: "json",
     // No Summer Games entry: LM Studio's MCP client registration is closed and unverified.
     mcp: { user: home(".lmstudio", "mcp.json"), project: null },
+    detect: {
+      // The app installs the lms command into ~/.lmstudio/bin.
+      bins: ["lms"],
+      macApps: ["LM Studio.app"],
+      winApps: [join("Programs", "LM Studio", "LM Studio.exe"), join("Programs", "lm-studio", "LM Studio.exe")],
+      dirs: (ctx) => [join(ctx.home, ".lmstudio")],
+    },
     restart:
       "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher.",
     skills: null,

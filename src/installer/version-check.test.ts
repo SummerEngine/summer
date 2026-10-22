@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  isBundledRuntimeServerConfig,
   buildBootDriftNotice,
   buildCliVersionCheck,
   buildSkillsVersionCheck,
@@ -427,6 +428,25 @@ describe("recorded install detection (the shape `summer setup` writes)", () => {
       "npx clear-npx-cache && npx -y summer-engine@latest setup cursor --yes --force"
     );
     expect(skillsRefreshCommand("cursor", null)).toContain("npx -y summer-engine@latest setup cursor");
+  });
+
+  it("skillsRefreshCommand keeps a bundled runtime instead of switching to npx", () => {
+    const install = {
+      localDev: false,
+      cliPath: "/Users/a/Library/Application Support/Summer/summer-engine/dist/bin/summer.js",
+      runtime: "/Applications/Summer.app/Contents/Resources/node/bin/node",
+      source: "agent-config" as const,
+    };
+    expect(skillsRefreshCommand("codex", install)).toBe(
+      '/Applications/Summer.app/Contents/Resources/node/bin/node "/Users/a/Library/Application Support/Summer/summer-engine/dist/bin/summer.js" setup codex --runtime /Applications/Summer.app/Contents/Resources/node/bin/node --package-dir "/Users/a/Library/Application Support/Summer/summer-engine" --yes --force'
+    );
+  });
+
+  it("isBundledRuntimeServerConfig knows the --runtime entry from npx and --local-dev", () => {
+    expect(isBundledRuntimeServerConfig({ command: "/opt/s/node", args: ["/opt/s/pkg/dist/bin/summer.js", "mcp"] })).toBe(true);
+    expect(isBundledRuntimeServerConfig({ command: "C:\\S\\node.exe", args: ["C:\\S\\pkg\\dist\\bin\\summer.js", "mcp"] })).toBe(true);
+    expect(isBundledRuntimeServerConfig({ command: "node", args: ["/w/dist/bin/summer.js", "mcp"] })).toBe(false);
+    expect(isBundledRuntimeServerConfig({ command: "npx", args: ["-y", "summer-engine@latest", "mcp"] })).toBe(false);
   });
 
   it("listsSummerEngine finds a summer-engine entry in any shape: stdio, URL, Claude Code per project, TOML", () => {

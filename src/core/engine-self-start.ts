@@ -71,8 +71,20 @@ export const SELF_START_RECOVERY = {
  *  the same window (the editor's own switch, J16.1). */
 export const SWITCH_PROJECT_OP = "SwitchProject";
 /** How long the new editor has to register after a switch: it boots first
- *  and shows up in the registry about 5 s after the operation returns. */
-export const SWITCH_REGISTER_MS = 10_000;
+ *  and registers about 5 s after the operation returns locally, about 14 s
+ *  on CI (J17), so the next tool never meets a half-open game. */
+export const SWITCH_REGISTER_MS = 30_000;
+/** While a game opens, the agent hears "Opening <game>…" this often. */
+export const OPEN_PROGRESS_EVERY_MS = 3_000;
+
+/** Says `message` now and every OPEN_PROGRESS_EVERY_MS until the returned stop is called. */
+export function keepSaying(progress: SelfStartDeps["progress"], message: string): () => void {
+  if (!progress) return () => {};
+  progress(message);
+  const timer = setInterval(() => progress(message), OPEN_PROGRESS_EVERY_MS);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
 
 export interface SelfStartDeps {
   launch?: typeof launchEditor;
@@ -277,6 +289,25 @@ export async function openProjectInEditor(
   launched.delete(root);
 
   log(`no editor has ${root} open: launching it in the background`);
+  const stop = keepSaying(deps.progress, `Opening ${basename(root)}…`);
+  try {
+    return await launchAndConnect(root, selection, connect, log, deadline, left, deps, failure);
+  } finally {
+    stop();
+  }
+}
+
+async function launchAndConnect(
+  root: string,
+  selection: EngineSelection | undefined,
+  connect: NonNullable<SelfStartDeps["connect"]>,
+  log: (line: string) => void,
+  deadline: number,
+  left: (reserve?: number) => number,
+  deps: SelfStartDeps,
+  failure: (message: string, recovery: string) => EngineNotRunningError
+): Promise<EngineApiClient> {
+  const now = deps.now ?? Date.now;
   let result: LaunchEditorResult;
   try {
     result = await (deps.launch ?? launchEditor)({
@@ -330,8 +361,24 @@ async function switchOpenEditor(
   const reason = `${open.name} is open`;
   const failure = (message: string, recovery: string) => new EngineNotRunningError(message, reason, recovery);
   log(`switching the editor from ${open.name} to ${root}`);
-  // The agent hears at once; the new editor needs a few seconds (J16.5).
-  deps.progress?.(`Opening ${basename(root)}…`);
+  // The agent hears at once and every few seconds; the new editor needs a while (J16.5, J17).
+  const stop = keepSaying(deps.progress, `Opening ${basename(root)}…`);
+  try {
+    return await switchAndConnect(root, selection, connect, left, deps, open, failure);
+  } finally {
+    stop();
+  }
+}
+
+async function switchAndConnect(
+  root: string,
+  selection: EngineSelection | undefined,
+  connect: NonNullable<SelfStartDeps["connect"]>,
+  left: (reserve?: number) => number,
+  deps: SelfStartDeps,
+  open: { instance: EngineInstance; name: string },
+  failure: (message: string, recovery: string) => EngineNotRunningError
+): Promise<EngineApiClient> {
   let answer: unknown;
   try {
     const current = await connect({ instanceId: open.instance.instanceId });

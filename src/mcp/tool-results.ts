@@ -101,7 +101,27 @@ export async function withSignInLink(
     const url = await links.link(kind);
     if (!url) return result;
     const original = result as { content: Content[] };
-    return { ...original, content: [...original.content, { type: "text", text: signInLinkText(kind, url) }] };
+    const text = signInLinkText(kind, url);
+    // A JSON answer gets the link inside it (signInUrl, and recovery says what
+    // to do), so a caller that parses it (the v4 operation layer runs 3.x
+    // tools and reads their JSON) keeps the code and passes the link on.
+    const first = original.content[0];
+    if (first && first.type === "text" && typeof first.text === "string") {
+      try {
+        const parsed: unknown = JSON.parse(first.text);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const answer = parsed as Record<string, unknown>;
+          const nested = answer.error && typeof answer.error === "object" ? (answer.error as Record<string, unknown>) : null;
+          const target = nested && typeof nested.code === "string" ? nested : answer;
+          target.signInUrl = url;
+          target.recovery = text;
+          return { ...original, content: [{ ...first, text: JSON.stringify(answer) }, ...original.content.slice(1)] };
+        }
+      } catch {
+        // plain text: the link goes in its own block below
+      }
+    }
+    return { ...original, content: [...original.content, { type: "text", text }] };
   } catch {
     return result;
   }

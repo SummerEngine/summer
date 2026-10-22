@@ -80,7 +80,11 @@ export function engineFailure(text: string, op: string, options: { effect: "read
   if (code === "engine_lacks_op" || reason === "engine_lacks_op" || reason === "engine_lacks_events" || /engine_lacks_op/.test(text)) {
     return errorAnswer("engine_lacks_op", message, { next: { say: "Update Summer Engine." }, details });
   }
-  if (code && PASSED_CODES.has(code)) return errorAnswer(code, message, { details, ...(code === "invalid_input" ? { next: describe } : {}) });
+  if (code && PASSED_CODES.has(code)) {
+    // A signed-out tool answers with a sign-in link (mcp/tool-results.ts withSignInLink): the next step says it.
+    const signIn = code === "not_signed_in" && str(body?.signInUrl) ? { next: { say: str(body?.recovery) ?? `Sign-in link for the person: ${str(body?.signInUrl)}` } } : {};
+    return errorAnswer(code, message, { details, ...signIn, ...(code === "invalid_input" ? { next: describe } : {}) });
+  }
 
   if (!body && TRANSPORT.test(text)) {
     return options.effect === "read"

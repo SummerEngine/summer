@@ -72,9 +72,22 @@ describe("withSignInLink", () => {
     const links = { link: async () => "https://gateway.example/login?cli_session=abc" };
     const failure = { isError: true, content: [{ type: "text", text: '{"ok":false,"code":"not_signed_in"}' }] };
     const shaped = (await withSignInLink(failure, "not_signed_in", links)) as { content: Array<{ text: string }> };
-    expect(shaped.content).toHaveLength(2);
-    expect(shaped.content[1].text).toContain("https://gateway.example/login?cli_session=abc");
+    // The link goes inside the JSON answer, which stays parseable with its code.
+    expect(shaped.content).toHaveLength(1);
+    const answer = JSON.parse(shaped.content[0].text);
+    expect(answer.code).toBe("not_signed_in");
+    expect(answer.signInUrl).toBe("https://gateway.example/login?cli_session=abc");
+    expect(answer.recovery).toContain("https://gateway.example/login?cli_session=abc");
     expect(await withSignInLink(failure, "no_credits", links)).toBe(failure);
+    // The v4 shape keeps the code in error: the link goes there.
+    const v4 = { isError: true, content: [{ type: "text", text: '{"ok":false,"error":{"code":"not_signed_in","message":"Not signed in to Summer.","retry":"no"}}' }] };
+    const v4Answer = JSON.parse(((await withSignInLink(v4, "not_signed_in", links)) as { content: Array<{ text: string }> }).content[0].text);
+    expect(v4Answer.error.code).toBe("not_signed_in");
+    expect(v4Answer.error.signInUrl).toBe("https://gateway.example/login?cli_session=abc");
+    // Plain text keeps the link in its own block.
+    const plain = { isError: true, content: [{ type: "text", text: "Not signed in to Summer." }] };
+    const plainShaped = (await withSignInLink(plain, "not_signed_in", links)) as { content: Array<{ text: string }> };
+    expect(plainShaped.content[1].text).toContain("cli_session=abc");
     expect(await withSignInLink(failure, "not_signed_in", { link: async () => null })).toBe(failure);
   });
 });

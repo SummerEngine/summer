@@ -15,7 +15,7 @@
  */
 import { execSync } from "child_process";
 import { realpathSync } from "fs";
-import { resolve, sep } from "path";
+import { basename, resolve, sep } from "path";
 import { EngineApiClient } from "./api-client.js";
 import { checkEngineHealth, findProjectRoot, listEngineInstances, type EngineInstance, type EngineSelection } from "./engine.js";
 import { CLOSED_EARLY, lastLaunch, LaunchLockBusyError, launchEditor, resolveRunBinary, type LaunchEditorResult } from "./engine-launch.js";
@@ -70,8 +70,9 @@ export const SELF_START_RECOVERY = {
 /** The engine operation that makes a running editor open another game in
  *  the same window (the editor's own switch, J16.1). */
 export const SWITCH_PROJECT_OP = "SwitchProject";
-/** How long the new editor has to register after a switch (J16.1: 2 s). */
-export const SWITCH_REGISTER_MS = 2_000;
+/** How long the new editor has to register after a switch: it boots first
+ *  and shows up in the registry about 5 s after the operation returns. */
+export const SWITCH_REGISTER_MS = 10_000;
 
 export interface SelfStartDeps {
   launch?: typeof launchEditor;
@@ -81,6 +82,10 @@ export interface SelfStartDeps {
   waitMs?: number;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  /** A progress line for the agent while it waits (MCP notifications/progress). */
+  progress?: (message: string) => void;
+  /** Tests: how long a switch waits for the new editor (default SWITCH_REGISTER_MS). */
+  switchWaitMs?: number;
 }
 
 /** Projects this process launched, by root: when and which process, so a slow first start is waited on while it lives. */
@@ -249,7 +254,7 @@ export async function openProjectInEditor(
 
   if (hasNoDisplay(env)) throw failure("Summer Engine cannot open a window here.", SELF_START_RECOVERY.noDisplay);
   const open = await otherOpenProject(root);
-  if (open && options.switchOpen) return switchOpenEditor(open, root, selection, connect, log, left);
+  if (open && options.switchOpen) return switchOpenEditor(open, root, selection, connect, log, left, deps);
   if (open) throw failure("Summer Engine has another project open.", SELF_START_RECOVERY.otherProject(open.name, root));
   const binary = resolveRunBinary(undefined, env);
   if (binary.binary === null) {
@@ -319,11 +324,14 @@ async function switchOpenEditor(
   selection: EngineSelection | undefined,
   connect: NonNullable<SelfStartDeps["connect"]>,
   log: (line: string) => void,
-  left: (reserve?: number) => number
+  left: (reserve?: number) => number,
+  deps: SelfStartDeps
 ): Promise<EngineApiClient> {
   const reason = `${open.name} is open`;
   const failure = (message: string, recovery: string) => new EngineNotRunningError(message, reason, recovery);
   log(`switching the editor from ${open.name} to ${root}`);
+  // The agent hears at once; the new editor needs a few seconds (J16.5).
+  deps.progress?.(`Opening ${basename(root)}…`);
   let answer: unknown;
   try {
     const current = await connect({ instanceId: open.instance.instanceId });
@@ -343,9 +351,9 @@ async function switchOpenEditor(
     }
     throw failure("Summer Engine could not switch games.", SELF_START_RECOVERY.switchFailed(root, error));
   }
-  // The new editor registers within 2 s of the switch (J16.1); a first open
-  // that imports assets answers health later: "starting", call again.
-  if (!(await waitForRegisteredEditor(root, Math.min(SWITCH_REGISTER_MS, left())))) {
+  // The new editor boots, then registers (about 5 s); a first open that
+  // imports assets answers health later: "switching", call again.
+  if (!(await waitForRegisteredEditor(root, Math.min(deps.switchWaitMs ?? SWITCH_REGISTER_MS, left())))) {
     launched.set(root, { at: Date.now() });
     throw failure("Summer Engine is switching to the project.", SELF_START_RECOVERY.starting(root));
   }

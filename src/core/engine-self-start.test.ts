@@ -27,6 +27,7 @@ import {
   SELF_START_RECOVERY,
   sessionProject,
   SWITCH_PROJECT_OP,
+  SWITCH_REGISTER_MS,
 } from "./engine-self-start.js";
 import { EngineNotRunningError } from "./error-codes.js";
 import { setSummerDirForTests } from "./store.js";
@@ -290,7 +291,8 @@ describe("projects.open_local switches an editor that has another game open (J16
         return {
           executeOps: async (sent: unknown[]) => {
             ops.push(...sent);
-            if (registers) register("next", project, 6554);
+            // The new editor boots first and registers a moment after the op returns.
+            if (registers) setTimeout(() => register("next", project, 6554), 300);
             return opAnswer;
           },
         } as unknown as EngineApiClient;
@@ -301,19 +303,31 @@ describe("projects.open_local switches an editor that has another game open (J16
     return { ops, connect };
   }
 
-  it("asks the running editor to switch, waits for the new editor in the registry, and connects to it", async () => {
+  it("asks the running editor to switch, says so at once, waits for the new editor in the registry, and connects to it", async () => {
     register("other", elsewhere, 6553);
     healthMock.mockResolvedValue(up as never);
     const launch = launcher({ status: "running", launched: true, port: 1, health: up as never });
     const engine = fakeEngine({ results: [{ ok: true }] }, true);
+    const progress: Array<{ message: string; at: number }> = [];
 
     const started = Date.now();
-    const client = await openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, launch, connect: engine.connect });
+    const client = await openProjectInEditor(
+      project,
+      { cwd: project },
+      { switchOpen: true },
+      { env: on, launch, connect: engine.connect, progress: (message) => progress.push({ message, at: Date.now() - started }) }
+    );
 
     expect(client).toBe(fakeClient);
     expect(engine.ops).toEqual([{ op: SWITCH_PROJECT_OP, path: project }]);
     expect(launch).not.toHaveBeenCalled();
-    expect(Date.now() - started).toBeLessThan(2_000);
+    // J16.5: progress within 1 s, before the new editor is there.
+    expect(progress[0]?.message).toBe("Opening game…");
+    expect(progress[0]!.at).toBeLessThan(1_000);
+  });
+
+  it("waits the full boot of the new editor (registers after ~5 s) within the 10 s switch wait", () => {
+    expect(SWITCH_REGISTER_MS).toBe(10_000);
   });
 
   it("an editor without the switch operation keeps the old answer and names the open game", async () => {
@@ -327,12 +341,14 @@ describe("projects.open_local switches an editor that has another game open (J16
     expect(error.recovery).toContain("cannot switch games");
   });
 
-  it("a new editor that does not register within 2 s is reported as switching, call again", async () => {
+  it("a new editor that does not register within the switch wait is reported as switching, call again", async () => {
     register("other", elsewhere, 6553);
     healthMock.mockResolvedValue(up as never);
     const engine = fakeEngine({ results: [{ ok: true }] }, false);
 
-    const error = await failureOf(openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, connect: engine.connect }));
+    const error = await failureOf(
+      openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, connect: engine.connect, switchWaitMs: 300 })
+    );
 
     expect(error.message).toBe("Summer Engine is switching to the project.");
     expect(error.recovery).toContain("Call again");

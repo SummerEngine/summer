@@ -21,6 +21,27 @@ async function localProjectResult<T>(operation: () => Promise<T>) {
   }
 }
 
+/** The tool call's progress line (notifications/progress), when the client asked for progress. */
+export function progressReporter(
+  extra:
+    | {
+        _meta?: { progressToken?: string | number };
+        sendNotification?: (notification: {
+          method: "notifications/progress";
+          params: { progressToken: string | number; progress: number; message?: string };
+        }) => Promise<void>;
+      }
+    | undefined
+): ((message: string) => void) | undefined {
+  const token = extra?._meta?.progressToken;
+  const send = extra?.sendNotification;
+  if (token === undefined || !send) return undefined;
+  let step = 0;
+  return (message) => {
+    void send({ method: "notifications/progress", params: { progressToken: token, progress: ++step, message } }).catch(() => undefined);
+  };
+}
+
 /**
  * projects.create_local and projects.open_local: what `summer dev` does, for
  * agents with no shell (core/capabilities/projects-local.ts).
@@ -44,9 +65,11 @@ export function registerLocalProjectTools(server: McpServer): void {
       path: z.string().max(1000).optional().describe("The project folder (holds project.godot), e.g. projectPath from summer_projects_create_local. Default this session's project."),
       install: z.boolean().default(false).describe("Install Summer Engine first when it is missing. Set true only after the person said yes."),
     },
-    async (args) =>
+    async (args, extra) =>
       localProjectResult(() =>
-        openLocalProject(args, currentMcpEngineSelection(), { log: logEngineSelfStart }, (root, client) => bindMcpProject(root, client))
+        openLocalProject(args, currentMcpEngineSelection(), { log: logEngineSelfStart, progress: progressReporter(extra) }, (root, client) =>
+          bindMcpProject(root, client)
+        )
       )
   );
 }

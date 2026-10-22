@@ -4,6 +4,11 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **First game: make it look finished.** A first game used to come out as grey boxes: the `make-game` skill told agents to build the first playable from shapes and add art later, and nothing an agent always reads said anything about looks. Now the rule sits where agents read it without choosing to:
+  - **MCP server instructions** open with it, inside the first 512 characters (Codex keeps the first 512): keep the features the person asked for and raise the look (sky and sun with shadows, fog, a texture on every surface, real models from the starter project and `summer_assets_search` first, never capsules or boxes as final art, one palette, a styled UI font), then play it and check a screenshot of the running game. They no longer open with "call summer_get_project_context first".
+  - **The project's `AGENTS.md` block** (written by `summer create` and `summer setup --yes`) has a "First game: make it look finished" section. It now says to write GDScript files directly and to create scenes and import assets through Summer, and its publishing line matches the store: a game goes live when Summer's automated checks pass, with no wait for a review.
+  - **`make-game`:** the first playable already looks good; generation still never blocks the first play (starter and library art first).
+
 ## [4.5.0] - 2026-10-19
 
 4.4.0 was not published to npm. 4.5.0 is the first release with everything in it (the [4.4.0] section below), plus these changes.

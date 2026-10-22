@@ -34,8 +34,21 @@ import type { HostedLocalHook } from "./hosted-mount.js";
 export const SUMMER_SEARCH = "summer_search";
 export const SUMMER_CALL = "summer_call";
 
+/**
+ * The first-game look rule. It opens the engine instructions because clients
+ * keep only the start of long server instructions (Codex: the first 512
+ * characters), and a project's first frame decides whether the person keeps
+ * going. The same rule is in the AGENTS.md block (project-memory/agent-instructions.ts).
+ */
+export const FIRST_GAME_LOOK_RULE =
+  "First game in a new project: make it look finished, even if they asked for a quick prototype, because the first frame decides if they keep going. " +
+  "Keep their features and raise the look: sky and sun with shadows, fog, a texture on every surface, real models for player, characters and props (starter project and summer_assets_search first, never capsules or boxes as final art), one palette, a styled UI font. " +
+  "Before you say it is ready, play it and check a screenshot of the running game.";
+
 export const OPS_MCP_INSTRUCTIONS =
-  "Summer Engine MCP, operation catalog. Call summer_get_project_context first when Summer Engine is open. " +
+  "Summer Engine MCP. " +
+  FIRST_GAME_LOOK_RULE +
+  " Write GDScript files directly; create scenes and import assets through Summer while the project is open. summer_get_project_context tells you which project you are connected to. " +
   "Listed tools are the common jobs; for anything else, summer_search describes the job in words and returns the operation and its exact input, then summer_call runs it. " +
   "More than 3 scene edits: one summer_run_script with scenePath. Each engine tool's full guide: summer_docs_read. Long work answers with a job: jobs.wait. " +
   "Going live: skill/release-checklist, then store.go_live with the person's yes; a game is live once Summer's automated checks pass, so never tell anyone to wait for a review. Prices and other live changes may answer needs_approval with a link: give it to the person. " +

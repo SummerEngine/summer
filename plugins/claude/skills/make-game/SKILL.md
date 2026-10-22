@@ -48,7 +48,7 @@ These rules from the playbooks apply to every genre:
 
 - **2D scales to the viewport.** Set `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand`; UI uses Control anchors; code-positioned nodes compute from `get_viewport_rect().size`. Never hardcode 1920x1080.
 - **Playable slice, not tech demo.** Name the core loop in one sentence; every input gets feedback (tween, sound, particle, flash, shake); progression is visible; a restart exists. The bar is "feels good for 30 seconds".
-- **Fast first draft when someone is waiting.** The first playable version uses shapes, the palette and any template art, plus at most one or two generated assets the person specifically asked for; generation takes minutes, so it never blocks the first play. Say plainly that it is a first draft to get a feel for the game, that the art is not final, and ask if this is the direction they want. Generate the rest of the art in later passes.
+- **The first playable already looks good.** People judge Summer by the first frame of their first game, so the first version looks finished even when they ask for a quick prototype: keep the features they asked for and raise the look. Sky and sun with shadows, tonemapping and a little fog; a texture on every surface; real models for the player, characters and main props from the starter project or the Summer asset library (`summer_assets_search`), never capsules or boxes as final art; one colour palette; a styled UI font. Generation takes minutes, so it never blocks the first play: use starter and library art first, plus at most one or two generated assets the person asked for, and generate the rest in later passes. Before you say it is ready, play it and look at a screenshot of the running game, not the editor (the editor shows a preview sky and sun that the game does not have).
 - **A way back to the title.** From inside play, a pause menu or a **Leave** button returns to the title screen without quitting the app.
 - **Text the default font can show.** No emoji or symbols (▲ ◀ ★ ♥ ✓) in UI text: they render as boxes with hex codes. Use words or icons; see `ui-basics`.
 
@@ -201,7 +201,7 @@ Repeat until every mechanic in the plan is implemented OR the user calls cut.
 
 ## Phase 5: Layer (look + sound)
 
-**Goal**: the game stops looking like a programmer art prototype.
+**Goal**: deepen the look and add sound. The first playable already looks good (see "The first playable already looks good" above); this phase writes the art bible, replaces the remaining stand-in art and adds audio.
 
 ```
 Skill: art-direction
@@ -276,7 +276,7 @@ If the brief said "jam" or "prototype", skip this phase. If the brief said "game
 |---|---|
 | Skip the brainstorm because the user said "FPS" | Even with the genre named, you need the scope cut list. Otherwise mechanic 4 quietly sneaks in and the game never ships. |
 | Let mechanic 2 start before mechanic 1 is verified clean | Compounding bugs. You'll spend the rest of the session debugging which mechanic broke what. |
-| Stack art direction on top of unfinished mechanics | Art changes are reversible only if the underlying scene structure is stable. Get mechanics done first. |
+| Change the art style while mechanics are unfinished | Art changes are reversible only if the underlying scene structure is stable. Get mechanics done before a new style; the first playable still starts good-looking. |
 | Treat "polish" as required | If the brief says "jam in 2 days", polish is a cut item. Respect the brief. |
 | Run all phases without confirming | The user owns scope. Stop at every checkpoint. |
 | Ship online play behind a setting nobody changes | Hosted join is never exercised, so it breaks without anyone noticing. Reachable by default, or the owner joins online before every release. |
@@ -313,7 +313,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 
 | In this skill | Command |
 |---|---|
-| `assets.search` | `summer assets search` |
+| `assets.search`, `summer_assets_search` | `summer assets search` |
 | `summer_docs_read` | `summer docs read` |
 | `summer_add_node` | `summer engine add-node` |
 | `summer_batch` | `summer engine batch` |

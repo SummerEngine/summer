@@ -26,7 +26,7 @@ Then type `/summer:start` for the first-run guide. The plugin brings:
 
 - every Summer skill, as `/summer:<skill>` (for example `/summer:make-game`);
 - `/summer` (routes a request to the right skill) and `/summer:start`;
-- the `summer-engine` MCP server, which drives the Summer Engine desktop app and runs Summer's cloud tools after `summer login` (needs Node 20 or later);
+- the `summer-engine` MCP server, which drives the Summer Engine desktop app and runs Summer's cloud tools after `summer login` (needs Node 22 or later);
 - the `summer-cloud` MCP server, Summer's hosted server at `https://mcp.summerengine.com/mcp`, for people without the desktop app or Node. Sign in once: type `/mcp`, choose `summer-cloud`, then **Authenticate**;
 - a session-start hook that adds one or two lines of context and never waits on the network.
 

@@ -76,11 +76,11 @@ node scripts/generate-registry/cli.ts --check  # CI parity gate: fails on any dr
 node scripts/generate-registry/cli.ts --embed  # optional: also write registry/generated/embeddings.json for semantic library search (needs a Summer login; CI never embeds)
 ```
 
-The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package requires Node 20+ (`engines.node`).
+The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package requires Node 22+ (`engines.node`).
 
 Every test file runs under a throwaway `HOME` (`vitest.config.ts` → `src/test-helpers/fake-home.ts`), so `os.homedir()`, `getSummerDir()` and every default store path land in a temp dir; `setSummerDirForTests(null)` restores that fake home, never the real one. A global guard (`src/test-helpers/real-summer-dir-guard.ts`) snapshots the real `~/.summer` before the suite and fails the run if any test created, deleted or changed something in it (files a live engine/MCP process rewrites are reported, not failed). No test may touch the real `~/.summer`.
 
-The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run on Node 20 even though the published CLI itself does. Three tests need more than the checkout and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` (this package never sends an op the engine lacks) and `src/core/autopilot-assets.test.ts` (the vendored probe base matches the engine's) read the engine source's `origin/main` with `git show`, never its working tree, so they run only for maintainers with engine source access: set `SUMMER_ENGINE_REPO=/path/to/engine` (default: a `summerengine` sibling directory) and keep it fetched. The headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
+The suite needs Node 22 or newer (`.nvmrc`; CI uses 22.23.4), the same as the published CLI. Three tests need more than the checkout and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` (this package never sends an op the engine lacks) and `src/core/autopilot-assets.test.ts` (the vendored probe base matches the engine's) read the engine source's `origin/main` with `git show`, never its working tree, so they run only for maintainers with engine source access: set `SUMMER_ENGINE_REPO=/path/to/engine` (default: a `summerengine` sibling directory) and keep it fetched. The headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
 
 ### CLI command reference
 

@@ -10,7 +10,7 @@ session: `alias summer="node $PWD/dist/bin/summer.js"`.
 
 ## a. Prerequisites
 
-- Node >= 20 (`node --version`). The registry/eval scripts run TypeScript
+- Node >= 22 (`node --version`). The registry/eval scripts run TypeScript
   natively and need >= 22.18.
 - git.
 - The Summer Engine app installed (`/Applications/Summer.app` on macOS —

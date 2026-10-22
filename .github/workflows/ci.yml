@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
 
       - name: Install
@@ -61,8 +61,8 @@ jobs:
       - name: Registry parity (regenerate == committed, count claims == counts.json)
         run: npm run generate:registry -- --check
 
-  # The CLI on the other platforms and on the oldest Node the package supports
-  # (engines.node). The full suite needs Node 22 and runs once, above.
+  # The CLI on every platform, on the Node line the package supports
+  # (engines.node >=22). The full suite runs once, above.
   smoke:
     name: CLI smoke (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
@@ -78,13 +78,14 @@ jobs:
           - os: windows-latest
             node: 22
           - os: ubuntu-latest
-            node: 20
+            node: 22
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          # The 22.x security release of 2026-10-21; matrix.node names the line.
+          node-version: 22.23.4
           cache: npm
 
       - name: Install

@@ -57,10 +57,10 @@ describe("doctor node check", () => {
     expect(pkg.engines.node).toBe(`>=${MIN_NODE_MAJOR}`);
   });
 
-  it("fails below Node 20 and passes from 20 up", () => {
-    expect(checkNodeVersion("18.20.4")).toMatchObject({ status: "fail", message: "v18.20.4 (need 20+)" });
-    expect(checkNodeVersion("20.0.0")).toMatchObject({ status: "ok", message: "v20.0.0" });
-    expect(checkNodeVersion("22.18.0").status).toBe("ok");
+  it("fails below Node 22 and passes from 22 up", () => {
+    expect(checkNodeVersion("20.19.5")).toMatchObject({ status: "fail", message: "v20.19.5 (need 22+)" });
+    expect(checkNodeVersion("22.0.0")).toMatchObject({ status: "ok", message: "v22.0.0" });
+    expect(checkNodeVersion("24.22.1").status).toBe("ok");
   });
 });
 

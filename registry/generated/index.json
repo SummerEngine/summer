@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "4578671ea56e9fd43aa54e01ab4f6ca16dcac03582fe44ddabad93fbc71cc259",
+      "content_hash": "d6f0c38da3be9bd9a82d60ab1a3bf011eac4f8a33e8bc060ff90c7aa76079d40",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -6045,40 +6045,6 @@
       }
     },
     {
-      "id": "tool/api-key-login",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "97a5ad30679df5389432c9826f825cf871c185e1b21685ca62872df369edbdae",
-      "summary": "Get a Summer API key (SUMMER_API_KEY) for this agent with one Allow click from the person; saved on this computer, never shown to the agent.",
-      "use_when": [
-        "the agent needs a Summer API key and none is saved yet",
-        "the person asked to connect this agent to the Summer API"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "generate",
-          "mcp"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "preview",
-      "mcp_tool_name": "summer_api_key_login",
-      "remote": true,
-      "cli_command": "summer login --api-key",
-      "authority": {
-        "filesystem": true,
-        "editor_mutation": false,
-        "network": true,
-        "credentials": true,
-        "publish": false
-      }
-    },
-    {
       "id": "tool/api-models",
       "kind": "tool",
       "version": "1.0.0",
@@ -6116,8 +6082,8 @@
       "id": "tool/api-run",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ec3e1ff741c664a4aebd9fe645ca4208a89b5a2f15b42b3e6933ed12ce59d977",
-      "summary": "Run one Summer API job into the person's Summer assets with the API key on this computer; spends credits within the key's limit, can wait and save the files.",
+      "content_hash": "f032bc0f2b3177f0897a3a3ca4a01ad5725b7f16ce648965cef2294aeeaa5d62",
+      "summary": "Run one Summer API job into the person's Summer assets with the Summer sign-in; spends paid credits within the app's limit, can wait and save the files.",
       "use_when": [
         "making a game asset through the Summer API after estimating it",
         "a script or agent outside Summer Engine needs a generated model, image, sound or clip"

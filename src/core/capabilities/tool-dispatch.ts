@@ -197,7 +197,6 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
-import { apiKeyLoginAnswer } from "../api-key.js";
 import { cancelJob, estimateJob, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
@@ -2188,19 +2187,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- account ---
-  entry("summer_api_key_login", "Get a Summer API key for this agent with one Allow click; saved on this computer", false, async (args) => {
-    const limitUsd = typeof args.limitUsd === "number" ? args.limitUsd : undefined;
-    return apiKeyLoginAnswer({ ...(limitUsd ? { limitUsd } : {}), fresh: args.fresh === true });
-  }),
-
-  // --- the Summer API (core/summer-api.ts; same calls as `summer api`) ---
   entry("summer_api_models", "The Summer API's models with input and price", false, async (args) =>
     summerApiToolAnswer(() => listModels({ ...(optStr(args, "model") ? { model: optStr(args, "model") } : {}), ...(optStr(args, "capability") ? { capability: optStr(args, "capability") } : {}) }))
   ),
   entry("summer_api_estimate", "The exact price of one Summer API job; charges nothing", false, async (args) =>
     summerApiToolAnswer(() => estimateJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}))
   ),
-  entry("summer_api_run", "Run one Summer API job with the API key on this computer", false, async (args) =>
+  entry("summer_api_run", "Run one Summer API job with the Summer sign-in on this computer", false, async (args) =>
     summerApiToolAnswer(async () => {
       const out = optStr(args, "out");
       const follow = args.wait === true || Boolean(out);

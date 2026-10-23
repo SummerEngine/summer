@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
+import { tokenCommand } from "./commands/token.js";
 import { statusCommand } from "./commands/status.js";
 import { runCommand } from "./commands/run.js";
 import { openCommand } from "./commands/open.js";
@@ -47,6 +48,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(installCommand);
   program.addCommand(loginCommand);
   program.addCommand(logoutCommand);
+  program.addCommand(tokenCommand);
   program.addCommand(statusCommand);
   program.addCommand(runCommand);
   program.addCommand(openCommand);

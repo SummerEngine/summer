@@ -2,7 +2,7 @@
  * summer_api_models, summer_api_estimate, summer_api_run, summer_api_job — the
  * Summer API (core/summer-api.ts), the same calls as `summer api
  * models|estimate|run|jobs`. MCP adapter only: schemas and descriptions here.
- * Runs and jobs use the Summer API key on this computer (summer_api_key_login).
+ * Runs and jobs use the Summer sign-in on this computer (summer login: Supabase OAuth, refreshed by itself).
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -61,7 +61,7 @@ export function registerApiTools(server: McpServer): void {
   );
   server.tool(
     "summer_api_run",
-    "Run one Summer API job into the person's Summer assets with the Summer API key on this computer (summer_api_key_login first). Spends their credits within the key's limit: say what you will make and estimate it first. Short jobs come back done; wait follows a long one, out saves its files on this computer. key_limit_reached or insufficient_credits: give the person the link in the message.",
+    "Run one Summer API job into the person's Summer assets with the Summer sign-in on this computer (the person runs summer login first). Spends their paid credits within this app's limit (Connected apps): say what you will make and estimate it first. Short jobs come back done; wait follows a long one, out saves its files on this computer. key_limit_reached or insufficient_credits: give the person the link in the message.",
     apiRunInputShape,
     async (args: { model: string; input?: Record<string, unknown>; quoteId?: string; idempotencyKey?: string; wait?: boolean; out?: string }) =>
       answer(async () => {

@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+No static API keys: the Summer API signs in with `summer login`.
+
+- **`summer api` and the `summer_api_*` MCP tools use the Summer sign-in on this computer**: the same Supabase OAuth 2.1 login (PKCE, a loopback redirect on 127.0.0.1) as the store tools. It stores the refresh token in `~/.summer/oauth-token` and refreshes by itself. Each app spends the person's paid credits up to the limit they set in Connected apps.
+- **`summer token`** prints a one-hour access token for curl: `curl -H "Authorization: Bearer $(summer token)" https://www.summerengine.com/v1/models`.
+- **Removed:** `summer login --api-key`, the MCP tool `summer_api_key_login` (operation `account.api_key_login`), `SUMMER_API_KEY` and `~/.summer/api-key`.
+
 ## [4.8.0] - 2026-10-22
 
 The Summer API from a shell and from MCP. 4.7.0 was not published to npm; 4.8.0 is the first release with it (the [4.7.0] section below).

@@ -23,27 +23,22 @@
     },
     "summer_api_estimate": {
       "kind": "keep",
-      "note": "local: the Summer API (/v1) with the API key on this computer",
+      "note": "local: the Summer API (/v1) with the Summer sign-in on this computer",
       "op": "models.estimate"
     },
     "summer_api_job": {
       "kind": "keep",
-      "note": "local: the Summer API (/v1) with the API key on this computer",
+      "note": "local: the Summer API (/v1) with the Summer sign-in on this computer",
       "op": "models.job"
-    },
-    "summer_api_key_login": {
-      "kind": "keep",
-      "note": "local: saves a Summer API key on this machine after the person allows it",
-      "op": "account.api_key_login"
     },
     "summer_api_models": {
       "kind": "keep",
-      "note": "local: the Summer API (/v1) with the API key on this computer",
+      "note": "local: the Summer API (/v1) with the Summer sign-in on this computer",
       "op": "models.list"
     },
     "summer_api_run": {
       "kind": "keep",
-      "note": "local: the Summer API (/v1) with the API key on this computer",
+      "note": "local: the Summer API (/v1) with the Summer sign-in on this computer",
       "op": "models.run"
     },
     "summer_app_call": {

@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (130 tools)
+## Tool surface (129 tools)
 
 ### Local projects (2)
 
@@ -291,14 +291,15 @@ These come from the hosted Summer server (the one ChatGPT and Claude connect to)
 | `summer_docs_search` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
 | `summer_docs_read` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `docs.feedback`. |
 
-### Summer API (5)
+### Summer API (4)
+
+Signed in with `summer login` (Supabase OAuth on this computer, refreshed by itself; `summer token` prints a one-hour token for curl). Each app spends the person's paid credits up to the limit they set in Connected apps.
 
 | Tool | Use |
 |---|---|
-| `summer_api_key_login` (`account.api_key_login`) | A Summer API key (`SUMMER_API_KEY`) for this agent with one Allow click: answers `needs_approval` with `approve_url` and `user_code` for the person, then `ready` once they allowed it (call again; each call waits up to 25 s). The key is saved to `~/.summer/api-key` on this computer and never shown to the agent; it spends the person's credits up to the limit they chose and expires in 30 days. Shell: `summer login --api-key`. |
 | `summer_api_models` (`models.list`) | The Summer API's curated game-dev models: id, capability, input schema, output formats, typical time and USD price; `model` for one, `capability` to filter. No sign-in. Shell: `summer api models`. |
 | `summer_api_estimate` (`models.estimate`) | The exact USD price of one job, its breakdown and a `quoteId` that holds it 15 minutes. Charges nothing. Shell: `summer api estimate`. |
-| `summer_api_run` (`models.run`) | Run one job into the person's Summer assets with the key on this computer; spends credits within the key's limit. `wait` follows it, `out` saves its files, `quoteId` caps the charge. Shell: `summer api run --wait --download`. |
+| `summer_api_run` (`models.run`) | Run one job into the person's Summer assets with the Summer sign-in on this computer; spends paid credits within the app's limit. `wait` follows it, `out` saves its files, `quoteId` caps the charge. Shell: `summer api run --wait --download`. |
 | `summer_api_job` (`models.job`) | Read a job (state, price, assets and file URLs); `wait`, `out` or `cancel`. Shell: `summer api jobs`. |
 
 ### Library feedback (1)

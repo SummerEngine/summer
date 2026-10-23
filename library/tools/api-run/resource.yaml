@@ -1,12 +1,12 @@
 id: tool/api-run
 kind: tool
 version: 1.0.0
-summary: Run one Summer API job into the person's Summer assets with the API key on this computer; spends credits within the key's limit, can wait and save the files.
+summary: Run one Summer API job into the person's Summer assets with the Summer sign-in; spends paid credits within the app's limit, can wait and save the files.
 use_when:
   - making a game asset through the Summer API after estimating it
   - a script or agent outside Summer Engine needs a generated model, image, sound or clip
 do_not_use_when:
-  - no Summer API key is saved yet (summer_api_key_login first)
+  - this computer is not signed in yet (the person runs summer login first)
   - the person has not agreed to spend credits
 facets:
   lifecycle:

@@ -102,7 +102,6 @@
     "summer_api_docs": "tool/api-docs",
     "summer_api_estimate": "tool/api-estimate",
     "summer_api_job": "tool/api-job",
-    "summer_api_key_login": "tool/api-key-login",
     "summer_api_models": "tool/api-models",
     "summer_api_run": "tool/api-run",
     "summer_app_call": "tool/app-call",

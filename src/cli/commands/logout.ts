@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { clearApiKey } from "../../core/api-key.js";
 import { clearAuthCredentials, hasEnvAuthToken } from "../../core/auth.js";
 
 export const logoutCommand = new Command("logout")
@@ -9,7 +8,7 @@ export const logoutCommand = new Command("logout")
   });
 
 export async function runLogout(log: (message: string) => void): Promise<void> {
-  const removed = (await clearAuthCredentials()) + (await clearApiKey());
+  const removed = await clearAuthCredentials();
   if (removed > 0) {
     log("Logged out. Stored auth tokens cleared.");
   } else {

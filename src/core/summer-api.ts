@@ -2,16 +2,17 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import { summerRequestHeaders } from "./agent-host.js";
-import { getApiKey } from "./api-key.js";
+import { getStoreAccessToken, OAuthError } from "./oauth.js";
 import { resolveGatewayUrl } from "./config.js";
 
 /**
  * The Summer API (www.summerengine.com/v1, PublicSummerEngine
  * src/lib/ops/views/http.ts) from this computer: the curated game-dev models
  * and their prices, an exact estimate, a job, and its files. `summer api` and
- * the summer_api_* MCP tools both call these. The key is the Summer API key
- * (SUMMER_API_KEY or ~/.summer/api-key, core/api-key.ts); listing models and
- * estimating need none.
+ * the summer_api_* MCP tools both call these. Sign-in is the Summer OAuth
+ * sign-in on this computer (summer login; core/oauth.ts, refreshed by
+ * itself): one Supabase OAuth access token as the bearer. Listing models and
+ * estimating need none. There are no API keys.
  *
  * Until Summer opens the API, every route answers 404 "Nothing is here.":
  * that is SummerApiError api_not_open, one plain line for people and agents.
@@ -37,6 +38,8 @@ export interface SummerApiDependencies {
   fetch: typeof fetch;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
+  /** The sign-in's current access token (core/oauth.ts); tests pass a fake. */
+  token?: () => Promise<string>;
 }
 
 const defaults: SummerApiDependencies = {
@@ -53,10 +56,11 @@ async function call(
   options: { body?: unknown; headers?: Record<string, string>; key?: "required" | "optional" },
   deps: SummerApiDependencies
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const key = await getApiKey();
-  if (options.key === "required" && !key) {
-    throw new SummerApiError("no_api_key", 'No Summer API key on this computer. Run "summer login --api-key" (or set SUMMER_API_KEY).', 401);
-  }
+  const key = await (deps.token ?? (() => getStoreAccessToken()))().catch((error: unknown) => {
+    if (options.key !== "required") return null;
+    if (error instanceof OAuthError) throw new SummerApiError("not_signed_in", 'This computer is not signed in to Summer. Run "summer login", then retry.', 401);
+    throw error;
+  });
   const gateway = await resolveGatewayUrl();
   const res = await deps.fetch(`${gateway}/v1${path}`, {
     method,

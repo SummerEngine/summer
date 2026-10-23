@@ -130,7 +130,7 @@ const estimateCommand = new Command("estimate")
   );
 
 const runSubcommand = new Command("run")
-  .description("Run one job into your Summer assets; spends your credits within the key's limit")
+  .description("Run one job into your Summer assets; spends your paid credits within this app's limit (Connected apps)")
   .argument("<model>", "A model id or alias, e.g. 3d/default")
   .option("--input <json>", "The model's input as a JSON object")
   .option("--quote <quoteId>", "From summer api estimate: refuse to charge more than it quoted")
@@ -172,7 +172,7 @@ const jobsCommand = new Command("jobs")
   );
 
 export const apiCommand = new Command("api")
-  .description("The Summer API: game-dev models, prices, estimates and jobs, with your Summer API key (summer login --api-key)")
+  .description("The Summer API: game-dev models, prices, estimates and jobs, with this computer's Summer sign-in (summer login)")
   .addCommand(modelsCommand)
   .addCommand(estimateCommand)
   .addCommand(runSubcommand)

@@ -4,7 +4,7 @@
   "name": "summer",
   "displayName": "Summer Engine",
   "version": "4.8.0",
-  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 130-tool MCP bridge to the Summer Engine desktop app.",
+  "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 129-tool MCP bridge to the Summer Engine desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com"

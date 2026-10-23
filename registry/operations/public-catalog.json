@@ -36484,7 +36484,7 @@
     {
       "name": "store.get_listing",
       "title": "Read the store page",
-      "summary": "Read a game's store page as the store will show it: page state, targets, text per store, art per slot, price, the publish checklist (what is missing), publish requests and the tags a page can pick. Next: store.update_listing.",
+      "summary": "Read a game's store page as the store will show it: page state, visibility (public or private), targets, text per store, art per slot, price, the publish checklist (what is missing), publish requests and the tags a page can pick. Next: store.update_listing.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -36535,6 +36535,14 @@
           },
           "storeUrl": {
             "type": "string"
+          },
+          "visibility": {
+            "description": "Who can find the game: public (anyone) or private (only its creator team, players who own it and invited testers). store.update_listing visibility changes it at once.",
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
           },
           "page": {
             "description": "The newest store page version; editing any page that is not a draft starts a new draft.",
@@ -36793,6 +36801,7 @@
           "name",
           "slug",
           "storeUrl",
+          "visibility",
           "page",
           "targets",
           "flows",
@@ -38640,7 +38649,7 @@
     {
       "name": "store.update_listing",
       "title": "Edit the store page",
-      "summary": "Edit the store page draft: title, targets, desktop and mobile text, tags, long description, support contact, release stage, content rating and other languages. Omitted fields keep their value; saving never publishes. Next: store.get_listing, then store.publish.",
+      "summary": "Edit the store page draft: title, targets, desktop and mobile text, tags, long description, support, release stage, content rating, other languages; visibility (public or private) applies at once. Omitted fields keep their value; saving never publishes. Next: store.get_listing, then store.publish.",
       "effect": "write",
       "approval": "none",
       "permission": "make",
@@ -38824,6 +38833,14 @@
               ]
             }
           },
+          "visibility": {
+            "description": "public or private. Applies at once, outside the draft: private hides the game from every list, shelf and search, and its page from everyone except the creator team, owners and invited testers. A live change: an agent needs the person's \"Prices and live changes\" permission.",
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
           "localized": {
             "description": "The page in other languages, by language tag. summer.games offers es (Español), pt-br (Português (Brasil)), de (Deutsch), fr (Français), ja (日本語), ko (한국어), zh-hans (简体中文), ru (Русский), it (Italiano). Each language changes only the texts it names; null or \"\" removes one text, and a language set to null is removed. Missing texts show the main text.",
             "type": "object",
@@ -38960,6 +38977,21 @@
             "items": {
               "type": "string"
             }
+          },
+          "visibility": {
+            "description": "Who can find the game now, when this call set it; null when it did not.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "public",
+                  "private"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -38967,7 +38999,8 @@
           "revisionId",
           "readyToPublish",
           "missing",
-          "warnings"
+          "warnings",
+          "visibility"
         ],
         "additionalProperties": false
       },
@@ -38983,7 +39016,11 @@
         "release date",
         "coming soon",
         "languages",
-        "translate"
+        "translate",
+        "visibility",
+        "private",
+        "public",
+        "hide"
       ],
       "examples": [
         {
@@ -39009,6 +39046,13 @@
             }
           },
           "note": "Show \"Coming soon · November 2026\"."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "visibility": "private"
+          },
+          "note": "Hide the game from the store, except for its team, owners and testers."
         }
       ]
     },

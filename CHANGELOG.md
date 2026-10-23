@@ -4,6 +4,10 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-10-22
+
+A Summer API key for your agent with one Allow click, and Node 22.
+
 - **A Summer API key for your agent with one Allow click.** `summer login --api-key` (and the MCP tool `summer_api_key_login`, operation `account.api_key_login`) asks Summer for a key: the person opens the Summer page it names, checks the code matches and presses Allow, choosing the spend limit there. The key is saved to `~/.summer/api-key` (owner-only, like `auth-token`) and is never printed or returned to the agent; `SUMMER_API_KEY` wins over the file. Without a terminal, `summer login --api-key` prints JSON lines (`needs_approval` with `approve_url` and `user_code`, then `approved`, `denied`, `expired` or `failed`). `summer logout` removes the key too. Until Summer turns API keys on, the request answers `keys_unavailable`.
 - **Node 22+** (`engines.node >= 22`, was 20). Node 20 reached end of life on 2026-04-30 and gets no security fixes. `summer doctor` now fails on Node below 22, and CI runs the CLI on Node 22.23.4 (the 2026-10-21 security release) on macOS, Windows and Ubuntu.
 

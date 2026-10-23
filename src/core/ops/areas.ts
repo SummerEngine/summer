@@ -23,10 +23,12 @@ export const CLI_AREAS = [
  * summer.items.json, and making a
  * piece of content from footage on this computer (content.make; Summer's
  * server keeps the request it reports to), and creating and opening a
- * project on this computer (projects.create_local, projects.open_local).
+ * project on this computer (projects.create_local, projects.open_local),
+ * and saving a Summer API key on this computer after the person allows it
+ * (account.api_key_login).
  * Everything else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "store.go_live", "store.set_details", "economy.sync_items", "content.make", "projects.create_local", "projects.open_local"]);
+const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "store.go_live", "store.set_details", "economy.sync_items", "content.make", "projects.create_local", "projects.open_local", "account.api_key_login"]);
 
 export function isLocalOp(op: string): boolean {
   return op.startsWith("engine.") || LOCAL_OPS.has(op);

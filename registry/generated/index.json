@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a96e7758787500aedfca23f720be8b7901ae88e8db18b4adffb93538851458c0",
+      "content_hash": "baec2298793f0d9b4c8a074f77caee8d5b05520db6e929f9d120f1cbe42f7519",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5973,6 +5973,40 @@
         "editor_mutation": false,
         "network": false,
         "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-key-login",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "97a5ad30679df5389432c9826f825cf871c185e1b21685ca62872df369edbdae",
+      "summary": "Get a Summer API key (SUMMER_API_KEY) for this agent with one Allow click from the person; saved on this computer, never shown to the agent.",
+      "use_when": [
+        "the agent needs a Summer API key and none is saved yet",
+        "the person asked to connect this agent to the Summer API"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "mcp"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_key_login",
+      "remote": true,
+      "cli_command": "summer login --api-key",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
         "publish": false
       }
     },

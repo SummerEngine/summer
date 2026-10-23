@@ -32,6 +32,7 @@ import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
+import { registerApiKeyTools } from "./tools/api-key-tools.js";
 import { registerNavigationTools } from "./tools/navigation-tools.js";
 import { registerLibraryTools } from "./tools/library-tools.js";
 import {
@@ -513,6 +514,7 @@ export function createMcpServer(
   registerGenerateTools(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
+  registerApiKeyTools(server);
   registerScriptTools(server);
   registerPerceptionTools(server);
   registerSpatialTools(server);

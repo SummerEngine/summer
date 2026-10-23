@@ -8,7 +8,7 @@ import {
 } from "../../core/auth.js";
 import { setSummerDirForTests } from "../../core/store.js";
 import { Command } from "commander";
-import { STORE_STEP_TIMEOUT_MS, runLogin, runLoginCommand } from "./login.js";
+import { STORE_STEP_TIMEOUT_MS, runApiKeyLogin, runLogin, runLoginCommand } from "./login.js";
 
 let root = "";
 const originalGateway = process.env.SUMMER_GATEWAY_URL;
@@ -251,5 +251,41 @@ describe("summer login: one browser for the account and the store", () => {
     expect(parse([])).toBeUndefined();
     expect(parse(["--store"])).toBe(true);
     expect(parse(["--no-store"])).toBe(false);
+  });
+});
+
+describe("summer login --api-key", () => {
+  const request = { requestId: "akr_1", userCode: "ABCD-EFGH", approveUrl: "https://gateway.example/studio/api-keys/akr_1", pollUrl: "https://gateway.example/api/api-keys/requests/akr_1", pollToken: "akp_secret", intervalSeconds: 2, expiresAt: "2026-10-22T12:10:00.000Z" };
+
+  it("prints a JSON handshake without a terminal and never the key or the poll token", async () => {
+    const lines: string[] = [];
+    const openUrl = vi.fn(async () => undefined);
+    const code = await runApiKeyLogin({ limit: 20 }, {
+      hasApiKey: async () => false,
+      start: async (options) => {
+        expect(options).toMatchObject({ client: "Codex", limitUsd: 20 });
+        return request;
+      },
+      wait: async () => ({ status: "approved", keyId: "key-1", limitUsd: 20, expiresAt: "2026-11-21T12:00:00.000Z" }),
+      openUrl,
+      client: () => "Codex",
+      isTTY: false,
+      print: (line) => lines.push(line),
+    });
+    expect(code).toBe(0);
+    const events = lines.map((line) => JSON.parse(line));
+    expect(events[0]).toMatchObject({ status: "needs_approval", approve_url: request.approveUrl, user_code: "ABCD-EFGH" });
+    expect(events[1]).toMatchObject({ status: "approved", key_id: "key-1", env: "SUMMER_API_KEY", limit_usd: 20 });
+    expect(lines.join("\n")).not.toMatch(/akp_secret|sk-summer-v1-/);
+    expect(openUrl).toHaveBeenCalledWith(request.approveUrl);
+  });
+
+  it("answers ready when a key is saved, and exits 1 when the person denies", async () => {
+    const lines: string[] = [];
+    const base = { openUrl: async () => undefined, client: () => "Codex", isTTY: false, print: (line: string) => lines.push(line), start: async () => request };
+    expect(await runApiKeyLogin({}, { ...base, hasApiKey: async () => true, wait: async () => ({ status: "pending" }) })).toBe(0);
+    expect(JSON.parse(lines[0])).toMatchObject({ status: "ready", env: "SUMMER_API_KEY" });
+    expect(await runApiKeyLogin({}, { ...base, hasApiKey: async () => false, wait: async () => ({ status: "denied", message: "The person denied the key request." }) })).toBe(1);
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({ status: "denied" });
   });
 });

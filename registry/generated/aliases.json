@@ -100,6 +100,7 @@
     "summer_add_node": "tool/add-node",
     "summer_align_distribute_3d": "tool/align-distribute-3d",
     "summer_api_docs": "tool/api-docs",
+    "summer_api_key_login": "tool/api-key-login",
     "summer_app_call": "tool/app-call",
     "summer_app_create": "tool/app-create",
     "summer_app_data": "tool/app-data",

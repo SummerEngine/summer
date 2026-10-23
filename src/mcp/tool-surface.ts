@@ -45,6 +45,9 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
   // Create and open a project on this computer with no shell (the full profile;
   // the engine profile's clients have a shell, `summer dev`, and a tool cap).
   projects: ["summer_projects_create_local", "summer_projects_open_local"],
+  // A Summer API key for this agent (the assets and full profiles; the engine
+  // profile's clients have a shell, `summer login --api-key`, and a tool cap).
+  tools: ["summer_api_key_login"],
 };
 
 const localToolset = new Map<string, Toolset>(

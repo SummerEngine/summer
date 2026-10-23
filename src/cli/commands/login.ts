@@ -6,7 +6,17 @@ import {
   saveLoginSession,
   type LoginSession,
 } from "../../core/auth.js";
-import { summerRequestHeaders } from "../../core/agent-host.js";
+import { resolveAgentHost, summerRequestHeaders } from "../../core/agent-host.js";
+import {
+  KeyRequestError,
+  apiKeyPath,
+  getApiKey,
+  keyClientName,
+  startApiKeyRequest,
+  waitForApiKey,
+  type ApiKeyPoll,
+  type ApiKeyRequest,
+} from "../../core/api-key.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
 
@@ -29,9 +39,93 @@ export const loginCommand = new Command("login")
   )
   .option("--no-store", "Only the Summer account sign-in; skip the store sign-in")
   .option("--force", "Force re-authentication even if already logged in")
-  .action(async (opts: { store?: boolean; force?: boolean }) => {
+  .option(
+    "--api-key",
+    "Only a Summer API key for this agent: the person presses Allow on a Summer page, the key is saved to ~/.summer/api-key (SUMMER_API_KEY wins over it)"
+  )
+  .option("--limit <usd>", "With --api-key: the spend limit to suggest on the Allow page (the person can change it)", Number)
+  .option("--json", "With --api-key: JSON lines (the default when stdout is not a terminal)")
+  .action(async (opts: { store?: boolean; force?: boolean; apiKey?: boolean; limit?: number; json?: boolean }) => {
+    if (opts.apiKey) {
+      process.exitCode = await runApiKeyLogin(opts);
+      return;
+    }
     await runLoginCommand(opts);
   });
+
+/** How long `summer login --api-key` waits for the Allow click (the request itself lives 10 minutes). */
+export const API_KEY_WAIT_MS = 10 * 60_000;
+
+export interface ApiKeyLoginDependencies {
+  hasApiKey: () => Promise<boolean>;
+  start: (options: { client: string; limitUsd?: number; fresh?: boolean }) => Promise<ApiKeyRequest>;
+  wait: (request: ApiKeyRequest) => Promise<ApiKeyPoll>;
+  openUrl: (url: string) => Promise<unknown>;
+  client: () => string;
+  isTTY: boolean;
+  print: (line: string) => void;
+}
+
+const defaultApiKeyDependencies = (): ApiKeyLoginDependencies => ({
+  hasApiKey: async () => Boolean(await getApiKey()),
+  start: (options) => startApiKeyRequest(options),
+  wait: (request) => waitForApiKey(request, { timeoutMs: API_KEY_WAIT_MS }),
+  openUrl: open,
+  client: () => keyClientName(resolveAgentHost().id),
+  isTTY: process.stdout.isTTY === true,
+  print: (line) => console.log(line),
+});
+
+/**
+ * `summer login --api-key`: a Summer API key with one Allow click and no
+ * copy-paste (core/api-key.ts). An agent with no terminal gets JSON lines:
+ * {"status":"needs_approval","approve_url","user_code"} to show the person,
+ * then {"status":"approved","key_file","env"} (the key itself is never
+ * printed), or denied / expired / failed. Exit code 0 only when approved.
+ */
+export async function runApiKeyLogin(
+  opts: { force?: boolean; limit?: number; json?: boolean },
+  overrides: Partial<ApiKeyLoginDependencies> = {}
+): Promise<number> {
+  const deps = { ...defaultApiKeyDependencies(), ...overrides };
+  const json = opts.json === true || !deps.isTTY;
+  const say = (text: string, data: Record<string, unknown>) => deps.print(json ? JSON.stringify(data) : text);
+
+  if (!opts.force && (await deps.hasApiKey())) {
+    say(`A Summer API key is already saved (${apiKeyPath()}). Use --api-key --force for a new one.`, { status: "ready", key_file: apiKeyPath(), env: "SUMMER_API_KEY" });
+    return 0;
+  }
+  const limitUsd = typeof opts.limit === "number" && Number.isFinite(opts.limit) && opts.limit > 0 ? opts.limit : undefined;
+  let request: ApiKeyRequest;
+  try {
+    request = await deps.start({ client: deps.client(), ...(limitUsd ? { limitUsd } : {}), fresh: opts.force === true });
+  } catch (error) {
+    const code = error instanceof KeyRequestError ? error.code : "request_failed";
+    const message = error instanceof Error ? error.message : String(error);
+    say(message, { status: "failed", error: code, message });
+    return 1;
+  }
+  say(
+    `Allow this agent on Summer: ${request.approveUrl}\nCheck that the page shows ${request.userCode}. Waiting for Allow...`,
+    { status: "needs_approval", approve_url: request.approveUrl, user_code: request.userCode, expires_at: request.expiresAt, message: `Ask the person to open approve_url, check that it shows ${request.userCode}, and press Allow.` }
+  );
+  await deps.openUrl(request.approveUrl).catch(() => undefined);
+
+  const answer = await deps.wait(request);
+  if (answer.status === "approved") {
+    say(
+      `Saved the Summer API key to ${apiKeyPath()}${answer.limitUsd !== null ? ` (spend limit $${answer.limitUsd})` : ""}.`,
+      { status: "approved", key_id: answer.keyId, key_file: apiKeyPath(), env: "SUMMER_API_KEY", limit_usd: answer.limitUsd, expires_at: answer.expiresAt }
+    );
+    return 0;
+  }
+  if (answer.status === "pending") {
+    say("Still waiting for Allow. Run \"summer login --api-key\" again to keep waiting.", { status: "pending", approve_url: request.approveUrl, user_code: request.userCode });
+    return 1;
+  }
+  say(answer.message, { status: answer.status, message: answer.message });
+  return 1;
+}
 
 /** How long `summer login` waits for the store's Allow click after the account sign-in. */
 export const STORE_STEP_TIMEOUT_MS = 3 * 60_000;

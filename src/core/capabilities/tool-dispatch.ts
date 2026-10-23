@@ -197,6 +197,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+import { apiKeyLoginAnswer } from "../api-key.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
 import {
@@ -2183,6 +2184,12 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     // an error payload; here it prints whole (JSON, exit 1) via ToolResultError.
     if (!result.ok) throw new ToolResultError(result as unknown as Record<string, unknown>, result.hint);
     return result;
+  }),
+
+  // --- account ---
+  entry("summer_api_key_login", "Get a Summer API key for this agent with one Allow click; saved on this computer", false, async (args) => {
+    const limitUsd = typeof args.limitUsd === "number" ? args.limitUsd : undefined;
+    return apiKeyLoginAnswer({ ...(limitUsd ? { limitUsd } : {}), fresh: args.fresh === true });
   }),
 
   // --- feedback ---

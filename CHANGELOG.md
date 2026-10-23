@@ -6,7 +6,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [4.8.0] - 2026-10-22
 
-The Summer API from a shell and from MCP.
+The Summer API from a shell and from MCP. 4.7.0 was not published to npm; 4.8.0 is the first release with it (the [4.7.0] section below).
 
 - **`summer api models|estimate|run|jobs`** call the Summer API (`/v1`) with the Summer API key on this computer (`summer login --api-key`, or `SUMMER_API_KEY`). `models` lists the curated game-dev models with their input and USD price (one model by id, `--capability` to filter); `estimate <model> --input '<json>'` prices one exact job and gives a quote id; `run <model> --input '<json>'` spends the person's credits within the key's limit, with one idempotency key per run, `--quote`, `--wait` to follow the job and `--download [dir]` to save its files; `jobs <id>` reads, follows (`--wait`), downloads or `--cancel`s a job. JSON when stdout is not a terminal (or `--json`), a short summary otherwise.
 - **MCP tools** `summer_api_models`, `summer_api_estimate`, `summer_api_run` and `summer_api_job` do the same (operations `models.list`, `models.estimate`, `models.run`, `models.job`, local), in the assets and full profiles.

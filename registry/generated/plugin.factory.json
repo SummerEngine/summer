@@ -2,7 +2,7 @@
   "_generated": "GENERATED from integrations/factory — do not edit; npm run generate:registry",
   "name": "summer",
   "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and a 126-tool MCP bridge to the Summer Engine desktop app.",
-  "version": "4.6.0",
+  "version": "4.7.0",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",

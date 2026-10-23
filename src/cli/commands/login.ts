@@ -102,7 +102,9 @@ export async function runApiKeyLogin(
   } catch (error) {
     const code = error instanceof KeyRequestError ? error.code : "request_failed";
     const message = error instanceof Error ? error.message : String(error);
-    say(message, { status: "failed", error: code, message });
+    // Not open yet: one plain line, for people and agents alike.
+    if (code === "keys_unavailable") deps.print(message);
+    else say(message, { status: "failed", error: code, message });
     return 1;
   }
   say(

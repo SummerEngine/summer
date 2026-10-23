@@ -105,7 +105,7 @@ export async function startApiKeyRequest(
     signal: AbortSignal.timeout(10_000),
   });
   if (res.status === 404) {
-    throw new KeyRequestError("keys_unavailable", "Summer API keys are not available on this gateway yet.");
+    throw new KeyRequestError("keys_unavailable", "Summer API is not open yet.");
   }
   if (res.status === 429) {
     throw new KeyRequestError("rate_limited", "Too many key requests from this network. Try again in an hour.");

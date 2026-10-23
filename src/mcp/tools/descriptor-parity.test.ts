@@ -48,6 +48,7 @@ import { registerGenerateTools } from "./generate-tools.js";
 import { registerCreatorTools } from "./creator-tools.js";
 import { registerFeedbackTools } from "./feedback-tools.js";
 import { registerApiKeyTools } from "./api-key-tools.js";
+import { registerApiTools } from "./api-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
@@ -283,6 +284,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerCreatorTools,
     registerFeedbackTools,
     registerApiKeyTools,
+    registerApiTools,
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,

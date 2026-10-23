@@ -23515,7 +23515,7 @@
                   "type": "string"
                 },
                 "status": {
-                  "description": "open, or judging once submissions closed (late entries still count).",
+                  "description": "open: it takes entries until submissionsCloseAt.",
                   "type": "string"
                 },
                 "submissionsCloseAt": {

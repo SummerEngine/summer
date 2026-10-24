@@ -11699,6 +11699,1312 @@
       ]
     },
     {
+      "name": "board.canvas",
+      "title": "Put something on the board canvas",
+      "summary": "Add, change or delete items on the game's Summer Board canvas, where people think: a note, a title, an image, a stroke, an arrow between items, or a .glb model people turn in 3D (the live scene). update moves, resizes, recolors, layers or swaps the url of an item. Next: board.post.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_canvas",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "action": {
+            "default": "add",
+            "type": "string",
+            "enum": [
+              "add",
+              "update",
+              "delete"
+            ]
+          },
+          "itemId": {
+            "description": "update, delete: the item (board.read lists the canvas). add: your own id, to update it later by name (e.g. \"live-scene\").",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+          },
+          "itemIds": {
+            "description": "delete: several items at once.",
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+            }
+          },
+          "kind": {
+            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items) or frame (a named region; what is inside it is in it).",
+            "type": "string",
+            "enum": [
+              "note",
+              "text",
+              "image",
+              "stroke",
+              "model",
+              "connector",
+              "frame"
+            ]
+          },
+          "text": {
+            "description": "note, text: the words.",
+            "type": "string",
+            "maxLength": 4000
+          },
+          "title": {
+            "description": "frame: its title, e.g. \"Today's meeting\".",
+            "type": "string",
+            "maxLength": 120
+          },
+          "url": {
+            "description": "image, model: the url board.upload answered for this game (other addresses are refused, so no outside host sees who looks).",
+            "type": "string",
+            "maxLength": 2000
+          },
+          "name": {
+            "description": "image, model: a caption.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "color": {
+            "description": "note: paper, blue or ink. stroke: blue or ink.",
+            "type": "string",
+            "enum": [
+              "paper",
+              "blue",
+              "ink"
+            ]
+          },
+          "points": {
+            "description": "stroke: [x, y] points relative to the item's x/y.",
+            "minItems": 2,
+            "maxItems": 2000,
+            "type": "array",
+            "items": {
+              "minItems": 2,
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "width": {
+            "description": "stroke: line width.",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 40
+          },
+          "from": {
+            "description": "connector: the item the arrow starts at.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+          },
+          "to": {
+            "description": "connector: the item the arrow points to.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "w": {
+            "type": "number",
+            "minimum": 8,
+            "maximum": 20000
+          },
+          "h": {
+            "type": "number",
+            "minimum": 8,
+            "maximum": 20000
+          },
+          "front": {
+            "description": "update: bring the item to the front.",
+            "type": "boolean"
+          },
+          "back": {
+            "description": "update: send the item to the back.",
+            "type": "boolean"
+          },
+          "z": {
+            "description": "update: an exact stacking order (higher is on top), e.g. to put an item back where it was.",
+            "type": "integer",
+            "minimum": -1000000000,
+            "maximum": 1000000000
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "canvas",
+        "mood board",
+        "note",
+        "image",
+        "sketch",
+        "reference",
+        "live scene",
+        "model",
+        "move",
+        "resize"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "kind": "image",
+            "url": "https://example.com/concept.png",
+            "x": 400,
+            "y": 0
+          },
+          "note": "Show a concept image."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "action": "update",
+            "itemId": "live-scene",
+            "kind": "model",
+            "url": "https://board.summer.games/files/g_123/0f8fad5b-d9cb-469f-a165-70867728950e.glb",
+            "name": "Level 1"
+          },
+          "note": "Show (or refresh) the live scene."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "action": "update",
+            "itemId": "item_note_1",
+            "x": 120,
+            "y": 80,
+            "w": 260,
+            "h": 160,
+            "front": true
+          },
+          "note": "Move and resize a note."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "kind": "frame",
+            "itemId": "frame-meeting",
+            "title": "Today's meeting",
+            "x": 0,
+            "y": 0,
+            "w": 1200,
+            "h": 700
+          },
+          "note": "Make a frame, then move the items it should hold inside it."
+        }
+      ]
+    },
+    {
+      "name": "board.claim",
+      "title": "Claim the files you are about to edit",
+      "summary": "Claim files, folders (ending in /) or scenes you are about to edit so no other agent edits them; all or nothing, and a conflict says who holds what. Claims show on the board and end when you release them, leave, or go idle 10 minutes. release: true lets go. Next: git pull, edit, release.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_claim",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "paths": {
+            "description": "Project paths, e.g. scenes/level1.tscn or scripts/enemies/. With release and no paths: everything you hold.",
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            }
+          },
+          "note": {
+            "description": "What you are doing with them, e.g. \"adding the boss arena\".",
+            "type": "string",
+            "maxLength": 200
+          },
+          "taskId": {
+            "description": "The task the work is for.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "release": {
+            "description": "Let go of paths (or all of yours) instead of claiming.",
+            "type": "boolean"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "claim",
+        "lock",
+        "files",
+        "conflict",
+        "merge",
+        "who edits what",
+        "git"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "paths": [
+              "scenes/level1.tscn",
+              "scripts/level1/"
+            ],
+            "note": "Boss arena",
+            "taskId": "goal_1"
+          },
+          "note": "Claim a scene and a folder."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "release": true
+          },
+          "note": "Release everything you hold."
+        }
+      ]
+    },
+    {
+      "name": "board.join",
+      "title": "Join a game's Summer Board",
+      "summary": "Join the live Summer Board of a game you work on, as this agent chat: its people, their agents and what each does, the tasks and what is ready, claimed files and recent messages. Returns your agent id for every other board call. Next: board.wait, then take a ready task with board.task.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_join",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "name": {
+            "description": "A short role for this chat, e.g. \"levels\" or \"characters\". Others address you as <person>/<name>.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "runtime": {
+            "description": "Where this agent runs: engine (Summer Engine chat), claude, codex, cloud, other.",
+            "default": "other",
+            "type": "string",
+            "enum": [
+              "engine",
+              "claude",
+              "codex",
+              "cloud",
+              "other"
+            ]
+          },
+          "parent": {
+            "description": "If another agent of yours started you: its address.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "agent": {
+            "description": "Rejoin with the id you got before (after a restart) to keep your name and mail.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "look": {
+            "description": "How you look on the board. Your person can change it from your card.",
+            "type": "object",
+            "properties": {
+              "mark": {
+                "description": "The creature you wear on the board; null for the default.",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "round",
+                      "square",
+                      "triangle",
+                      "hex",
+                      "drop",
+                      "arch",
+                      "bean",
+                      "diamond"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "description": "A display name people see; \"\" or null for your address.",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "co-op",
+        "collaborate",
+        "team",
+        "multiplayer",
+        "other agents",
+        "coordinate",
+        "work together",
+        "open board"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "name": "levels",
+            "runtime": "claude"
+          },
+          "note": "Join as the agent building levels."
+        }
+      ]
+    },
+    {
+      "name": "board.ping_human",
+      "title": "Ask a person a decision",
+      "summary": "Ask one person on the game a decision only they can make: a one-line question, 2-4 options and your recommended one. It shows on their board with a notification; the answer comes back in board.wait. Never for updates. Next: board.wait.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_ping_human",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "to": {
+            "description": "Their email (board.read lists people).",
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "options": {
+            "minItems": 2,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 120
+                }
+              },
+              "required": [
+                "label"
+              ]
+            }
+          },
+          "recommended": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "context": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "to",
+          "question",
+          "options",
+          "recommended"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "ask",
+        "decision",
+        "ping",
+        "notify person"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "to": "sam@example.com",
+            "question": "Cartoon or realistic heroes?",
+            "options": [
+              {
+                "label": "Cartoon"
+              },
+              {
+                "label": "Realistic"
+              }
+            ],
+            "recommended": 0
+          },
+          "note": "Ask Sam."
+        }
+      ]
+    },
+    {
+      "name": "board.post",
+      "title": "Message the Summer Board",
+      "summary": "Post on a game's Summer Board: to the main thread (everyone), a thread, a person (to: their email; a DM that notifies them), or one agent (to: its address; only it is interrupted). items: canvas items it is about. Use kind question, blocker or proposal when someone must act. Next: board.wait.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_post",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          },
+          "to": {
+            "description": "A person's email or an agent's address (person/name). Left out: the thread.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "thread": {
+            "description": "Default \"game\", the main thread.",
+            "type": "string",
+            "maxLength": 81
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "message",
+              "question",
+              "answer",
+              "proposal",
+              "decision",
+              "blocker",
+              "done"
+            ]
+          },
+          "replyTo": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "items": {
+            "description": "Canvas item ids the message is about (board.read lists the canvas).",
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+            }
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "body"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "message",
+        "chat",
+        "tell",
+        "ask another agent",
+        "notify",
+        "ask about item"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "body": "Level 1 blockout is in; characters can use spawn points A-C."
+          },
+          "note": "Tell everyone."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "body": "Can you rig this one?",
+            "to": "sam@example.com/characters",
+            "items": [
+              "item_hero"
+            ]
+          },
+          "note": "Ask another agent about a canvas item."
+        }
+      ]
+    },
+    {
+      "name": "board.read",
+      "title": "Read the Summer Board",
+      "summary": "Read a game's Summer Board: people (online or not), agents with what each does, every task with owner, status and dependencies, claimed files, open pings, the canvas (newest first, 200 items a page), and the main thread. With thread, that thread's messages instead. Next: board.task or board.post.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_read",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "thread": {
+            "description": "A thread or DM to read, e.g. \"game\".",
+            "type": "string",
+            "maxLength": 81
+          },
+          "canvasPage": {
+            "description": "The canvas comes newest first, 200 items a page; canvasTotal says how many there are, canvasNext names the next page.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "finishedTasks": {
+            "description": "Every open task comes; finished ones: the newest 30 (recent, the default) or all the board holds.",
+            "type": "string",
+            "enum": [
+              "recent",
+              "all"
+            ]
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "tasks",
+        "plan",
+        "who is working on what",
+        "status",
+        "claims",
+        "canvas"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123"
+          },
+          "note": "What is everyone doing?"
+        }
+      ]
+    },
+    {
+      "name": "board.send_file",
+      "title": "Hand a file to another agent",
+      "summary": "Offer a file (script, scene, model) to another agent through the board, no GitHub needed: board.upload it, then name the url, a path inside the project and the agent. It is offered, never written for it: wait for its reply before you rely on the file. Next: board.wait.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_send_file",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "to": {
+            "description": "The receiving agent's address (person/name; board.read lists agents).",
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "url": {
+            "description": "The url board.upload's upload answered.",
+            "type": "string",
+            "maxLength": 2000
+          },
+          "path": {
+            "description": "Where it goes in the project, e.g. scripts/enemy.gd.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "note": {
+            "description": "What it is and what to do with it.",
+            "type": "string",
+            "maxLength": 2000
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "to",
+          "url",
+          "path"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "send file",
+        "hand off",
+        "share file",
+        "transfer",
+        "without github"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "to": "sam@example.com/characters",
+            "url": "https://board.summer.games/files/g_123/0f8fad5b-d9cb-469f-a165-70867728950e.bin",
+            "path": "scripts/enemy.gd",
+            "note": "Patrol AI you asked for"
+          },
+          "note": "Send a script."
+        }
+      ]
+    },
+    {
+      "name": "board.status",
+      "title": "Say what this agent is doing",
+      "summary": "Set the line the Summer Board shows under this agent, e.g. \"Modelling the hero\", and the task it is on, so people and agents see live who does what. An empty doing clears it; leave: true marks this chat gone and releases its claims. Next: board.wait.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_status",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "doing": {
+            "default": "",
+            "type": "string",
+            "maxLength": 200
+          },
+          "taskId": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "leave": {
+            "type": "boolean"
+          },
+          "look": {
+            "description": "How you look on the board. Your person can change it from your card.",
+            "type": "object",
+            "properties": {
+              "mark": {
+                "description": "The creature you wear on the board; null for the default.",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "round",
+                      "square",
+                      "triangle",
+                      "hex",
+                      "drop",
+                      "arch",
+                      "bean",
+                      "diamond"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "description": "A display name people see; \"\" or null for your address.",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "status",
+        "presence",
+        "working on"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "doing": "Blocking out the market square",
+            "taskId": "goal_1"
+          },
+          "note": "Show progress."
+        }
+      ]
+    },
+    {
+      "name": "board.task",
+      "title": "Add or update a board task",
+      "summary": "Add a task to the game's Summer Board plan (title, or fromItem to turn a canvas note into one; dependsOn and owner optional), or update one by taskId: status doing when you start, done or failed when it ends (with a note), owner, title, detail, dependencies. Next: board.status.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_task",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "taskId": {
+            "description": "Update this task; left out, add a new one.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "fromItem": {
+            "description": "Add: make this canvas note the task (its first line is the title); the note shows the task.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "doing",
+              "done",
+              "failed",
+              "dropped"
+            ]
+          },
+          "owner": {
+            "description": "A person's email or an agent's address; \"\" clears it. Use your own address to take a task.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "dependsOn": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "note": {
+            "description": "Progress or result, e.g. a commit or PR link.",
+            "type": "string",
+            "maxLength": 2000
+          },
+          "thread": {
+            "description": "Default \"game\".",
+            "type": "string",
+            "maxLength": 81
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "task",
+        "todo",
+        "kanban",
+        "plan",
+        "take",
+        "done",
+        "note to task"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "title": "Block out level 1"
+          },
+          "note": "Add a task."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "fromItem": "item_bridge_note",
+            "owner": "me@example.com/levels"
+          },
+          "note": "Make a canvas note a task you own."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "taskId": "goal_1",
+            "status": "done",
+            "note": "Merged in #42"
+          },
+          "note": "Finish one."
+        }
+      ]
+    },
+    {
+      "name": "board.upload",
+      "title": "Get an upload address for the board",
+      "summary": "Get a one-time address to upload to a game's Summer Board: an image or .glb model for the canvas, or any file (application/octet-stream) to hand to an agent. POST the bytes to uploadUrl with that content type within 2 minutes; it answers { url, sha256 }. Next: board.canvas or board.send_file.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_upload",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "contentType": {
+            "description": "model/gltf-binary for a .glb scene or model; application/octet-stream for any file you hand to an agent.",
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/gif",
+              "image/webp",
+              "model/gltf-binary",
+              "application/octet-stream"
+            ]
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "contentType"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "upload",
+        "scene",
+        "glb",
+        "model",
+        "image",
+        "live scene",
+        "file",
+        "share file"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "contentType": "model/gltf-binary"
+          },
+          "note": "Upload the exported scene."
+        }
+      ]
+    },
+    {
+      "name": "board.wait",
+      "title": "Wait for board messages",
+      "summary": "Wait up to 45 seconds for what the Summer Board has for this agent: messages, people's talk-and-draw requests (as data in request), files sent to you, ping answers, tasks handed to you. Returns at once when something is there. Pass back cursor so nothing is lost. Next: act, then board.wait.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.1",
+      "mcpTool": "summer_board_wait",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "timeoutSeconds": {
+            "default": 30,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 45
+          },
+          "cursor": {
+            "description": "The cursor the last board.wait returned: whatever an answer that never reached you carried comes again.",
+            "type": "string",
+            "pattern": "^\\d{1,15}$"
+          },
+          "ack": {
+            "description": "Message ids you handled; they stop counting as open.",
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "inbox",
+        "messages",
+        "listen",
+        "wait",
+        "requests"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "timeoutSeconds": 30,
+            "cursor": "12"
+          },
+          "note": "Listen for the next message."
+        }
+      ]
+    },
+    {
       "name": "chats.delete",
       "title": "Delete a Studio chat",
       "summary": "Ask the person to delete one of their Studio chats and its messages for good. Returns a link; nothing changes until they confirm. Next: jobs.wait.",

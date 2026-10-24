@@ -198,7 +198,8 @@ export async function openLocalProject(
   }
   let client: EngineApiClient;
   try {
-    client = await openProjectInEditor(root, { cwd: root }, { install: input.install === true }, deps);
+    // The agent asked for this game: an editor with another one switches (J16.1).
+    client = await openProjectInEditor(root, { cwd: root }, { install: input.install === true, switchOpen: true }, deps);
   } catch (error) {
     if (error instanceof EngineInstallError) throw installFailure(error);
     throw error;

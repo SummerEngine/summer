@@ -185,6 +185,47 @@ export function resPathProblem(value: string): string | null {
   return null;
 }
 
+/** A summerengine.com Studio path (`/studio`, `/studio/games`, `/studio?tab=assets`), the
+ *  only paths the engine's `studio` Navigate row opens. */
+export function isStudioPath(path: string): boolean {
+  return /^\/studio(?:[/?#]|$)/.test(path);
+}
+
+/**
+ * A Studio path opens in the Summer app's own Studio tab when the running
+ * engine advertises the `studio` Navigate destination (it loads the tab when
+ * the person has not opened it yet). Otherwise, the engine off, an older
+ * engine or a refused Navigate, null: the caller opens the browser as before.
+ */
+async function openInAppStudio(deps: OpenDeps, path: string, url: string, extra: Partial<OpenResult>): Promise<OpenResult | null> {
+  if (!isStudioPath(path)) return null;
+  let client: OpenEngineClient;
+  try {
+    client = await deps.engine();
+  } catch {
+    return null;
+  }
+  if (!advertisedNavigation(client)?.has("studio")) return null;
+  const op = { op: "Navigate", target: "studio", path };
+  let receipt: unknown;
+  try {
+    receipt = await client.executeOps([op]);
+  } catch {
+    return null;
+  }
+  if (extractOpError(receipt)) return null;
+  return {
+    ok: true,
+    action: "opened",
+    url,
+    ...extra,
+    op,
+    engine: { running: true, version: client.getEngineVersion?.(), navigation: true },
+    receipt,
+    hint: "Opened in the Studio tab of the Summer app, not a browser.",
+  };
+}
+
 /** Launch the browser; a failed launch is a result, not a crash. */
 async function launch(deps: OpenDeps, url: string): Promise<string | null> {
   try {
@@ -560,6 +601,8 @@ export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResul
       hint: "This path is not in the product map; it was opened on the Summer gateway origin as given.",
     };
     if (print) return base;
+    const inApp = await openInAppStudio(deps, resolution.url, url, { unmapped: true });
+    if (inApp) return inApp;
     const failure = await launch(deps, url);
     if (failure) return openFailed(url, failure, { unmapped: true });
     return { ...base, opened_url: url };
@@ -593,6 +636,11 @@ export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResul
       ...(loggedIn !== undefined ? { logged_in: loggedIn } : {}),
     };
     if (print) return result;
+    if (target.web.origin !== "docs") {
+      // The app's Studio tab is signed in with the app: no login detour.
+      const inApp = await openInAppStudio(deps, path, url, { target: summary });
+      if (inApp) return inApp;
+    }
     const toOpen = needsLogin && loggedIn === false ? loginUrl! : url;
     const failure = await launch(deps, toOpen);
     if (failure) return openFailed(toOpen, failure, { target: summary, ...(loginUrl ? { login_url: loginUrl } : {}), ...(loggedIn !== undefined ? { logged_in: loggedIn } : {}) });

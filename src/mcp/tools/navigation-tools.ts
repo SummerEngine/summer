@@ -22,6 +22,7 @@ params: slot values — gameId + section (builds, releases, store-page, analytic
 open: false resolves only and returns url (+ login_url when the page needs login) or op; nothing opens, no engine needed.
 
 Result: { ok, action: opened | printed | listed | ambiguous | unsupported | engine_not_running | engine_error | not_found | invalid_params | open_failed | blocked_origin, target (with availability for editor ids), url, login_url, logged_in, opened_url, op, engine, failure_reason, matches, hint }.
+- Studio pages (/studio...) open in the Summer app's own Studio tab when the running engine advertises the studio destination (op Navigate target studio; result hint says so); otherwise in the browser.
 - Web targets that require login open through /login?returnUrl=<path> when this machine holds no Summer login token (logged_in:false) — the destination loads after sign-in.
 - Editor targets need Summer Engine running with the project open; otherwise action engine_not_running with the op that would have been sent and a 'summer run' hint. Nothing was opened.
 - Editor destinations are forwarded to the engine's own navigation table (op Navigate; ids advertised in /api/health capabilities.navigation). On an engine that predates it, scene/node/script/file and the three docks still work through their original ops; anything else answers action unsupported with failure_reason engine_lacks_op and an update hint. Never claim those opened. Listing (no target) shows each editor id's availability from the connected engine.

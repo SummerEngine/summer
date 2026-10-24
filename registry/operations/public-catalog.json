@@ -631,6 +631,93 @@
       ]
     },
     {
+      "name": "account.usage",
+      "title": "Read my plan usage",
+      "summary": "How much of the plan is used and when it refills, in words, as Studio Billing shows it: the plan, the share of this cycle used, plenty, low or out, the refill day, and whether bought credits or extra usage are on. Never amounts or prices. Free. Next: whoami for the balance.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.8",
+      "mcpTool": "summer_account_usage",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "description": "Free, Basic, Pro, Pro+ or Ultra.",
+            "type": "string"
+          },
+          "paid": {
+            "description": "A paid plan or bought credits.",
+            "type": "boolean"
+          },
+          "used": {
+            "description": "The share of this cycle used, in words (\"about half\"). Paid plans only.",
+            "type": "string"
+          },
+          "usedPercent": {
+            "type": "number"
+          },
+          "left": {
+            "type": "string",
+            "enum": [
+              "plenty",
+              "low",
+              "out"
+            ]
+          },
+          "refill": {
+            "description": "When it refills or the plan ends, in words.",
+            "type": "string"
+          },
+          "extraCredits": {
+            "description": "Bought credits are left.",
+            "type": "boolean"
+          },
+          "extraUsage": {
+            "description": "Extra usage (pay as you go past the plan) is on.",
+            "type": "boolean"
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "paid",
+          "left",
+          "refill",
+          "extraCredits",
+          "extraUsage",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "usage",
+        "left",
+        "refill",
+        "renews",
+        "plan",
+        "limit",
+        "how much",
+        "billing"
+      ],
+      "examples": [
+        {
+          "input": {},
+          "note": "How much usage do I have left, and when does it refill?"
+        }
+      ]
+    },
+    {
       "name": "analytics.event_limit",
       "title": "Read the event limit",
       "summary": "The person's monthly limit for custom game events: the amount included with Summer Pro, their cap, the limit now and the events so far this month. Next: analytics.set_event_limit when they ask to change it.",
@@ -23515,7 +23602,7 @@
                   "type": "string"
                 },
                 "status": {
-                  "description": "open, or judging once submissions closed (late entries still count).",
+                  "description": "open: it takes entries until submissionsCloseAt.",
                   "type": "string"
                 },
                 "submissionsCloseAt": {
@@ -24051,7 +24138,7 @@
     {
       "name": "jobs.list",
       "title": "List my jobs",
-      "summary": "List the person's jobs, newest first: with planId, a plan's agent requests and cloud builds; else store uploads and publish requests, for one game or the five games changed last. Next: jobs.wait or jobs.cancel.",
+      "summary": "List the person's jobs, newest first: with planId, a plan's agent requests and cloud builds; with gameId, its store uploads and publish requests; with neither, their asset generations of the last 48 hours and the store jobs of the five games changed last. Next: jobs.wait or jobs.cancel.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -24076,9 +24163,10 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "kind": {
-            "description": "upload: store uploads; apr: publish requests; plan: plan agent requests; build: cloud builds (plan and build need planId).",
+            "description": "gen: asset generations (no gameId or planId); upload: store uploads; apr: publish requests; plan: plan agent requests; build: cloud builds (plan and build need planId).",
             "type": "string",
             "enum": [
+              "gen",
               "upload",
               "apr",
               "plan",
@@ -24126,6 +24214,7 @@
                 "kind": {
                   "type": "string",
                   "enum": [
+                    "gen",
                     "upload",
                     "apr",
                     "plan",
@@ -24157,7 +24246,7 @@
                   "type": "string"
                 },
                 "what": {
-                  "description": "The upload, the publish request, the plan agent request or the build, in a few words.",
+                  "description": "The generation, the upload, the publish request, the plan agent request or the build, in a few words.",
                   "type": "string"
                 },
                 "createdAt": {
@@ -24209,7 +24298,9 @@
         "pending",
         "in progress",
         "plan agent",
-        "builds"
+        "builds",
+        "generations",
+        "still generating"
       ],
       "examples": [
         {
@@ -24218,6 +24309,12 @@
             "state": "running"
           },
           "note": "Which uploads of this game is Summer still checking?"
+        },
+        {
+          "input": {
+            "kind": "gen"
+          },
+          "note": "Which of my images and 3D models are still generating?"
         }
       ]
     },
@@ -36484,7 +36581,7 @@
     {
       "name": "store.get_listing",
       "title": "Read the store page",
-      "summary": "Read a game's store page as the store will show it: page state, targets, text per store, art per slot, price, the publish checklist (what is missing), publish requests and the tags a page can pick. Next: store.update_listing.",
+      "summary": "Read a game's store page as the store will show it: page state, visibility (public or private), targets, text per store, art per slot, price, the publish checklist (what is missing), publish requests and the tags a page can pick. Next: store.update_listing.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -36535,6 +36632,14 @@
           },
           "storeUrl": {
             "type": "string"
+          },
+          "visibility": {
+            "description": "Who can find the game: public (anyone) or private (only its creator team, players who own it and invited testers). store.update_listing visibility changes it at once.",
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
           },
           "page": {
             "description": "The newest store page version; editing any page that is not a draft starts a new draft.",
@@ -36793,6 +36898,7 @@
           "name",
           "slug",
           "storeUrl",
+          "visibility",
           "page",
           "targets",
           "flows",
@@ -38640,7 +38746,7 @@
     {
       "name": "store.update_listing",
       "title": "Edit the store page",
-      "summary": "Edit the store page draft: title, targets, desktop and mobile text, tags, long description, support contact, release stage, content rating and other languages. Omitted fields keep their value; saving never publishes. Next: store.get_listing, then store.publish.",
+      "summary": "Edit the store page draft: title, targets, desktop and mobile text, tags, long description, support, release stage, content rating, other languages; visibility (public or private) applies at once. Omitted fields keep their value; saving never publishes. Next: store.get_listing, then store.publish.",
       "effect": "write",
       "approval": "none",
       "permission": "make",
@@ -38824,6 +38930,14 @@
               ]
             }
           },
+          "visibility": {
+            "description": "public or private. Applies at once, outside the draft: private hides the game from every list, shelf and search, and its page from everyone except the creator team, owners and invited testers. A live change: an agent needs the person's \"Prices and live changes\" permission.",
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
           "localized": {
             "description": "The page in other languages, by language tag. summer.games offers es (Español), pt-br (Português (Brasil)), de (Deutsch), fr (Français), ja (日本語), ko (한국어), zh-hans (简体中文), ru (Русский), it (Italiano). Each language changes only the texts it names; null or \"\" removes one text, and a language set to null is removed. Missing texts show the main text.",
             "type": "object",
@@ -38960,6 +39074,21 @@
             "items": {
               "type": "string"
             }
+          },
+          "visibility": {
+            "description": "Who can find the game now, when this call set it; null when it did not.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "public",
+                  "private"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -38967,7 +39096,8 @@
           "revisionId",
           "readyToPublish",
           "missing",
-          "warnings"
+          "warnings",
+          "visibility"
         ],
         "additionalProperties": false
       },
@@ -38983,7 +39113,11 @@
         "release date",
         "coming soon",
         "languages",
-        "translate"
+        "translate",
+        "visibility",
+        "private",
+        "public",
+        "hide"
       ],
       "examples": [
         {
@@ -39009,6 +39143,13 @@
             }
           },
           "note": "Show \"Coming soon · November 2026\"."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "visibility": "private"
+          },
+          "note": "Hide the game from the store, except for its team, owners and testers."
         }
       ]
     },

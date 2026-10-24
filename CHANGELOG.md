@@ -4,6 +4,30 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+No static API keys: the Summer API signs in with `summer login`.
+
+- **`summer api` and the `summer_api_*` MCP tools use the Summer sign-in on this computer**: the same Supabase OAuth 2.1 login (PKCE, a loopback redirect on 127.0.0.1) as the store tools. It stores the refresh token in `~/.summer/oauth-token` and refreshes by itself. Each app spends the person's paid credits up to the limit they set in Connected apps.
+- **`summer api run --batch jobs.jsonl`** queues up to 500 Summer API jobs at once (`POST /v1/batches`), one job per line (`model`, `input`, optional `idempotencyKey`), all or none: when paid credits or the app's limit cannot cover them all, nothing runs and the error says how many fit. `--wait` follows every job, `--download [dir]` saves their files, and the JSON summary prints when piped. The MCP tool `summer_api_batch` (operation `models.batch`) does the same.
+- **`summer token`** prints a one-hour access token for curl: `curl -H "Authorization: Bearer $(summer token)" https://www.summerengine.com/v1/models`.
+- **Studio page ops run in the Summer app's own Studio tab.** `summer_call` sends `studio.map`, `studio.page`, `studio.use_page`, `studio.read_form` and `studio.submit_form` to the running Summer Engine (`POST /api/studio`) when it lists them in `capabilities.studioPage`, with the same input and answers and no store sign-in. When the app has no Studio tab (`no_tab`) or is not running, they go to Summer's server as before.
+- The operations catalog is synced from PublicSummerEngine main: `account.usage` (plan, share used and refill day, in words) and asset generations in `jobs.list`.
+- **Studio pages open in the Summer app's Studio tab.** `studio.open` (`summer_open`, `summer open`) with a `/studio...` page sends the running Summer Engine `Navigate {target: "studio", path}` when the engine lists the `studio` destination, so the app's own Studio tab moves instead of a browser opening. With the engine off or an older engine, the browser opens as before.
+- **Removed:** `summer login --api-key`, the MCP tool `summer_api_key_login` (operation `account.api_key_login`), `SUMMER_API_KEY` and `~/.summer/api-key`.
+
+## [4.8.0] - 2026-10-22
+
+The Summer API from a shell and from MCP. 4.7.0 was not published to npm; 4.8.0 is the first release with it (the [4.7.0] section below).
+
+- **`summer api models|estimate|run|jobs`** call the Summer API (`/v1`) with the Summer API key on this computer (`summer login --api-key`, or `SUMMER_API_KEY`). `models` lists the curated game-dev models with their input and USD price (one model by id, `--capability` to filter); `estimate <model> --input '<json>'` prices one exact job and gives a quote id; `run <model> --input '<json>'` spends the person's credits within the key's limit, with one idempotency key per run, `--quote`, `--wait` to follow the job and `--download [dir]` to save its files; `jobs <id>` reads, follows (`--wait`), downloads or `--cancel`s a job. JSON when stdout is not a terminal (or `--json`), a short summary otherwise.
+- **MCP tools** `summer_api_models`, `summer_api_estimate`, `summer_api_run` and `summer_api_job` do the same (operations `models.list`, `models.estimate`, `models.run`, `models.job`, local), in the assets and full profiles.
+- **Until Summer opens the API**, `summer api` and `summer login --api-key` print one line, "Summer API is not open yet.", and exit 1.
+- The operations catalog is synced from PublicSummerEngine main.
+
+## [4.7.0] - 2026-10-22
+
+A Summer API key for your agent with one Allow click, and Node 22.
+
+- **A Summer API key for your agent with one Allow click.** `summer login --api-key` (and the MCP tool `summer_api_key_login`, operation `account.api_key_login`) asks Summer for a key: the person opens the Summer page it names, checks the code matches and presses Allow, choosing the spend limit there. The key is saved to `~/.summer/api-key` (owner-only, like `auth-token`) and is never printed or returned to the agent; `SUMMER_API_KEY` wins over the file. Without a terminal, `summer login --api-key` prints JSON lines (`needs_approval` with `approve_url` and `user_code`, then `approved`, `denied`, `expired` or `failed`). `summer logout` removes the key too. Until Summer turns API keys on, the request answers `keys_unavailable`.
 - **Node 22+** (`engines.node >= 22`, was 20). Node 20 reached end of life on 2026-04-30 and gets no security fixes. `summer doctor` now fails on Node below 22, and CI runs the CLI on Node 22.23.4 (the 2026-10-21 security release) on macOS, Windows and Ubuntu.
 
 ## [4.6.0] - 2026-10-21

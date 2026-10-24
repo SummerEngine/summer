@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (129 tools)
+## Tool surface (130 tools)
 
 ### Local projects (2)
 
@@ -300,6 +300,7 @@ Signed in with `summer login` (Supabase OAuth on this computer, refreshed by its
 | `summer_api_models` (`models.list`) | The Summer API's curated game-dev models: id, capability, input schema, output formats, typical time and USD price; `model` for one, `capability` to filter. No sign-in. Shell: `summer api models`. |
 | `summer_api_estimate` (`models.estimate`) | The exact USD price of one job, its breakdown and a `quoteId` that holds it 15 minutes. Charges nothing. Shell: `summer api estimate`. |
 | `summer_api_run` (`models.run`) | Run one job into the person's Summer assets with the Summer sign-in on this computer; spends paid credits within the app's limit. `wait` follows it, `out` saves its files, `quoteId` caps the charge. Shell: `summer api run --wait --download`. |
+| `summer_api_batch` (`models.batch`) | Run up to 500 jobs at once, all or none: queued at held prices when paid credits and the app's limit cover them all; otherwise nothing runs and the error says how many fit. `batchId` reads a batch; `wait` and `out` as for one job. Shell: `summer api run --batch jobs.jsonl --wait --download`. |
 | `summer_api_job` (`models.job`) | Read a job (state, price, assets and file URLs); `wait`, `out` or `cancel`. Shell: `summer api jobs`. |
 
 ### Library feedback (1)

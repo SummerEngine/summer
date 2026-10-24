@@ -190,6 +190,120 @@ export async function downloadJobFiles(job: Job, dir: string, overrides: Partial
   return saved;
 }
 
+/** One job of a batch: one line of a --batch file, one item of summer_api_batch. */
+export interface BatchJob {
+  model: string;
+  input: Record<string, unknown>;
+  idempotencyKey?: string;
+}
+
+export type Batch = Record<string, unknown> & { id: string; jobs: Job[]; counts?: Record<string, number> };
+
+/** The most jobs one POST /v1/batches takes. */
+export const MAX_BATCH_JOBS = 500;
+/** The longest a --wait follows one batch (it runs on the account's slots, in order). */
+export const MAX_BATCH_WAIT_MS = 2 * 60 * 60_000;
+
+function batchJobOf(value: unknown, where: string): BatchJob {
+  const item = (value && typeof value === "object" && !Array.isArray(value) ? value : null) as Record<string, unknown> | null;
+  if (!item || typeof item.model !== "string" || !item.model) throw new SummerApiError("invalid_input", `${where}: needs "model", e.g. {"model": "3d/default", "input": {"prompt": "a wooden chest"}}.`, 400);
+  const input = item.input ?? {};
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new SummerApiError("invalid_input", `${where}: "input" must be a JSON object.`, 400);
+  const key = item.idempotencyKey ?? item.idempotency_key;
+  if (key !== undefined && (typeof key !== "string" || !key)) throw new SummerApiError("invalid_input", `${where}: "idempotencyKey" must be a string.`, 400);
+  return { model: item.model, input: input as Record<string, unknown>, ...(typeof key === "string" ? { idempotencyKey: key } : {}) };
+}
+
+/** A JSONL batch: one job per line ({"model", "input", optional "idempotencyKey"}); blank lines are skipped. */
+export function parseBatchLines(text: string): BatchJob[] {
+  const jobs: BatchJob[] = [];
+  for (const [index, raw] of text.split(/\r?\n/).entries()) {
+    const line = raw.trim();
+    if (!line) continue;
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      throw new SummerApiError("invalid_input", `Line ${index + 1} is not JSON.`, 400);
+    }
+    jobs.push(batchJobOf(value, `Line ${index + 1}`));
+  }
+  return checkBatch(jobs);
+}
+
+/** The same checks for jobs that came as a list (summer_api_batch). */
+export function checkBatch(jobs: unknown[]): BatchJob[] {
+  if (jobs.length === 0) throw new SummerApiError("invalid_input", "The batch has no jobs.", 400);
+  if (jobs.length > MAX_BATCH_JOBS) throw new SummerApiError("invalid_input", `The batch has ${jobs.length} jobs; one batch takes at most ${MAX_BATCH_JOBS}.`, 400);
+  return jobs.map((job, index) => batchJobOf(job, `Job ${index + 1}`));
+}
+
+function batchOf(body: Record<string, unknown>): Batch {
+  const batch = body.batch;
+  if (!batch || typeof batch !== "object" || typeof (batch as Batch).id !== "string") {
+    throw new SummerApiError("request_failed", "The Summer API answered without a batch.", 502, body);
+  }
+  return batch as Batch;
+}
+
+export async function getBatch(batchId: string, overrides: Partial<SummerApiDependencies> = {}): Promise<Batch> {
+  return batchOf((await call("GET", `/batches/${encodeURIComponent(batchId)}`, { key: "required" }, { ...defaults, ...overrides })).body);
+}
+
+/**
+ * POST /v1/batches: up to 500 jobs, all or none. Each is priced first; when
+ * the paid credits and the app's limit cover them all, all are queued (202)
+ * and run in order on the account's slots. When not, nothing runs and the
+ * error (402) says how many fit and how much more is needed. One
+ * Idempotency-Key for the batch, so a retried request never queues it twice.
+ */
+export async function createBatch(
+  jobs: BatchJob[],
+  options: { idempotencyKey?: string } = {},
+  overrides: Partial<SummerApiDependencies> = {}
+): Promise<Batch> {
+  const deps = { ...defaults, ...overrides };
+  const headers = { "Idempotency-Key": options.idempotencyKey ?? randomUUID() };
+  const batch = batchOf((await call("POST", "/batches", { body: { jobs }, headers, key: "required" }, deps)).body);
+  // A replayed batch answers its job count only: read its jobs.
+  return Array.isArray(batch.jobs) ? batch : getBatch(batch.id, deps);
+}
+
+export const isBatchFinished = (batch: Batch) => batch.jobs.length > 0 && batch.jobs.every(isFinished);
+
+/** Follow a batch until every job finishes or `timeoutMs` passes (then it answers the batch as it is). */
+export async function waitForBatch(batch: Batch, options: { timeoutMs?: number } = {}, overrides: Partial<SummerApiDependencies> = {}): Promise<Batch> {
+  const deps = { ...defaults, ...overrides };
+  const until = deps.now() + (options.timeoutMs ?? MAX_BATCH_WAIT_MS);
+  let current = batch;
+  while (!isBatchFinished(current) && deps.now() < until) {
+    await deps.sleep(10_000);
+    current = await getBatch(current.id, deps);
+  }
+  return current;
+}
+
+/** Every done job's files under `dir`, by job id. */
+export async function downloadBatchFiles(batch: Batch, dir: string, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, string[]>> {
+  const files: Record<string, string[]> = {};
+  for (const job of batch.jobs) {
+    if (job.state === "done") files[job.id] = await downloadJobFiles(job, dir, overrides);
+  }
+  return files;
+}
+
+/** summer_api_batch: follow when asked (within one call's time), save files when `out` is given. */
+export async function batchToolResult(batch: Batch, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, unknown>> {
+  const follow = args.wait === true || typeof args.out === "string";
+  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, { timeoutMs: TOOL_JOB_WAIT_MS }, overrides) : batch;
+  const files = typeof args.out === "string" ? await downloadBatchFiles(final, args.out, overrides) : undefined;
+  return {
+    batch: final,
+    ...(files ? { files } : {}),
+    ...(isBatchFinished(final) ? {} : { next: `Call summer_api_batch with batchId ${final.id} (wait: true${typeof args.out === "string" ? ", out" : ""}) to keep following it.` }),
+  };
+}
+
 /** The answer the summer_api_* MCP tools (and `summer tool api-*`) give: the result, or {ok:false, error}. */
 export async function summerApiToolAnswer(work: () => Promise<Record<string, unknown>>): Promise<Record<string, unknown>> {
   try {

@@ -1,14 +1,18 @@
 /**
- * summer_api_models, summer_api_estimate, summer_api_run, summer_api_job — the
- * Summer API (core/summer-api.ts), the same calls as `summer api
- * models|estimate|run|jobs`. MCP adapter only: schemas and descriptions here.
+ * summer_api_models, summer_api_estimate, summer_api_run, summer_api_batch,
+ * summer_api_job — the Summer API (core/summer-api.ts), the same calls as
+ * `summer api models|estimate|run|run --batch|jobs`. MCP adapter only: schemas and descriptions here.
  * Runs and jobs use the Summer sign-in on this computer (summer login: Supabase OAuth, refreshed by itself).
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  batchToolResult,
   cancelJob,
+  checkBatch,
+  createBatch,
   estimateJob,
+  getBatch,
   getJob,
   jobToolResult,
   listModels,
@@ -32,6 +36,24 @@ export const apiRunInputShape = {
   quoteId: z.string().min(1).max(600).optional().describe("From summer_api_estimate: refuse to charge more than it quoted."),
   idempotencyKey: z.string().min(1).max(200).optional().describe("Reuse to retry the same run without running it twice."),
   wait: z.boolean().optional().describe("Follow the job until it finishes (up to about a minute in this call)."),
+  out,
+};
+export const apiBatchInputShape = {
+  jobs: z
+    .array(
+      z.object({
+        model: modelId,
+        input: modelInput,
+        idempotencyKey: z.string().min(1).max(200).optional().describe("This job's own key; by default the batch key and the job's position."),
+      })
+    )
+    .min(1)
+    .max(500)
+    .optional()
+    .describe("Up to 500 jobs, all or none. Leave out with batchId."),
+  batchId: z.string().min(1).max(200).optional().describe("Read a batch summer_api_batch answered, instead of starting one."),
+  idempotencyKey: z.string().min(1).max(200).optional().describe("Reuse to retry the same batch without queuing it twice."),
+  wait: z.boolean().optional().describe("Follow every job until it finishes (up to about a minute in this call)."),
   out,
 };
 export const apiJobInputShape = {
@@ -72,6 +94,17 @@ export function registerApiTools(server: McpServer): void {
           ...(follow ? { waitSeconds: 30 } : {}),
         });
         return jobToolResult(job, args);
+      })
+  );
+  server.tool(
+    "summer_api_batch",
+    "Run up to 500 Summer API jobs at once with the Summer sign-in on this computer, all or none: when the person's paid credits and this app's limit (Connected apps) cover every job, all are queued at their held prices and run in order; if not, nothing runs and the error says how many fit and how much more is needed (give the person its link). Say what you will make and what it costs first. batchId reads a batch; wait follows it, out saves the finished files on this computer.",
+    apiBatchInputShape,
+    async (args: { jobs?: Array<{ model: string; input?: Record<string, unknown>; idempotencyKey?: string }>; batchId?: string; idempotencyKey?: string; wait?: boolean; out?: string }) =>
+      answer(async () => {
+        if (args.batchId) return batchToolResult(await getBatch(args.batchId), args);
+        const batch = await createBatch(checkBatch(args.jobs ?? []), args.idempotencyKey ? { idempotencyKey: args.idempotencyKey } : {});
+        return batchToolResult(batch, args);
       })
   );
   server.tool(

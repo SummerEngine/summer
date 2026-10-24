@@ -1,23 +1,32 @@
+import { readFile } from "node:fs/promises";
 import { Command } from "commander";
 import {
   API_NOT_OPEN,
   SummerApiError,
   cancelJob,
+  createBatch,
+  downloadBatchFiles,
   downloadJobFiles,
   estimateJob,
   getJob,
   isFinished,
   listModels,
+  isBatchFinished,
+  parseBatchLines,
   runJob,
+  waitForBatch,
   waitForJob,
+  type Batch,
   type Job,
+  type SummerApiDependencies,
 } from "../../core/summer-api.js";
 
 /**
  * `summer api models|estimate|run|jobs`: the Summer API (core/summer-api.ts)
  * from a shell. JSON when stdout is not a terminal (or with --json); a short
  * summary for people. `--wait` follows a job until it finishes; `--download
- * [dir]` also saves its files. While Summer has not opened the API, every
+ * [dir]` also saves its files. `run --batch file.jsonl` queues up to 500
+ * jobs at once (all or none). While Summer has not opened the API, every
  * command prints one line, "Summer API is not open yet.", and exits 1.
  */
 
@@ -66,7 +75,9 @@ export async function runApiAction(
     }
     const code = error instanceof SummerApiError ? error.code : "request_failed";
     const message = error instanceof Error ? error.message : String(error);
-    if (json) io.print(JSON.stringify({ ok: false, error: { code, message } }));
+    // A refused batch's details say how many jobs fit and how much more is needed.
+    const details = error instanceof SummerApiError && error.body?.details && typeof error.body.details === "object" ? error.body.details : undefined;
+    if (json) io.print(JSON.stringify({ ok: false, error: { code, message, ...(details ? { details } : {}) } }));
     else io.printError(message);
     return 1;
   }
@@ -90,6 +101,36 @@ async function finish(job: Job, opts: { wait?: boolean; download?: string | bool
   const dir = typeof opts.download === "string" ? opts.download : ".";
   const files = opts.download !== undefined && final.state === "done" ? await downloadJobFiles(final, dir) : [];
   return { data: { job: final, ...(opts.download !== undefined ? { files } : {}) }, summary: jobSummary(final, files) };
+}
+
+function batchSummary(batch: Batch, files: Record<string, string[]> = {}): string[] {
+  const counts = Object.entries(batch.counts ?? {}).map(([state, count]) => `${count} ${state}`).join(", ");
+  const lines = [`Batch ${batch.id}: ${batch.jobs.length} jobs${typeof batch.estimatedPrice === "string" ? ` (estimated ${batch.estimatedPrice} USD)` : ""}${counts ? `, ${counts}` : ""}`];
+  for (const job of batch.jobs) {
+    lines.push(`  ${job.id}: ${job.state}${typeof job.model === "string" ? ` ${job.model}` : ""}`);
+    for (const file of files[job.id] ?? []) lines.push(`    saved ${file}`);
+  }
+  if (!isBatchFinished(batch)) lines.push(`  Follow a job: summer api jobs <id> --wait`);
+  return lines;
+}
+
+/** run --batch: queue every line of the file as one batch, then --wait and --download as for one job. */
+export async function runBatch(
+  file: string,
+  opts: { idempotencyKey?: string; wait?: boolean; download?: string | boolean },
+  overrides: Partial<SummerApiDependencies> = {}
+): Promise<{ data: unknown; summary: string[] }> {
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch {
+    throw new SummerApiError("invalid_input", `Cannot read the batch file ${file}.`, 400);
+  }
+  const batch = await createBatch(parseBatchLines(text), opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}, overrides);
+  const follow = opts.wait === true || opts.download !== undefined;
+  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, {}, overrides) : batch;
+  const files = opts.download !== undefined ? await downloadBatchFiles(final, typeof opts.download === "string" ? opts.download : ".", overrides) : undefined;
+  return { data: { batch: final, ...(files ? { files } : {}) }, summary: batchSummary(final, files) };
 }
 
 const exit = (code: number) => {
@@ -130,17 +171,23 @@ const estimateCommand = new Command("estimate")
   );
 
 const runSubcommand = new Command("run")
-  .description("Run one job into your Summer assets; spends your paid credits within this app's limit (Connected apps)")
-  .argument("<model>", "A model id or alias, e.g. 3d/default")
+  .description("Run one job into your Summer assets, or a batch of up to 500 with --batch; spends your paid credits within this app's limit (Connected apps)")
+  .argument("[model]", "A model id or alias, e.g. 3d/default (not with --batch)")
   .option("--input <json>", "The model's input as a JSON object")
+  .option("--batch <file>", "A JSONL file, one job per line: {\"model\": ..., \"input\": {...}, \"idempotencyKey\": optional}; up to 500, all or none")
   .option("--quote <quoteId>", "From summer api estimate: refuse to charge more than it quoted")
-  .option("--idempotency-key <key>", "Reuse to retry the same run without running it twice (default: a new one)")
-  .option("--wait", "Follow the job until it finishes")
+  .option("--idempotency-key <key>", "Reuse to retry the same run or batch without running it twice (default: a new one)")
+  .option("--wait", "Follow the job (or every job of the batch) until it finishes")
   .option("--download [dir]", "Follow it and save its files (default: this folder)")
   .option("--json", "JSON (the default when stdout is not a terminal)")
-  .action(async (model: string, opts: { input?: string; quote?: string; idempotencyKey?: string; wait?: boolean; download?: string | boolean } & JsonOption) =>
+  .action(async (model: string | undefined, opts: { input?: string; batch?: string; quote?: string; idempotencyKey?: string; wait?: boolean; download?: string | boolean } & JsonOption) =>
     exit(
       await runApiAction(opts, async () => {
+        if (opts.batch) {
+          if (model || opts.input || opts.quote) throw new SummerApiError("invalid_input", "--batch takes the model and input from each line of its file; leave out <model>, --input and --quote.", 400);
+          return runBatch(opts.batch, opts);
+        }
+        if (!model) throw new SummerApiError("invalid_input", "Name a model (summer api run 3d/default --input '{...}'), or pass --batch file.jsonl.", 400);
         const follow = opts.wait === true || opts.download !== undefined;
         const job = await runJob(model, parseInput(opts.input), {
           ...(opts.quote ? { quoteId: opts.quote } : {}),

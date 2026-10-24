@@ -242,6 +242,18 @@ describe("summer login: one browser for the account and the store", () => {
     expect(noStore.calls).toEqual(["login"]);
   });
 
+  it("signs in again when the stored store token is dead (the server refused it), never \"Already signed in\"", async () => {
+    // hasStoreSignIn is the server check (core/oauth.ts storeSignInWorks): false for a revoked app.
+    const store = fakes({ token: true, store: false });
+    await runLoginCommand({ store: true }, store.deps);
+    expect(store.calls).toEqual(["store:reuse:default"]);
+    expect(store.lines.join("\n")).not.toMatch(/Already signed in/);
+
+    const plain = fakes({ token: true, store: false });
+    await runLoginCommand({}, plain.deps);
+    expect(plain.calls).toEqual([`store:reuse:${STORE_STEP_TIMEOUT_MS}`]);
+  });
+
   it("parses --store and --no-store into true, false, or unset", async () => {
     const parse = (argv: string[]) => {
       const command = new Command("login").option("--store").option("--no-store").exitOverride();

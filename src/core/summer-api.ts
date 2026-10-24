@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import { summerRequestHeaders } from "./agent-host.js";
-import { getStoreAccessToken, OAuthError } from "./oauth.js";
+import { getStoreAccessToken, isSignInGone, OAuthError } from "./oauth.js";
 import { resolveGatewayUrl } from "./config.js";
 
 /**
@@ -19,6 +19,7 @@ import { resolveGatewayUrl } from "./config.js";
  */
 
 export const API_NOT_OPEN = "Summer API is not open yet.";
+export const SIGN_IN_GONE_MESSAGE = 'Your Summer sign-in was revoked or has expired. Run "summer login", then retry.';
 const FINISHED = new Set(["done", "failed", "cancelled", "declined", "expired", "stale"]);
 /** The longest a --wait follows one job (a 3D model with a rig can take minutes). */
 export const MAX_JOB_WAIT_MS = 20 * 60_000;
@@ -40,6 +41,8 @@ export interface SummerApiDependencies {
   now: () => number;
   /** The sign-in's current access token (core/oauth.ts); tests pass a fake. */
   token?: () => Promise<string>;
+  /** A new access token from the sign-in server now; it throws once the person revoked the app. */
+  refresh?: () => Promise<string>;
 }
 
 const defaults: SummerApiDependencies = {
@@ -61,6 +64,27 @@ async function call(
     if (error instanceof OAuthError) throw new SummerApiError("not_signed_in", 'This computer is not signed in to Summer. Run "summer login", then retry.', 401);
     throw error;
   });
+  try {
+    return await send(method, path, options, key, deps);
+  } catch (error) {
+    // Before launch the API answers a refused sign-in the way it answers everyone: "Nothing is here."
+    // So check the sign-in itself: a revoked app cannot refresh, and a live one retries once with a new token.
+    if (!key || !(error instanceof SummerApiError) || error.code !== "api_not_open") throw error;
+    const fresh = await (deps.refresh ?? (() => getStoreAccessToken(undefined, { force: true })))().catch((refused: unknown) => {
+      if (isSignInGone(refused)) throw new SummerApiError("sign_in_revoked", SIGN_IN_GONE_MESSAGE, 401);
+      throw error;
+    });
+    return send(method, path, options, fresh, deps);
+  }
+}
+
+async function send(
+  method: "GET" | "POST",
+  path: string,
+  options: { body?: unknown; headers?: Record<string, string> },
+  key: string | null,
+  deps: SummerApiDependencies
+): Promise<{ status: number; body: Record<string, unknown> }> {
   const gateway = await resolveGatewayUrl();
   const res = await deps.fetch(`${gateway}/v1${path}`, {
     method,

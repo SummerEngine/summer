@@ -11,6 +11,7 @@ import {
   OAuthError,
   readStoredOAuthToken,
   runStoreLogin,
+  storeSignInWorks,
 } from "./oauth.js";
 import { getSummerDir, setSummerDirForTests } from "./store.js";
 
@@ -19,6 +20,8 @@ const ISSUER = "https://auth.test/auth/v1";
 
 /** The hosted MCP's resource metadata and a Supabase-shaped OAuth server. */
 function fakeAuthServer(options: { redirectError?: string } = {}) {
+  /** revoked: the person disconnected the app, so the server refuses its refresh token. */
+  const server = { revoked: false, down: false };
   const forms: Array<Record<string, string>> = [];
   const registrations: any[] = [];
   let issued = 0;
@@ -44,7 +47,8 @@ function fakeAuthServer(options: { redirectError?: string } = {}) {
     if (url === `${ISSUER}/oauth/token`) {
       const form = Object.fromEntries(new URLSearchParams(String(init.body)));
       forms.push(form);
-      if (form.grant_type === "refresh_token" && form.refresh_token !== "refresh-1") return json({ error: "invalid_grant" }, 400);
+      if (form.grant_type === "refresh_token" && server.down) return json({ error: "server_error" }, 503);
+      if (form.grant_type === "refresh_token" && (server.revoked || form.refresh_token !== "refresh-1")) return json({ error: "invalid_grant" }, 400);
       issued += 1;
       return json({ access_token: `access-${issued}`, refresh_token: form.grant_type === "refresh_token" ? undefined : "refresh-1", expires_in: 3600, token_type: "bearer" });
     }
@@ -61,7 +65,7 @@ function fakeAuthServer(options: { redirectError?: string } = {}) {
     (openUrl as any).authorize = url;
     setTimeout(() => request(redirect, (response) => response.resume()).end(), 10);
   };
-  return { fetch, openUrl, forms, registrations };
+  return { fetch, openUrl, forms, registrations, server };
 }
 
 /** Free loopback ports for one test (the real fixed ports may be taken on a CI host). */
@@ -146,6 +150,22 @@ describe("store OAuth sign-in", () => {
     const down = (async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) =>
       String(input) === `${ISSUER}/oauth/token` ? new Response(JSON.stringify({ error: "server_error" }), { status: 503, headers: { "content-type": "application/json" } }) : auth.fetch(input, init)) as typeof globalThis.fetch;
     await expect(getStoreAccessToken({ fetch: down, now: () => clock })).rejects.toMatchObject({ code: "oauth_server_failed" });
+  });
+
+  it("checks the stored sign-in with the server: refused once revoked, kept through an outage", async () => {
+    const auth = fakeAuthServer();
+    const deps = { fetch: auth.fetch, now: Date.now };
+    expect(await storeSignInWorks(deps)).toBe(false);
+    await runStoreLogin({ ...deps, openUrl: auth.openUrl, log: () => undefined, ports });
+    // The stored token is still in date, but only the server knows whether the app is still allowed.
+    expect(await storeSignInWorks(deps)).toBe(true);
+    expect(auth.forms.at(-1)).toMatchObject({ grant_type: "refresh_token" });
+    auth.server.down = true;
+    expect(await storeSignInWorks(deps)).toBe(true);
+    auth.server.down = false;
+    auth.server.revoked = true;
+    expect(await storeSignInWorks(deps)).toBe(false);
+    await expect(getStoreAccessToken(deps, { force: true })).rejects.toMatchObject({ code: "oauth_grant_invalid" });
   });
 
   it("fails clearly when access is denied or no sign-in exists", async () => {

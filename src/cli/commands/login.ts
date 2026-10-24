@@ -8,7 +8,7 @@ import {
 } from "../../core/auth.js";
 import { summerRequestHeaders } from "../../core/agent-host.js";
 import { resolveGatewayUrl } from "../../core/config.js";
-import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
+import { runStoreLogin, storeSignInWorks } from "../../core/oauth.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -46,7 +46,8 @@ export interface LoginCommandDependencies {
 
 const defaultCommandDependencies: LoginCommandDependencies = {
   hasAuthToken: async () => Boolean(await getAuthToken()),
-  hasStoreSignIn: async () => Boolean(await readStoredOAuthToken()),
+  // Checked with the sign-in server: a stored token for a revoked app is not a sign-in.
+  hasStoreSignIn: () => storeSignInWorks(),
   login: () => runLogin(),
   storeLogin: ({ newClient, timeoutMs }) =>
     runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log, newClient, ...(timeoutMs ? { timeoutMs } : {}) }),

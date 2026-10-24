@@ -8,6 +8,7 @@ No static API keys: the Summer API signs in with `summer login`.
 
 - **`summer api` and the `summer_api_*` MCP tools use the Summer sign-in on this computer**: the same Supabase OAuth 2.1 login (PKCE, a loopback redirect on 127.0.0.1) as the store tools. It stores the refresh token in `~/.summer/oauth-token` and refreshes by itself. Each app spends the person's paid credits up to the limit they set in Connected apps.
 - **`summer token`** prints a one-hour access token for curl: `curl -H "Authorization: Bearer $(summer token)" https://www.summerengine.com/v1/models`.
+- **Studio page ops run in the Summer app's own Studio tab.** `summer_call` sends `studio.map`, `studio.page`, `studio.use_page`, `studio.read_form` and `studio.submit_form` to the running Summer Engine (`POST /api/studio`) when it lists them in `capabilities.studioPage`, with the same input and answers and no store sign-in. When the app has no Studio tab (`no_tab`) or is not running, they go to Summer's server as before.
 - **Studio pages open in the Summer app's Studio tab.** `studio.open` (`summer_open`, `summer open`) with a `/studio...` page sends the running Summer Engine `Navigate {target: "studio", path}` when the engine lists the `studio` destination, so the app's own Studio tab moves instead of a browser opening. With the engine off or an older engine, the browser opens as before.
 - **Removed:** `summer login --api-key`, the MCP tool `summer_api_key_login` (operation `account.api_key_login`), `SUMMER_API_KEY` and `~/.summer/api-key`.
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../../core/store.js";
-import { API_NOT_OPEN, estimateJob, getJob, jobToolResult, listModels, runJob, SummerApiError } from "../../core/summer-api.js";
+import { API_NOT_OPEN, SIGN_IN_GONE_MESSAGE, estimateJob, getJob, jobToolResult, listModels, runJob, SummerApiError } from "../../core/summer-api.js";
 import { runApiAction } from "./api.js";
 import { runTokenCommand } from "./token.js";
 import { OAuthError } from "../../core/oauth.js";
@@ -101,6 +101,28 @@ describe("the Summer API client", () => {
     expect(await runTokenCommand({ token: missing, print: (line) => out.push(line), printError: (line) => err.push(line) })).toBe(1);
     expect(out).toEqual([TOKEN]);
     expect(err[0]).toMatch(/summer login/);
+  });
+});
+
+describe("after the person revoked this app", () => {
+  it("says the sign-in was revoked or expired and to run summer login, not that the API is closed", async () => {
+    // Before launch the server answers a refused token with "Nothing is here." like everyone else.
+    const api = fakeApi(closed);
+    const revoked = async () => {
+      throw new OAuthError("oauth_grant_invalid", "The sign-in server refused the token request (invalid_grant).", "Recovery: sign in again.");
+    };
+    const errors: string[] = [];
+    const code = await runApiAction({}, async () => ({ data: await runJob("3d/default", { prompt: "a chest" }, {}, { fetch: api.fetch, token: signedIn, refresh: revoked }), summary: [] }), { isTTY: true, print: () => undefined, printError: (line) => errors.push(line) });
+    expect(code).toBe(1);
+    expect(errors).toEqual([SIGN_IN_GONE_MESSAGE]);
+    expect(SIGN_IN_GONE_MESSAGE).toMatch(/revoked or has expired\. Run "summer login"/);
+    expect(api.calls).toHaveLength(1);
+  });
+
+  it("retries once with a fresh token when the sign-in still works, and only then says the API is closed", async () => {
+    const api = fakeApi(closed);
+    await expect(getJob("cj_1", { fetch: api.fetch, token: signedIn, refresh: async () => "fresh-token" })).rejects.toMatchObject({ code: "api_not_open", message: API_NOT_OPEN });
+    expect(api.calls.map((call) => call.headers.get("authorization"))).toEqual([`Bearer ${TOKEN}`, "Bearer fresh-token"]);
   });
 });
 

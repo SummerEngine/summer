@@ -19,7 +19,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (130 tools)
+## Tool surface (131 tools)
 
 ### Local projects (2)
 
@@ -93,7 +93,7 @@ No shell needed (Claude Desktop, chat apps); the `summer dev` command does both 
 |---|---|
 | `summer_fabricate_3d` | Run a Blender Python (bpy) script in the user's OWN installed Blender — headless, engine-supervised — then import the exported `.glb` into `res://` and optionally instantiate it with `target_size`. For modular kits with exact dimensions, VFX meshes (shatter, sweeps, LOD chains), and post-processing generated models (decimate/UV/bake); generic props go to the library and characters to generation. Requires Blender on the machine (never bundled); `blender_not_found` carries the fix. The `fabricating-assets` skill has the bpy rules that survive glTF export. |
 
-### Editor UI control (4)
+### Editor UI control (5)
 
 Preview: needs Summer Engine 0.5.66 or newer; older engines return `engine_lacks_op`. Scene work never goes through the editor UI (use the scene, scripting, and perception tools). UI ops are for editor-workflow steps a human does with the mouse — open Project Settings, switch the main screen, clear a blocking dialog, read a dock. Ladder: dedicated tool → named action → tree + activate → screenshot (pixels last, never for coordinates). Quit / project-reload / delete-without-confirm actions are denied by the engine. The `driving-the-editor-ui` skill carries the patterns.
 
@@ -103,6 +103,7 @@ Preview: needs Summer Engine 0.5.66 or newer; older engines return `engine_lacks
 | `summer_ui_tree` | Structured Control tree of the live editor UI (class, path, rect, text/tooltip, `checked`/`enabled`/`tabs`/`current_tab`/`value`) from `root:"main" \| "window" \| "dock:<title\|id>" \| "dialog:<title>" \| "path:<node path>"`; `root:"dialogs"` lists every visible dialog/popup with `blocking`, `blocking_dialog`, and its `buttons`. The token-cheap alternative to a screenshot; its paths are what `summer_ui_activate` takes. |
 | `summer_ui_activate` | Activate one control by tree path through its own input path — `press`, `toggle`, `focus`, `select_tab` (incl. `path:"main_screen" value:"3D"`), `set_text` (+`submit`), `set_value` — and `action:"dismiss_dialog"` (by `path` or `title`, `button` cancel/ok/text) to clear a blocking dialog. `state` / `visible_after` are read back after the action, never echoed. |
 | `summer_ui_screenshot` | PNG of the editor window or one dock/dialog/control (`root`, `max_size`) returned as an image — the pixels-last fallback for LOOKING at the editor UI. Not for scene verification (`summer_screenshot`) and never for picking click coordinates. Honest `no_renderer` under a headless editor. |
+| `summer_view_set` (`engine.view_set`) | Show the person what you work on: the frame's view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame. Use it when you start editing a scene or script, play the game, or finish on the best view of the result; not for reading a node (`summer_inspect_node`) or opening a web page (`studio.open`). Needs Summer Engine 4.6 or newer. |
 
 ### Perception (4)
 

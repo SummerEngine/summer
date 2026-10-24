@@ -1,0 +1,78 @@
+id: tool/view-set
+kind: tool
+version: 1.0.0
+summary: "Show the person what you work on: the editor view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame."
+use_when:
+  - you start editing a scene and want the person to watch it change (3D view, Scene rail, the edited node framed)
+  - you edit a script and want it on screen (script view at that file)
+  - you play the game or review the result (game view; a frame_shot for a review)
+  - you finish and want to leave the person on the best view of the result
+do_not_use_when:
+  - selecting a node only to read it — summer_inspect_node; nothing needs to be on screen
+  - opening a Summer web page (billing, their games) — studio.open
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - navigation
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/navigate-summer
+  tools:
+    - tool/select-node
+    - tool/frame-shot
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_view_set
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_view_set
+    remote: false
+input_schema:
+  type: object
+  properties:
+    view:
+      type: string
+      enum:
+        - home
+        - chat
+        - 3d
+        - 2d
+        - script
+        - game
+        - studio
+      description: The view to show. 3d and 2d are the scene views, script the script editor, game the running game, chat the in-app chat, home the game list, studio the Studio tab.
+    rail:
+      type: string
+      enum:
+        - files
+        - scene
+        - inspector
+        - output
+        - none
+      description: The right rail beside a scene, script or game view. none hides it. Omit to keep it as it is.
+    focus:
+      type: string
+      description: What to focus. A res:// script or scene opens; a node path selects that node.
+    frame:
+      type: array
+      items:
+        type: string
+      description: Node paths to frame the camera on (the scene views).
+  required:
+    - view
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

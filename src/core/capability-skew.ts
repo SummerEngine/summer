@@ -51,6 +51,8 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // engine's one-table op; the other three are the legacy
   // fallbacks on engines that predate it.
   "Navigate", "OpenResource", "FocusDock", "RevealInFileSystem",
+  // engine.view_set: the frame's view, rail, focus and frame (core/capabilities/view-set.ts)
+  "SetView",
   // Summer Apps editor docks (summer_app_dock: core/capabilities/apps.ts)
   "OpenAppDock", "CloseAppDock", "ListAppDocks",
   // summer_enable_plugin (core/capabilities/enable-plugin.ts)

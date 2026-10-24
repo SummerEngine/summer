@@ -41,7 +41,8 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
     "summer_get_asset_download_url",
   ],
   ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_go_live", "summer_store_set_details", "summer_capture_gameplay"],
-  ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree"],
+  // summer_view_set is in the catalog (engine.view_set, summer_call) for every profile.
+  ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree", "summer_view_set"],
   // Create and open a project on this computer with no shell (the full profile;
   // the engine profile's clients have a shell, `summer dev`, and a tool cap).
   projects: ["summer_projects_create_local", "summer_projects_open_local"],
@@ -214,6 +215,7 @@ const ADDITIVE_OR_TRANSIENT = new Set([
   "summer_open_scene",
   "summer_open_main_scene",
   "summer_select_node",
+  "summer_view_set",
   "summer_clear_console",
   "summer_play",
   "summer_stop",
@@ -238,6 +240,7 @@ const IDEMPOTENT_WRITES = new Set([
   "summer_open_scene",
   "summer_open_main_scene",
   "summer_select_node",
+  "summer_view_set",
   "summer_clear_console",
   "summer_stop",
   "summer_enable_plugin",

@@ -15,6 +15,7 @@ import {
   type EngineSelection,
 } from "./engine.js";
 import type { EngineCapabilities } from "./capability-skew.js";
+import { AGENT_HOST_HEADER, resolveAgentHost } from "./agent-host.js";
 import { asRecord, boolFrom, numberFrom, stringFrom } from "./util/json.js";
 import {
   classifyOpsResponse,
@@ -183,6 +184,17 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
 }
 
 /** rebind() could not re-read engine health; the session identity is unchanged. */
+/**
+ * The agent app driving the engine (Claude Code, Codex, ...), so the person's
+ * editor can say who is working ("Claude Code · Placing 12 trees"). Local
+ * only: the engine on this computer reads it for its activity line; it never
+ * leaves the machine from here, so the telemetry opt-out does not apply.
+ */
+function engineAgentHeader(): Record<string, string> {
+  const host = resolveAgentHost().id;
+  return host && host !== "unknown" ? { [AGENT_HOST_HEADER]: host } : {};
+}
+
 export class EngineRebindError extends Error {
   constructor(message: string) {
     super(message);
@@ -415,6 +427,7 @@ export class EngineApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
+      ...engineAgentHeader(),
     };
 
     const res = await fetch(url, {
@@ -453,6 +466,7 @@ export class EngineApiClient {
       headers: {
         Authorization: `Bearer ${this.token}`,
         "Content-Type": "application/json",
+        ...engineAgentHeader(),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),

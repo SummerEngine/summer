@@ -62,7 +62,8 @@ import {
   withMaxCharactersArg,
   type ToolSelection,
 } from "./tool-surface.js";
-import { shapeToolResult, singleEditCounter } from "./tool-results.js";
+import { shapeToolResult, singleEditCounter, withSignInLink } from "./tool-results.js";
+import { SignInLinks } from "../core/sign-in-link.js";
 import { recordLocalToolCall, recordMcpSession, toolErrorCode } from "../core/telemetry.js";
 import { boundProject, type UsageFields } from "../core/usage-fields.js";
 import { currentToolContext, registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
@@ -295,7 +296,7 @@ interface SurfaceMeta {
   profile: string;
 }
 
-function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): () => number {
+function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta, signInLinks = new SignInLinks()): () => number {
   const target = server as unknown as { tool: (...args: unknown[]) => unknown };
   const original = target.tool.bind(server);
   const singleEdits = singleEditCounter();
@@ -369,6 +370,11 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
         result = shapeToolResult(result, { maxCharacters, hint });
       } catch {
         // Shaping must never break the tool call; the raw result goes out.
+      }
+      if (isError && !nested) {
+        // A cloud tool that needs a sign-in answers with a link the agent can
+        // show; the sign-in it starts turns the tool on without a restart.
+        result = await withSignInLink(result, toolErrorCode(result, meta?.failureReason ?? meta?.errorClass), signInLinks);
       }
       try {
         recordMcpSession();

@@ -22,10 +22,15 @@ import {
   _resetSelfStartForTests,
   DEV_COMMAND,
   hasNoDisplay,
+  keepSaying,
+  OPEN_PROGRESS_EVERY_MS,
   openProjectInEditor,
   selfStartEngine,
   SELF_START_RECOVERY,
+  SELF_START_WAIT_MS,
   sessionProject,
+  SWITCH_PROJECT_OP,
+  SWITCH_REGISTER_MS,
 } from "./engine-self-start.js";
 import { EngineNotRunningError } from "./error-codes.js";
 import { setSummerDirForTests } from "./store.js";
@@ -268,5 +273,116 @@ describe("the MCP opens the session's project when no editor runs", () => {
     const early = await failureOf(selfStartEngine({ cwd: project }, notRunning(), { env: on, launch: closed }));
     expect(early.recovery).toBe(SELF_START_RECOVERY.closedEarly(project));
     expect(early.recovery).not.toContain("install");
+  });
+});
+
+describe("projects.open_local switches an editor that has another game open (J16.1)", () => {
+  function register(id: string, resourceRoot: string, port: number): void {
+    const instances = join(root, ".summer", "instances");
+    mkdirSync(instances, { recursive: true });
+    writeFileSync(
+      join(instances, `${id}.json`),
+      JSON.stringify({ schemaVersion: 1, instanceId: id, pid: process.pid, port, token: "t", resourceRoot, projectName: id, heartbeatAt: Math.floor(Date.now() / 1000) })
+    );
+  }
+
+  /** A fake engine: the open editor runs the switch op; the next editor registers when `registers`. */
+  function fakeEngine(opAnswer: unknown, registers: boolean) {
+    const ops: unknown[] = [];
+    const connect = vi.fn(async (selection: { instanceId?: string; projectPath?: string } | undefined) => {
+      if (selection?.instanceId === "other") {
+        return {
+          executeOps: async (sent: unknown[]) => {
+            ops.push(...sent);
+            // The new editor boots first and registers a moment after the op returns.
+            if (registers) setTimeout(() => register("next", project, 6554), 300);
+            return opAnswer;
+          },
+        } as unknown as EngineApiClient;
+      }
+      if (selection?.projectPath === project) return fakeClient;
+      throw new Error("no editor");
+    });
+    return { ops, connect };
+  }
+
+  it("asks the running editor to switch, says so at once, waits for the new editor in the registry, and connects to it", async () => {
+    register("other", elsewhere, 6553);
+    healthMock.mockResolvedValue(up as never);
+    const launch = launcher({ status: "running", launched: true, port: 1, health: up as never });
+    const engine = fakeEngine({ results: [{ ok: true }] }, true);
+    const progress: Array<{ message: string; at: number }> = [];
+
+    const started = Date.now();
+    const client = await openProjectInEditor(
+      project,
+      { cwd: project },
+      { switchOpen: true },
+      { env: on, launch, connect: engine.connect, progress: (message) => progress.push({ message, at: Date.now() - started }) }
+    );
+
+    expect(client).toBe(fakeClient);
+    expect(engine.ops).toEqual([{ op: SWITCH_PROJECT_OP, path: project }]);
+    expect(launch).not.toHaveBeenCalled();
+    // J16.5: progress within 1 s, before the new editor is there.
+    expect(progress[0]?.message).toBe("Opening game…");
+    expect(progress[0]!.at).toBeLessThan(1_000);
+  });
+
+  it("waits the full boot of the new editor (about 14 s on CI, J17) within the 30 s switch wait", () => {
+    expect(SWITCH_REGISTER_MS).toBe(30_000);
+    expect(SWITCH_REGISTER_MS).toBeLessThan(SELF_START_WAIT_MS);
+  });
+
+  it("says Opening <game>… at once and every few seconds until the game is open", () => {
+    vi.useFakeTimers();
+    try {
+      const said: string[] = [];
+      const stop = keepSaying((message) => said.push(message), "Opening game…");
+      expect(said).toEqual(["Opening game…"]);
+      vi.advanceTimersByTime(OPEN_PROGRESS_EVERY_MS * 4 + 10);
+      expect(said).toHaveLength(5);
+      stop();
+      vi.advanceTimersByTime(OPEN_PROGRESS_EVERY_MS * 3);
+      expect(said).toHaveLength(5);
+      expect(OPEN_PROGRESS_EVERY_MS).toBeLessThanOrEqual(5_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("an editor without the switch operation keeps the old answer and names the open game", async () => {
+    register("other", elsewhere, 6553);
+    healthMock.mockResolvedValue(up as never);
+    const engine = fakeEngine({ results: [{ ok: false, error: "Unknown op: SwitchProject", failure_reason: "engine_lacks_op" }] }, false);
+
+    const error = await failureOf(openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, connect: engine.connect }));
+
+    expect(error.message).toBe("Summer Engine has another project open.");
+    expect(error.recovery).toContain("cannot switch games");
+  });
+
+  it("a new editor that does not register within the switch wait is reported as switching, call again", async () => {
+    register("other", elsewhere, 6553);
+    healthMock.mockResolvedValue(up as never);
+    const engine = fakeEngine({ results: [{ ok: true }] }, false);
+
+    const error = await failureOf(
+      openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, connect: engine.connect, switchWaitMs: 300 })
+    );
+
+    expect(error.message).toBe("Summer Engine is switching to the project.");
+    expect(error.recovery).toContain("Call again");
+  });
+
+  it("without switchOpen (any other tool) the open game is never switched", async () => {
+    register("other", elsewhere, 6553);
+    healthMock.mockResolvedValue(up as never);
+    const engine = fakeEngine({ results: [{ ok: true }] }, true);
+
+    const error = await failureOf(openProjectInEditor(project, { cwd: project }, {}, { env: on, connect: engine.connect }));
+
+    expect(error.message).toBe("Summer Engine has another project open.");
+    expect(engine.ops).toEqual([]);
   });
 });

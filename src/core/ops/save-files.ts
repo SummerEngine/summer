@@ -235,6 +235,15 @@ export interface FileSaverOptions {
 type JobMemory = { out?: string; byDefault: boolean };
 
 /** Saves the files of generate, assets.get and jobs.wait answers; one per session (it remembers each job's `out`). */
+/** Summer's own stores: a game's .summer/local (checkpoints, project id) and ~/.summer (sign-in, runtime). A save never lands there. */
+export function inSummerStore(path: string): boolean {
+  const full = resolve(path);
+  const home = join(homedir(), ".summer");
+  if (full === home || full.startsWith(home + sep)) return true;
+  const parts = full.split(/[\\/]/).map((part) => part.toLowerCase());
+  return parts.some((part, index) => part === ".summer" && parts[index + 1] === "local");
+}
+
 export class FileSaver {
   private readonly jobs = new Map<string, JobMemory>();
   /** URL to the file a default save wrote this session: a second wait on a finished job reuses it. */
@@ -359,6 +368,7 @@ export class FileSaver {
     } else {
       path = isAbsolute(out) ? out : resolve(this.cwd(), out);
     }
+    if (inSummerStore(path)) return { error: `out: ${out} is Summer's own folder (.summer/local or ~/.summer). Nothing was saved on this machine.` };
     const folder = /[\\/]$/.test(out) || !extname(path) || (await isDirectory(path));
     return folder ? { dir: path } : { dir: dirname(path), file: basename(path) };
   }

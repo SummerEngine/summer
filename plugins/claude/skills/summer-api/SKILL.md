@@ -74,6 +74,7 @@ MCP: `summer_api_run({ model: "3d/default", input: { kind: "text-to-3d", prompt:
 - `--download <dir>` (MCP `out`) follows the job to the end and saves every file as `<assetId>.<ext>`. `--wait` (MCP `wait: true`) follows it without saving.
 - `--quote` (MCP `quoteId`): Summer refuses to charge more than the quote. If the price went up, the job does not start and nothing is charged (`conflict`): estimate again.
 - Images, voice and sound usually finish inside the call. 3D and video take minutes: one MCP call follows a job for about a minute, then answers `next`. Call `summer_api_job({ jobId, wait: true })` until the job finishes. The CLI follows it to the end by itself.
+- In Windows PowerShell or cmd, write the input to a file and pass `--input "@input.json"`: those shells break quotes inside `'{...}'`.
 - Each run sends its own idempotency key, so a retried request never runs twice. To retry the same run by hand, pass the same `--idempotency-key` (MCP `idempotencyKey`).
 
 ## 5. Run many: a batch

@@ -44,13 +44,33 @@ const defaultIo = (): ApiCommandIo => ({
 
 type JsonOption = { json?: boolean };
 
-function parseInput(text: string | undefined): Record<string, unknown> {
+/** A text file as any system writes it: UTF-8 with or without a BOM, or UTF-16 (Windows PowerShell 5's > and Out-File). */
+export async function readTextFile(file: string): Promise<string> {
+  const bytes = await readFile(file);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return bytes.subarray(2).toString("utf16le");
+  return bytes.toString("utf8").replace(/^\uFEFF/, "");
+}
+
+/**
+ * --input: a JSON object, or "@file" with one. Windows PowerShell 5 strips the
+ * inner quotes of '{"prompt":"..."}' before the CLI sees them, and cmd.exe has
+ * no single quotes, so a file is the dependable way there (quoted: PowerShell
+ * reads a bare @ as splatting).
+ */
+export async function parseInput(text: string | undefined): Promise<Record<string, unknown>> {
   if (!text) return {};
+  if (text.startsWith("@")) {
+    try {
+      text = await readTextFile(text.slice(1));
+    } catch {
+      throw new SummerApiError("invalid_input", `Cannot read the input file ${text.slice(1)}.`, 400);
+    }
+  }
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
-    throw new SummerApiError("invalid_input", "--input must be a JSON object, e.g. --input '{\"prompt\":\"a wooden chest\"}'.", 400);
+    throw new SummerApiError("invalid_input", "--input must be a JSON object, e.g. --input '{\"prompt\":\"a wooden chest\"}', or a file with one: --input \"@input.json\" (in Windows PowerShell and cmd).", 400);
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new SummerApiError("invalid_input", "--input must be a JSON object.", 400);
   return value as Record<string, unknown>;
@@ -122,7 +142,7 @@ export async function runBatch(
 ): Promise<{ data: unknown; summary: string[] }> {
   let text: string;
   try {
-    text = await readFile(file, "utf8");
+    text = await readTextFile(file);
   } catch {
     throw new SummerApiError("invalid_input", `Cannot read the batch file ${file}.`, 400);
   }
@@ -159,12 +179,12 @@ const modelsCommand = new Command("models")
 const estimateCommand = new Command("estimate")
   .description("The exact price of one job before it runs, and a quote id that holds it for 15 minutes; charges nothing")
   .argument("<model>", "A model id or alias, e.g. 3d/default")
-  .option("--input <json>", "The model's input as a JSON object (summer api models <model> shows its schema)")
+  .option("--input <json>", "The model's input as a JSON object, or @file.json (summer api models <model> shows its schema)")
   .option("--json", "JSON (the default when stdout is not a terminal)")
   .action(async (model: string, opts: { input?: string } & JsonOption) =>
     exit(
       await runApiAction(opts, async () => {
-        const data = await estimateJob(model, parseInput(opts.input));
+        const data = await estimateJob(model, await parseInput(opts.input));
         return { data, summary: [`${data.model ?? model}: ${data.atMost ? "at most " : ""}${data.price} ${data.currency ?? "USD"}${data.quoteId ? `  quote ${data.quoteId}` : ""}`] };
       })
     )
@@ -173,7 +193,7 @@ const estimateCommand = new Command("estimate")
 const runSubcommand = new Command("run")
   .description("Run one job into your Summer assets, or a batch of up to 500 with --batch; spends your paid credits within this app's limit (Connected apps)")
   .argument("[model]", "A model id or alias, e.g. 3d/default (not with --batch)")
-  .option("--input <json>", "The model's input as a JSON object")
+  .option("--input <json>", "The model's input as a JSON object, or @file.json")
   .option("--batch <file>", "A JSONL file, one job per line: {\"model\": ..., \"input\": {...}, \"idempotencyKey\": optional}; up to 500, all or none")
   .option("--quote <quoteId>", "From summer api estimate: refuse to charge more than it quoted")
   .option("--idempotency-key <key>", "Reuse to retry the same run or batch without running it twice (default: a new one)")
@@ -189,7 +209,7 @@ const runSubcommand = new Command("run")
         }
         if (!model) throw new SummerApiError("invalid_input", "Name a model (summer api run 3d/default --input '{...}'), or pass --batch file.jsonl.", 400);
         const follow = opts.wait === true || opts.download !== undefined;
-        const job = await runJob(model, parseInput(opts.input), {
+        const job = await runJob(model, await parseInput(opts.input), {
           ...(opts.quote ? { quoteId: opts.quote } : {}),
           ...(opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}),
           ...(follow ? { waitSeconds: 60 } : {}),

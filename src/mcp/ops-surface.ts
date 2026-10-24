@@ -75,6 +75,8 @@ export interface OpsSurfaceOptions {
   legacy?: boolean;
   /** Saves generated files on this machine (`out`, localPath); shared with the mounted hosted tools. */
   files: FileSaver;
+  /** A Studio page op in the running app's own Studio tab (core/ops/studio-page.ts); null sends it to Summer's server. */
+  studio?: (op: string, input: Record<string, unknown>) => Promise<Answer | null>;
 }
 
 type Handler = (...args: unknown[]) => Promise<unknown>;
@@ -478,6 +480,11 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         const call = localCall(name, resolved, args);
         if (!call) return toolResult(errorAnswer("not_in_profile", `${resolved} is not served by this profile.`, { next: { say: "Run the MCP with --profile engine." } }));
         return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
+      }
+      // The running Summer app answers its own Studio tab's ops itself; else Summer's server does.
+      if (options.studio && dryRun !== true) {
+        const inApp = await options.studio(resolved, args);
+        if (inApp) return toolResult(inApp);
       }
       // `out` stays here: this package saves the files (core/ops/save-files.ts).
       const { input: sent, out } = options.files.take(resolved, args);

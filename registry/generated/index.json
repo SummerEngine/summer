@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "a96e7758787500aedfca23f720be8b7901ae88e8db18b4adffb93538851458c0",
+      "content_hash": "695de0842cad9caf21ae5f1efc1a1e1113d44219bcaee9c8a2c6d7696ace5722",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5931,6 +5931,39 @@
       }
     },
     {
+      "id": "tool/api-batch",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8b30f8783781652a455ac3fff4191aece6e7f08b4e29444d999b520d5328589e",
+      "summary": "Run up to 500 Summer API jobs at once, all or none, with the Summer sign-in; follow every job and save the files.",
+      "use_when": [
+        "making many game assets through the Summer API in one go (a set of props, sounds or icons)",
+        "following or downloading a batch that summer_api_batch started"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_batch",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/api-docs",
       "kind": "tool",
       "version": "1.0.2",
@@ -5973,6 +6006,142 @@
         "editor_mutation": false,
         "network": false,
         "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-estimate",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c230c26f06934f118bfc3a582c1d7df38461478114e5ad21ad8126e6d6009dab",
+      "summary": "The exact USD price of one Summer API job before it runs, its breakdown and a quote id that holds the price for 15 minutes; charges nothing.",
+      "use_when": [
+        "before a Summer API run that spends the person's credits",
+        "the person asks what a generation will cost"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_estimate",
+      "remote": true,
+      "cli_command": "summer api estimate",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-job",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e6fa1ac1be8fda35eceb8dbe65cb7fbca626de53247fc89eeea84f530afef1a7",
+      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it, save its files on this computer, or cancel it.",
+      "use_when": [
+        "a summer_api_run answered a running job",
+        "saving a finished Summer API job's files"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_job",
+      "remote": true,
+      "cli_command": "summer api jobs",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-models",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "73c3ac25cbe1a46f1e4584f081c9b0d06eee3f76f17cdf356b49d4b380e1638b",
+      "summary": "The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.",
+      "use_when": [
+        "choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API",
+        "checking what a Summer API model costs or takes as input"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_models",
+      "remote": true,
+      "cli_command": "summer api models",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-run",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f032bc0f2b3177f0897a3a3ca4a01ad5725b7f16ce648965cef2294aeeaa5d62",
+      "summary": "Run one Summer API job into the person's Summer assets with the Summer sign-in; spends paid credits within the app's limit, can wait and save the files.",
+      "use_when": [
+        "making a game asset through the Summer API after estimating it",
+        "a script or agent outside Summer Engine needs a generated model, image, sound or clip"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_run",
+      "remote": true,
+      "cli_command": "summer api run",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
         "publish": false
       }
     },

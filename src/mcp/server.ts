@@ -32,6 +32,7 @@ import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
+import { registerApiTools } from "./tools/api-tools.js";
 import { registerNavigationTools } from "./tools/navigation-tools.js";
 import { registerLibraryTools } from "./tools/library-tools.js";
 import {
@@ -42,6 +43,7 @@ import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
 import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
+import { runInAppStudio } from "../core/ops/studio-page.js";
 import { opForToolCall } from "../core/ops/contract.js";
 import { knownOp } from "../core/ops/catalog.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
@@ -519,6 +521,7 @@ export function createMcpServer(
   registerGenerateTools(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
+  registerApiTools(server);
   registerScriptTools(server);
   registerPerceptionTools(server);
   registerSpatialTools(server);
@@ -553,7 +556,11 @@ export function createMcpServer(
 
   // Without engine tools nothing imports a file into a project, so files save into it by default.
   const files = new FileSaver({ saveByDefault: !engine });
-  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files });
+  if (surface === "v4") {
+    // Studio page ops go to the running app's own Studio tab when it offers them (no engine launch).
+    const studio = (op: string, input: Record<string, unknown>) => runInAppStudio(op, input, () => getClient({ launch: false }));
+    applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files, studio });
+  }
 
   return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed, files };
 }

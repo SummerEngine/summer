@@ -4,8 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-No static API keys: the Summer API signs in with `summer login`.
+## [4.8.0] - 2026-10-24
 
+The Summer API with the Summer sign-in (no static API keys), Studio inside the Summer app, and agents that show the person what they work on. 4.7.0 and the 2026-10-22 4.8.0 draft were never published; this 4.8.0 includes them (sections below).
+
+- **`engine.view_set` (`summer_view_set`) shows the person what the agent works on**: the Summer app's view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame, through the engine's `SetView` operation. Needs Summer Engine 4.6 or newer.
+- **`studio.radio`**: agents read and play Summer Radio in the person's open Studio tab (state, play, stop, station, track, next, previous, volume). The operations catalog is synced from PublicSummerEngine main (262 operations).
 - **A generated file never saves into Summer's own folders.** `out` on the generate operations, `assets.get` and `jobs.wait` refuses a game's `.summer/local` (checkpoints, project id) and `~/.summer` (sign-in, runtime), with a warning; nothing is downloaded. The game's memory beside it (`.summer/GameSoul.md`, `.summer/memory/`) is unchanged.
 - **`projects.open_local` switches the running editor.** When Summer Engine already has another project open, that editor now opens the asked one in the same window (the engine's `SwitchProject` operation) instead of answering "another project is open". The MCP says "Opening <game>…" at once (MCP progress) and waits up to 10 s for the new editor to register, then connects to it. An editor without the operation keeps the old answer and names the open project. Other tools never switch the open project.
 - **Signed out? Cloud tools answer with a sign-in link.** When an MCP tool needs the Summer sign-in (`not_signed_in`) or the store approval (`store_login_required`), its answer now ends with a link the agent shows to the person. The MCP starts the same browser sign-in `summer login` uses (`cli_session`) without opening anything, waits for it in the background, and saves the token to `~/.summer`, so the next call works with no restart or reinstall. Engine tools keep working signed out. One link per process until that sign-in finishes or expires (15 minutes).
@@ -17,7 +21,7 @@ No static API keys: the Summer API signs in with `summer login`.
 - **Studio pages open in the Summer app's Studio tab.** `studio.open` (`summer_open`, `summer open`) with a `/studio...` page sends the running Summer Engine `Navigate {target: "studio", path}` when the engine lists the `studio` destination, so the app's own Studio tab moves instead of a browser opening. With the engine off or an older engine, the browser opens as before.
 - **Removed:** `summer login --api-key`, the MCP tool `summer_api_key_login` (operation `account.api_key_login`), `SUMMER_API_KEY` and `~/.summer/api-key`.
 
-## [4.8.0] - 2026-10-22
+## 4.8.0 draft - 2026-10-22 (not published)
 
 The Summer API from a shell and from MCP. 4.7.0 was not published to npm; 4.8.0 is the first release with it (the [4.7.0] section below).
 

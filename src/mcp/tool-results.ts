@@ -85,6 +85,26 @@ export function singleEditCounter(): (tool: string, isError: boolean) => string 
   };
 }
 
+/** The store sign-ins a v4 answer names in error.details.was (core/ops/cloud.ts hostedCallFailure). */
+const STORE_SIGN_IN_WAS = new Set(["store_login_required", "store_login_expired"]);
+
+/**
+ * A v4 cloud answer `not_signed_in` whose cause is the store sign-in (the
+ * hosted server's OAuth grant), not the Summer account: the Summer app, for
+ * one, is signed in to the account, so only the store approval link helps.
+ */
+function storeSignInAnswer(result: { content: Content[] }): boolean {
+  const first = result.content[0];
+  if (!first || first.type !== "text" || typeof first.text !== "string") return false;
+  try {
+    const parsed = JSON.parse(first.text) as { error?: { code?: unknown; details?: { was?: unknown } } } | null;
+    const error = parsed?.error;
+    return error?.code === "not_signed_in" && typeof error.details?.was === "string" && STORE_SIGN_IN_WAS.has(error.details.was);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * A `not_signed_in` / `store_login_required` answer gets one more text block:
  * the sign-in link for the person (core/sign-in-link.ts). Anything else, or
@@ -95,8 +115,9 @@ export async function withSignInLink(
   code: string | null,
   links: { link: (kind: SignInKind) => Promise<string | null> }
 ): Promise<unknown> {
-  const kind = signInKindForCode(code);
-  if (!kind || !result || typeof result !== "object" || !Array.isArray((result as { content?: unknown }).content)) return result;
+  if (!result || typeof result !== "object" || !Array.isArray((result as { content?: unknown }).content)) return result;
+  const kind = storeSignInAnswer(result as { content: Content[] }) ? "store" : signInKindForCode(code);
+  if (!kind) return result;
   try {
     const url = await links.link(kind);
     if (!url) return result;

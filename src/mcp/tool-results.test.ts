@@ -90,4 +90,18 @@ describe("withSignInLink", () => {
     expect(plainShaped.content[1].text).toContain("cli_session=abc");
     expect(await withSignInLink(failure, "not_signed_in", { link: async () => null })).toBe(failure);
   });
+
+  it("gives the store approval link, not the account link, when a v4 cloud call lacks the store sign-in", async () => {
+    const asked: string[] = [];
+    const links = { link: async (kind: "account" | "store") => (asked.push(kind), kind === "store" ? "https://auth.example/authorize?client_id=c" : "https://gateway.example/login?cli_session=abc") };
+    const store = { isError: true, content: [{ type: "text", text: '{"ok":false,"error":{"code":"not_signed_in","message":"Cloud operations need the Summer sign-in.","retry":"no","details":{"was":"store_login_required"}}}' }] };
+    const answer = JSON.parse(((await withSignInLink(store, "not_signed_in", links)) as { content: Array<{ text: string }> }).content[0].text);
+    expect(asked).toEqual(["store"]);
+    expect(answer.error.signInUrl).toBe("https://auth.example/authorize?client_id=c");
+    expect(answer.error.recovery).toMatch(/^Store approval link/);
+    // Any other cause keeps the account link.
+    const account = { isError: true, content: [{ type: "text", text: '{"ok":false,"error":{"code":"not_signed_in","message":"x","retry":"no","details":{"was":"http_401"}}}' }] };
+    await withSignInLink(account, "not_signed_in", links);
+    expect(asked).toEqual(["store", "account"]);
+  });
 });

@@ -3888,7 +3888,7 @@
       "id": "skill/summer-api",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "530d3a946b1dcda8e7574c8758cfabb9c55dcf03c8de377d50b1677cf5e38d4f",
+      "content_hash": "03c2f63c8601e78bf2b2eb3e566ec166461b8f9b33be0b06e6dc9bb29bf1d948",
       "summary": "Summer API game assets: models, estimate, one job or a batch, download the files.",
       "use_when": [
         "generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine",

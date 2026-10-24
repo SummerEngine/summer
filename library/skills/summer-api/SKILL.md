@@ -168,6 +168,10 @@ Write prompts as plain descriptions of the thing itself. Put the style in every 
 
 A picture input (`imageUrl`, `referenceImageUrl`) is a public URL, such as the `fileUrl` of an earlier job. For a file on the person's computer, the docs' jobs page shows the upload (`/v1/files`).
 
+## Without Summer Engine
+
+This whole skill runs without Summer Engine: the CLI, the MCP tools and the HTTP API need only the Summer sign-in. The files work in any engine or app. Stop at the files; skip any step that imports into a Summer project.
+
 ## Use the files
 
 - Save files inside the project (`--download assets/...`), and keep each `assetId`: in Summer Engine, an asset imports by its id.

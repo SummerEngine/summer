@@ -631,6 +631,93 @@
       ]
     },
     {
+      "name": "account.usage",
+      "title": "Read my plan usage",
+      "summary": "How much of the plan is used and when it refills, in words, as Studio Billing shows it: the plan, the share of this cycle used, plenty, low or out, the refill day, and whether bought credits or extra usage are on. Never amounts or prices. Free. Next: whoami for the balance.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.8",
+      "mcpTool": "summer_account_usage",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "description": "Free, Basic, Pro, Pro+ or Ultra.",
+            "type": "string"
+          },
+          "paid": {
+            "description": "A paid plan or bought credits.",
+            "type": "boolean"
+          },
+          "used": {
+            "description": "The share of this cycle used, in words (\"about half\"). Paid plans only.",
+            "type": "string"
+          },
+          "usedPercent": {
+            "type": "number"
+          },
+          "left": {
+            "type": "string",
+            "enum": [
+              "plenty",
+              "low",
+              "out"
+            ]
+          },
+          "refill": {
+            "description": "When it refills or the plan ends, in words.",
+            "type": "string"
+          },
+          "extraCredits": {
+            "description": "Bought credits are left.",
+            "type": "boolean"
+          },
+          "extraUsage": {
+            "description": "Extra usage (pay as you go past the plan) is on.",
+            "type": "boolean"
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "paid",
+          "left",
+          "refill",
+          "extraCredits",
+          "extraUsage",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "usage",
+        "left",
+        "refill",
+        "renews",
+        "plan",
+        "limit",
+        "how much",
+        "billing"
+      ],
+      "examples": [
+        {
+          "input": {},
+          "note": "How much usage do I have left, and when does it refill?"
+        }
+      ]
+    },
+    {
       "name": "analytics.event_limit",
       "title": "Read the event limit",
       "summary": "The person's monthly limit for custom game events: the amount included with Summer Pro, their cap, the limit now and the events so far this month. Next: analytics.set_event_limit when they ask to change it.",
@@ -24051,7 +24138,7 @@
     {
       "name": "jobs.list",
       "title": "List my jobs",
-      "summary": "List the person's jobs, newest first: with planId, a plan's agent requests and cloud builds; else store uploads and publish requests, for one game or the five games changed last. Next: jobs.wait or jobs.cancel.",
+      "summary": "List the person's jobs, newest first: with planId, a plan's agent requests and cloud builds; with gameId, its store uploads and publish requests; with neither, their asset generations of the last 48 hours and the store jobs of the five games changed last. Next: jobs.wait or jobs.cancel.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -24076,9 +24163,10 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "kind": {
-            "description": "upload: store uploads; apr: publish requests; plan: plan agent requests; build: cloud builds (plan and build need planId).",
+            "description": "gen: asset generations (no gameId or planId); upload: store uploads; apr: publish requests; plan: plan agent requests; build: cloud builds (plan and build need planId).",
             "type": "string",
             "enum": [
+              "gen",
               "upload",
               "apr",
               "plan",
@@ -24126,6 +24214,7 @@
                 "kind": {
                   "type": "string",
                   "enum": [
+                    "gen",
                     "upload",
                     "apr",
                     "plan",
@@ -24157,7 +24246,7 @@
                   "type": "string"
                 },
                 "what": {
-                  "description": "The upload, the publish request, the plan agent request or the build, in a few words.",
+                  "description": "The generation, the upload, the publish request, the plan agent request or the build, in a few words.",
                   "type": "string"
                 },
                 "createdAt": {
@@ -24209,7 +24298,9 @@
         "pending",
         "in progress",
         "plan agent",
-        "builds"
+        "builds",
+        "generations",
+        "still generating"
       ],
       "examples": [
         {
@@ -24218,6 +24309,12 @@
             "state": "running"
           },
           "note": "Which uploads of this game is Summer still checking?"
+        },
+        {
+          "input": {
+            "kind": "gen"
+          },
+          "note": "Which of my images and 3D models are still generating?"
         }
       ]
     },

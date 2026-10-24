@@ -4329,7 +4329,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "292aedc371021d40a51f9d37c9ea0781205464297d7635a36850a4b1843f4e58",
+      "content_hash": "dc25c719d31b25d53288780f53130389c34434a48ee5016d6adf9f5c24d22cd0",
       "summary": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
       "use_when": [
         "a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games",

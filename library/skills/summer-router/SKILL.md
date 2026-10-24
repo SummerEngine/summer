@@ -61,7 +61,7 @@ router.save_character({
 })
 ```
 
-- Call it with `summer_call({ op: "router.save_character", input: {...} })` when your client has no `summer_router_save_character` tool, or from a shell: `summer router save-character --input '<json>'`. Find the game id with `games.list`. On a game that is live, the person approves the change with one link.
+- Over MCP, call it with `summer_call({ op: "router.save_character", input: {...} })`, or from a shell: `summer router save-character --input '<json>'`. Find the game id with `games.list`. On a game that is live, the person approves the change with one link.
 - Test it before you write game code: `router.test_character({ gameId, characterId: "shopkeeper", messages: ["Do you have anything for my wounds?", "Fine, 25 gold for the health potion."], toolOutputs: { sell_item: { ok: true } }, expectTools: ["sell_item"] })`. Test turns count toward a developer cap of their own.
 - `router.models` lists the text models, voices and the full character schema (`include: ["schema"]`). Pick `model` and `voice.id` from it, or leave them out for the game's defaults.
 - The tool `name` in the character is the name your game handles. Tool arguments come from the model: check every one in game code.

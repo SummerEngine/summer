@@ -446,3 +446,45 @@ describe("safety rails (release review 2026-09-11)", () => {
     expect(gated.url).toMatch(/login\?returnUrl=/);
   });
 });
+
+describe("runOpen (Studio pages in the app's Studio tab)", () => {
+  const STUDIO_ADVERT: EngineCapabilities = { navigation: { version: 1, targets: [{ id: "studio" }, { id: "scene" }] } };
+
+  it("sends Navigate studio with the path when the engine advertises it, and opens no browser", async () => {
+    const { d, openUrl, executeOps } = deps({ capabilities: STUDIO_ADVERT, loggedIn: false });
+    const res = await runOpen({ target: "billing" }, d);
+    expect(res).toMatchObject({ ok: true, action: "opened", url: `${GATEWAY}/studio?tab=billing`, op: { op: "Navigate", target: "studio", path: "/studio?tab=billing" } });
+    expect(executeOps).toHaveBeenCalledWith([{ op: "Navigate", target: "studio", path: "/studio?tab=billing" }]);
+    expect(openUrl).not.toHaveBeenCalled();
+    const unmapped = await runOpen({ target: "/studio/games/g1/analytics" }, d);
+    expect(unmapped.op).toEqual({ op: "Navigate", target: "studio", path: "/studio/games/g1/analytics" });
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+
+  it("keeps the browser for non-Studio pages, an engine without the studio row, no engine, or a refused Navigate", async () => {
+    const pricing = deps({ capabilities: STUDIO_ADVERT });
+    await runOpen({ target: "pricing" }, pricing.d);
+    expect(pricing.executeOps).not.toHaveBeenCalled();
+    expect(pricing.openUrl).toHaveBeenCalledWith(`${GATEWAY}/pricing`);
+
+    const older = deps({ capabilities: NAVIGATE_ADVERT });
+    expect((await runOpen({ target: "billing" }, older.d)).opened_url).toBe(`${GATEWAY}/studio?tab=billing`);
+    expect(older.executeOps).not.toHaveBeenCalled();
+
+    const off = deps({ engineClient: null });
+    expect((await runOpen({ target: "billing" }, off.d)).opened_url).toBe(`${GATEWAY}/studio?tab=billing`);
+
+    const refused = deps({
+      capabilities: STUDIO_ADVERT,
+      engineClient: { executeOps: vi.fn(async () => ({ ok: false, results: [{ ok: false, error: "unavailable", failure_reason: "unavailable" }] })) },
+    });
+    expect((await runOpen({ target: "billing" }, refused.d)).opened_url).toBe(`${GATEWAY}/studio?tab=billing`);
+    expect(refused.openUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("open:false still prints the url without touching the engine", async () => {
+    const { d, engine } = deps({ capabilities: STUDIO_ADVERT });
+    expect(await runOpen({ target: "billing", open: false }, d)).toMatchObject({ action: "printed", url: `${GATEWAY}/studio?tab=billing` });
+    expect(engine).not.toHaveBeenCalled();
+  });
+});

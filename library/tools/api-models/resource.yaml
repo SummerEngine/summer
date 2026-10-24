@@ -1,0 +1,57 @@
+id: tool/api-models
+kind: tool
+version: 1.0.0
+summary: The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.
+use_when:
+  - choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API
+  - checking what a Summer API model costs or takes as input
+do_not_use_when:
+  - generating inside a running Summer Engine project with the asset tools
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_api_models
+implementation:
+  module: src/mcp/tools/api-tools.ts
+  export: registerApiTools
+surfaces:
+  mcp:
+    tool_name: summer_api_models
+    remote: true
+  cli:
+    command: summer api models
+input_schema:
+  type: object
+  properties:
+    model:
+      type: string
+      minLength: 1
+      maxLength: 120
+      description: One model id or alias; without it, every model.
+    capability:
+      type: string
+      enum:
+        - image
+        - 3d
+        - video
+        - voice
+        - dialogue
+        - sound
+        - music
+      description: Only this kind.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

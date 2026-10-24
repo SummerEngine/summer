@@ -421,9 +421,11 @@ export async function readStoredOAuthToken(): Promise<StoredOAuthToken | null> {
 
 /**
  * A current store access token: the stored one, refreshed when it expires
- * within a minute.
+ * within a minute. `force` refreshes now: the sign-in server refuses the
+ * refresh once the person revoked the app, so it checks a token the API
+ * refused.
  */
-export async function getStoreAccessToken(deps: OAuthDependencies = defaultDependencies): Promise<string> {
+export async function getStoreAccessToken(deps: OAuthDependencies = defaultDependencies, options: { force?: boolean } = {}): Promise<string> {
   const stored = await readStoredOAuthToken();
   if (!stored) {
     throw new OAuthError(
@@ -432,7 +434,7 @@ export async function getStoreAccessToken(deps: OAuthDependencies = defaultDepen
       'Recovery: run "summer login --store" in a terminal and approve access in the browser, then retry.'
     );
   }
-  if (Date.parse(stored.expiresAt) - deps.now() > REFRESH_MARGIN_MS) return stored.accessToken;
+  if (!options.force && Date.parse(stored.expiresAt) - deps.now() > REFRESH_MARGIN_MS) return stored.accessToken;
   if (!stored.refreshToken) {
     throw new OAuthError(
       "store_login_expired",
@@ -451,4 +453,25 @@ export async function getStoreAccessToken(deps: OAuthDependencies = defaultDepen
   const next = tokenFromResponse(body, base, now, stored.refreshToken);
   await writeStoreJson(OAUTH_TOKEN_FILE, next);
   return next.accessToken;
+}
+
+/** The sign-in errors that mean the stored sign-in is gone (revoked or expired), not a server or network failure. */
+export const SIGN_IN_GONE = new Set(["store_login_required", "store_login_expired", "oauth_grant_invalid", "oauth_token_refused", "oauth_token_invalid"]);
+
+export const isSignInGone = (error: unknown): boolean => error instanceof OAuthError && SIGN_IN_GONE.has(error.code);
+
+/**
+ * Whether this machine's store sign-in still works, checked with the sign-in
+ * server (one refresh). A server or network failure counts as signed in, so
+ * an outage never starts a new sign-in.
+ */
+export async function storeSignInWorks(deps: OAuthDependencies = defaultDependencies): Promise<boolean> {
+  if (!(await readStoredOAuthToken())) return false;
+  try {
+    await getStoreAccessToken(deps, { force: true });
+    return true;
+  } catch (error) {
+    if (isSignInGone(error)) return false;
+    return true;
+  }
 }

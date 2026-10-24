@@ -41226,6 +41226,246 @@
       ]
     },
     {
+      "name": "studio.radio",
+      "title": "Summer Radio",
+      "summary": "Read or play Summer Radio in the person's open Studio tab (the desktop app's too): action state reads it; play (optional station), stop, station, track (id or index), next, previous, volume (0 to 1). Answers the radio after the change; notice blocked: ask the person to press play.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.8",
+      "mcpTool": "summer_studio_radio",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "description": "state reads; the others change the radio.",
+            "type": "string",
+            "enum": [
+              "state",
+              "play",
+              "stop",
+              "station",
+              "track",
+              "next",
+              "previous",
+              "volume"
+            ]
+          },
+          "station": {
+            "description": "A station id from state (e.g. summer-electronics-fm), for play, station and track.",
+            "type": "string",
+            "maxLength": 64
+          },
+          "track": {
+            "description": "A track id or its index in the station, for track.",
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 999
+              }
+            ]
+          },
+          "volume": {
+            "description": "0 to 1, for volume.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tabId": {
+            "description": "One Studio tab (from an earlier answer); default the tab the person is looking at.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "tabId": {
+            "type": "string"
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "playing": {
+            "type": "boolean"
+          },
+          "station": {
+            "type": "string"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "artist": {
+                    "type": "string"
+                  },
+                  "index": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "artist",
+                  "index"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "volume": {
+            "type": "number"
+          },
+          "notice": {
+            "description": "blocked: the page needs one click before sound; failed: the station did not load.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "blocked",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "mood": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "mood",
+                "category"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tracks": {
+            "description": "The current station's tracks.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "artist": {
+                  "type": "string"
+                },
+                "index": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "artist",
+                "index"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "on",
+          "playing",
+          "station",
+          "track",
+          "volume",
+          "notice",
+          "stations",
+          "tracks"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "radio",
+        "music",
+        "play music",
+        "station",
+        "song",
+        "volume",
+        "fun"
+      ],
+      "examples": [
+        {
+          "input": {
+            "action": "state"
+          },
+          "note": "What is playing?"
+        },
+        {
+          "input": {
+            "action": "play",
+            "station": "summer-electronics-fm"
+          },
+          "note": "Play Summer Electronics FM."
+        },
+        {
+          "input": {
+            "action": "volume",
+            "volume": 0.3
+          },
+          "note": "Quieter."
+        }
+      ]
+    },
+    {
       "name": "studio.read_form",
       "title": "Read a Studio form",
       "summary": "Every Studio form, declared once: without form, the list; with form, its fields as JSON Schema, its buttons (critical ones are the person's) and, for a form that saves with no tab, the person's values. No open tab needed. Next: studio.submit_form.",

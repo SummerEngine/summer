@@ -3888,7 +3888,7 @@
       "id": "skill/summer-api",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9cda17912a7820f61f5d4d33888c0160157cd09165f16f7b3dda19c0cf798e04",
+      "content_hash": "a1f11f66bb6570c8cc1454054bf99223007eb818e014a039be7021d5d93ffd9c",
       "summary": "Summer API game assets: models, estimate, one job or a batch, download the files.",
       "use_when": [
         "generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine",
@@ -4329,7 +4329,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "998844cec4e13c68e1d73786f843f99afb5802e42d2d9f31cce7c197a79028e9",
+      "content_hash": "292aedc371021d40a51f9d37c9ea0781205464297d7635a36850a4b1843f4e58",
       "summary": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
       "use_when": [
         "a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games",

@@ -94,6 +94,7 @@ summer api run --batch jobs.jsonl --download assets
 MCP: `summer_api_batch({ jobs: [{ model: "3d/default", input: { kind: "text-to-3d", prompt: "a wooden barrel with iron bands, game prop" } }], out: "assets" })`. Read it again with `summer_api_batch({ batchId: "<id>", wait: true, out: "assets" })`.
 
 - Every job is priced when the batch arrives. When the paid credits and the app's limit cover all of them, all are accepted at once and run in order; each holds its price (`estimatedPrice` on the job, the total on the batch). When they do not, nothing runs: the error's `details` say how many fit (`fits`) and how much more is needed (`shortUsd`).
+- The batch answers its jobs in the order you sent them. Give each job a `title` where the model takes one (3D and image models do): it names the asset in the person's library.
 - A batch takes no `quoteId`. Estimate each distinct request first (same model and input, same price), add them up, and give the person the total for the whole batch.
 - Each line may carry its own `idempotencyKey`; the batch has one too (`--idempotency-key`). To pick up a batch after the terminal closed, run the same command with the same `--idempotency-key`: it answers the batch it already made and follows it. MCP: `summer_api_batch({ batchId, wait: true })`.
 

@@ -168,7 +168,7 @@ if check.ok and check.tool_calls.any(func(call): return call.name == "sell_item"
 
 ## 5. Every refusal keeps the game running
 
-Every call returns a `SummerRouterResult`. Read `ok` first. On a refusal, `error` is a stable tag, `fix` says what to do (for you), and `message` is a plain line you may show players. Show your offline line and go on. Treat a tag you do not know as `unavailable`.
+Every call returns a `SummerRouterResult`. Read `ok` first. On a refusal, `error` is a stable tag, `fix` says what to do (for you), and `message` is a plain line you may show players. Show `message` or your own offline line, and go on. Treat a tag you do not know as `unavailable`.
 
 | Tag | Means | Game does |
 |---|---|---|

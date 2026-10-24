@@ -169,6 +169,16 @@ export async function waitForJob(job: Job, options: { timeoutMs?: number } = {},
   return current;
 }
 
+/** Names Windows keeps for devices, with any extension: CON.glb opens the console, not a file. */
+const WINDOWS_DEVICE_NAMES = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
+
+/** <assetId><ext> as a file name every system accepts: no : * ? " < > | (a colon is an NTFS stream), no device name. */
+export function jobFileName(assetId: string, fileUrl: string): string {
+  const ext = extname(new URL(fileUrl).pathname).slice(0, 8);
+  const base = assetId.replace(/[^A-Za-z0-9._-]+/g, "-");
+  return `${WINDOWS_DEVICE_NAMES.test(base.split(".")[0]) ? `_${base}` : base}${/^\.[A-Za-z0-9]+$/.test(ext) ? ext : ".bin"}`;
+}
+
 /** The finished job's files: every asset's fileUrl, saved under `dir` as <assetId><ext>. */
 export async function downloadJobFiles(job: Job, dir: string, overrides: Partial<SummerApiDependencies> = {}): Promise<string[]> {
   const deps = { ...defaults, ...overrides };
@@ -181,9 +191,7 @@ export async function downloadJobFiles(job: Job, dir: string, overrides: Partial
     if (typeof asset.fileUrl !== "string") continue;
     const res = await deps.fetch(asset.fileUrl, { signal: AbortSignal.timeout(120_000) });
     if (!res.ok) throw new SummerApiError("download_failed", `Could not download ${asset.fileUrl} (${res.status}).`, res.status);
-    const ext = extname(new URL(asset.fileUrl).pathname).slice(0, 8) || ".bin";
-    const base = String(asset.assetId ?? `${job.id}-${index + 1}`).replace(/[^A-Za-z0-9._-]+/g, "-");
-    const path = join(target, `${base}${ext}`);
+    const path = join(target, jobFileName(String(asset.assetId ?? `${job.id}-${index + 1}`), asset.fileUrl));
     await writeFile(path, Buffer.from(await res.arrayBuffer()));
     saved.push(path);
   }

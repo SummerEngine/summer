@@ -237,8 +237,10 @@ type JobMemory = { out?: string; byDefault: boolean };
 /** Saves the files of generate, assets.get and jobs.wait answers; one per session (it remembers each job's `out`). */
 /** Summer's own stores: a game's .summer/local (checkpoints, project id) and ~/.summer (sign-in, runtime). A save never lands there. */
 export function inSummerStore(path: string): boolean {
-  const full = resolve(path);
-  const home = join(homedir(), ".summer");
+  // Windows paths ignore case: C:\Users\me\.Summer is the same folder.
+  const fold = (value: string) => (process.platform === "win32" ? value.toLowerCase() : value);
+  const full = fold(resolve(path));
+  const home = fold(join(homedir(), ".summer"));
   if (full === home || full.startsWith(home + sep)) return true;
   const parts = full.split(/[\\/]/).map((part) => part.toLowerCase());
   return parts.some((part, index) => part === ".summer" && parts[index + 1] === "local");

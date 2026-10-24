@@ -197,6 +197,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+import { batchToolResult, cancelJob, checkBatch, createBatch, estimateJob, getBatch, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
 import {
@@ -2184,6 +2185,45 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (!result.ok) throw new ToolResultError(result as unknown as Record<string, unknown>, result.hint);
     return result;
   }),
+
+  // --- account ---
+  entry("summer_api_models", "The Summer API's models with input and price", false, async (args) =>
+    summerApiToolAnswer(() => listModels({ ...(optStr(args, "model") ? { model: optStr(args, "model") } : {}), ...(optStr(args, "capability") ? { capability: optStr(args, "capability") } : {}) }))
+  ),
+  entry("summer_api_estimate", "The exact price of one Summer API job; charges nothing", false, async (args) =>
+    summerApiToolAnswer(() => estimateJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}))
+  ),
+  entry("summer_api_run", "Run one Summer API job with the Summer sign-in on this computer", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = args.wait === true || Boolean(out);
+      const job = await runJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}, {
+        ...(optStr(args, "quoteId") ? { quoteId: optStr(args, "quoteId") } : {}),
+        ...(optStr(args, "idempotencyKey") ? { idempotencyKey: optStr(args, "idempotencyKey") } : {}),
+        ...(follow ? { waitSeconds: 30 } : {}),
+      });
+      return jobToolResult(job, { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
+  entry("summer_api_batch", "Run up to 500 Summer API jobs at once (all or none), or read a batch", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = { wait: args.wait === true, ...(out ? { out } : {}) };
+      const batchId = optStr(args, "batchId");
+      if (batchId) return batchToolResult(await getBatch(batchId), follow);
+      const key = optStr(args, "idempotencyKey");
+      const batch = await createBatch(checkBatch(Array.isArray(args.jobs) ? args.jobs : []), key ? { idempotencyKey: key } : {});
+      return batchToolResult(batch, follow);
+    })
+  ),
+  entry("summer_api_job", "Read, follow, download or cancel a Summer API job", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const jobId = str(args, "jobId");
+      if (args.cancel === true) return { job: await cancelJob(jobId) };
+      const out = optStr(args, "out");
+      return jobToolResult(await getJob(jobId), { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
 
   // --- feedback ---
   entry("summer_library_feedback", "Report library entry outcomes so Summer can fix and re-rank them", false, async (args) => {

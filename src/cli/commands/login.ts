@@ -8,7 +8,7 @@ import {
 } from "../../core/auth.js";
 import { summerRequestHeaders } from "../../core/agent-host.js";
 import { resolveGatewayUrl } from "../../core/config.js";
-import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
+import { runStoreLogin, storeSignInWorks } from "../../core/oauth.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -21,11 +21,11 @@ const HEARTBEAT_MS = 30000;
 
 export const loginCommand = new Command("login")
   .description(
-    "Sign in to Summer in your browser: your Summer account, then the store, publishing and Grow tools in the same browser"
+    "Sign in to Summer in your browser: your Summer account, then the Summer sign-in (OAuth) the Summer API, store, publishing and Grow tools use, in the same browser"
   )
   .option(
     "--store",
-    "Only the store sign-in (uploads with store.upload_file, item sync with economy.sync_items, the store, publishing, board and Grow tools); plain summer login does it too"
+    "Only the Summer sign-in (OAuth): the Summer API (summer api, summer token), uploads with store.upload_file, item sync, the store, publishing, board and Grow tools; plain summer login does it too"
   )
   .option("--no-store", "Only the Summer account sign-in; skip the store sign-in")
   .option("--force", "Force re-authentication even if already logged in")
@@ -46,7 +46,8 @@ export interface LoginCommandDependencies {
 
 const defaultCommandDependencies: LoginCommandDependencies = {
   hasAuthToken: async () => Boolean(await getAuthToken()),
-  hasStoreSignIn: async () => Boolean(await readStoredOAuthToken()),
+  // Checked with the sign-in server: a stored token for a revoked app is not a sign-in.
+  hasStoreSignIn: () => storeSignInWorks(),
   login: () => runLogin(),
   storeLogin: ({ newClient, timeoutMs }) =>
     runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log, newClient, ...(timeoutMs ? { timeoutMs } : {}) }),

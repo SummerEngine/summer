@@ -597,6 +597,15 @@ export class EngineApiClient {
     }
   }
 
+  /**
+   * One Studio page op in the app's own Studio tab (capabilities.studioPage):
+   * POST /api/studio {op, input} -> 202, then its one terminal envelope.
+   */
+  async studioPage(op: string, input: Record<string, unknown>, timeoutMs = 90_000): Promise<unknown> {
+    const path = this.getEngineCapabilities()?.studioPage?.path ?? "/api/studio";
+    return this._requestQueued("POST", path, { op, input }, timeoutMs);
+  }
+
   async health(): Promise<unknown> {
     return this.request("GET", "/api/health");
   }

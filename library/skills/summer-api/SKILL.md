@@ -93,18 +93,19 @@ summer api run --batch jobs.jsonl --download assets
 
 MCP: `summer_api_batch({ jobs: [{ model: "3d/default", input: { kind: "text-to-3d", prompt: "a wooden barrel with iron bands, game prop" } }], out: "assets" })`. Read it again with `summer_api_batch({ batchId: "<id>", wait: true, out: "assets" })`.
 
-- Every job is priced first. When the paid credits and the app's limit cover all of them, all are accepted at once, each at a held price, and run in order. When they do not, nothing runs: the error says how many fit and how much more is needed.
-- Estimate a few representative jobs first and give the person the total for the whole batch.
-- Each line may carry its own `idempotencyKey`; the batch has one too (`--idempotency-key`).
+- Every job is priced when the batch arrives. When the paid credits and the app's limit cover all of them, all are accepted at once and run in order; each holds its price (`estimatedPrice` on the job, the total on the batch). When they do not, nothing runs: the error's `details` say how many fit (`fits`) and how much more is needed (`shortUsd`).
+- A batch takes no `quoteId`. Estimate each distinct request first (same model and input, same price), add them up, and give the person the total for the whole batch.
+- Each line may carry its own `idempotencyKey`; the batch has one too (`--idempotency-key`). To pick up a batch after the terminal closed, run the same command with the same `--idempotency-key`: it answers the batch it already made and follows it. MCP: `summer_api_batch({ batchId, wait: true })`.
 
-## 6. Follow, cancel, read
+## 6. Follow and read
 
 ```bash
 summer api jobs <jobId> --download assets   # follow it and save its files
-summer api jobs <jobId> --cancel            # stop a job that has not finished
 ```
 
-MCP: `summer_api_job({ jobId: "<jobId>", out: "assets" })`, `summer_api_job({ jobId: "<jobId>", cancel: true })`.
+MCP: `summer_api_job({ jobId: "<jobId>", out: "assets" })`.
+
+A Summer API job runs to the end once it is accepted, queued or running: it cannot be cancelled. A job that fails costs nothing. So confirm the list with the person before you send it.
 
 | `state` | Means | Do |
 |---|---|---|
@@ -114,7 +115,9 @@ MCP: `summer_api_job({ jobId: "<jobId>", out: "assets" })`, `summer_api_job({ jo
 | `failed` | It did not work; nothing is charged | Show `error.message`; change the input or the model |
 | `cancelled`, `expired`, `stale`, `declined` | Stopped without a result | Start a new job if the person still wants it |
 
-A finished job has `result.assets`: one entry per file, each with `assetId`, `fileUrl` and `thumbnailUrl`. Job ids may hold a colon (`gen:...`, `q:...`); send them as they are.
+A finished job has `result.assets`: one entry per file, each with `assetId`, `fileUrl` and `thumbnailUrl`. The file type is the extension of `fileUrl` (the model's `outputFormats` lists them). Job ids may hold a colon (`gen:...`, `q:...`); send them as they are.
+
+With `--json`, or when its output is piped, every command prints the API's own answer: `{"job": {...}}` for a run or a job (plus `"files"` with `--download`), `{"batch": {...}}` for a batch, the estimate's fields at the top level, and `{"ok": false, "error": {"code", "message", "details"}}` on an error. In a terminal it prints a short summary.
 
 ## Limits: money only
 
@@ -129,16 +132,17 @@ Every error has a stable `code` and a `message` written for the person. Branch o
 
 | Code | Means | Do |
 |---|---|---|
-| `not_signed_in` | No sign-in, or the app was revoked | Run `summer login`, then retry |
+| `not_signed_in` | No sign-in, the app was revoked, or a `summer token` older than an hour | CLI and MCP: run `summer login`, then retry. Own HTTP code: get a new `summer token` |
 | `no_credits` | The paid balance cannot cover the job or the batch | Show the message: it links where to add credits. Do not retry until the person tops up |
 | `over_limit` | This app's own spend limit is reached | Show the message: the person raises the limit in Connected apps, or waits for it to reset |
-| `invalid_input` | The input does not match the model | Fix the field the message names; read the model's `inputSchema` |
+| `invalid_input` | The input does not match the model, or the `quoteId` expired | Fix the field the message names (`param`); read the model's `inputSchema`. An expired quote: estimate again |
 | `not_found` | No such model, job or batch | Model ids come from `summer api models` |
 | `conflict` | The price went up since your quote | Estimate again; nothing was charged |
 | `idempotency_conflict` | The key was used for a different request | Use a new key for a new job |
 | `in_progress` | The first request with this key is still running | Send the same request again shortly |
 | `outcome_unknown` | Summer could not tell if the work started | Send the same request with the same key; never start a new job |
 | `unavailable` | A model or service is down for a moment | Retry with backoff, or pick another model for the same job |
+| `unsupported` | The job cannot do that (a cancel) | Let the job finish |
 
 `no_credits` and `over_limit` are answers about money, not failures: stop, show the person the message and its link, and continue when they say so.
 

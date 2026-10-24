@@ -60,7 +60,7 @@ export const apiJobInputShape = {
   jobId: z.string().min(1).max(200).describe("The job id summer_api_run answered."),
   wait: z.boolean().optional().describe("Follow the job until it finishes (up to about a minute in this call)."),
   out,
-  cancel: z.boolean().optional().describe("Cancel the job instead."),
+  cancel: z.boolean().optional().describe("Ask to stop the job instead. Summer API jobs, queued or running, run to the end: the answer is unsupported."),
 };
 
 const answer = async (work: () => Promise<Record<string, unknown>>) => {
@@ -109,7 +109,7 @@ export function registerApiTools(server: McpServer): void {
   );
   server.tool(
     "summer_api_job",
-    "Read a Summer API job: its state (queued, running, done, failed, ...), price and, when done, its assets and Summer file URLs. wait follows it, out saves its files on this computer, cancel stops it.",
+    "Read a Summer API job: its state (queued, running, done, failed, ...), price and, when done, its assets and Summer file URLs. wait follows it, out saves its files on this computer.",
     apiJobInputShape,
     async (args: { jobId: string; wait?: boolean; out?: string; cancel?: boolean }) =>
       answer(async () => (args.cancel ? { job: await cancelJob(args.jobId) } : jobToolResult(await getJob(args.jobId), args)))

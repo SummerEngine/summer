@@ -51,6 +51,7 @@ router.save_character({
     instructions: "You run the potion shop in Emberfall. Warm, a little greedy, never rude. You sell only what is in stock: {{stock}}. When the player agrees on a potion and its price, call sell_item. You never give items for free.",
     first_message: "Welcome, traveller! Potions, tonics, a little luck in a bottle?",
     variables: { stock: "health potion 25 gold, mana potion 30 gold" },
+    overridable: ["variables"],
     tools: [{
       name: "sell_item",
       description: "Sell one item to the player once they agree on it and its price.",
@@ -60,10 +61,24 @@ router.save_character({
 })
 ```
 
-- Call it with `summer_call({ op: "router.save_character", input: {...} })` when your client has no `summer_router_save_character` tool. On a game that is live, the person approves the change with one link.
+- Call it with `summer_call({ op: "router.save_character", input: {...} })` when your client has no `summer_router_save_character` tool, or from a shell: `summer router save-character --input '<json>'`. Find the game id with `games.list`. On a game that is live, the person approves the change with one link.
 - Test it before you write game code: `router.test_character({ gameId, characterId: "shopkeeper", messages: ["Do you have anything for my wounds?", "Fine, 25 gold for the health potion."], toolOutputs: { sell_item: { ok: true } }, expectTools: ["sell_item"] })`. Test turns count toward a developer cap of their own.
 - `router.models` lists the text models, voices and the full character schema (`include: ["schema"]`). Pick `model` and `voice.id` from it, or leave them out for the game's defaults.
 - The tool `name` in the character is the name your game handles. Tool arguments come from the model: check every one in game code.
+
+The character, field by field:
+
+| Field | What it does |
+|---|---|
+| `id` | What the game calls it by: lowercase letters, digits, `_` or `-`, up to 64 |
+| `name`, `first_message`, `language` | Display name, its opening line, a language such as `en` or `pt-BR` |
+| `instructions` | Who it is and how it talks, up to 20,000 characters. `{{name}}` placeholders must be declared in `variables` |
+| `variables` | Declared placeholders and their defaults. A build may send new values only when `overridable` lists `"variables"` |
+| `overridable` | Fields a build may change per call, such as `"variables"` or `"first_message"`. `context` needs no entry: a build may always send it |
+| `model`, `temperature`, `max_output_tokens`, `reasoning` | The text model (from `router.models`) and how it answers; leave out for the game's default |
+| `voice` | `{"id": "<from router.models voices>"}` for `speak` |
+| `tools` | Up to 32: `name`, `description`, `parameters` (a JSON Schema object) |
+| `limits` | This character's own daily caps: `player_daily_micro_usd`, `game_daily_micro_usd` (1,000,000 = 1 US dollar) |
 
 ## 3. Single-player: call from the player's game
 
@@ -104,6 +119,8 @@ if art.ok:
 
 Voice only when the character has one (the `has_voice` of each entry in `status().characters`), and consider voicing on tap: speech costs more than text.
 
+`await Summer.client.router.status()` asks Summer what this player can use now: `available` (and `reason`, an error tag, when it is not), `characters` (each `id`, `name`, `has_voice`, `client_tools`), `kinds` (the capabilities Summer serves) and `voice` (realtime voice, `false` during the early preview). `report(exchange_id, reason)` answers `report_id` and `status`; it takes one of this player's replies from the last 30 days.
+
 ## 4. Multiplayer: call from the server
 
 The player's game sends what the player typed to the server as a Command (the `multiplayer-state` skill sets up Commands and shared State). The server answers the Command at once, asks the character for that player's session, runs the tool calls itself, and publishes the line in shared State so every player sees it.
@@ -136,7 +153,8 @@ func _talk(request: SummerNetworkCommandRequest, text: String) -> void:
 ```
 
 - The server has `reply(session, character, text, options)`, `speak(session, text, {"character": id})` and `generate(session, "image", {...})`. Options are the client's without `tools`: the server reads `r.tool_calls` and answers them with `tool_results` on the next call, with the same `conversation_id`.
-- `speak` and `generate` on the server return `data` and `mime_type` to send to the players.
+- `speak` and `generate` on the server return `data` and `mime_type`. Audio and images are too big for shared State: to voice a line, each player's game calls `Summer.client.router.speak(line, {"character": "shopkeeper"})` for the line it shows (it counts toward that player's caps).
+- Server calls count toward the game's caps, not the player's. Keep your own pace per player on the server: one line in flight per player, a short gap between lines, and a length cap on the text, so one player cannot spend the whole game's daily cap.
 - `Shop.sell_to` on the server is the only place an item or gold changes hands. Never apply an effect a client reports.
 
 **A client talked, the server acts.** When the player's game called `Summer.client.router` itself and tells the server "the shopkeeper agreed to sell", the server checks the exchange first:
@@ -157,15 +175,15 @@ Every call returns a `SummerRouterResult`. Read `ok` first. On a refusal, `error
 | `unavailable` | No Summer app, an old app, the editor or Local Play, or the service is down (`reason` says which) | Offline line |
 | `not_signed_in` | The player is not signed in | Offline line |
 | `not_on_summer_games` | The game is not running from Summer Games | Offline line; publish on Summer Games |
-| `router_disabled` | The creator turned Summer Router off for the game | Offline lines for the session |
-| `credits_required` | The creator's paid credits ran out | Offline lines for the session |
-| `limit_reached` | A cap has no room (`scope`, `resets_at`) | Offline lines until `resets_at` |
+| `router_disabled` | The creator turned Summer Router off for the game | Offline lines until the game restarts |
+| `credits_required` | The creator's paid credits ran out | Offline lines until the game restarts |
+| `limit_reached` | A cap has no room: `scope` (such as `player_day`, `game_day`, `game_month`), `resets_at` (Unix seconds) | Offline lines until `resets_at` |
 | `rate_limited` | Too many calls a minute (`retry_after` seconds) | Offline line; wait before the next call |
-| `age_restricted` | This player may not talk to this character | Offline lines for the session |
+| `age_restricted` | This player may not talk to this character | Offline lines for this player |
 | `moderated` | The safety filter blocked this turn | Offline line |
 | `provider_unavailable` | The model is down for a moment | Offline line; the next call may work |
 | `character_not_found` | No character with this id | Bug: fix the id, or save the character |
-| `invalid_input` | The call breaks a limit (text 1 to 4000 characters, at most 32 variables) | Bug: fix the call |
+| `invalid_input` | The call breaks a limit (text 1 to 4000 characters, at most 32 variables), or sends `variables` the character does not let a build set | Bug: fix the call or the character |
 | `tool_unhandled` | The character called a tool the game has no handler for | Add the handler to `tools` |
 
 `retryable` is `true` when the same call can work later (`unavailable`, `limit_reached`, `provider_unavailable`, `rate_limited`). Never retry in a loop: a cap is the product working.
@@ -229,4 +247,5 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_get_script_errors` | `summer engine get-script-errors` |
 | `summer_save_scene` | `summer engine save-scene` |
 | `summer_set_prop` | `summer engine set-prop` |
+| `games.list` | `summer games list` |
 <!-- /shell-commands -->

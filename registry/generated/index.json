@@ -3888,7 +3888,7 @@
       "id": "skill/summer-api",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "26dfcf1c3378d285120054061f4657391992587ae806d045c770ec9a91715e3d",
+      "content_hash": "9cda17912a7820f61f5d4d33888c0160157cd09165f16f7b3dda19c0cf798e04",
       "summary": "Summer API game assets: models, estimate, one job or a batch, download the files.",
       "use_when": [
         "generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine",
@@ -4329,7 +4329,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "795fa871045ede7c4dbd7ad8733a58b996e7ff1b760c111fb8c8471272ad7582",
+      "content_hash": "998844cec4e13c68e1d73786f843f99afb5802e42d2d9f31cce7c197a79028e9",
       "summary": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
       "use_when": [
         "a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games",
@@ -6098,9 +6098,9 @@
     {
       "id": "tool/api-job",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "e6fa1ac1be8fda35eceb8dbe65cb7fbca626de53247fc89eeea84f530afef1a7",
-      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it, save its files on this computer, or cancel it.",
+      "version": "1.0.1",
+      "content_hash": "1f1912adb84492c6602d636e90eb3fda450add3b15dda3e46d91a98f5d027677",
+      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it until it finishes and save its files on this computer.",
       "use_when": [
         "a summer_api_run answered a running job",
         "saving a finished Summer API job's files"

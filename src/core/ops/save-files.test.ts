@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Answer } from "./contract.js";
-import { FileSaver, findGameProject, isPrivateAddress, withOutField, type FileSaverOptions } from "./save-files.js";
+import { FileSaver, findGameProject, inSummerStore, isPrivateAddress, withOutField, type FileSaverOptions } from "./save-files.js";
 
 let root = "";
 
@@ -183,6 +183,21 @@ describe("safety", () => {
     expect(warningsOf(answer)[0]).toContain("is outside the Godot project");
     expect(fetch).not.toHaveBeenCalled();
     expect(await readdir(root)).toEqual(["game"]);
+  });
+
+  it("never saves into Summer's own folders: a game's .summer/local or ~/.summer", async () => {
+    const project = join(root, "game");
+    await mkdir(join(project, ".summer", "local"), { recursive: true });
+    await writeFile(join(project, "project.godot"), "");
+    const fetch = fakeFetch();
+    for (const out of ["res://.summer/local/x.png", "res://.Summer/Local/", join(project, ".summer", "local", "git"), "~/.summer/x.png"]) {
+      const answer = await saver({ cwd: () => project, fetch }).finish("assets.generate_image", done({ assets: [image("a1")] }), out);
+      expect(warningsOf(answer)[0]).toContain("is Summer's own folder");
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await readdir(join(project, ".summer", "local"))).toEqual([]);
+    // The game's memory beside the store is an ordinary folder.
+    expect(inSummerStore(join(project, ".summer", "memory", "x.png"))).toBe(false);
   });
 
   it("downloads only from public https hosts, follows redirects only there, and caps the size", async () => {

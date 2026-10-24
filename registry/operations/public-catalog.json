@@ -117,7 +117,7 @@
     },
     {
       "code": "over_limit",
-      "when": "A plan or allowance limit was reached.",
+      "when": "A limit was reached: a plan or allowance limit, or the spend limit the person set for this app.",
       "retry": "no"
     },
     {
@@ -23973,6 +23973,18 @@
               },
               "pollAfterSeconds": {
                 "type": "number"
+              },
+              "model": {
+                "description": "Summer API jobs: the model id it runs.",
+                "type": "string"
+              },
+              "estimatedPrice": {
+                "description": "Summer API jobs: the price quoted when it was accepted, in USD.",
+                "type": "string"
+              },
+              "price": {
+                "description": "Summer API jobs: what it charged, in USD, once known.",
+                "type": "string"
               }
             },
             "required": [
@@ -24099,6 +24111,18 @@
               },
               "pollAfterSeconds": {
                 "type": "number"
+              },
+              "model": {
+                "description": "Summer API jobs: the model id it runs.",
+                "type": "string"
+              },
+              "estimatedPrice": {
+                "description": "Summer API jobs: the price quoted when it was accepted, in USD.",
+                "type": "string"
+              },
+              "price": {
+                "description": "Summer API jobs: what it charged, in USD, once known.",
+                "type": "string"
               }
             },
             "required": [
@@ -24410,6 +24434,18 @@
               },
               "pollAfterSeconds": {
                 "type": "number"
+              },
+              "model": {
+                "description": "Summer API jobs: the model id it runs.",
+                "type": "string"
+              },
+              "estimatedPrice": {
+                "description": "Summer API jobs: the price quoted when it was accepted, in USD.",
+                "type": "string"
+              },
+              "price": {
+                "description": "Summer API jobs: what it charged, in USD, once known.",
+                "type": "string"
               }
             },
             "required": [
@@ -36469,6 +36505,2503 @@
       ]
     },
     {
+      "name": "router.character_versions",
+      "title": "List an AI character's versions",
+      "summary": "Every saved version of one Summer Router character, newest first, with when it was saved and if it was deleted. Next: router.get_character with a version. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_character_versions",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "characterId": {
+            "description": "Lowercase character id, like guard (from router.list_characters).",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characterId": {
+            "type": "string"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "version",
+                "updatedAt",
+                "deleted",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "versions"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "history",
+        "versions"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "characterId": "guard"
+          },
+          "note": "The guard character's history."
+        }
+      ]
+    },
+    {
+      "name": "router.delete_character",
+      "title": "Delete an AI character",
+      "summary": "Hide a Summer Router character from players at once; its versions stay and saving it brings it back. Asks the person unless they allow Delete for good. Next: router.list_characters. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "destructive",
+      "approval": "confirm",
+      "permission": "delete",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_delete_character",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "characterId": {
+            "description": "Lowercase character id, like guard (from router.list_characters).",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characterId": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "deleted"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "remove character"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "characterId": "guard"
+          },
+          "note": "Remove the guard character."
+        }
+      ]
+    },
+    {
+      "name": "router.get_character",
+      "title": "Read an AI character",
+      "summary": "One Summer Router character: its whole document (instructions, model, voice, tools, limits, overridable fields, provider options) and version, or a saved version. Next: router.save_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_get_character",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "characterId": {
+            "description": "Lowercase character id, like guard (from router.list_characters).",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "version": {
+            "description": "A saved version instead of the current one (router.character_versions).",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characterId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "character": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "version",
+          "deleted",
+          "updatedAt",
+          "file",
+          "character"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "ai character",
+        "npc"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "characterId": "guard"
+          },
+          "note": "Read the guard character."
+        }
+      ]
+    },
+    {
+      "name": "router.list_characters",
+      "title": "List a game's AI characters",
+      "summary": "A game's Summer Router characters: id, name, version, model, voice and tools. The game calls one by its id. Next: router.get_character or router.save_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_list_characters",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "model": {
+                  "type": "string"
+                },
+                "voice": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "version",
+                "model",
+                "voice",
+                "tools",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "characters",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "ai characters",
+        "npc",
+        "voice npc",
+        "in-game ai"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt"
+          },
+          "note": "Which AI characters does my game have?"
+        }
+      ]
+    },
+    {
+      "name": "router.models",
+      "title": "List Summer Router models and voices",
+      "summary": "Summer Router's models, voices, kinds with their GDScript call and status (replies, speech, images now; transcription, live voice soon), character schema, error fixes. Next: router.save_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_models",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "include": {
+            "description": "Parts to read; default models, voices and kinds.",
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "models",
+                "voices",
+                "kinds",
+                "schema",
+                "errors"
+              ]
+            }
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "default": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "name",
+                "default"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "cast": {
+                  "type": "string"
+                },
+                "traits": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "cast",
+                "traits"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "gdscript": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "docsUrl": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "gdscript",
+                "docsUrl"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "schemas": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                },
+                "fix": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tag",
+                "retryable",
+                "fix"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "models",
+        "voices",
+        "schema",
+        "character format"
+      ],
+      "examples": [
+        {
+          "input": {
+            "include": [
+              "models",
+              "voices"
+            ]
+          },
+          "note": "Which models and voices can a character use?"
+        }
+      ]
+    },
+    {
+      "name": "router.save_character",
+      "title": "Save an AI character",
+      "summary": "Save a Summer Router character as its next version; the same document changes nothing. A live game's players talk to it at once, so there the person approves. Next: router.test_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "player_facing",
+      "approval": "owner",
+      "permission": "live",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_save_character",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "character": {
+            "description": "The whole character document, as the project keeps it in ai/characters/<id>.json; fields left out are removed.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Lowercase id the game calls it by, e.g. guard.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "instructions": {
+                "description": "Who the character is and how it talks. {{variable}} placeholders must be declared in variables.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "first_message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "language": {
+                "description": "Like en or pt-BR.",
+                "type": "string",
+                "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+              },
+              "variables": {
+                "description": "Declared {{variable}} names and their defaults (at most 32).",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "model": {
+                "description": "A text model id from router.models; empty uses the game default.",
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+              },
+              "temperature": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              },
+              "max_output_tokens": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "reasoning": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "voice": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "A voice id from router.models (voices).",
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "design": {
+                    "description": "A text description of a voice to design and pin on push.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "stability": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "similarity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "style": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "speed": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 2
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "turn": {
+                "description": "Realtime voice turn-taking.",
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "server_vad",
+                      "push_to_talk"
+                    ]
+                  },
+                  "interruptions": {
+                    "type": "boolean"
+                  },
+                  "silence_end_ms": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 10000
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "session": {
+                "description": "Realtime voice session bounds.",
+                "type": "object",
+                "properties": {
+                  "max_seconds": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 3600
+                  },
+                  "idle_seconds": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 600
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "tools": {
+                "maxItems": 32,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The function the game handles, e.g. open_gate.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    },
+                    "description": {
+                      "description": "When the character calls it.",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024
+                    },
+                    "parameters": {
+                      "description": "JSON Schema object of its arguments, e.g. {\"type\":\"object\",\"properties\":{\"gate\":{\"type\":\"string\"}}}.",
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "runs_on": {
+                      "description": "client (default): the calling game runs it.",
+                      "type": "string",
+                      "enum": [
+                        "client",
+                        "authority"
+                      ]
+                    },
+                    "timeout_ms": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 60000
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description",
+                    "parameters"
+                  ],
+                  "additionalProperties": {}
+                }
+              },
+              "limits": {
+                "description": "Inside the game and account caps.",
+                "type": "object",
+                "properties": {
+                  "player_daily_micro_usd": {
+                    "description": "This character, per player per day, in micro-dollars (1,000,000 = $1).",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000000
+                  },
+                  "game_daily_micro_usd": {
+                    "description": "This character, for the whole game per day, in micro-dollars.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000000
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "overridable": {
+                "description": "Fields a build may set at session start.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "first_message",
+                    "variables",
+                    "language",
+                    "instructions",
+                    "model",
+                    "temperature",
+                    "max_output_tokens",
+                    "reasoning",
+                    "voice",
+                    "turn",
+                    "session"
+                  ]
+                }
+              },
+              "provider_options": {
+                "description": "Provider fields Summer has not normalized yet, by provider (vercel-ai-gateway, elevenlabs); checked against that provider's schema.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "required": [
+              "id",
+              "instructions"
+            ],
+            "additionalProperties": {}
+          },
+          "expectedVersion": {
+            "description": "Save only if the current version is this; 0 saves only a new character.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "character"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characterId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "created": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "version",
+          "created",
+          "unchanged",
+          "updatedAt",
+          "file",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "ai character",
+        "npc",
+        "voice npc",
+        "push",
+        "instructions",
+        "tools"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "character": {
+              "id": "guard",
+              "name": "Gate guard",
+              "instructions": "You guard the north gate. Open it only for players who say the password, moonlight.",
+              "first_message": "Halt. Who goes there?",
+              "voice": {
+                "id": "JBFqnCBsd6RMkjVDRZzb"
+              },
+              "tools": [
+                {
+                  "name": "open_gate",
+                  "description": "Open the gate when the player says the password",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              ]
+            }
+          },
+          "note": "A guard who opens the gate for the right password."
+        }
+      ]
+    },
+    {
+      "name": "router.set_account_limit",
+      "title": "Change the Summer Router account cap",
+      "summary": "Ask the person to change the monthly cap for all their games; Summer Router stops calls past it. Always answers needs_approval with a link. Next: jobs.wait. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "spend",
+      "approval": "owner",
+      "permission": "ask",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_set_account_limit",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "monthly": {
+            "description": "The cap for all of the person's games together, each calendar month.",
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string",
+                "const": "USD"
+              },
+              "amountMinor": {
+                "description": "US cents: 50 is half a dollar.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5000000
+              }
+            },
+            "required": [
+              "currency",
+              "amountMinor"
+            ]
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "monthly"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "monthly": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string",
+                "const": "USD"
+              },
+              "amountMinor": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "currency",
+              "amountMinor"
+            ],
+            "additionalProperties": false
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "usedPercent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "monthly",
+          "isDefault",
+          "usedPercent"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "account cap",
+        "monthly budget",
+        "ai spend"
+      ],
+      "examples": [
+        {
+          "input": {
+            "monthly": {
+              "currency": "USD",
+              "amountMinor": 10000
+            }
+          },
+          "note": "Cap all my games at 100 dollars a month."
+        }
+      ]
+    },
+    {
+      "name": "router.set_settings",
+      "title": "Change Summer Router settings",
+      "summary": "Ask the person to turn Summer Router on or off for a game, or change its caps, call rates or default models (spend from their account). Answers needs_approval with a link. Next: jobs.wait. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "spend",
+      "approval": "owner",
+      "permission": "ask",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_set_settings",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "enabled": {
+            "description": "true: players can talk to the game's AI characters, billed from the owner's Summer account. false: the game keeps its offline fallback.",
+            "type": "boolean"
+          },
+          "caps": {
+            "description": "New caps and call rates; any left out stay as they are. Per player per day <= per game per day <= per game per month; calls per player <= calls per game.",
+            "type": "object",
+            "properties": {
+              "playerDay": {
+                "description": "One player, all characters together, each UTC day.",
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "description": "US cents: 50 is half a dollar.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50000
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ]
+              },
+              "gameDay": {
+                "description": "All players together, each UTC day.",
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "description": "US cents: 50 is half a dollar.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50000
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ]
+              },
+              "gameMonth": {
+                "description": "All players together, each calendar month.",
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "description": "US cents: 50 is half a dollar.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1550000
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ]
+              },
+              "playerCallsPerMinute": {
+                "description": "Calls one player may make per minute; over it a call answers 429 with Retry-After.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "gameCallsPerMinute": {
+                "description": "Calls the whole game may make per minute.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 6000
+              }
+            }
+          },
+          "textModel": {
+            "description": "Default text model for characters without one (router.models, kind character.reply).",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "imageModel": {
+            "description": "Default image model (router.models, kind image).",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "caps": {
+            "type": "object",
+            "properties": {
+              "playerDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameMonth": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "playerCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "playerDay",
+              "gameDay",
+              "gameMonth"
+            ],
+            "additionalProperties": false
+          },
+          "defaultCaps": {
+            "type": "object",
+            "properties": {
+              "playerDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameMonth": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "playerCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "playerDay",
+              "gameDay",
+              "gameMonth"
+            ],
+            "additionalProperties": false
+          },
+          "accountLimit": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "monthly": {
+                    "type": "object",
+                    "properties": {
+                      "currency": {
+                        "type": "string",
+                        "const": "USD"
+                      },
+                      "amountMinor": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "amountMinor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "usedPercent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "monthly",
+                  "isDefault",
+                  "usedPercent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "textModel": {
+            "type": "string"
+          },
+          "imageModel": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "billing": {
+            "type": "string"
+          },
+          "studioUrl": {
+            "type": "string"
+          },
+          "addCreditsUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "enabled",
+          "caps",
+          "defaultCaps",
+          "accountLimit",
+          "textModel",
+          "imageModel",
+          "revision",
+          "billing",
+          "studioUrl",
+          "addCreditsUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "turn on ai",
+        "caps",
+        "budget",
+        "raise cap",
+        "ai spend",
+        "rate limit",
+        "calls per minute"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "enabled": true
+          },
+          "note": "Turn on Summer Router for my game."
+        },
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "caps": {
+              "playerDay": {
+                "currency": "USD",
+                "amountMinor": 100
+              }
+            }
+          },
+          "note": "Let each player use up to a dollar a day."
+        },
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "caps": {
+              "gameCallsPerMinute": 1200
+            }
+          },
+          "note": "A cap hit says game_minute: let the whole game make 1,200 calls a minute."
+        }
+      ]
+    },
+    {
+      "name": "router.settings",
+      "title": "Read Summer Router settings",
+      "summary": "A game's Summer Router switch, caps (per player per day, per game per day and month, calls per minute), default models and the owner's cap for all games. Next: router.set_settings. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_settings",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "caps": {
+            "type": "object",
+            "properties": {
+              "playerDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameMonth": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "playerCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "playerDay",
+              "gameDay",
+              "gameMonth"
+            ],
+            "additionalProperties": false
+          },
+          "defaultCaps": {
+            "type": "object",
+            "properties": {
+              "playerDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameDay": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "gameMonth": {
+                "type": "object",
+                "properties": {
+                  "currency": {
+                    "type": "string",
+                    "const": "USD"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "currency",
+                  "amountMinor"
+                ],
+                "additionalProperties": false
+              },
+              "playerCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "playerDay",
+              "gameDay",
+              "gameMonth"
+            ],
+            "additionalProperties": false
+          },
+          "accountLimit": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "monthly": {
+                    "type": "object",
+                    "properties": {
+                      "currency": {
+                        "type": "string",
+                        "const": "USD"
+                      },
+                      "amountMinor": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "amountMinor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "usedPercent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "monthly",
+                  "isDefault",
+                  "usedPercent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "textModel": {
+            "type": "string"
+          },
+          "imageModel": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "billing": {
+            "type": "string"
+          },
+          "studioUrl": {
+            "type": "string"
+          },
+          "addCreditsUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "enabled",
+          "caps",
+          "defaultCaps",
+          "accountLimit",
+          "textModel",
+          "imageModel",
+          "revision",
+          "billing",
+          "studioUrl",
+          "addCreditsUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "caps",
+        "budget",
+        "switch",
+        "ai spend",
+        "limits"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt"
+          },
+          "note": "Is Summer Router on for my game, and what are its caps?"
+        }
+      ]
+    },
+    {
+      "name": "router.test_character",
+      "title": "Talk to an AI character",
+      "summary": "Talk to a Summer Router character as a test player: replies, tool calls, units. toolOutputs answers tool calls like the game; expectTools fails when one is not called. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "spend",
+      "approval": "none",
+      "permission": "spend",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_test_character",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "characterId": {
+            "description": "Lowercase character id, like guard (from router.list_characters).",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "messages": {
+            "description": "Player lines, sent in order in one conversation.",
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "variables": {
+            "description": "Values for the character's declared variables, when it lets a build set them.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "context": {
+            "description": "What is happening in the game right now.",
+            "type": "string",
+            "maxLength": 4000
+          },
+          "overrides": {
+            "description": "Fields the character lists in overridable.",
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "toolOutputs": {
+            "description": "By tool name, what the game's handler returns, e.g. {\"open_gate\": {\"ok\": true}}.",
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "draft": {
+            "description": "An unsaved character document to test instead; its id must be characterId.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Lowercase id the game calls it by, e.g. guard.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "instructions": {
+                "description": "Who the character is and how it talks. {{variable}} placeholders must be declared in variables.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "first_message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "language": {
+                "description": "Like en or pt-BR.",
+                "type": "string",
+                "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+              },
+              "variables": {
+                "description": "Declared {{variable}} names and their defaults (at most 32).",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "model": {
+                "description": "A text model id from router.models; empty uses the game default.",
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+              },
+              "temperature": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              },
+              "max_output_tokens": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "reasoning": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "voice": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "A voice id from router.models (voices).",
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$"
+                  },
+                  "design": {
+                    "description": "A text description of a voice to design and pin on push.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "stability": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "similarity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "style": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "speed": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 2
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "turn": {
+                "description": "Realtime voice turn-taking.",
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "server_vad",
+                      "push_to_talk"
+                    ]
+                  },
+                  "interruptions": {
+                    "type": "boolean"
+                  },
+                  "silence_end_ms": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 10000
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "session": {
+                "description": "Realtime voice session bounds.",
+                "type": "object",
+                "properties": {
+                  "max_seconds": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 3600
+                  },
+                  "idle_seconds": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 600
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "tools": {
+                "maxItems": 32,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The function the game handles, e.g. open_gate.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    },
+                    "description": {
+                      "description": "When the character calls it.",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024
+                    },
+                    "parameters": {
+                      "description": "JSON Schema object of its arguments, e.g. {\"type\":\"object\",\"properties\":{\"gate\":{\"type\":\"string\"}}}.",
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "runs_on": {
+                      "description": "client (default): the calling game runs it.",
+                      "type": "string",
+                      "enum": [
+                        "client",
+                        "authority"
+                      ]
+                    },
+                    "timeout_ms": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 60000
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description",
+                    "parameters"
+                  ],
+                  "additionalProperties": {}
+                }
+              },
+              "limits": {
+                "description": "Inside the game and account caps.",
+                "type": "object",
+                "properties": {
+                  "player_daily_micro_usd": {
+                    "description": "This character, per player per day, in micro-dollars (1,000,000 = $1).",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000000
+                  },
+                  "game_daily_micro_usd": {
+                    "description": "This character, for the whole game per day, in micro-dollars.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000000
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "overridable": {
+                "description": "Fields a build may set at session start.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "first_message",
+                    "variables",
+                    "language",
+                    "instructions",
+                    "model",
+                    "temperature",
+                    "max_output_tokens",
+                    "reasoning",
+                    "voice",
+                    "turn",
+                    "session"
+                  ]
+                }
+              },
+              "provider_options": {
+                "description": "Provider fields Summer has not normalized yet, by provider (vercel-ai-gateway, elevenlabs); checked against that provider's schema.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "required": [
+              "id",
+              "instructions"
+            ],
+            "additionalProperties": {}
+          },
+          "expectTools": {
+            "description": "Tool names the character must call during the conversation; the answer is an error naming the ones it did not call.",
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+            }
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "messages"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "characterId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "turns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "player": {
+                  "type": "string"
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "toolCalls": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "args": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            "runsOn": {
+                              "type": "string"
+                            },
+                            "answered": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "args",
+                            "runsOn",
+                            "answered"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "toolCalls"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "player",
+                "steps"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "unhandledTools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedTools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "called": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "called"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "calls": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "inputTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "outputTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "calls",
+              "inputTokens",
+              "outputTokens"
+            ],
+            "additionalProperties": false
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "characterId",
+          "conversationId",
+          "turns",
+          "unhandledTools",
+          "usage",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "try",
+        "test",
+        "talk",
+        "npc",
+        "playtest"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "characterId": "guard",
+            "messages": [
+              "Hello",
+              "Moonlight"
+            ],
+            "toolOutputs": {
+              "open_gate": {
+                "ok": true
+              }
+            },
+            "expectTools": [
+              "open_gate"
+            ]
+          },
+          "note": "Check the guard opens the gate for the password."
+        }
+      ]
+    },
+    {
+      "name": "router.usage",
+      "title": "Read Summer Router usage",
+      "summary": "A game's Summer Router calls by kind over the last UTC days, units used, each cap's percent used, and the calls each cap stopped (capHits). Next: router.set_settings to raise a cap. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.0",
+      "mcpTool": "summer_router_usage",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "days": {
+            "description": "Window in whole UTC days, today included.",
+            "default": 7,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "window": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "byKind": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "calls": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "failed": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "used": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "calls",
+                "failed",
+                "used"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "calls": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "failed": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "usage": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                }
+              },
+              "required": [
+                "day",
+                "kind",
+                "calls",
+                "failed",
+                "usage"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "caps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "cap": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "const": "USD"
+                    },
+                    "amountMinor": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "amountMinor"
+                  ],
+                  "additionalProperties": false
+                },
+                "usedPercent": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "resetsAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "scope",
+                "title",
+                "cap",
+                "usedPercent",
+                "resetsAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "capHits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "hits": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "lastHitAt": {
+                  "type": "string"
+                },
+                "said": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "day",
+                "scope",
+                "title",
+                "hits",
+                "lastHitAt",
+                "said"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "billing": {
+            "type": "string"
+          },
+          "studioUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gameId",
+          "window",
+          "calls",
+          "failed",
+          "byKind",
+          "daily",
+          "caps",
+          "capHits",
+          "billing",
+          "studioUrl"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "summer router",
+        "usage",
+        "ai spend",
+        "tokens",
+        "voice minutes",
+        "cap hits",
+        "stopped calls"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_quilt",
+            "days": 7
+          },
+          "note": "How much AI did my game use this week?"
+        }
+      ]
+    },
+    {
       "name": "store.cancel_publish",
       "title": "Withdraw a publish request",
       "summary": "Withdraw a publish request that still waits for the owner, so its approval link stops working. Nothing that is live changes. Next: store.publish for a new request.",
@@ -38937,6 +41470,29 @@
               "public",
               "private"
             ]
+          },
+          "features": {
+            "description": "Store page features, the whole list (empty: none): single_player (Single-player), online_multiplayer (Online multiplayer), local_multiplayer (Local multiplayer), online_coop (Online co-op), local_coop (Local co-op), cross_platform (Cross-platform multiplayer), controller_full (Full controller support), controller_partial (Partial controller support), cloud_saves (Cloud saves), plays_in_browser (Plays in the browser), level_editor (Level editor), achievements (Achievements), in_game_purchases (In-game purchases), microphone (Uses the microphone). Declare microphone when the game listens to the player (voice characters, voice chat): summer.games then asks each player before the game gets the microphone.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "single_player",
+                "online_multiplayer",
+                "local_multiplayer",
+                "online_coop",
+                "local_coop",
+                "cross_platform",
+                "controller_full",
+                "controller_partial",
+                "cloud_saves",
+                "plays_in_browser",
+                "level_editor",
+                "achievements",
+                "in_game_purchases",
+                "microphone"
+              ]
+            }
           },
           "localized": {
             "description": "The page in other languages, by language tag. summer.games offers es (Español), pt-br (Português (Brasil)), de (Deutsch), fr (Français), ja (日本語), ko (한국어), zh-hans (简体中文), ru (Русский), it (Italiano). Each language changes only the texts it names; null or \"\" removes one text, and a language set to null is removed. Missing texts show the main text.",

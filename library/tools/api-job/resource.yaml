@@ -1,7 +1,7 @@
 id: tool/api-job
 kind: tool
-version: 1.0.0
-summary: Read a Summer API job (state, price, assets and file URLs); follow it, save its files on this computer, or cancel it.
+version: 1.0.1
+summary: Read a Summer API job (state, price, assets and file URLs); follow it until it finishes and save its files on this computer.
 use_when:
   - a summer_api_run answered a running job
   - saving a finished Summer API job's files
@@ -46,7 +46,7 @@ input_schema:
       description: "A folder on this computer: save the finished job's files there (implies wait)."
     cancel:
       type: boolean
-      description: Cancel the job instead.
+      description: "Ask to stop the job instead. Summer API jobs, queued or running, run to the end: the answer is unsupported."
   required:
     - jobId
   additionalProperties: false

@@ -220,11 +220,11 @@ const runSubcommand = new Command("run")
   );
 
 const jobsCommand = new Command("jobs")
-  .description("Read a job; --wait follows it, --download saves its files, --cancel stops it")
+  .description("Read a job; --wait follows it, --download saves its files")
   .argument("<jobId>", "The job id summer api run answered")
   .option("--wait", "Follow the job until it finishes")
   .option("--download [dir]", "Follow it and save its files (default: this folder)")
-  .option("--cancel", "Cancel the job")
+  .option("--cancel", "Ask to stop the job (Summer API jobs, queued or running, run to the end: the answer is unsupported)")
   .option("--json", "JSON (the default when stdout is not a terminal)")
   .action(async (jobId: string, opts: { wait?: boolean; download?: string | boolean; cancel?: boolean } & JsonOption) =>
     exit(

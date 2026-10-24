@@ -43,19 +43,6 @@
       ]
     },
     {
-      "id": "skill/ai-characters-in-games",
-      "name": "ai-characters-in-games",
-      "description": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "clients": "all",
-      "recommended": false,
-      "status": "preview",
-      "path": "library/skills/ai-characters-in-games/",
-      "domains": [
-        "ai",
-        "npc"
-      ]
-    },
-    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus.",
@@ -1269,6 +1256,19 @@
       ]
     },
     {
+      "id": "skill/summer-api",
+      "name": "summer-api",
+      "description": "Summer API game assets: models, estimate, one job or a batch, download the files.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-api/",
+      "domains": [
+        "assets",
+        "agent-workflow"
+      ]
+    },
+    {
       "id": "skill/summer-apps",
       "name": "summer-apps",
       "description": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker), data and tools.",
@@ -1298,7 +1298,7 @@
     {
       "id": "skill/summer-assets",
       "name": "summer-assets",
-      "description": "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app.",
+      "description": "Game assets for any engine, no Summer Engine: find, generate and download them.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1398,6 +1398,20 @@
       "domains": [
         "multiplayer",
         "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-router",
+      "name": "summer-router",
+      "description": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-router/",
+      "domains": [
+        "ai",
+        "npc",
+        "multiplayer"
       ]
     },
     {

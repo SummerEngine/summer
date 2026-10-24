@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.4.2",
-      "content_hash": "dc92a1ba0f9d9313bbf10e429f6711dfc20909046be929f6bae6723d8a53c851",
+      "version": "1.4.3",
+      "content_hash": "0129465af088ad0c07bf5152c738656b8fcba50cf31e0b0a3ce32eccbc25c7b5",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -388,43 +388,6 @@
       },
       "status": "preview",
       "recommended": true
-    },
-    {
-      "id": "skill/ai-characters-in-games",
-      "kind": "skill",
-      "version": "0.3.0",
-      "content_hash": "57b0fba8a2e4eb383f75ab8d3d1063c1e1aca178031328dab09cb17764049d7d",
-      "summary": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "use_when": [
-        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
-        "about to put a model name, a provider SDK or a provider key into a game project",
-        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
-        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "ai",
-          "npc"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/design-npc",
-          "skill/multiplayer-state"
-        ]
-      },
-      "status": "preview",
-      "recommended": false
     },
     {
       "id": "skill/ambient-bed",
@@ -1469,8 +1432,8 @@
     {
       "id": "skill/design-npc",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "feda92d30082eecf2bafc99fe9ed3f12a4d3c4641fd2790743bf93f9a01d3b57",
+      "version": "1.0.3",
+      "content_hash": "073069eb2348abb0b8b5652f79b2f4e90b7848485422232be86de98a9ec6f986",
       "summary": "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -1496,7 +1459,8 @@
         "skills": [
           "skill/game-feel",
           "skill/vfx-dissolve",
-          "skill/vfx-hit-spark"
+          "skill/vfx-hit-spark",
+          "skill/summer-router"
         ]
       },
       "status": "stable",
@@ -2625,12 +2589,12 @@
     {
       "id": "skill/navigate-summer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "914237c5f88f318eebbb0d5f44958dfac77e51922a30f42789b383ae008b3f50",
+      "version": "1.0.1",
+      "content_hash": "5fb50f4ce2f00dd1d6db8a2373a539ed7027158e2ce6a99f4ea68d6959e0d5e8",
       "summary": "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
-        "deciding whether to open a surface for the user or to do the work through Summer tools",
+        "deciding whether to open a surface (a page of the website) for the user or to do the work through Summer tools or an API",
         "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser",
         "you drive Summer Engine from outside (Claude Code, Codex, Cursor, the summer CLI) and the editor should show what you work on: the view, rail and focus for editing, scripting, playtesting, review and the end result"
       ],
@@ -3921,6 +3885,51 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-api",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "03c2f63c8601e78bf2b2eb3e566ec166461b8f9b33be0b06e6dc9bb29bf1d948",
+      "summary": "Summer API game assets: models, estimate, one job or a batch, download the files.",
+      "use_when": [
+        "generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine",
+        "making a set of assets in one go (a level's props, every UI icon, a sound pack) as one batch",
+        "choosing a generation model, pricing a job before it runs, or reading a job's state and files",
+        "a generation job answered no_credits, over_limit, not_signed_in or queued"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "3d-models",
+          "images",
+          "audio",
+          "video"
+        ]
+      },
+      "related": {
+        "tools": [
+          "tool/api-models",
+          "tool/api-estimate",
+          "tool/api-run",
+          "tool/api-batch",
+          "tool/api-job"
+        ],
+        "skills": [
+          "skill/summer-assets",
+          "skill/summer-cli",
+          "skill/asset-strategy",
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
@@ -4000,9 +4009,9 @@
     {
       "id": "skill/summer-assets",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "2a52ea8260720b3aa81d30dc29439e285afd5ff41592334b957ab4ffbb1f1807",
-      "summary": "Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app.",
+      "version": "1.0.2",
+      "content_hash": "2545cd7ef9e516f29b8883f0738735bcb5f97895422e76064eccc0ea2a007a11",
+      "summary": "Game assets for any engine, no Summer Engine: find, generate and download them.",
       "use_when": [
         "starting a session that has the Summer assets profile (generation tools, no engine tools)",
         "the person wants assets for their own engine or web app, not a game built in Summer Engine",
@@ -4033,6 +4042,7 @@
         ],
         "skills": [
           "skill/asset-strategy",
+          "skill/summer-api",
           "skill/sound-effect",
           "skill/prop-model",
           "skill/concept-art"
@@ -4313,6 +4323,46 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-router",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "dc25c719d31b25d53288780f53130389c34434a48ee5016d6adf9f5c24d22cd0",
+      "summary": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
+      "use_when": [
+        "a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games",
+        "a game should speak a line in a character's voice, or make an image, while people play",
+        "about to put a model name, a provider SDK or a provider key into a game project",
+        "choosing between Summer.client.router and Summer.authority.router in a single-player or multiplayer game",
+        "handling Summer Router refusals (limit_reached, credits_required, router_disabled, not_on_summer_games, unavailable) or changing its caps"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc",
+          "multiplayer"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-npc",
+          "skill/multiplayer-state",
+          "skill/summer-api"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -6048,9 +6098,9 @@
     {
       "id": "tool/api-job",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "e6fa1ac1be8fda35eceb8dbe65cb7fbca626de53247fc89eeea84f530afef1a7",
-      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it, save its files on this computer, or cancel it.",
+      "version": "1.0.1",
+      "content_hash": "1f1912adb84492c6602d636e90eb3fda450add3b15dda3e46d91a98f5d027677",
+      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it until it finishes and save its files on this computer.",
       "use_when": [
         "a summer_api_run answered a running job",
         "saving a finished Summer API job's files"

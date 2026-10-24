@@ -1,0 +1,35 @@
+id: skill/summer-router
+kind: skill
+version: 1.0.0
+summary: "AI characters for games on Summer Games: Summer Router replies, tools, speech, images."
+use_when:
+  - a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games
+  - a game should speak a line in a character's voice, or make an image, while people play
+  - about to put a model name, a provider SDK or a provider key into a game project
+  - choosing between Summer.client.router and Summer.authority.router in a single-player or multiplayer game
+  - handling Summer Router refusals (limit_reached, credits_required, router_disabled, not_on_summer_games, unavailable) or changing its caps
+do_not_use_when:
+  - scripted dialogue trees or enemy behaviour (design-npc)
+  - making asset files while building the game (summer-api)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - ai
+    - npc
+    - multiplayer
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/design-npc
+    - skill/multiplayer-state
+    - skill/summer-api
+source: official
+license: MIT
+status: preview
+aliases:
+  - skill/ai-characters-in-games

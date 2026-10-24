@@ -1,6 +1,6 @@
 # Summer skills
 
-> 132 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 133 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -13,7 +13,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [agent-workflow](#agent-workflow) (19)
 - [ai](#ai) (2)
 - [animation](#animation) (7)
-- [assets](#assets) (4)
+- [assets](#assets) (5)
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (2)
 - [creator](#creator) (7)
@@ -89,8 +89,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*ai-characters-in-games*](./ai-characters-in-games/SKILL.md) (preview) | Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps. | npc |
 | [design-npc](./design-npc/SKILL.md) ★ | Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub. | npc |
+| [*summer-router*](./summer-router/SKILL.md) (preview) | AI characters for games on Summer Games: Summer Router replies, tools, speech, images. | npc, multiplayer |
 
 ## animation
 
@@ -111,7 +111,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation. | pipeline |
 | [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) (library only) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
 | [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) (library only) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
-| [summer-assets](./summer-assets/SKILL.md) | Make game assets with Summer, no Summer Engine: find, generate and download 3D models, images, audio and video for any engine or app. | agent-workflow |
+| [*summer-api*](./summer-api/SKILL.md) (preview) | Summer API game assets: models, estimate, one job or a batch, download the files. | agent-workflow |
+| [summer-assets](./summer-assets/SKILL.md) | Game assets for any engine, no Summer Engine: find, generate and download them. | agent-workflow |
 
 ## audio
 

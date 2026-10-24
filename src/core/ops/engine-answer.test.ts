@@ -71,3 +71,18 @@ describe("an engine tool's result as the one answer shape", () => {
     }
   });
 });
+
+describe("a signed-out tool's sign-in link", () => {
+  it("keeps not_signed_in and makes the link the next step", () => {
+    const text = JSON.stringify({
+      ok: false,
+      code: "not_signed_in",
+      error: "Not signed in to Summer.",
+      signInUrl: "https://www.summerengine.com/login?cli_session=abc",
+      recovery: "Sign-in link for the person: https://www.summerengine.com/login?cli_session=abc",
+    });
+    const answer = engineFailure(text, "assets.search", { effect: "read" }) as { ok: false; error: { code: string; next?: { say?: string } } };
+    expect(answer.error.code).toBe("not_signed_in");
+    expect(answer.error.next?.say).toContain("https://www.summerengine.com/login?cli_session=abc");
+  });
+});

@@ -140,6 +140,15 @@ queries:
   - query: "the game looks flat and grey in the browser preview"
     expected: [skill/web-compatibility-look]
 
+  # ── Summer API and Summer Router ───────────────────────────────────────
+  - query: "generate 10 game assets for my fantasy RPG with the Summer API"
+    expected: [skill/summer-api]
+  - query: "how much will 50 props cost with the summer api, then run them all as a batch"
+    expected: [skill/summer-api, tool/api-batch]
+  - query: "add a talking shopkeeper NPC players can chat with in my multiplayer game"
+    expected: [skill/summer-router]
+  - query: "my guard should answer what the player types and open the gate when convinced"
+    expected: [skill/summer-router]
   # ── Gameplay systems ───────────────────────────────────────────────────
   - query: "add a save and load system"
     expected: [skill/save-load]

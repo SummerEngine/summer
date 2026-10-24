@@ -292,17 +292,17 @@ These come from the hosted Summer server (the one ChatGPT and Claude connect to)
 | `summer_docs_search` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
 | `summer_docs_read` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `docs.feedback`. |
 
-### Summer API (4)
+### Summer API (5)
 
-Signed in with `summer login` (Supabase OAuth on this computer, refreshed by itself; `summer token` prints a one-hour token for curl). Each app spends the person's paid credits up to the limit they set in Connected apps.
+Signed in with `summer login` (one browser sign-in on this computer, renewed by itself; `summer token` prints a one-hour token for the person's own HTTP code). Each app spends the person's paid credits up to the limit they set in Connected apps. No rate limits on paid usage: jobs past the account's running slots (10 at once, up to 40 as it buys credits) answer `queued` and start in order. Money is the only refusal: `no_credits` (the paid balance) or `over_limit` (the app's own limit). The `summer-api` skill has the workflow.
 
 | Tool | Use |
 |---|---|
 | `summer_api_models` (`models.list`) | The Summer API's curated game-dev models: id, capability, input schema, output formats, typical time and USD price; `model` for one, `capability` to filter. No sign-in. Shell: `summer api models`. |
 | `summer_api_estimate` (`models.estimate`) | The exact USD price of one job, its breakdown and a `quoteId` that holds it 15 minutes. Charges nothing. Shell: `summer api estimate`. |
 | `summer_api_run` (`models.run`) | Run one job into the person's Summer assets with the Summer sign-in on this computer; spends paid credits within the app's limit. `wait` follows it, `out` saves its files, `quoteId` caps the charge. Shell: `summer api run --wait --download`. |
-| `summer_api_batch` (`models.batch`) | Run up to 500 jobs at once, all or none: queued at held prices when paid credits and the app's limit cover them all; otherwise nothing runs and the error says how many fit. `batchId` reads a batch; `wait` and `out` as for one job. Shell: `summer api run --batch jobs.jsonl --wait --download`. |
-| `summer_api_job` (`models.job`) | Read a job (state, price, assets and file URLs); `wait`, `out` or `cancel`. Shell: `summer api jobs`. |
+| `summer_api_batch` (`POST /v1/batches`) | Run up to 500 jobs at once, all or none: queued at held prices when paid credits and the app's limit cover them all; otherwise nothing runs and the error says how many fit. `batchId` reads a batch; `wait` and `out` as for one job. Shell: `summer api run --batch jobs.jsonl --wait --download`. |
+| `summer_api_job` (`jobs.get`, `jobs.cancel`) | Read a job (state, price, assets and file URLs); `wait`, `out` or `cancel`. Shell: `summer api jobs`. |
 
 ### Library feedback (1)
 

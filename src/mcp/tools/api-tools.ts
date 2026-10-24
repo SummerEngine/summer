@@ -83,7 +83,7 @@ export function registerApiTools(server: McpServer): void {
   );
   server.tool(
     "summer_api_run",
-    "Run one Summer API job into the person's Summer assets with the Summer sign-in on this computer (the person runs summer login first). Spends their paid credits within this app's limit (Connected apps): say what you will make and estimate it first. Short jobs come back done; wait follows a long one, out saves its files on this computer. key_limit_reached or insufficient_credits: give the person the link in the message.",
+    "Run one Summer API job into the person's Summer assets with the Summer sign-in on this computer (the person runs summer login first). Spends their paid credits within this app's limit (Connected apps): say what you will make and estimate it first. Short jobs come back done; past the account's running slots a job answers queued at a held price and starts in order. wait follows it, out saves its files on this computer. no_credits (the paid balance) or over_limit (this app's limit): show the person the message and its link.",
     apiRunInputShape,
     async (args: { model: string; input?: Record<string, unknown>; quoteId?: string; idempotencyKey?: string; wait?: boolean; out?: string }) =>
       answer(async () => {
@@ -98,7 +98,7 @@ export function registerApiTools(server: McpServer): void {
   );
   server.tool(
     "summer_api_batch",
-    "Run up to 500 Summer API jobs at once with the Summer sign-in on this computer, all or none: when the person's paid credits and this app's limit (Connected apps) cover every job, all are queued at their held prices and run in order; if not, nothing runs and the error says how many fit and how much more is needed (give the person its link). Say what you will make and what it costs first. batchId reads a batch; wait follows it, out saves the finished files on this computer.",
+    "Run up to 500 Summer API jobs at once with the Summer sign-in on this computer, all or none: when the person's paid credits and this app's limit (Connected apps) cover every job, all are queued at their held prices and run in order; if not, nothing runs and the error (no_credits or over_limit) says how many fit and how much more is needed (show the person its link). Say what you will make and what it costs first. batchId reads a batch; wait follows it, out saves the finished files on this computer.",
     apiBatchInputShape,
     async (args: { jobs?: Array<{ model: string; input?: Record<string, unknown>; idempotencyKey?: string }>; batchId?: string; idempotencyKey?: string; wait?: boolean; out?: string }) =>
       answer(async () => {
@@ -109,7 +109,7 @@ export function registerApiTools(server: McpServer): void {
   );
   server.tool(
     "summer_api_job",
-    "Read a Summer API job: its state, price and, when done, its assets and Summer file URLs. wait follows it, out saves its files on this computer, cancel stops it.",
+    "Read a Summer API job: its state (queued, running, done, failed, ...), price and, when done, its assets and Summer file URLs. wait follows it, out saves its files on this computer, cancel stops it.",
     apiJobInputShape,
     async (args: { jobId: string; wait?: boolean; out?: string; cancel?: boolean }) =>
       answer(async () => (args.cancel ? { job: await cancelJob(args.jobId) } : jobToolResult(await getJob(args.jobId), args)))

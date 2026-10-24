@@ -1,6 +1,6 @@
 id: skill/design-npc
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub."
 use_when:
   - designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling
@@ -21,6 +21,7 @@ related:
     - skill/game-feel
     - skill/vfx-dissolve
     - skill/vfx-hit-spark
+    - skill/summer-router
 source: official
 license: MIT
 status: stable

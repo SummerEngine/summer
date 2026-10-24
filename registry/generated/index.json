@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "d6f0c38da3be9bd9a82d60ab1a3bf011eac4f8a33e8bc060ff90c7aa76079d40",
+      "content_hash": "695de0842cad9caf21ae5f1efc1a1e1113d44219bcaee9c8a2c6d7696ace5722",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5927,6 +5927,39 @@
         "editor_mutation": true,
         "network": false,
         "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-batch",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8b30f8783781652a455ac3fff4191aece6e7f08b4e29444d999b520d5328589e",
+      "summary": "Run up to 500 Summer API jobs at once, all or none, with the Summer sign-in; follow every job and save the files.",
+      "use_when": [
+        "making many game assets through the Summer API in one go (a set of props, sounds or icons)",
+        "following or downloading a batch that summer_api_batch started"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_batch",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
         "publish": false
       }
     },

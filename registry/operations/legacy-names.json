@@ -16,6 +16,11 @@
       "note": "",
       "op": "engine.align_distribute_3d"
     },
+    "summer_api_batch": {
+      "kind": "keep",
+      "note": "local: the Summer API (/v1) with the Summer sign-in on this computer",
+      "op": "models.batch"
+    },
     "summer_api_docs": {
       "kind": "keep",
       "note": "offline engine class reference",

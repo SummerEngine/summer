@@ -197,7 +197,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
-import { cancelJob, estimateJob, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
+import { batchToolResult, cancelJob, checkBatch, createBatch, estimateJob, getBatch, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
 import {
@@ -2203,6 +2203,17 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         ...(follow ? { waitSeconds: 30 } : {}),
       });
       return jobToolResult(job, { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
+  entry("summer_api_batch", "Run up to 500 Summer API jobs at once (all or none), or read a batch", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = { wait: args.wait === true, ...(out ? { out } : {}) };
+      const batchId = optStr(args, "batchId");
+      if (batchId) return batchToolResult(await getBatch(batchId), follow);
+      const key = optStr(args, "idempotencyKey");
+      const batch = await createBatch(checkBatch(Array.isArray(args.jobs) ? args.jobs : []), key ? { idempotencyKey: key } : {});
+      return batchToolResult(batch, follow);
     })
   ),
   entry("summer_api_job", "Read, follow, download or cancel a Summer API job", false, async (args) =>

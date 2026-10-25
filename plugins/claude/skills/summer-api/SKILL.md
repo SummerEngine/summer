@@ -18,7 +18,7 @@ Two ways in, with the same calls and the same answers:
 
 | You have | Use |
 |---|---|
-| A shell | `summer api ...` commands. If `summer --version` is missing or below 4.8, write `npx -y summer-engine@4.8.0` in place of `summer`. |
+| A shell | `summer api ...` commands. If `summer --version` is missing or below 4.8, write `npx -y summer-engine@4.9.0` in place of `summer`. |
 | Summer's local MCP server | The tools `summer_api_models`, `summer_api_estimate`, `summer_api_run`, `summer_api_batch` and `summer_api_job` |
 
 Your own code calls the same API over HTTP. The HTTP guide, the OpenAPI document and copy-paste code are on docs.summerengine.com/api (quickstart, jobs, errors).

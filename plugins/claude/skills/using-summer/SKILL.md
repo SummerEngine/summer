@@ -141,7 +141,7 @@ Do NOT fall back to editing `.tscn` files directly. The engine reads them on dis
 If skills aren't found or the MCP server fails to start:
 
 1. Check whether `summer` is on PATH: `which summer` / `where summer`.
-2. If not, point them at: `npx -y summer-engine@4.8.0 setup <agent> --yes --force` (use `@next` and `--channel next` while a release is soaking on the `next` tag; `summer doctor` prints the right command).
+2. If not, point them at: `npx -y summer-engine@4.9.0 setup <agent> --yes --force` (use `@next` and `--channel next` while a release is soaking on the `next` tag; `summer doctor` prints the right command).
 3. If `summer doctor` is available, run it: `summer doctor` reports auth, engine, port, project memory, and skill state.
 
 ## When Summer Is Stale
@@ -149,7 +149,7 @@ If skills aren't found or the MCP server fails to start:
 Run `summer doctor` early in a fresh Summer session when setup, MCP tools, slash commands, or skills behave oddly. If doctor reports `cli-version-current` or `skills-version-stale` as warning/fail, refresh before continuing:
 
 ```
-npx clear-npx-cache && npx -y summer-engine@4.8.0 setup <agent> --yes --force
+npx clear-npx-cache && npx -y summer-engine@4.9.0 setup <agent> --yes --force
 ```
 
 Use the dist-tag `summer doctor` recommends: `@latest` normally, `@next` (with `--channel next`) when this CLI was installed from the soaking release, otherwise the MCP server silently drops back to the older `latest`. Use the real agent slug from doctor or the current environment (`claude-code`, `codex`, `cursor`, `antigravity`, `github-copilot`, `vscode-copilot`, `opencode`, etc.).
@@ -169,7 +169,7 @@ A direct user instruction ("skip the brainstorm", "just write the code", "don't 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
 
-No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.8.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
 
 | In this skill | Command |
 |---|---|

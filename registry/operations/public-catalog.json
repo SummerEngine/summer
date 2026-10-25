@@ -11835,7 +11835,7 @@
     {
       "name": "board.canvas",
       "title": "Put something on the board canvas",
-      "summary": "Add, change or delete items on the game's Summer Board canvas, where people think: a note, a title, an image, a stroke, an arrow between items, or a .glb model people turn in 3D (the live scene). update moves, resizes, recolors, layers or swaps the url of an item. Next: board.post.",
+      "summary": "Add, change or delete canvas items on a game's Summer Board: notes, titles, images, strokes, arrows, .glb models, frames and cards (things of a board type). items does many at once, all or none. at places an item in a frame or card, or beside another, instead of x and y. Next: board.post.",
       "effect": "write",
       "approval": "none",
       "permission": "make",
@@ -11869,21 +11869,12 @@
             ]
           },
           "itemId": {
-            "description": "update, delete: the item (board.read lists the canvas). add: your own id, to update it later by name (e.g. \"live-scene\").",
+            "description": "update: the item (board.read lists the canvas). add: your own id, to update or place things by it later (e.g. \"live-scene\").",
             "type": "string",
             "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
           },
-          "itemIds": {
-            "description": "delete: several items at once.",
-            "maxItems": 500,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
-            }
-          },
           "kind": {
-            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items) or frame (a named region; what is inside it is in it).",
+            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
             "type": "string",
             "enum": [
               "note",
@@ -11892,8 +11883,53 @@
               "stroke",
               "model",
               "connector",
-              "frame"
+              "frame",
+              "card"
             ]
+          },
+          "type": {
+            "description": "card: its type, e.g. \"Character\" (board.types lists them).",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+          },
+          "props": {
+            "description": "card: its values by field key, e.g. { \"name\": \"Ember Knight\", \"role\": \"boss\", \"hp\": 900 }. A link to another card is that card's id. On update they merge; null removes one.",
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "maxItems": 200,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
           "text": {
             "description": "note, text: the words.",
@@ -11906,7 +11942,7 @@
             "maxLength": 120
           },
           "url": {
-            "description": "image, model: the url board.upload answered for this game (other addresses are refused, so no outside host sees who looks).",
+            "description": "image, model, card (its picture): the url board.upload answered for this game (other addresses are refused, so no outside host sees who looks).",
             "type": "string",
             "maxLength": 2000
           },
@@ -11954,6 +11990,43 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
           },
+          "at": {
+            "description": "add, update: where the item goes instead of x and y. A spot something else holds moves on in the same direction. In items, it may name an item earlier in the same call.",
+            "type": "object",
+            "properties": {
+              "in": {
+                "description": "The next free spot in this frame or card (a grid, left to right, then down); it grows to hold the item.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+              },
+              "right": {
+                "description": "Beside this item, to its right.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+              },
+              "below": {
+                "description": "Under this item.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+              },
+              "left": {
+                "description": "To the left of this item.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+              },
+              "above": {
+                "description": "Above this item.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+              },
+              "gap": {
+                "description": "Space to keep, default 40.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2000
+              }
+            }
+          },
           "x": {
             "type": "number"
           },
@@ -11983,6 +12056,223 @@
             "type": "integer",
             "minimum": -1000000000,
             "maximum": 1000000000
+          },
+          "itemIds": {
+            "description": "delete: several items at once.",
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+            }
+          },
+          "items": {
+            "description": "Many adds and updates in one call, in order, all or none (each item has the fields above; at may name an item earlier in the list). Use it to lay out a frame of cards at once.",
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "default": "add",
+                  "type": "string",
+                  "enum": [
+                    "add",
+                    "update"
+                  ]
+                },
+                "itemId": {
+                  "description": "update: the item (board.read lists the canvas). add: your own id, to update or place things by it later (e.g. \"live-scene\").",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                },
+                "kind": {
+                  "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
+                  "type": "string",
+                  "enum": [
+                    "note",
+                    "text",
+                    "image",
+                    "stroke",
+                    "model",
+                    "connector",
+                    "frame",
+                    "card"
+                  ]
+                },
+                "type": {
+                  "description": "card: its type, e.g. \"Character\" (board.types lists them).",
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+                },
+                "props": {
+                  "description": "card: its values by field key, e.g. { \"name\": \"Ember Knight\", \"role\": \"boss\", \"hp\": 900 }. A link to another card is that card's id. On update they merge; null removes one.",
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 5000
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "maxItems": 200,
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "text": {
+                  "description": "note, text: the words.",
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "title": {
+                  "description": "frame: its title, e.g. \"Today's meeting\".",
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "url": {
+                  "description": "image, model, card (its picture): the url board.upload answered for this game (other addresses are refused, so no outside host sees who looks).",
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "name": {
+                  "description": "image, model: a caption.",
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "color": {
+                  "description": "note: paper, blue or ink. stroke: blue or ink.",
+                  "type": "string",
+                  "enum": [
+                    "paper",
+                    "blue",
+                    "ink"
+                  ]
+                },
+                "points": {
+                  "description": "stroke: [x, y] points relative to the item's x/y.",
+                  "minItems": 2,
+                  "maxItems": 2000,
+                  "type": "array",
+                  "items": {
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "width": {
+                  "description": "stroke: line width.",
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "from": {
+                  "description": "connector: the item the arrow starts at.",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                },
+                "to": {
+                  "description": "connector: the item the arrow points to.",
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                },
+                "at": {
+                  "description": "add, update: where the item goes instead of x and y. A spot something else holds moves on in the same direction. In items, it may name an item earlier in the same call.",
+                  "type": "object",
+                  "properties": {
+                    "in": {
+                      "description": "The next free spot in this frame or card (a grid, left to right, then down); it grows to hold the item.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                    },
+                    "right": {
+                      "description": "Beside this item, to its right.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                    },
+                    "below": {
+                      "description": "Under this item.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                    },
+                    "left": {
+                      "description": "To the left of this item.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                    },
+                    "above": {
+                      "description": "Above this item.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
+                    },
+                    "gap": {
+                      "description": "Space to keep, default 40.",
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2000
+                    }
+                  }
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 20000
+                },
+                "h": {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 20000
+                },
+                "front": {
+                  "description": "update: bring the item to the front.",
+                  "type": "boolean"
+                },
+                "back": {
+                  "description": "update: send the item to the back.",
+                  "type": "boolean"
+                },
+                "z": {
+                  "description": "update: an exact stacking order (higher is on top), e.g. to put an item back where it was.",
+                  "type": "integer",
+                  "minimum": -1000000000,
+                  "maximum": 1000000000
+                }
+              }
+            }
           },
           "dryRun": {
             "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
@@ -12016,7 +12306,13 @@
         "live scene",
         "model",
         "move",
-        "resize"
+        "resize",
+        "card",
+        "character",
+        "typed",
+        "batch",
+        "layout",
+        "place"
       ],
       "examples": [
         {
@@ -12060,15 +12356,80 @@
           "input": {
             "gameId": "g_123",
             "agent": "ag_0123456789abcdef",
-            "kind": "frame",
-            "itemId": "frame-meeting",
-            "title": "Today's meeting",
-            "x": 0,
-            "y": 0,
-            "w": 1200,
-            "h": 700
+            "kind": "card",
+            "type": "Character",
+            "props": {
+              "name": "Ember Knight",
+              "role": "boss",
+              "hp": 900
+            },
+            "at": {
+              "right": "item_card_fox"
+            }
           },
-          "note": "Make a frame, then move the items it should hold inside it."
+          "note": "Put a Character card beside another one."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "action": "update",
+            "itemId": "item_card_1",
+            "props": {
+              "hp": 1200,
+              "faction": null
+            }
+          },
+          "note": "Change one value of a card and remove another."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "items": [
+              {
+                "itemId": "frame-cast",
+                "kind": "frame",
+                "title": "Cast",
+                "x": 0,
+                "y": 0,
+                "w": 1100,
+                "h": 400
+              },
+              {
+                "itemId": "card-knight",
+                "kind": "card",
+                "type": "Character",
+                "props": {
+                  "name": "Ember Knight",
+                  "role": "boss"
+                },
+                "at": {
+                  "in": "frame-cast"
+                }
+              },
+              {
+                "itemId": "card-fox",
+                "kind": "card",
+                "type": "Character",
+                "props": {
+                  "name": "Fox",
+                  "role": "hero"
+                },
+                "at": {
+                  "in": "frame-cast"
+                }
+              },
+              {
+                "kind": "note",
+                "text": "The knight burns the bridge in act 2",
+                "at": {
+                  "below": "card-knight"
+                }
+              }
+            ]
+          },
+          "note": "A frame of cards in one call: the frame grows to hold them."
         }
       ]
     },
@@ -12180,9 +12541,85 @@
       ]
     },
     {
+      "name": "board.export",
+      "title": "Export the board's cards to the game",
+      "summary": "The cards of a game's Summer Board as Godot files for the game: a Resource class per type (res://data/types), a .tres per card and res://data/board_data.gd (BoardData) that loads them all. Write each file with your file tools. Same board, same bytes. Next: load them in gameplay code.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.8",
+      "mcpTool": "summer_board_export",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "types": {
+            "description": "Only these types (and the types they link to). Left out: every type.",
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+            }
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "export",
+        "godot",
+        "resources",
+        "game data",
+        "cards",
+        "tres",
+        "gameplay"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef"
+          },
+          "note": "Every type and card as Godot files."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "types": [
+              "Character"
+            ]
+          },
+          "note": "Only the characters (and what they link to)."
+        }
+      ]
+    },
+    {
       "name": "board.join",
       "title": "Join a game's Summer Board",
-      "summary": "Join the live Summer Board of a game you work on, as this agent chat: its people, their agents and what each does, the tasks and what is ready, claimed files and recent messages. Returns your agent id for every other board call. Next: board.wait, then take a ready task with board.task.",
+      "summary": "Join a game's live Summer Board as this agent chat: its people, agents and what each does, ready tasks, claimed files and recent messages. Returns your agent id for every other board call. Work through these calls, never by opening the board yourself. Next: one board.read, then board.wait.",
       "effect": "write",
       "approval": "none",
       "permission": "make",
@@ -12554,9 +12991,120 @@
       ]
     },
     {
+      "name": "board.query",
+      "title": "List the cards of a type",
+      "summary": "The cards of one type on a game's Summer Board as rows: values, the task each became (status, owner) and issues (what does not fit the type). Filter by values and task status (none, open, doing, done, failed). 100 a page. Next: board.canvas or board.task.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.8",
+      "mcpTool": "summer_board_query",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "type": {
+            "description": "The type, e.g. \"Character\" (board.types lists them).",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+          },
+          "where": {
+            "description": "Only cards with these values, e.g. { \"role\": \"boss\" }. On a list field, cards whose list holds the value.",
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "status": {
+            "description": "Only cards whose task has this status; none: cards that are no task yet.",
+            "type": "string",
+            "enum": [
+              "none",
+              "open",
+              "doing",
+              "done",
+              "failed",
+              "dropped"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "type"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "cards",
+        "query",
+        "list all",
+        "characters",
+        "levels",
+        "items",
+        "open work"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "type": "Character",
+            "where": {
+              "role": "boss"
+            }
+          },
+          "note": "Every boss."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "type": "Level",
+            "status": "open"
+          },
+          "note": "Levels whose task nobody started."
+        }
+      ]
+    },
+    {
       "name": "board.read",
       "title": "Read the Summer Board",
-      "summary": "Read a game's Summer Board: people (online or not), agents with what each does, every task with owner, status and dependencies, claimed files, open pings, the canvas (newest first, 200 items a page), and the main thread. With thread, that thread's messages instead. Next: board.task or board.post.",
+      "summary": "Read a game's Summer Board: people, agents and what each does, every task (owner, status, dependencies), claimed files, open pings, the canvas (newest first, 200 a page), the board's types with their fields, and the main thread. With thread, that thread instead. Next: board.task or board.post.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -12871,7 +13419,7 @@
             "maxLength": 200
           },
           "fromItem": {
-            "description": "Add: make this canvas note the task (its first line is the title); the note shows the task.",
+            "description": "Add: make this canvas note or card the task (a note's first line is the title; a card's is \"Character: Ember Knight\"); the item shows the task.",
             "type": "string",
             "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
           },
@@ -12975,6 +13523,161 @@
             "note": "Merged in #42"
           },
           "note": "Finish one."
+        }
+      ]
+    },
+    {
+      "name": "board.types",
+      "title": "List, define or change the board's types",
+      "summary": "The types of a game's Summer Board (Character, Level, Item) as small flat JSON Schemas. list them before you define one; define adds or grows a type; rename a type or field (cards follow); merge two only after a person agreed; delete an unused one. Next: board.canvas kind card.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.8",
+      "mcpTool": "summer_board_types",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "action": {
+            "default": "list",
+            "type": "string",
+            "enum": [
+              "list",
+              "define",
+              "rename",
+              "merge",
+              "delete"
+            ]
+          },
+          "schema": {
+            "description": "define: { title: \"Character\", description?, \"x-color\"?, \"x-icon\"?, type: \"object\", properties: { key: { type: string | number | integer | boolean | array, enum?, items?, minimum?, maximum?, description?, \"x-ref\"?: \"<Type>\" } }, required? }. \"x-ref\" makes a field a link to a card of that type (its value is the card id); the type must exist first. Flat: a nested thing is a type of its own.",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          },
+          "name": {
+            "description": "rename, delete: the type.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+          },
+          "property": {
+            "description": "rename: a field of the type to rename instead of the type.",
+            "type": "string",
+            "maxLength": 40
+          },
+          "to": {
+            "description": "rename: the new name.",
+            "type": "string",
+            "maxLength": 40
+          },
+          "from": {
+            "description": "merge: the type whose cards move.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+          },
+          "into": {
+            "description": "merge: the type they become.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]{1,39}$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "types",
+        "schema",
+        "character",
+        "level",
+        "item",
+        "data model",
+        "game design",
+        "cards"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef"
+          },
+          "note": "List the board's types before defining one."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "action": "define",
+            "schema": {
+              "title": "Character",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "hero",
+                    "npc",
+                    "enemy",
+                    "boss"
+                  ]
+                },
+                "hp": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "name",
+                "role"
+              ]
+            }
+          },
+          "note": "Define a Character type."
+        },
+        {
+          "input": {
+            "gameId": "g_123",
+            "agent": "ag_0123456789abcdef",
+            "action": "rename",
+            "name": "Character",
+            "property": "health",
+            "to": "hp"
+          },
+          "note": "Rename a field; every card follows."
         }
       ]
     },
@@ -31046,6 +31749,881 @@
       }
     },
     {
+      "name": "models.estimate",
+      "title": "Estimate a Summer API job",
+      "summary": "Price one exact job before running it: the USD amount, what makes it up and a quote id that holds the price for 15 minutes. Charges nothing; no sign-in. Next: models.run with the quoteId.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "none",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_models_estimate",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "description": "A Summer model id from models.list, such as 3d/hunyuan-3d or 3d/default.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "input": {
+            "description": "The model's input, matching its inputSchema.",
+            "default": {},
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "model"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD"
+          },
+          "price": {
+            "description": "US dollars as a decimal string.",
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$"
+          },
+          "atMost": {
+            "description": "true: Summer decides a step while it runs; the charge can be lower, never higher.",
+            "type": "boolean"
+          },
+          "breakdown": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "type": "string"
+                },
+                "price": {
+                  "description": "US dollars as a decimal string.",
+                  "type": "string",
+                  "pattern": "^\\d+(\\.\\d+)?$"
+                }
+              },
+              "required": [
+                "item",
+                "price"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "quoteId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quoteExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model",
+          "currency",
+          "price",
+          "atMost",
+          "breakdown",
+          "quoteId",
+          "quoteExpiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "estimate",
+        "quote",
+        "price",
+        "how much",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {
+            "model": "3d/default",
+            "input": {
+              "kind": "text-to-3d",
+              "prompt": "a wooden treasure chest",
+              "rig": false
+            }
+          },
+          "note": "What one 3D model costs."
+        }
+      ]
+    },
+    {
+      "name": "models.get",
+      "title": "Read a Summer API model",
+      "summary": "Read one Summer API model by id, dated id or alias: its input schema, output formats, typical time and price. Public; no sign-in. Next: models.estimate.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "none",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_models_get",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "description": "A Summer model id from models.list, such as 3d/hunyuan-3d or 3d/default.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "model"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "description": "The alias asked for; model is what it runs today.",
+            "type": "string"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "datedId": {
+                "description": "The same model, dated: shows which price check it follows.",
+                "type": "string"
+              },
+              "capability": {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "3d",
+                  "video",
+                  "voice",
+                  "dialogue",
+                  "sound",
+                  "music",
+                  "motion"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "vendor": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "aliases": {
+                "description": "The <capability>/default aliases that run this model.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "outputFormats": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "latency": {
+                "description": "Typical seconds from start to result.",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "p50Seconds": {
+                        "type": "number"
+                      },
+                      "p90Seconds": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "measured": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "p50Seconds",
+                      "p90Seconds",
+                      "measured"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tier": {
+                "description": "free: in Studio, welcome credits may pay for it. The Summer API always uses paid credits.",
+                "type": "string",
+                "enum": [
+                  "free",
+                  "pro"
+                ]
+              },
+              "commercialUse": {
+                "type": "boolean"
+              },
+              "wellTested": {
+                "description": "Summer's own surfaces run it by default.",
+                "type": "boolean"
+              },
+              "price": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "call",
+                      "output_second",
+                      "1k_characters",
+                      "megapixel"
+                    ]
+                  },
+                  "price": {
+                    "description": "For one unit, at the defaults.",
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?$"
+                  },
+                  "quantityField": {
+                    "description": "The request field that counts the units (numImages, duration, text). Absent: one unit.",
+                    "type": "string"
+                  },
+                  "minimum": {
+                    "description": "US dollars as a decimal string.",
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?$"
+                  },
+                  "estimate": {
+                    "description": "A typical request; models.estimate prices the exact one.",
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "modifiers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "description": "The request field in input.",
+                          "type": "string"
+                        },
+                        "equals": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        "set": {
+                          "description": "Applies when the field is given at all.",
+                          "type": "boolean",
+                          "const": true
+                        },
+                        "price": {
+                          "description": "Replaces the unit price.",
+                          "type": "string",
+                          "pattern": "^\\d+(\\.\\d+)?$"
+                        },
+                        "add": {
+                          "description": "Adds to the unit price.",
+                          "type": "string",
+                          "pattern": "^\\d+(\\.\\d+)?$"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "priceUpdatedAt": {
+                    "description": "When the price was last checked, YYYY-MM-DD.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "price",
+                  "modifiers",
+                  "priceUpdatedAt"
+                ],
+                "additionalProperties": false
+              },
+              "inputSchema": {
+                "description": "JSON Schema of input for models.run and models.estimate.",
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "voices": {
+                "description": "Voice and dialogue models: the curated voiceId values; voices.search finds the rest.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "voiceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "voiceId",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "datedId",
+              "capability",
+              "name",
+              "vendor",
+              "tags",
+              "aliases",
+              "outputFormats",
+              "latency",
+              "tier",
+              "commercialUse",
+              "wellTested",
+              "price",
+              "inputSchema"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "model",
+        "schema",
+        "price",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {
+            "model": "3d/default"
+          },
+          "note": "What the default 3D model is and takes."
+        }
+      ]
+    },
+    {
+      "name": "models.list",
+      "title": "List Summer API models",
+      "summary": "List the curated game-dev models of the Summer API: ids, capability, input schema, output formats, typical time and price. Public; no sign-in. Next: models.estimate for one request.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "none",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_models_list",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "description": "Only this kind: image, 3d, video, voice, dialogue, sound or music.",
+            "type": "string",
+            "enum": [
+              "image",
+              "3d",
+              "video",
+              "voice",
+              "dialogue",
+              "sound",
+              "music",
+              "motion"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "const": "USD"
+          },
+          "topUpFeePercent": {
+            "description": "Added to pay-as-you-go credit purchases; model prices carry no other fee.",
+            "type": "number"
+          },
+          "aliases": {
+            "description": "Each <capability>/default alias and the model id it runs.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "datedId": {
+                  "description": "The same model, dated: shows which price check it follows.",
+                  "type": "string"
+                },
+                "capability": {
+                  "type": "string",
+                  "enum": [
+                    "image",
+                    "3d",
+                    "video",
+                    "voice",
+                    "dialogue",
+                    "sound",
+                    "music",
+                    "motion"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "vendor": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "aliases": {
+                  "description": "The <capability>/default aliases that run this model.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "outputFormats": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "latency": {
+                  "description": "Typical seconds from start to result.",
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "p50Seconds": {
+                          "type": "number"
+                        },
+                        "p90Seconds": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "measured": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "p50Seconds",
+                        "p90Seconds",
+                        "measured"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tier": {
+                  "description": "free: in Studio, welcome credits may pay for it. The Summer API always uses paid credits.",
+                  "type": "string",
+                  "enum": [
+                    "free",
+                    "pro"
+                  ]
+                },
+                "commercialUse": {
+                  "type": "boolean"
+                },
+                "wellTested": {
+                  "description": "Summer's own surfaces run it by default.",
+                  "type": "boolean"
+                },
+                "price": {
+                  "type": "object",
+                  "properties": {
+                    "unit": {
+                      "type": "string",
+                      "enum": [
+                        "call",
+                        "output_second",
+                        "1k_characters",
+                        "megapixel"
+                      ]
+                    },
+                    "price": {
+                      "description": "For one unit, at the defaults.",
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?$"
+                    },
+                    "quantityField": {
+                      "description": "The request field that counts the units (numImages, duration, text). Absent: one unit.",
+                      "type": "string"
+                    },
+                    "minimum": {
+                      "description": "US dollars as a decimal string.",
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?$"
+                    },
+                    "estimate": {
+                      "description": "A typical request; models.estimate prices the exact one.",
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "modifiers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "description": "The request field in input.",
+                            "type": "string"
+                          },
+                          "equals": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          },
+                          "set": {
+                            "description": "Applies when the field is given at all.",
+                            "type": "boolean",
+                            "const": true
+                          },
+                          "price": {
+                            "description": "Replaces the unit price.",
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?$"
+                          },
+                          "add": {
+                            "description": "Adds to the unit price.",
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?$"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "priceUpdatedAt": {
+                      "description": "When the price was last checked, YYYY-MM-DD.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "unit",
+                    "price",
+                    "modifiers",
+                    "priceUpdatedAt"
+                  ],
+                  "additionalProperties": false
+                },
+                "inputSchema": {
+                  "description": "JSON Schema of input for models.run and models.estimate.",
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "voices": {
+                  "description": "Voice and dialogue models: the curated voiceId values; voices.search finds the rest.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "voiceId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "voiceId",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "datedId",
+                "capability",
+                "name",
+                "vendor",
+                "tags",
+                "aliases",
+                "outputFormats",
+                "latency",
+                "tier",
+                "commercialUse",
+                "wellTested",
+                "price",
+                "inputSchema"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "currency",
+          "topUpFeePercent",
+          "aliases",
+          "models"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "models",
+        "catalog",
+        "price list",
+        "which model",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {
+            "capability": "3d"
+          },
+          "note": "The 3D models and what each costs."
+        }
+      ]
+    },
+    {
+      "name": "models.run",
+      "title": "Run a Summer API job",
+      "summary": "Run one Summer API model on its input into the person's Summer assets. Short jobs come back done; long ones answer running with a job id for jobs.wait. Spends their credits; a quoteId caps the charge at its price.",
+      "effect": "spend",
+      "approval": "none",
+      "permission": "spend",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_models_run",
+      "direct": [],
+      "idempotencyKey": "required",
+      "job": {
+        "typicalSeconds": 60
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "description": "A Summer model id from models.list, such as 3d/hunyuan-3d or 3d/default.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "input": {
+            "description": "The model's input, matching its inputSchema.",
+            "default": {},
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "quoteId": {
+            "description": "From models.estimate: refuse to charge more than it quoted.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "webhookUrl": {
+            "description": "Summer POSTs here once, signed, when the job finishes. Needs a signing secret: webhooks.rotate_secret.",
+            "type": "string",
+            "maxLength": 2048
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key, required: a new one for each new request; reuse it only to retry the identical request.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "model",
+          "idempotencyKey"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "The job id: read it again until it finishes.",
+                "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "running",
+                  "awaiting_approval",
+                  "done",
+                  "failed",
+                  "cancelled",
+                  "declined",
+                  "expired",
+                  "stale"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "estimatedPrice": {
+                "description": "US dollars as a decimal string.",
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d+)?$"
+              },
+              "price": {
+                "description": "What the job charged, once known.",
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d+)?$"
+              },
+              "webhookId": {
+                "description": "The webhook delivery for webhookUrl (webhooks.list_deliveries).",
+                "type": "string"
+              },
+              "result": {
+                "description": "The finished work: asset ids and Summer file URLs.",
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "id",
+              "state",
+              "model",
+              "estimatedPrice"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "run",
+        "generate",
+        "job",
+        "api",
+        "image",
+        "3d",
+        "video",
+        "voice",
+        "sound",
+        "music"
+      ],
+      "examples": [
+        {
+          "input": {
+            "model": "image/default",
+            "input": {
+              "prompt": "a cozy pixel-art tavern at night",
+              "aspectRatio": "16:9"
+            }
+          },
+          "note": "One image, back done."
+        },
+        {
+          "input": {
+            "model": "3d/default",
+            "input": {
+              "kind": "text-to-3d",
+              "prompt": "a knight in plate armour",
+              "rig": true
+            }
+          },
+          "note": "A rigged knight: a job to wait for."
+        }
+      ]
+    },
+    {
       "name": "ops.describe",
       "title": "Describe a Summer operation",
       "summary": "Read one operation in full by its name (or a 3.x tool name): input and output schemas, effect, approval, examples. Next: summer_call.",
@@ -46555,6 +48133,532 @@
             "inviteId": "inv_9"
           },
           "note": "Cancel the pending invite."
+        }
+      ]
+    },
+    {
+      "name": "voices.search",
+      "title": "Find a voice",
+      "summary": "Find voices for a speech or dialogue model: Summer's curated cast first, then the public voice library by words, language, gender, age, accent or use case, each with a sample. Free. Next: models.run with the voiceId.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_voices_search",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "description": "A voice/* or dialogue/* model id.",
+            "default": "voice/default",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "search": {
+            "description": "Words in the name or description, e.g. \"gravelly old wizard\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "language": {
+            "description": "ISO 639-1, e.g. en, de, ja.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "gender": {
+            "description": "male, female or neutral.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "age": {
+            "description": "young, middle_aged or old.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "accent": {
+            "description": "e.g. british, american, australian.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "useCase": {
+            "description": "e.g. characters_animation, narrative_story, conversational.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "page": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "defaults": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "voiceId": {
+                  "description": "Send it as voiceId (or a dialogue line's voiceId).",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "source": {
+                  "description": "curated: Summer's cast; library: the public voice library; model: the model's own voices.",
+                  "type": "string",
+                  "enum": [
+                    "curated",
+                    "library",
+                    "model"
+                  ]
+                },
+                "gender": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "age": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "accent": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "language": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "useCase": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "previewUrl": {
+                  "description": "A short sample, served by Summer.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "voiceId",
+                "name",
+                "source",
+                "gender",
+                "age",
+                "accent",
+                "language",
+                "useCase",
+                "description",
+                "previewUrl"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "voiceId": {
+                  "description": "Send it as voiceId (or a dialogue line's voiceId).",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "source": {
+                  "description": "curated: Summer's cast; library: the public voice library; model: the model's own voices.",
+                  "type": "string",
+                  "enum": [
+                    "curated",
+                    "library",
+                    "model"
+                  ]
+                },
+                "gender": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "age": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "accent": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "language": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "useCase": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "previewUrl": {
+                  "description": "A short sample, served by Summer.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "voiceId",
+                "name",
+                "source",
+                "gender",
+                "age",
+                "accent",
+                "language",
+                "useCase",
+                "description",
+                "previewUrl"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "defaults",
+          "voices",
+          "hasMore"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "voice",
+        "voices",
+        "speech",
+        "tts",
+        "narrator",
+        "character voice",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {
+            "model": "voice/default",
+            "search": "old wizard",
+            "accent": "british"
+          },
+          "note": "A wizard voice for an NPC."
+        }
+      ]
+    },
+    {
+      "name": "webhooks.list_deliveries",
+      "title": "List webhook deliveries",
+      "summary": "List the account's newest Summer API webhook deliveries, each with its job, state (watching, pending, delivered, failed) and every attempt. Free. Next: jobs.get for a job.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_webhooks_list_deliveries",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "deliveries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "jobId": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "watching",
+                    "pending",
+                    "delivered",
+                    "failed"
+                  ]
+                },
+                "status": {
+                  "description": "How the job finished, once it did.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "deliveredAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "attempts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "at": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "description": "The receiver's HTTP status; null when it did not answer.",
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ms": {
+                        "type": "number"
+                      },
+                      "error": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "at",
+                      "status",
+                      "ms"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "jobId",
+                "model",
+                "url",
+                "state",
+                "status",
+                "createdAt",
+                "deliveredAt",
+                "attempts"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "deliveries"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "webhook",
+        "deliveries",
+        "log",
+        "callback",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {
+            "limit": 10
+          },
+          "note": "Did my last webhooks arrive?"
+        }
+      ]
+    },
+    {
+      "name": "webhooks.rotate_secret",
+      "title": "Make a webhook signing secret",
+      "summary": "Make a new signing secret for Summer API webhooks and show it once; the old one stops at once. Verify each POST: Summer-Signature t=<unix>,v1=<HMAC-SHA256 of \"t.body\">. Free. Next: models.run with webhookUrl.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.7",
+      "mcpTool": "summer_webhooks_rotate_secret",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "description": "Shown only now: keep it, as SUMMER_WEBHOOK_SECRET for example.",
+            "type": "string"
+          },
+          "signature": {
+            "description": "How each POST is signed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "webhook",
+        "secret",
+        "signing",
+        "callback",
+        "api"
+      ],
+      "examples": [
+        {
+          "input": {},
+          "note": "A secret to verify webhook POSTs with."
         }
       ]
     },

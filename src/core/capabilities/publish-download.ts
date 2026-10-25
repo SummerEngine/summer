@@ -182,7 +182,7 @@ export async function publishDownload(input: PublishDownloadInput, deps: Publish
       ...(version.playUrl ? { playUrl: version.playUrl } : {}),
       next:
         outcome === "ready"
-          ? "The file is checked. Players get it once the store page is live; submit the page with store.publish (the owner approves)."
+          ? "The file is checked. Players get it once the store page is live; publish the page with store.publish (the owner approves)."
           : "Summer is still checking the file. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice.",
     };
   } catch (error) {

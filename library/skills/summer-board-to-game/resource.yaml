@@ -1,0 +1,24 @@
+id: skill/summer-board-to-game
+kind: skill
+version: 1.0.0
+summary: "Bring a Summer Board's typed cards into the game as Godot Resources, load them through BoardData, and keep board and game in step."
+use_when:
+  - "gameplay code needs the stats, lists or links people put on the board as cards"
+  - "a person says use the characters from the board or make the levels we planned, or cards the game uses changed"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - game-design
+    - gameplay
+  modalities:
+    - project
+related:
+  skills:
+    - skill/summer-board
+    - skill/summer-board-types
+source: official
+license: MIT
+status: preview
+bundled: false

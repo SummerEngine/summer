@@ -108,6 +108,10 @@ describe("library-only skills", () => {
       "painted-25d-world",
       // routed from release-checklist, publish-your-game and /summer; same budget
       "launch-ready",
+      // routed from summer-board, which names them; same budget
+      "summer-board-types",
+      "summer-board-modeling",
+      "summer-board-to-game",
     ];
     const registry = getSkillRegistry();
     expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());

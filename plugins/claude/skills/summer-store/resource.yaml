@@ -1,7 +1,7 @@
 id: skill/summer-store
 kind: skill
 version: 1.2.0
-summary: "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks."
+summary: "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync."
 use_when:
   - "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game"
   - "checking on the authority that a player really owns an item before letting them use or equip it"

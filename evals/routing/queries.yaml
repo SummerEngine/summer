@@ -149,6 +149,11 @@ queries:
     expected: [skill/summer-router]
   - query: "my guard should answer what the player types and open the gate when convinced"
     expected: [skill/summer-router]
+  # ── Summer Board ───────────────────────────────────────────────────────
+  - query: "join my teammate's board and put 10 character concepts on it"
+    expected: [skill/summer-board]
+  - query: "what is everyone working on, coordinate with Marcus's agent on the board"
+    expected: [skill/summer-board]
   # ── Gameplay systems ───────────────────────────────────────────────────
   - query: "add a save and load system"
     expected: [skill/save-load]

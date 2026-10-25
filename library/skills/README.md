@@ -1,6 +1,6 @@
 # Summer skills
 
-> 133 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 137 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -10,7 +10,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 - [2d](#2d) (11)
 - [3d](#3d) (6)
-- [agent-workflow](#agent-workflow) (19)
+- [agent-workflow](#agent-workflow) (23)
 - [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (5)
@@ -79,7 +79,11 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [skill-create](./skill-create/SKILL.md) (library only) | Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections. | meta |
 | [skill-improve](./skill-improve/SKILL.md) (library only) | Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner. | meta |
 | [skill-test](./skill-test/SKILL.md) (library only) | Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs. | meta |
-| [*summer-cli*](./summer-cli/SKILL.md) ★ (preview) | Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine. | assets, tools |
+| [*summer-board*](./summer-board/SKILL.md) (preview) | Summer Board co-op: tasks, claims, files, card frames. | game-design |
+| [*summer-board-modeling*](./summer-board-modeling/SKILL.md) (preview) (library only) | How granular to model a game on its Summer Board: what earns a type, what stays a note or a field, and starter type sets per genre. | game-design |
+| [*summer-board-to-game*](./summer-board-to-game/SKILL.md) (preview) (library only) | Bring a Summer Board's typed cards into the game as Godot Resources, load them through BoardData, and keep board and game in step. | game-design, gameplay |
+| [*summer-board-types*](./summer-board-types/SKILL.md) (preview) (library only) | Define and reuse types on a Summer Board (Character, Level, Item) so ideas become typed cards: read the board's types first, reuse before you define. | game-design |
+| [*summer-cli*](./summer-cli/SKILL.md) ★ (preview) | Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine. | assets, tools |
 | [using-summer](./using-summer/SKILL.md) | Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response. | meta |
 | [verification-before-completion](./verification-before-completion/SKILL.md) ★ | Run verification and read its output before claiming work done, fixed or passing: evidence first. | verification |
 | [writing-plans](./writing-plans/SKILL.md) | Turn a spec or requirements for a multi-step task into a written implementation plan before touching code. | meta |
@@ -179,7 +183,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step. | 3d, world-building, agent-workflow |
+| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision in step. | 3d, world-building, agent-workflow |
 | [design-level](./design-level/SKILL.md) ★ | Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton. | game-design |
 | [scene-to-level](./scene-to-level/SKILL.md) | Turn a reference image or concept art into a playable scene: concept, asset pack, terrain, assembly. | game-design |
 
@@ -200,7 +204,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*summer-matchmaking*](./summer-matchmaking/SKILL.md) (preview) | Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures. | ux |
 | [*summer-parties*](./summer-parties/SKILL.md) (preview) | Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only. | ui |
 | [summer-player-data](./summer-player-data/SKILL.md) | Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries. | scripting |
-| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks. | gameplay |
+| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync. | gameplay |
 | [*summer-world-chat*](./summer-world-chat/SKILL.md) (preview) | Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only. | ui |
 | [*summer-world-saves*](./summer-world-saves/SKILL.md) (preview) | Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save. | scripting |
 

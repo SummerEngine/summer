@@ -8,12 +8,13 @@
  * Why: a test that forgot the seam appended to the real ~/.summer/mcp.log
  * (2026-09-09). No test may touch the real ~/.summer.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll } from "vitest";
 
-const fakeHome = mkdtempSync(join(tmpdir(), "summer-test-home-"));
+// The real path, as a person's home is: macOS tmpdir() is under /var, a symlink to /private/var.
+const fakeHome = realpathSync(mkdtempSync(join(tmpdir(), "summer-test-home-")));
 process.env.HOME = fakeHome;
 process.env.USERPROFILE = fakeHome;
 process.env.HOMEDRIVE = "";

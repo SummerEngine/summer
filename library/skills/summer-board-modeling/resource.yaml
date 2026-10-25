@@ -1,0 +1,23 @@
+id: skill/summer-board-modeling
+kind: skill
+version: 1.0.0
+summary: "How granular to model a game on its Summer Board: what earns a type, what stays a note or a field, and starter type sets per genre."
+use_when:
+  - "before defining the first types on a Summer Board, or when a board's types feel too many or too few"
+  - "a person asks how to organise characters, levels or items on the board"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - game-design
+  modalities:
+    - project
+related:
+  skills:
+    - skill/summer-board
+    - skill/summer-board-types
+source: official
+license: MIT
+status: preview
+bundled: false

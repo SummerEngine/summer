@@ -325,7 +325,7 @@
     {
       "id": "skill/concept-to-level",
       "name": "concept-to-level",
-      "description": "Take a 3D map from concept art to a shippable level: questions for the user, owned lanes, render checks, collision kept in step.",
+      "description": "3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision in step.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1309,9 +1309,65 @@
       ]
     },
     {
+      "id": "skill/summer-board",
+      "name": "summer-board",
+      "description": "Summer Board co-op: tasks, claims, files, card frames.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ]
+    },
+    {
+      "id": "skill/summer-board-modeling",
+      "name": "summer-board-modeling",
+      "description": "How granular to model a game on its Summer Board: what earns a type, what stays a note or a field, and starter type sets per genre.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-modeling/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ],
+      "bundled": false
+    },
+    {
+      "id": "skill/summer-board-to-game",
+      "name": "summer-board-to-game",
+      "description": "Bring a Summer Board's typed cards into the game as Godot Resources, load them through BoardData, and keep board and game in step.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-to-game/",
+      "domains": [
+        "agent-workflow",
+        "game-design",
+        "gameplay"
+      ],
+      "bundled": false
+    },
+    {
+      "id": "skill/summer-board-types",
+      "name": "summer-board-types",
+      "description": "Define and reuse types on a Summer Board (Character, Level, Item) so ideas become typed cards: read the board's types first, reuse before you define.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-types/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ],
+      "bundled": false
+    },
+    {
       "id": "skill/summer-cli",
       "name": "summer-cli",
-      "description": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
+      "description": "Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine.",
       "clients": "all",
       "recommended": true,
       "status": "preview",
@@ -1417,7 +1473,7 @@
     {
       "id": "skill/summer-store",
       "name": "summer-store",
-      "description": "Sell Summer items for Sparks: shop, checkout, item slugs, bundles and sales, owned items, summer.items.json sync, authority checks.",
+      "description": "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

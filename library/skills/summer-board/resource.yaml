@@ -1,0 +1,24 @@
+id: skill/summer-board
+kind: skill
+version: 1.0.0
+summary: "Summer Board co-op: tasks, claims, files, card frames."
+use_when:
+  - "the person says board, co-op, team, work together or coordinate with a teammate's agent"
+  - "picking up work on a game that has other members, or a board message, file or ping answer reached you"
+  - "putting a set of ideas (10 character concepts, the levels) on the board as one frame with a numbered grid and a next-step note"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - game-design
+  modalities:
+    - project
+related:
+  skills:
+    - skill/summer-board-types
+    - skill/summer-board-modeling
+    - skill/summer-board-to-game
+source: official
+license: MIT
+status: preview

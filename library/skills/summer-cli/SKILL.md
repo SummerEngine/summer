@@ -1,6 +1,6 @@
 ---
 name: summer-cli
-description: "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine."
+description: "Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta

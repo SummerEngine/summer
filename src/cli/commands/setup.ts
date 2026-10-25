@@ -22,6 +22,7 @@ import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
+import { findShadowingSummer, shadowWarning } from "../../installer/path-shadow.js";
 import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
 import { addAllowRules, allowRulesPath, removeAllowRules, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
@@ -271,6 +272,7 @@ async function setupAgent(agentArg: string | undefined, opts: SetupCommandOption
   const projectFiles = projectStep.value;
 
   const doctor = await runDoctor({ quiet: true });
+  const shadow = opts.print ? null : staleSummerOnPath();
 
   if (json) {
     const steps: SetupStep[] = [
@@ -281,12 +283,12 @@ async function setupAgent(agentArg: string | undefined, opts: SetupCommandOption
       doctorStep(doctor),
     ];
     const ok = steps.every((step) => step.ok);
-    console.log(JSON.stringify({ ok, agent, scope, steps, config, games, skills, projectFiles, doctor }, null, 2));
+    console.log(JSON.stringify({ ok, agent, scope, steps, config, games, skills, projectFiles, doctor, ...(shadow ? { warnings: [shadow] } : {}) }, null, 2));
     if (!ok) process.exit(1);
     return;
   }
 
-  printSetupResult(config!, games, skills, doctor, projectFiles);
+  printSetupResult(config!, games, skills, doctor, projectFiles, shadow);
   if (!doctor.ok || skills.status === "failed") {
     process.exit(1);
   }
@@ -390,6 +392,8 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
   if (existing) {
     warnings.push(`${tildeify(existing)} still lists the summer-engine MCP server from an earlier setup. Remove that entry to use the CLI only.`);
   }
+  const shadow = staleSummerOnPath();
+  if (shadow) warnings.push(shadow);
 
   const dryRun = Boolean(opts.dryRun);
   const skills = setupSkills(agent, {
@@ -511,6 +515,16 @@ function printProjectFiles(project: ProjectFiles | null): void {
   }
 }
 
+/** An older summer-engine first on PATH would run instead of this one after setup (`summer login`). */
+function staleSummerOnPath(): string | null {
+  try {
+    const found = findShadowingSummer(cliVersion);
+    return found ? shadowWarning(found, cliVersion) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The config file that already lists summer-engine for this agent and scope, or null. */
 async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Promise<string | null> {
   try {
@@ -540,7 +554,8 @@ function printSetupResult(
   games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
   doctor: DoctorResult,
-  projectFiles: ProjectFiles | null
+  projectFiles: ProjectFiles | null,
+  shadow: string | null = null
 ): void {
   if (config.print) {
     console.log(config.snippet.trimEnd());
@@ -593,7 +608,7 @@ function printSetupResult(
   printSkillsLine(skills, config.dryRun);
   printProjectFiles(projectFiles);
 
-  for (const warning of config.warnings) {
+  for (const warning of shadow ? [...config.warnings, shadow] : config.warnings) {
     console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
   }
 

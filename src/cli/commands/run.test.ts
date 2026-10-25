@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,7 +84,8 @@ let errors: string[] = [];
 const originalExitCode = process.exitCode;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "summer-run-test-"));
+  // The real path: macOS tmpdir() is under /var, a symlink to /private/var, and summer run passes the project's real path.
+  root = await realpath(await mkdtemp(join(tmpdir(), "summer-run-test-")));
   setSummerDirForTests(join(root, ".summer"));
   logs = [];
   errors = [];

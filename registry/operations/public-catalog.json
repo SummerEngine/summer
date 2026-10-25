@@ -5885,6 +5885,8 @@
             "description": "Leave out for the default (sound effects: the model the person last approved).",
             "type": "string",
             "enum": [
+              "eleven_v4",
+              "eleven_v4_turbo",
               "eleven_v3",
               "eleven_multilingual_v2",
               "eleven_flash_v2_5",
@@ -5896,8 +5898,10 @@
               "inworld-tts-1.5-max",
               "eleven_text_to_sound_v2",
               "sonilo-sfx-1.1",
+              "mirelo-sfx-2.0",
               "stable-audio-3-sfx",
               "music_v2",
+              "music_v2_5",
               "music_v1"
             ]
           },
@@ -6159,6 +6163,17 @@
               "google/nano-banana-lite/edit",
               "flux-2",
               "fal-ai/flux-2",
+              "nano-banana-2.1",
+              "google/nano-banana-2.1",
+              "flux-3",
+              "blackforestlabs/flux-3/text-to-image",
+              "flux-3-image",
+              "flux-3-klein",
+              "blackforestlabs/flux-3/klein/text-to-image",
+              "ideogram-4.5",
+              "ideogram/v4.5",
+              "recraft-4.1",
+              "fal-ai/recraft/v4.1/text-to-image",
               "grok-imagine-2",
               "xai/grok-imagine-image/v2.0/text-to-image",
               "nano-banana-2",
@@ -6558,6 +6573,7 @@
               "enum": [
                 "eleven_text_to_sound_v2",
                 "sonilo-sfx-1.1",
+                "mirelo-sfx-2.0",
                 "stable-audio-3-sfx"
               ]
             }
@@ -6936,11 +6952,14 @@
               "gemini-omni-flash-1.1",
               "seedance-2.5",
               "kling-3-pro",
+              "kling-4",
               "minimax-h3-max",
+              "minimax-h3-max-turbo",
               "wan-3",
               "happy-horse-1.1",
               "veo3.1-lite",
               "grok-video-1.5",
+              "grok-video-1.5-lite",
               "vidu-q3",
               "pixverse-v6",
               "ltx-2-5-pro",
@@ -6948,7 +6967,8 @@
               "ltx",
               "kling",
               "kling-turbo",
-              "veo3"
+              "veo3",
+              "vidu-q4"
             ]
           },
           "duration": {
@@ -6987,7 +7007,9 @@
               "1080p",
               "4k",
               "768P",
-              "1080P"
+              "1080P",
+              "480P",
+              "480p"
             ]
           },
           "dryRun": {

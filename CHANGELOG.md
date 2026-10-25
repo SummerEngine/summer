@@ -4,7 +4,21 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.9.0] - 2026-10-24
+
+Games go live on Summer's automatic checks, with Summer's review afterwards: `summer_go_live` and `summer_publish_build` read that review, and name the platforms a hosted release left out.
+
+- **`summer_go_live` reads Summer's review of a live game** (the store's `/review` route, which replaces `/approval`).
+  - **On hold:** when Summer's staff put a live game on hold and its newest store page is the one they reviewed, it answers `on_hold` with their message: make the changes with `store.update_listing`, then publish the newer page. A new build alone does not lift a hold. A newer draft page is published, which lifts it.
+  - **Taken down:** it answers `blocked` with `taken_down`.
+  - A sent-back page's decision comes from the review's `latestReview`; while the platform lacks it, from `/approval` when it answers; else the page still reports `needs_changes` and points at `store.status`. On a platform without `/review`, a first-launch hold reports as Summer's, as before. The waiting answer no longer carries `approvalState`.
+- **Platforms a hosted release left out: `notIncluded` and `notUsed`.** `summer_go_live` reads `droppedTargets` from the release, answers `notIncluded` (one entry per platform: the reason, `checkErrorCode` and the line to tell the creator, such as "iOS isn't included: this build couldn't be checked for iPhone.") and goes live on the platforms the release kept instead of waiting for the others. `notUsed` names a newer client the release did not use (that platform stays live with its current client). The live answer's `next` names both.
+- **`playable_release_required` answers `blocked`** with the platform's own message, or "Upload a build that includes your game's apps so they can be checked against the new server."
+- **"Summer is still checking this; nothing to do on your side."** When a publish's checks have run over an hour, `summer_go_live`'s waiting answer and `summer_publish_build`'s hold say so, with the time (`stillCheckingSince`).
+- **`summer_publish_build`'s hold** reads the review too: on hold (with the changes to make), taken down, or Summer's own hold. `approval_denied` now reads "This game was taken down, so it can't take new builds."
+- **Copy:** the README, `AGENTS.md`, the project `AGENTS.md` block and the `publish-your-game` skill say a game is live once the automatic checks pass, with staff review afterwards, and tell an automatic-check rejection from a staff hold and a take-down.
 - **Windows forms for the release checks.** The `release-readiness`, `multiplayer-publish` and `bounded-engine-runs` skills now give every check a PowerShell form next to the `sh` one: `Expand-Archive` in place of `unzip`, and a small `Run-Summer` helper that bounds a run with `Start-Process` and reads Summer.exe's `--log-file`, in place of `perl` and `grep`.
+- The operations catalog is synced from PublicSummerEngine main: the October 2026 models in `assets.generate_image`, `assets.generate_audio`, `assets.generate_sfx_choices` and `assets.generate_video` (among them `nano-banana-2.1`, `flux-3`, `ideogram-4.5`, `recraft-4.1`, `eleven_v4`, `music_v2_5`, `mirelo-sfx-2.0`, `kling-4` and `vidu-q4`), and 480p video.
 
 ## [4.8.0] - 2026-10-24
 

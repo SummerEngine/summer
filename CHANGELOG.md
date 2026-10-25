@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Windows forms for the release checks.** The `release-readiness`, `multiplayer-publish` and `bounded-engine-runs` skills now give every check a PowerShell form next to the `sh` one: `Expand-Archive` in place of `unzip`, and a small `Run-Summer` helper that bounds a run with `Start-Process` and reads Summer.exe's `--log-file`, in place of `perl` and `grep`.
+
 ## [4.8.0] - 2026-10-24
 
 The Summer API with the Summer sign-in (no static API keys), Studio inside the Summer app, and agents that show the person what they work on. 4.7.0 and the 2026-10-22 4.8.0 draft were never published; this 4.8.0 includes them (sections below).

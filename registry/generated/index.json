@@ -668,8 +668,8 @@
     {
       "id": "skill/bounded-engine-runs",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "72fce40636e955a537daa8497200d621b0402987c600b8a09bb1fc43d1bd3247",
+      "version": "1.0.1",
+      "content_hash": "db3626b41cae2e10fc12fae3975a1b9936efd384b56fbd52e79e808990de1b77",
       "summary": "Run Summer headless or offscreen safely: time limits, one engine per project, import passes, crash checks.",
       "use_when": [
         "running the engine from a shell or agent for tests, imports, captures or bots",
@@ -2423,8 +2423,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "4c4cc828530cd8eca782ca72bc412ded78012ddf243698ebd170ca540e4680f5",
+      "version": "1.0.2",
+      "content_hash": "8ec73bbd2c0e4ddaad86a4204e143b10edc93f87058f51b3d67986a24185ef1b",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -3097,8 +3097,8 @@
     {
       "id": "skill/release-readiness",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "78a84d914a132911c09f74ef677240d1e7bcdda7f617e9a0704264e827ae70e3",
+      "version": "1.0.1",
+      "content_hash": "5756e0d604fca6b82959672b462e0bb34b182afbfe1858719cc41d774f5873f3",
       "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",

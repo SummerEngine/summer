@@ -61,6 +61,22 @@ mkdir -p build/bundle
 unzip -o build/<game>.summer.zip server.pck client.pck summer-bundle.json config/summer.build.json -d build/bundle
 ```
 
+```powershell
+# Windows PowerShell: the same steps. Summer.exe writes its output to --log-file.
+$summer = "$env:LOCALAPPDATA\SummerEngine\current\Summer.exe"
+function Run-Summer([int]$seconds, [string]$log, [string[]]$engineArgs) {
+  $quoted = ($engineArgs + @('--log-file', $log) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+  $p = Start-Process $summer -ArgumentList $quoted -PassThru -NoNewWindow
+  if (-not $p.WaitForExit($seconds * 1000)) { $p | Stop-Process }
+}
+Run-Summer 600 build\import.log '--headless','--path','.','--import'
+Run-Summer 600 build\export.log '--headless','--path','.','--export-release','summer.games','build\<game>.summer.zip'
+Expand-Archive build\<game>.summer.zip -DestinationPath build\bundle -Force
+```
+
+Each check below gives a `sh` form and a PowerShell form for Windows, which
+runs the engine through `Run-Summer` and searches its log with `Select-String`.
+
 A game without a server has no `server.pck` or `config/`; `unzip` then
 warns about the missing names and extracts the rest.
 
@@ -115,6 +131,11 @@ scene argument, and stop it after a few seconds:
 
 ```sh
 perl -e 'alarm shift; exec @ARGV' 15 <summer> --headless --verbose --main-pack build/bundle/server.pck
+```
+
+```powershell
+Run-Summer 15 build\server.log '--headless','--verbose','--main-pack','build\bundle\server.pck'
+Select-String -Path build\server.log -Pattern "Completed load for: 'res://.*tscn'" | Select-Object -First 1
 ```
 
 Find the first `Completed load for: 'res://….tscn'` line. It must be the
@@ -232,6 +253,11 @@ scripts when you upload, so every upload check passes.
    grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' build/client-run.log
    ```
 
+   ```powershell
+   Run-Summer 60 build\client-run.log '--headless','--verbose','--main-pack','build\bundle\client.pck','--quit-after','600'
+   Select-String -Path build\client-run.log -Pattern 'SCRIPT ERROR|Parse Error|Failed to load script'
+   ```
+
    `<released-summer>` is the Summer executable of the stamped version from
    the download page, not the development build that made the export. The
    grep must print nothing. The run compiles the scripts that the main
@@ -295,6 +321,11 @@ uploaded pack, and every letter on iPhone was a box.
    ```sh
    perl -e 'alarm shift; exec @ARGV' 60 <summer> --headless --main-pack build/bundle/client.pck --script ~/list_pack.gd > build/client-pack.txt 2>&1
    grep -Fx 'PACK res://fonts/MyFont.bin' build/client-pack.txt   # once per raw file from step 1
+   ```
+
+   ```powershell
+   Run-Summer 60 build\client-pack.txt '--headless','--main-pack','build\bundle\client.pck','--script',"$HOME\list_pack.gd"
+   Select-String -Path build\client-pack.txt -SimpleMatch -Pattern 'PACK res://fonts/MyFont.bin'   # once per raw file from step 1
    ```
 
    Every raw file must print its line. No line means the file is not in the

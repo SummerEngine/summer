@@ -116,6 +116,21 @@ is the Summer editor executable):
 <summer> --headless --path . --export-release "summer.games" build/courtyard.summer.zip
 ```
 
+On Windows, in PowerShell. `Run-Summer` bounds a run and keeps its output,
+because Summer.exe writes it to `--log-file`; step 4 uses it again:
+
+```powershell
+$summer = "$env:LOCALAPPDATA\SummerEngine\current\Summer.exe"
+function Run-Summer([int]$seconds, [string]$log, [string[]]$engineArgs) {
+  $quoted = ($engineArgs + @('--log-file', $log) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+  $p = Start-Process $summer -ArgumentList $quoted -PassThru -NoNewWindow
+  if (-not $p.WaitForExit($seconds * 1000)) { $p | Stop-Process }
+}
+Run-Summer 600 build\import.log '--headless','--path','.','--import'
+Run-Summer 600 build\export.log '--headless','--path','.','--export-release','summer.games','build\courtyard.summer.zip'
+Get-Content build\export.log -Tail 12
+```
+
 A good export ends like this:
 
 ```text
@@ -172,6 +187,11 @@ func _init() -> void:
 <summer> --headless --path . --script ~/check_graph.gd
 ```
 
+```powershell
+Run-Summer 120 build\graph.log '--headless','--path','.','--script',"$HOME\check_graph.gd"
+Select-String -Path build\graph.log -Pattern 'ok=|SUMMER_COMPOSITION'
+```
+
 Both lines must say `ok=true`. `SUMMER_COMPOSITION_DOMAIN_LEAK` means a
 client file loads a server file; move the shared part into `network/`.
 `SUMMER_COMPOSITION_DYNAMIC_PATH_UNDECLARED` flags any call whose name ends
@@ -199,6 +219,16 @@ unzip -o build/courtyard.summer.zip client.pck server.pck -d "$P/out"
   --summer-native-probe-output "$P/out/server-report.json"
 ```
 
+```powershell
+$P = "$HOME\summer-probe"
+New-Item -ItemType Directory -Force "$P\probe", "$P\out" | Out-Null
+Set-Content "$P\probe\project.godot" "config_version=5`n`n[application]`nconfig/name=`"Summer Native Upload Probe`"`n`n[rendering]`nrenderer/rendering_method=`"gl_compatibility`"`n"
+Expand-Archive build\courtyard.summer.zip -DestinationPath "$P\out" -Force
+foreach ($side in @(@('client', 'res://client/main.tscn'), @('server', 'res://authority/main.tscn'))) {
+  Run-Summer 120 "$P\out\$($side[0])-probe.log" '--headless', '--path', "$P\probe", '--summer-native-upload-probe', "$P\out\$($side[0]).pck", '--summer-native-probe-scene', $side[1], '--summer-native-probe-composition', 'res://network/composition.tres', '--summer-native-probe-output', "$P\out\$($side[0])-report.json"
+}
+```
+
 Paths must be absolute. Pass: both reports say `"sceneLoaded": true`, and
 their `compositionManifest` objects are identical. On failure the probe
 writes `rejection.json`; its codes are in [export-errors.md](export-errors.md).
@@ -211,6 +241,11 @@ a few seconds:
 
 ```sh
 perl -e 'alarm shift; exec @ARGV' 15 <summer> --headless --verbose --main-pack "$P/out/server.pck"
+```
+
+```powershell
+Run-Summer 15 "$P\out\server-run.log" '--headless', '--verbose', '--main-pack', "$P\out\server.pck"
+Select-String -Path "$P\out\server-run.log" -Pattern "Completed load for: 'res://.*tscn'" | Select-Object -First 1
 ```
 
 The first `Completed load for: 'res://….tscn'` line must be the authority
@@ -228,6 +263,14 @@ compile error:
 perl -e 'alarm shift; exec @ARGV' 60 <released-summer> --headless --verbose --main-pack "$P/out/client.pck" --quit-after 600 > "$P/out/client-run.log" 2>&1
 grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' "$P/out/client-run.log"
 ```
+
+```powershell
+Run-Summer 60 "$P\out\client-run.log" '--headless', '--verbose', '--main-pack', "$P\out\client.pck", '--quit-after', '600'
+Select-String -Path "$P\out\client-run.log" -Pattern 'SCRIPT ERROR|Parse Error|Failed to load script'
+```
+
+On Windows, `$summer` must be the released Summer of the stamped version for
+this check; the default install path is the current release.
 
 The grep must print nothing; the run itself exits normally even when a
 script fails. A failure here, such as `Static function "party_queue()" not

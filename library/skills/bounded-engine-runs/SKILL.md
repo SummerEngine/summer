@@ -29,6 +29,15 @@ several agents share one project on one machine.
     <project>/.engine.lock 180 <summer> ...
   ```
   Put this in one wrapper script and make every agent use it.
+- **On Windows** there is no `perl` by default, and Summer.exe writes its output only to `--log-file`.
+  Start it with `Start-Process -PassThru`, wait with `WaitForExit`, kill it on the limit, and hold the lock
+  file open for the whole run:
+  ```powershell
+  $lock = [IO.File]::Open("<project>\.engine.lock", 'OpenOrCreate', 'ReadWrite', 'None')   # throws while another run holds it; retry later
+  $p = Start-Process <summer.exe> -ArgumentList '--headless --path . -s res://tests/run_tests.gd --log-file run.log' -PassThru -NoNewWindow
+  if (-not $p.WaitForExit(180000)) { $p | Stop-Process; 'timed out' }
+  $lock.Close()
+  ```
 - **Cap its memory.** A time limit does not stop a run from eating all memory first; several engine runs plus a
   browser loading a large web export can exhaust memory and crash the machine. The wrapper should run the command as a child, sum the resident
   memory of its whole process tree (browsers spawn GPU/renderer helpers), kill the tree past a cap (e.g.

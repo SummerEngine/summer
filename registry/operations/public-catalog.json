@@ -5617,7 +5617,15 @@
               "meshy-7.1",
               "tripo-p2",
               "hi3d-v3",
-              "rodin-2.5-fast"
+              "rodin-2.5-fast",
+              "rodin-2.5",
+              "tripo-h3.1",
+              "hunyuan3d-v3",
+              "tripo-p1",
+              "pixal3d",
+              "trellis-multi",
+              "hunyuan3d-v2-multiview",
+              "hunyuan3d-v2-multiview-turbo"
             ]
           },
           "title": {
@@ -5893,6 +5901,14 @@
               "gemini-3.8-flash-tts",
               "gemini-3.8-flash-lite-tts",
               "minimax-speech-2.8-hd",
+              "minimax-speech-2.8-turbo",
+              "gemini-3.1-flash-tts",
+              "qwen-3-tts-1.7b",
+              "qwen-3-tts-0.6b",
+              "qwen-3-tts-voice-design",
+              "seed-audio-1.0",
+              "heygen-voice",
+              "heygen-voice-turbo",
               "xai-tts-v1",
               "qwen-audio-3-tts",
               "inworld-tts-1.5-max",
@@ -5902,7 +5918,10 @@
               "stable-audio-3-sfx",
               "music_v2",
               "music_v2_5",
-              "music_v1"
+              "music_v1",
+              "lyria-2",
+              "minimax-music-v2",
+              "minimax-music-3"
             ]
           },
           "durationSeconds": {
@@ -6172,6 +6191,10 @@
               "blackforestlabs/flux-3/klein/text-to-image",
               "ideogram-4.5",
               "ideogram/v4.5",
+              "ideogram-transparent",
+              "fal-ai/ideogram/v3/generate-transparent",
+              "ideogram-vector",
+              "ideogram/vector/text-to-vector",
               "recraft-4.1",
               "fal-ai/recraft/v4.1/text-to-image",
               "grok-imagine-2",
@@ -6451,11 +6474,32 @@
             "maxLength": 128
           },
           "backend": {
-            "description": "Ready-made clips for a Meshy-rigged humanoid.",
+            "description": "meshy-library: ready-made clips for a Meshy humanoid. hunyuan-custom: a human clip from words (Hunyuan Motion), as FBX or GLB.",
             "default": "meshy-library",
             "type": "string",
             "enum": [
-              "meshy-library"
+              "meshy-library",
+              "hunyuan-custom"
+            ]
+          },
+          "prompt": {
+            "description": "hunyuan-custom: the motion in words, e.g. \"jumps over a fence\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "durationSeconds": {
+            "description": "hunyuan-custom: seconds, 1 to 10 (default 4).",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "hunyuanModel": {
+            "description": "hunyuan-custom: fal-ai/hunyuan-motion (default) or fal-ai/hunyuan-motion/fast (quicker, cheaper).",
+            "type": "string",
+            "enum": [
+              "fal-ai/hunyuan-motion",
+              "fal-ai/hunyuan-motion/fast"
             ]
           },
           "motionNames": {
@@ -6468,6 +6512,38 @@
               "minLength": 1,
               "maxLength": 80
             }
+          },
+          "prompts": {
+            "description": "text-to-motion: one clip per prompt, e.g. \"waves hello\".",
+            "minItems": 1,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            }
+          },
+          "takes": {
+            "description": "text-to-motion: versions per prompt.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "lockJoints": {
+            "description": "text-to-motion: bones held still, e.g. a plant's base.",
+            "maxItems": 70,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "cfgScale": {
+            "type": "number",
+            "minimum": 1.5,
+            "maximum": 8
           },
           "dryRun": {
             "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
@@ -6909,7 +6985,7 @@
     {
       "name": "assets.generate_video",
       "title": "Generate a video",
-      "summary": "Make a video clip from words or from an image into the person's Summer assets. Always answers with a job; the finished job holds the asset. Spends their credits; dryRun shows the estimate. Next: jobs.wait.",
+      "summary": "Make a video clip from words, an image or reference images, or work on a clip (restyle, reframe, motion transfer, add sound) into the person's Summer assets. Always answers with a job; the finished job holds the asset. Spends their credits; dryRun shows the estimate. Next: jobs.wait.",
       "effect": "spend",
       "approval": "none",
       "permission": "spend",
@@ -6939,8 +7015,23 @@
             "type": "string",
             "maxLength": 2048
           },
+          "referenceImageUrls": {
+            "description": "Reference to video: public images of the characters, props or style to keep (with a reference model, e.g. kling-4-ref). Motion transfer: the character to move.",
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          },
+          "videoUrl": {
+            "description": "An input clip (public URL, at most 20 s): restyle or reframe it, move a character with its motion, or add sound to it (e.g. kling-video-to-audio). Billed on the clip's length.",
+            "type": "string",
+            "maxLength": 2048
+          },
           "model": {
-            "description": "Leave out for the default of the mode.",
+            "description": "Leave out for the default of the mode. Reference images or an input clip need a model that takes them (the -ref, -edit, -reframe, motion-control and video-to-audio models).",
             "type": "string",
             "enum": [
               "gemini-omni-flash",
@@ -6953,6 +7044,7 @@
               "seedance-2.5",
               "kling-3-pro",
               "kling-4",
+              "heygen-video",
               "minimax-h3-max",
               "minimax-h3-max-turbo",
               "wan-3",
@@ -6968,7 +7060,25 @@
               "kling",
               "kling-turbo",
               "veo3",
-              "vidu-q4"
+              "vidu-q4",
+              "gemini-omni-flash-ref",
+              "seedance-2-fast-ref",
+              "veo3.1-ref",
+              "kling-3-motion-control",
+              "gemini-omni-flash-edit",
+              "seedance-2.5-ref",
+              "gemini-omni-flash-1.1-ref",
+              "gemini-omni-flash-1.1-edit",
+              "kling-4-ref",
+              "heygen-video-ref",
+              "minimax-h3-max-reframe",
+              "kling-video-to-audio",
+              "thinksound",
+              "kling-3-pro-motion-control",
+              "minimax-h3-max-ref",
+              "wan-3-ref",
+              "happy-horse-1.1-ref",
+              "grok-video-1.5-ref"
             ]
           },
           "duration": {
@@ -7006,10 +7116,12 @@
               "720p",
               "1080p",
               "4k",
+              "480p",
+              "768p",
+              "2k",
               "768P",
               "1080P",
-              "480P",
-              "480p"
+              "480P"
             ]
           },
           "dryRun": {

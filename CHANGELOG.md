@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **The Summer editor's own chat never waits on a job.** With `SUMMER_EDITOR_CHAT=1` (the editor sets it for its chat's MCP server and the agent's shell), the MCP instructions say to generate assets only with the chat's `summer_cloud` tools, which return at once and post the finished job as a message in the conversation. There, `jobs.wait`, `jobs.get` (`summer_check_job`) and the generation operations (`assets.generate_*`, the other paid asset edits and the makers), by `summer_call`, their direct tools, `summer tool` or `summer <area> <action>`, and every `--wait`, answer `unsupported` at once without reaching Summer's server, and `summer_search` and `summer ops search` leave them out. Outside the editor chat (Claude Code, Cursor, Codex and the rest) nothing changes.
+
 ## [4.9.0] - 2026-10-24
 
 Games go live on Summer's automatic checks, with Summer's review afterwards: `summer_go_live` and `summer_publish_build` read that review, and name the platforms a hosted release left out.

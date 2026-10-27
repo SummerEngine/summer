@@ -1,10 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SUMMER_MCP_ASSETS_INSTRUCTIONS, SUMMER_MCP_INSTRUCTIONS, createMcpServer } from "./server.js";
 import { getSkillRegistry, selectSkillsForBulkInstall } from "../core/skills-registry.js";
 import { resolveToolSelection } from "./tool-surface.js";
 import { FIRST_GAME_LOOK_RULE, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS } from "./ops-surface.js";
+import { EDITOR_CHAT_JOB_SENTENCE, editorChatInstructions } from "../core/editor-chat.js";
 
 describe("MCP server instructions (initialize response)", () => {
   it("is one tight paragraph naming the five first-turn habits", () => {
@@ -121,6 +122,71 @@ describe("MCP server instructions (initialize response)", () => {
       expect(playbook.profile).toBe("assets");
       expect(missing([playbook.contentRouting, playbook.handOff])).toEqual([]);
       expect(playbook.step0_observeFirst).toBeUndefined();
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
+describe("MCP server instructions in the Summer editor chat (SUMMER_EDITOR_CHAT=1)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const JOB_WORDS = /jobs\.wait|jobs\.get|summer_check_job|summer_jobs_wait|summer_jobs_get/;
+  const variants = [
+    ["v4 engine", OPS_MCP_INSTRUCTIONS],
+    ["v4 assets", OPS_MCP_ASSETS_INSTRUCTIONS],
+    ["v3 engine", SUMMER_MCP_INSTRUCTIONS],
+    ["v3 assets", SUMMER_MCP_ASSETS_INSTRUCTIONS],
+  ] as const;
+
+  it.each(variants)("%s: the job sentence becomes the editor chat sentence, and no job tool is named", (_label, text) => {
+    const editor = editorChatInstructions(text);
+    expect(editor.split(EDITOR_CHAT_JOB_SENTENCE)).toHaveLength(2);
+    expect(editor).not.toMatch(JOB_WORDS);
+    expect(editor).not.toContain("\n");
+    expect(editor.length).toBeLessThanOrEqual(2048);
+  });
+
+  it("keeps the first-game look rule inside the first 512 characters of the v4 engine variant", () => {
+    const editor = editorChatInstructions(OPS_MCP_INSTRUCTIONS);
+    expect(editor.indexOf(FIRST_GAME_LOOK_RULE) + FIRST_GAME_LOOK_RULE.length).toBeLessThanOrEqual(512);
+    expect(editor).toBe(OPS_MCP_INSTRUCTIONS.replace("Long work answers with a job: jobs.wait.", EDITOR_CHAT_JOB_SENTENCE));
+  });
+
+  it.each([
+    ["v4", "full", OPS_MCP_INSTRUCTIONS],
+    ["v4", "assets", OPS_MCP_ASSETS_INSTRUCTIONS],
+    ["v3", "full", SUMMER_MCP_INSTRUCTIONS],
+    ["v3", "assets", SUMMER_MCP_ASSETS_INSTRUCTIONS],
+  ] as const)("reaches a real client on %s, %s profile", async (surface, profile, text) => {
+    vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
+    const { server } = createMcpServer(resolveToolSelection({ profile }, {}), { surface });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "summer-instructions-test", version: "1.0.0" });
+    await server.connect(serverTransport);
+    try {
+      await client.connect(clientTransport);
+      expect(client.getInstructions()).toBe(editorChatInstructions(text));
+      expect(client.getInstructions()).toContain(EDITOR_CHAT_JOB_SENTENCE);
+      expect(client.getInstructions()).not.toMatch(JOB_WORDS);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("sends the usual instructions when the variable is not 1", async () => {
+    vi.stubEnv("SUMMER_EDITOR_CHAT", "0");
+    const { server } = createMcpServer(resolveToolSelection({ profile: "full" }, {}), { surface: "v4" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "summer-instructions-test", version: "1.0.0" });
+    await server.connect(serverTransport);
+    try {
+      await client.connect(clientTransport);
+      expect(client.getInstructions()).toBe(OPS_MCP_INSTRUCTIONS);
     } finally {
       await client.close();
       await server.close();

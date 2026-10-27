@@ -5,6 +5,7 @@ import { errorAnswer, isLocalOp, resolveOpName, type Answer, type ErrorCode } fr
 import { shippedCloudEntries, shippedWireForm } from "./public-catalog.js";
 import { withOutField } from "./save-files.js";
 import { searchEntries } from "./search.js";
+import { isEditorChat, isEditorChatBlockedOp } from "../editor-chat.js";
 
 /**
  * The hosted Summer server's v4 surface: the same address with `?surface=v4`
@@ -206,7 +207,10 @@ export async function searchEverywhere(
   for (const entry of live) {
     cloud.set(entry.name, { ...cloud.get(entry.name), ...entry, ...(entry.input ? { input: withOutField(entry.name, entry.input) as Record<string, unknown> } : {}) });
   }
-  const items = searchEntries([...localEntries(), ...cloud.values()], query, filters).map(({ topics: _topics, ...entry }) =>
+  // The Summer editor chat never waits on a job or generates here (core/editor-chat.ts): those operations are not found.
+  const editorChat = isEditorChat();
+  const candidates = [...localEntries(), ...cloud.values()].filter((entry) => !editorChat || !isEditorChatBlockedOp(entry.name, entry.effect));
+  const items = searchEntries(candidates, query, filters).map(({ topics: _topics, ...entry }) =>
     isLocalOp(entry.name)
       ? { ...entry, input: localInputSchema(entry.name) ?? { type: "object" }, mcpTool: entry.mcpTool && isDirect(entry.mcpTool) ? entry.mcpTool : undefined }
       : entry

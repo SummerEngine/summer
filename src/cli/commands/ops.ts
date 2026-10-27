@@ -10,6 +10,7 @@ import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { noteCliError, noteCliHosted } from "../../core/cli-usage.js";
+import { editorChatRefusal, isEditorChat, isEditorChatBlockedOp } from "../../core/editor-chat.js";
 
 /**
  * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
@@ -230,7 +231,8 @@ export function formatAnswer(answer: Answer, out?: string): string {
     case "done":
       return JSON.stringify(answer.result, null, 2);
     case "running":
-      return `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
+      // The Summer editor chat never waits on a job (core/editor-chat.ts).
+      return isEditorChat() ? `Started: job ${answer.job.id}.` : `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
     case "needs_approval":
       return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: ${waitFlags(answer.job.id)}`;
     case "dry_run":
@@ -242,6 +244,14 @@ export function formatAnswer(answer: Answer, out?: string): string {
 export async function runOpFromCli(op: string, argv: readonly string[], deps: OpsCliDeps = defaultOpsCliDeps): Promise<number> {
   if (!OP_NAME.test(op)) {
     deps.printError(formatAnswer(errorAnswer("invalid_input", `"${op}" is not an operation name (area action).`, { next: { op: "ops.search" } })));
+    return 1;
+  }
+  // The Summer editor chat (SUMMER_EDITOR_CHAT=1) generates with its own tools and never waits on, polls or
+  // checks a job: those commands and --wait fail here at once, before any call to Summer's server.
+  if (isEditorChat() && (isEditorChatBlockedOp(resolveOpName(op)) || argv.some((token) => token === "--wait" || token.startsWith("--wait=")))) {
+    const refused = editorChatRefusal(resolveOpName(op));
+    noteCliError("unsupported");
+    deps.printError(argv.includes("--json") ? JSON.stringify(refused) : formatAnswer(refused));
     return 1;
   }
   let call: ParsedCall;

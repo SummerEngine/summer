@@ -21,7 +21,8 @@ import {
   type ToolDispatchEntry,
 } from "../../core/capabilities/tool-dispatch.js";
 import { c } from "../../core/format.js";
-import { noteCliHosted, noteCliTool } from "../../core/cli-usage.js";
+import { noteCliError, noteCliHosted, noteCliTool } from "../../core/cli-usage.js";
+import { editorChatBlockedCall, editorChatRefusal, isEditorChat } from "../../core/editor-chat.js";
 import {
   callHostedToolForCli,
   hostedResultPayload,
@@ -154,6 +155,14 @@ export const toolCommand = new Command("tool")
     }
 
     const entry = resolveToolForCli(name);
+    // The Summer editor chat never waits on, checks or starts a generation job here (core/editor-chat.ts).
+    const refused = isEditorChat() ? editorChatBlockedCall(entry?.name ?? name, parseJsonArgs(options.args ?? options.json)) : null;
+    if (refused) {
+      noteCliError("unsupported");
+      console.log(JSON.stringify(editorChatRefusal(refused), null, 2));
+      process.exitCode = 1;
+      return;
+    }
     if (!entry) {
       // Not a local tool: the hosted store and publishing tools, with the store sign-in.
       // Summer's server records the call itself (X-Summer-Client-Surface: cli).

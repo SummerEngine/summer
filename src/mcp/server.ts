@@ -1,4 +1,5 @@
 import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../core/api-client.js";
 import type { EngineSelection } from "../core/engine.js";
@@ -45,6 +46,7 @@ import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_
 import { FileSaver } from "../core/ops/save-files.js";
 import { runInAppStudio } from "../core/ops/studio-page.js";
 import { opForToolCall } from "../core/ops/contract.js";
+import { editorChatBlockedCall, editorChatInstructions, editorChatRefusal, isEditorChat } from "../core/editor-chat.js";
 import { knownOp } from "../core/ops/catalog.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
@@ -491,6 +493,11 @@ export function createMcpServer(
   // A profile without engine tools (assets) gets the no-engine instructions,
   // playbook and task plan, so nothing points the agent at a tool it lacks.
   const engine = !selection.toolsets || selection.toolsets.has("engine");
+  const editorChat = isEditorChat();
+  const instructions =
+    surface === "v4"
+      ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
+      : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS;
   const server = new McpServer(
     {
       name: "summer-engine",
@@ -498,9 +505,8 @@ export function createMcpServer(
     },
     {
       instructions:
-        (surface === "v4"
-          ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
-          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS) +
+        // The Summer editor chat generates with its own tools and never waits on a job (core/editor-chat.ts).
+        (editorChat ? editorChatInstructions(instructions) : instructions) +
         (options.notice ? ` ${options.notice} Tell the person once.` : ""),
     }
   );
@@ -561,8 +567,37 @@ export function createMcpServer(
     const studio = (op: string, input: Record<string, unknown>) => runInAppStudio(op, input, () => getClient({ launch: false }));
     applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files, studio });
   }
+  if (editorChat) gateEditorChat(server);
 
   return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed, files };
+}
+
+/**
+ * The Summer editor chat (SUMMER_EDITOR_CHAT=1): no tool call waits on,
+ * checks or starts a generation job. tools/call answers those at once with
+ * the refusal, before any handler or hosted call runs, local and hosted tools
+ * alike (the hosted mount's own handlers wrap these); tools/list leaves their
+ * direct tools out.
+ */
+function gateEditorChat(server: McpServer): void {
+  const handlers = (server.server as unknown as { _requestHandlers: Map<string, (request: unknown, extra: unknown) => Promise<unknown>> })._requestHandlers;
+  const listTools = handlers.get("tools/list") as ((request: unknown, extra: unknown) => Promise<{ tools: Tool[] }>) | undefined;
+  if (listTools) {
+    server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+      const result = await listTools(request, extra);
+      return { ...result, tools: result.tools.filter((tool) => !editorChatBlockedCall(tool.name, {})) };
+    });
+  }
+  const callTool = handlers.get("tools/call");
+  if (callTool) {
+    server.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+      const { name, arguments: args } = request.params;
+      const op = editorChatBlockedCall(name, args ?? {});
+      if (!op) return (await callTool(request, extra)) as never;
+      const answer = editorChatRefusal(op);
+      return { content: [{ type: "text" as const, text: JSON.stringify(answer) }], structuredContent: answer as unknown as Record<string, unknown>, isError: true };
+    });
+  }
 }
 
 /** What the hosted tools a profile mounts are, for summer_store_tools. */

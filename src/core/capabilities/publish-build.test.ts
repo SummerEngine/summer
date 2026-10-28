@@ -460,18 +460,22 @@ describe("publishBuild", () => {
     expect(store.calls.some((call) => call.method === "POST")).toBe(false);
   });
 
-  it("refuses a hosted export whose summer.build.json declares other platforms, before anything is uploaded", async () => {
-    const store = fakeStore();
+  it("uploads a hosted export whose summer.build.json declares other platforms, declaring the bundle's platforms", async () => {
     const mismatched = join(root, "mismatched.zip");
-    await writeSummerBundle(mismatched, { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["android", "ios", "macos", "web", "windows"] });
-    for (const confirm of [false, true]) {
-      const error = await failure(publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", confirm, face: "mcp" }, deps(store.fetch)));
-      expect(error.code).toBe("declaration_mismatch");
-      expect(error.message).toContain("the bundle targets ios, macos, windows but its summer.build.json declares android, ios, macos, web, windows");
-      expect(error.recovery).toContain("alignDeclaration:true");
-    }
-    // Nothing reached the store: the version is not spent.
-    expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
+    const written = await writeSummerBundle(mismatched, { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["android", "ios", "linux", "web"] });
+    (globalThis as any).__bundleSize = written.length;
+    const store = fakeStore({ gameTargets: ["ios", "macos", "windows"] });
+    const change = { declared: ["android", "ios", "linux", "web"], missing: ["android", "linux", "web"], added: ["macos", "windows"] };
+
+    const preview = await publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", target: { hosted: true, targetPlatforms: ["ios", "macos", "windows"], targetPlatformChange: change } });
+    expect(preview.warnings).toBeUndefined();
+
+    const result = await publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ ok: true, status: "uploaded", targetPlatforms: ["ios", "macos", "windows"], targetPlatformChange: change });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toMatchObject({ executionMode: "hosted", version: "v1.0.0", targetPlatforms: ["ios", "macos", "windows"] });
+    expect(create.body.exportedClient).toEqual({ entryPoint: "res://main.tscn" });
   });
 
   it("accepts Summer client versions only", () => {

@@ -42,18 +42,35 @@ export function samePlatforms(a: readonly string[], b: readonly string[]): boole
 }
 
 /**
- * Why the store will refuse this hosted bundle's Build declaration, or null.
- * The store requires summer.build.json's targetPlatforms to equal the
- * platforms the client pack was exported for (declaration_mismatch), and the
- * refusal spends the clientVersion, so this is checked before any upload.
+ * A hosted bundle whose config/summer.build.json declares other platforms than
+ * its client was exported for. Nothing is refused for it: the store's Build
+ * targets the bundle's platforms and reports the same difference as
+ * targetPlatformChange (summer-platform docs/build-publications.md, "The
+ * bundle decides the platforms").
  */
-export function declarationMismatch(bundle: Pick<SummerBundle, "hostedBuild" | "targetPlatforms">): string | null {
-  const declared = bundle.hostedBuild?.targetPlatforms;
-  if (!Array.isArray(declared)) return null;
-  const platforms = declared.map(String);
-  return samePlatforms(platforms, bundle.targetPlatforms)
-    ? null
-    : `the bundle targets ${[...bundle.targetPlatforms].sort().join(", ")} but its summer.build.json declares ${[...platforms].sort().join(", ")}`;
+export interface TargetPlatformChange {
+  /** What summer.build.json declares. */
+  declared: string[];
+  /** Declared, not in the bundle: the Build does not target them. */
+  missing: string[];
+  /** In the bundle, not declared: the Build targets them. */
+  added: string[];
+  message: string;
+}
+
+/** The difference between a hosted bundle's declaration and its platforms, or null when they agree. */
+export function targetPlatformChange(bundle: Pick<SummerBundle, "hostedBuild" | "targetPlatforms">): TargetPlatformChange | null {
+  const raw = bundle.hostedBuild?.targetPlatforms;
+  if (!Array.isArray(raw)) return null;
+  const declared = raw.map(String);
+  const targets = bundle.targetPlatforms;
+  if (samePlatforms(declared, targets)) return null;
+  const missing = declared.filter((platform) => !targets.includes(platform));
+  const added = targets.filter((platform) => !declared.includes(platform));
+  let message = `This Build runs on ${targets.join(", ")}, the platforms in the bundle; its summer.build.json declares ${declared.join(", ") || "none"}.`;
+  if (missing.length) message += ` The bundle has no ${missing.join(" or ")} client; export it and publish a new version to add it.`;
+  if (added.length) message += ` It also includes ${added.join(" and ")}, which summer.build.json does not declare.`;
+  return { declared, missing, added, message };
 }
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const AS_EXPORTED =

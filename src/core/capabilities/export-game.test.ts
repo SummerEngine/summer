@@ -142,13 +142,14 @@ describe("exportGame", () => {
     expect(newer.skippedTargets).toBeUndefined();
   });
 
-  it("warns when a hosted game's declaration differs from the export, and aligns it on request", async () => {
+  it("reports, without a warning, a hosted game's declaration that differs from the export, and aligns it on request", async () => {
     await writeFile(join(project, "summer.build.json"), JSON.stringify({ gameId: "game-1", executionMode: "hosted", targetPlatforms: ["ios", "android", "macos", "windows", "web"] }));
     // The engine copies the project's declaration into the bundle as it is.
     await writeSummerBundle(join(root, "bundle.zip"), { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["ios", "android", "macos", "windows", "web"] });
     const warned = await exportGame({ project, targets: ["ios", "macos", "windows"] }, { findBinary: () => engine, engineVersion: () => "0.7.1" });
-    expect(warned.warnings?.[0]).toContain("summer_publish_build will refuse this export (declaration_mismatch)");
-    expect(warned.warnings?.[0]).toContain("alignDeclaration:true");
+    expect(warned.warnings).toBeUndefined();
+    expect(warned.targetPlatformChange).toMatchObject({ declared: ["ios", "android", "macos", "windows", "web"], missing: ["android", "web"], added: [] });
+    expect(warned.targetPlatformChange?.message).toContain("This Build runs on ios, macos, windows");
 
     await writeSummerBundle(join(root, "bundle.zip"), { hosted: true, targetPlatforms: ["ios", "macos", "windows"] });
     const aligned = await exportGame({ project, targets: ["ios", "macos", "windows"], alignDeclaration: true }, { findBinary: () => engine, engineVersion: () => "0.7.1" });
@@ -156,7 +157,7 @@ describe("exportGame", () => {
     expect(declared).toMatchObject({ gameId: "game-1", executionMode: "hosted" });
     expect([...declared.targetPlatforms].sort()).toEqual(["ios", "macos", "windows"]);
     expect(aligned.projectChanges).toContainEqual({ file: "summer.build.json", change: "modified" });
-    expect(aligned.warnings?.join(" ") ?? "").not.toContain("declaration_mismatch");
+    expect(aligned.targetPlatformChange).toBeUndefined();
   });
 
   it("keeps a bundle that holds some of the asked targets, and names the missing ones", async () => {

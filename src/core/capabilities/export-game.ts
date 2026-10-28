@@ -21,7 +21,7 @@ import {
   type StoreTarget,
 } from "./export-presets.js";
 import { engineTemplateInfo, findInstalledTemplate, templateFileFor, type TemplatesDependencies } from "./export-templates.js";
-import { BUNDLE_MANIFEST, BuildToolError, declarationMismatch, hashFile, readSummerBundle, samePlatforms, type SummerBundle } from "./summer-bundle.js";
+import { BUNDLE_MANIFEST, BuildToolError, hashFile, readSummerBundle, samePlatforms, targetPlatformChange, type SummerBundle, type TargetPlatformChange } from "./summer-bundle.js";
 
 export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
 
@@ -104,6 +104,11 @@ export interface ExportGameResult {
   debug: boolean;
   engine: string;
   durationMs: number;
+  /**
+   * A game with a server whose summer.build.json declares other platforms than
+   * the bundle holds. Informational: the store targets the bundle's platforms.
+   */
+  targetPlatformChange?: TargetPlatformChange;
   /** Bundle format: the bundle manifest. */
   /** paths: every entry of the .zip, summer-bundle.json included (the fixed layout a release checklist compares). */
   bundle?: Omit<SummerBundle, "hostedBuild" | "files"> & { fileCount: number; paths: string[] };
@@ -424,7 +429,11 @@ async function runExport(
   }
 }
 
-/** Set the project's summer.build.json targetPlatforms to the export targets (a hosted game's Build declaration). */
+/**
+ * Set the project's summer.build.json targetPlatforms to the export targets,
+ * so the project's declaration names what was exported. The store targets the
+ * bundle's platforms either way.
+ */
 async function alignBuildDeclaration(project: string, targets: readonly string[]): Promise<void> {
   const path = join(project, "summer.build.json");
   if (!existsSync(path)) return;
@@ -532,12 +541,7 @@ export async function exportGame(
     );
   }
   const warnings: string[] = [...skippedWarnings, ...projectChangeWarnings(projectChanges)];
-  const mismatch = declarationMismatch(bundle);
-  if (mismatch) {
-    warnings.unshift(
-      `summer_publish_build will refuse this export (declaration_mismatch): ${mismatch}. Export again with alignDeclaration:true to set summer.build.json targetPlatforms to [${bundle.targetPlatforms.join(", ")}], or with targets equal to what it declares.`
-    );
-  }
+  const platformChange = targetPlatformChange(bundle);
   if (partial) {
     warnings.push(
       `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform. ` +
@@ -565,6 +569,7 @@ export async function exportGame(
     engine: binary,
     durationMs: deps.now().getTime() - started.getTime(),
     bundle: { ...summary, fileCount: files.length, paths: [BUNDLE_MANIFEST, ...files.map((file) => file.path)].sort() },
+    ...(platformChange ? { targetPlatformChange: platformChange } : {}),
     ...(projectChanges.length ? { projectChanges } : {}),
     ...(warnings.length ? { warnings } : {}),
     next: "Upload it to the game's store listing with summer_publish_build (gameId, clientVersion).",

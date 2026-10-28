@@ -6,11 +6,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [4.9.1] - 2026-10-28
 
-Games without a server export and upload for every Summer app again: the CLI refused exports the store already takes.
+Exports the store already takes upload again: games without a server for every Summer app, and games with a server whatever platforms `summer.build.json` declares.
 
 - **A `summer.bundle.v2` export without a server may leave out `config/summer.build.json`.** `summer_export_game` wrote a valid `.zip` and then answered `bundle_invalid` ("always holds config/summer.build.json"), and `summer_publish_build` (`store.upload_file`) refused the same file. Only a game with a server needs it, as before (summer-platform `docs/build-publications.md`, "summer.games bundle layout").
 - **A game without a server uploads for macOS and Windows**, not only iPhone and Android. `summer_publish_build` declares every platform in the bundle that Summer has an app for (`ios`, `android`, `macos`, `windows`, `web`); it answers `platforms_unsupported` only for an export with none of them (Linux only). `summer_export_game` no longer warns that desktop targets will be refused.
-- **Copy:** the `summer_export_game` description, the `export-and-ship`, `release-checklist`, `launch-ready` and `release-readiness` skills and the MCP tools reference no longer say a game without a server is for phones only, or that a `summer.bundle.v2` export always holds `config/summer.build.json`.
+- **A game with a server uploads with the bundle's platforms, whatever `summer.build.json` declares.** The store has not refused that difference since 2026-10-10: the bundle decides the platforms and the store reports `targetPlatformChange`. `summer_publish_build` no longer stops with `declaration_mismatch` before the upload. It declares the bundle's platforms and returns `targetPlatformChange` (`declared`, `missing`, `added`, `message`) in the preview and the result. `summer_export_game` returns the same field instead of a warning. `alignDeclaration: true` is optional: it still sets `summer.build.json` to the targets. The `declaration_mismatch` fix text now names the store's remaining reasons.
+- **Copy:** the `summer_export_game` description, the `export-and-ship`, `release-checklist`, `launch-ready` and `release-readiness` skills and the MCP tools reference no longer say a game without a server is for phones only, that a `summer.bundle.v2` export always holds `config/summer.build.json`, or that a server game's declared platforms must equal the export's.
 
 ## [4.9.0] - 2026-10-24
 

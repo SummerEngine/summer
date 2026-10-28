@@ -10,7 +10,7 @@ import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
 import { publishDownload } from "./publish-download.js";
 import { CHECK_FIXES, summarizeChecks } from "./store-checks.js";
-import { BuildToolError, declarationMismatch, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
+import { BuildToolError, readSummerBundle, targetPlatformChange, type SummerBundle } from "./summer-bundle.js";
 
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
@@ -380,18 +380,12 @@ export function normalizeClientVersion(value?: string): string {
   return version;
 }
 
+/**
+ * The Build declares the bundle's platforms that Summer has a client on, with
+ * or without a server: the store targets the same ones when it reads the
+ * bundle, whatever summer.build.json declares.
+ */
 function targetPlatforms(bundle: SummerBundle): string[] {
-  const mismatch = declarationMismatch(bundle);
-  if (mismatch) {
-    throw new BuildToolError(
-      "declaration_mismatch",
-      `The store would refuse this upload (declaration_mismatch): ${mismatch}. Nothing was uploaded and no version was used.`,
-      "Recovery: export again with summer_export_game alignDeclaration:true (it sets summer.build.json targetPlatforms to the targets you export), or with targets equal to what summer.build.json declares; then upload the new export."
-    );
-  }
-  if (bundle.hosted) return bundle.targetPlatforms;
-  // A game without a server declares the bundle's platforms that Summer has a
-  // client on; the store targets the same ones when it reads the bundle.
   const platforms = bundle.targetPlatforms.filter((platform) => CLIENT_TARGETS.includes(platform));
   if (!platforms.length) {
     throw new BuildToolError(
@@ -576,6 +570,7 @@ export async function publishBuild(
   const clientVersion = normalizeClientVersion(input.clientVersion);
   const bundle = await readSummerBundle(file);
   const platforms = targetPlatforms(bundle);
+  const platformChange = targetPlatformChange(bundle);
   const digest = await hashParts(file, PART_BYTES);
   const publish = input.publish === true;
   const target = {
@@ -589,6 +584,8 @@ export async function publishBuild(
     hosted: bundle.hosted,
     summerVersion: bundle.summerVersion,
     publish,
+    // Informational: summer.build.json declares other platforms; the store targets the bundle's.
+    ...(platformChange ? { targetPlatformChange: platformChange } : {}),
   };
 
   if (!gameId) return listGamesOrThrow(deps);
@@ -622,7 +619,8 @@ export async function publishBuild(
         clientVersion,
         ...(bundle.hostedBuild ? { exportedClient: { entryPoint: bundle.mainScene } } : {}),
         build: bundle.hostedBuild
-          ? { ...bundle.hostedBuild, version: clientVersion }
+          ? // A declaration that names the bundle's platforms is sent as written, so a retry sends the same bytes.
+            { ...bundle.hostedBuild, version: clientVersion, ...(platformChange ? { targetPlatforms: platforms } : {}) }
           : { version: clientVersion, executionMode: "standalone", targetPlatforms: platforms, client: { entryPoint: bundle.mainScene } },
       },
     });
@@ -742,6 +740,8 @@ export async function publishBuild(
       clientVersion,
       sha256: digest.sha256,
       sizeBytes: digest.sizeBytes,
+      targetPlatforms: platforms,
+      ...(platformChange ? { targetPlatformChange: platformChange } : {}),
       // passed: every platform passed Summer's automated checks; checking: call again to keep waiting.
       checksState: checks.state,
       checks: checks.checks,

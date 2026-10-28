@@ -134,9 +134,9 @@ when the newest one is older than the project's last change (`git log -1
 failed a check the creator owns, or carries a Summer version line older than
 the current release (rule 1.2).
 
-1. `summer_export_game`: format `bundle` (a game with a server passes its
-   `targets` and `alignDeclaration: true`), or format `download` with one
-   target. Read rules 1.1 to 1.5 from the answer.
+1. `summer_export_game`: format `bundle` (a game with a server may pass
+   its `targets` and `alignDeclaration: true` to keep `summer.build.json`
+   in step), or format `download` with one target. Read rules 1.1 to 1.5 from the answer.
 2. Run the `release-readiness` checks an agent can run on a bundle `.zip`
    (1, 6, 7, 8 steps 1 to 4, 9). A failure there is a game change: show it
    to the creator and fix it with their OK before uploading.

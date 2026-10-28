@@ -22,7 +22,7 @@ export interface CheckFix {
 export const CHECK_FIXES: Record<string, CheckFix> = {
   // Intake (build-publications errorCode).
   bundle_invalid: { owner: "creator", fix: "Export again with summer_export_game (the summer.games preset) and upload the .zip exactly as Summer Engine wrote it." },
-  declaration_mismatch: { owner: "creator", fix: "Export again with summer_export_game alignDeclaration:true, or with targets equal to what summer.build.json declares." },
+  declaration_mismatch: { owner: "creator", fix: "The export does not match this game or its upload (another game's export, no Summer app platform, or changed server settings): upload it to its original game, or export again with summer_export_game and upload the new export." },
   client_version_conflict: { owner: "creator", fix: "This version number already names different bytes: upload with a new clientVersion." },
   artifact_exists: { owner: "creator", fix: "These exact bytes are already a build of this game: use that build (store.status lists it) or export a new version." },
   engine_build_unreleased: {

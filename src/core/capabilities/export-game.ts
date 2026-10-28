@@ -64,9 +64,6 @@ const STORE_VERSION_PLATFORM: Record<"web" | "macos" | "windows", string> = {
 /** Web zip limits of the store. */
 const WEB_LIMITS = { zipBytes: 500 * 1024 * 1024, fileBytes: 200 * 1024 * 1024, files: 2000 };
 
-/** Games without a server run on the phone apps only (the store's standalone targets). */
-const STANDALONE_TARGETS: readonly string[] = ["ios", "android"];
-
 /** Engine support per bundle target, for the recovery text when a target is missing. */
 const TARGET_ENGINE_NOTE: Partial<Record<StoreTarget, string>> = {
   android: "Android in a summer.games bundle needs a Summer Engine newer than 0.7.0.",
@@ -545,13 +542,6 @@ export async function exportGame(
     warnings.push(
       `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform. ` +
         ["Update Summer Engine and export them again.", ...missing.flatMap((target) => TARGET_ENGINE_NOTE[target] ?? [])].join(" ")
-    );
-  }
-  const desktopOnly = bundle.hosted ? [] : bundle.targetPlatforms.filter((target) => !STANDALONE_TARGETS.includes(target));
-  if (desktopOnly.length) {
-    warnings.push(
-      `This game has no server, and the store runs games without a server on iPhone and Android only: summer_publish_build will refuse ${desktopOnly.join(", ")}. ` +
-        'Export targets ["ios","android"] for the store build, and macOS or Windows as a download (format "download").'
     );
   }
   const { sha256, sizeBytes } = await hashFile(out);

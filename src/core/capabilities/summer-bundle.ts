@@ -14,6 +14,8 @@ import { readZipEntries, readZipEntry, ZipReadError, type ZipEntry } from "../ut
  *   paths in BUNDLE_V2_PATHS and nothing else, whatever the game declares.
  * - summer.bundle.v1 (older engines): a hosted game's configuration may be
  *   any number of config/ files.
+ * In both, a hosted game always carries config/summer.build.json; a game
+ * without a host may omit it.
  */
 
 export const BUNDLE_SCHEMA_V1 = "summer.bundle.v1";
@@ -203,10 +205,6 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
         : `The export contains ${extra.name}, which a summer.games export never has.`
     );
   }
-  if (schema === BUNDLE_SCHEMA_V2 && !byName.has(BUNDLE_BUILD)) {
-    throw bundleError(`A ${BUNDLE_SCHEMA_V2} export always holds ${BUNDLE_BUILD}, and this one does not.`);
-  }
-
   const files: BundleFile[] = [];
   for (const item of manifest.files as Array<Record<string, unknown>>) {
     const entry = typeof item?.path === "string" ? byName.get(item.path) : undefined;

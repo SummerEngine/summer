@@ -123,9 +123,10 @@ Wait for the answers.
 
 ### Build (rules 1.1 to 2.5)
 
-What to upload (rule 1.5): a game with a server, or one for iPhone or
-Android, needs a store bundle (format `bundle`). A game without a server
-ships web and desktop as downloads (format `download`), one per platform.
+What to upload (rule 1.5): the Summer apps on iPhone, Android, macOS and
+Windows run a store bundle (format `bundle`), with or without a server. A
+web build or a desktop download for the store page is format `download`,
+one per platform.
 
 An upload is missing when `store.status` has none for a target, and stale
 when the newest one is older than the project's last change (`git log -1

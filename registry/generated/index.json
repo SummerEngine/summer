@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "0129465af088ad0c07bf5152c738656b8fcba50cf31e0b0a3ce32eccbc25c7b5",
+      "content_hash": "f640ab8e2cca224c7ad0291a54f96d534703d19a5da15ff6f55480d657b76f45",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1613,7 +1613,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "cd80ecea8eb678c7dbeb9974593a437cf9a08cd4b70311160a346c3ed9c1cb42",
+      "content_hash": "08419e1e78fb05512db1f71b501cedc63d358f144e6afb94016aa5b1cd645d6b",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2121,7 +2121,7 @@
       "id": "skill/launch-ready",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "79c2ea3a6199b153789d430d055d8cdb530656860de3bc03237d8df7829757f2",
+      "content_hash": "5c92b6a2cbea4bf0777c0d091d0019ee7feab1b100e5621d3aedc3089184d44f",
       "summary": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
       "use_when": [
         "the user says 'get my game ready to launch', 'make my store page', 'publish my game to summer.games' or 'do everything it needs to go live'",
@@ -3051,7 +3051,7 @@
       "id": "skill/release-checklist",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "2f152075ba758a592d15773118d6dec2b2eb04839235b32a012ea121116b1ce0",
+      "content_hash": "5c829ccaebd6dd102fc3423782e1ef737c221652c51635d464c20aba3ce94599",
       "summary": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
       "use_when": [
         "the user says 'is it ready to go live', 'check everything before launch' or 'what is missing from my store page'",
@@ -3098,7 +3098,7 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "5756e0d604fca6b82959672b462e0bb34b182afbfe1858719cc41d774f5873f3",
+      "content_hash": "3eddd242438bc5f373865cab006864efe8957024eab465dea86a2c18a744e974",
       "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
@@ -7379,7 +7379,7 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "065d9069434d9eda25b7a69594371c52502320adf6cc4caa139fae56b9d9b480",
+      "content_hash": "e9a073099057d6fbd07f25056187f9d1a55aecbf1f7fe8d9b6aba241815a7c70",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",

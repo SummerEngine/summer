@@ -77,7 +77,7 @@ Expand-Archive build\<game>.summer.zip -DestinationPath build\bundle -Force
 Each check below gives a `sh` form and a PowerShell form for Windows, which
 runs the engine through `Run-Summer` and searches its log with `Select-String`.
 
-A game without a server has no `server.pck` or `config/`; `unzip` then
+A game without a server has no `server.pck` and may have no `config/`; `unzip` then
 warns about the missing names and extracts the rest.
 
 `<summer>` is the Summer Engine executable. Two look-alikes hide real
@@ -470,7 +470,7 @@ here would have caught:
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
 
-No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.1` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
 
 | In this skill | Command |
 |---|---|

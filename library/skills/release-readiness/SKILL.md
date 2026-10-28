@@ -77,7 +77,7 @@ Expand-Archive build\<game>.summer.zip -DestinationPath build\bundle -Force
 Each check below gives a `sh` form and a PowerShell form for Windows, which
 runs the engine through `Run-Summer` and searches its log with `Select-String`.
 
-A game without a server has no `server.pck` or `config/`; `unzip` then
+A game without a server has no `server.pck` and may have no `config/`; `unzip` then
 warns about the missing names and extracts the rest.
 
 `<summer>` is the Summer Engine executable. Two look-alikes hide real

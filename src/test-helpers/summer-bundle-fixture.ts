@@ -98,8 +98,10 @@ export interface BundleFixtureOptions {
   declaredPlatforms?: string[];
   clientPack?: Buffer;
   zip64?: boolean;
-  /** The manifest schema (default summer.bundle.v1). A v2 export always carries config/summer.build.json. */
+  /** The manifest schema (default summer.bundle.v1). */
   schema?: "summer.bundle.v1" | "summer.bundle.v2" | string;
+  /** Hosted, or a v2 game without a server: carry config/summer.build.json (default true). */
+  buildFile?: boolean;
   /** Extra entries, listed in the manifest like every other file. */
   extraFiles?: ZipFixtureEntry[];
   /** Edit the manifest before it is written. */
@@ -119,10 +121,11 @@ export function buildSummerBundle(options: BundleFixtureOptions = {}): Buffer {
   if (options.hosted) {
     const server = Buffer.from("GDPC".padEnd(2048, "s"));
     const build = Buffer.from(JSON.stringify({ gameId: "game-1", executionMode: "hosted", targetPlatforms: options.declaredPlatforms ?? options.targetPlatforms ?? ["ios"] }));
-    files.push({ name: "server.pck", data: server }, { name: "config/summer.build.json", data: build, deflate: true });
+    files.push({ name: "server.pck", data: server });
+    if (options.buildFile !== false) files.push({ name: "config/summer.build.json", data: build, deflate: true });
     manifest.server = { path: "server.pck", mainScene: "res://authority/main.tscn" };
     manifest.compositionPath = "res://network/composition.tres";
-  } else if (options.schema === "summer.bundle.v2") {
+  } else if (options.schema === "summer.bundle.v2" && options.buildFile !== false) {
     files.push({ name: "config/summer.build.json", data: Buffer.from(JSON.stringify({ gameId: "game-1", executionMode: "standalone" })) });
   }
   files.push(...(options.extraFiles ?? []));

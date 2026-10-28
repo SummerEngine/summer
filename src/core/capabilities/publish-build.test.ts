@@ -401,11 +401,6 @@ describe("publishBuild", () => {
       target: { file: bundle },
     });
 
-    const macos = join(root, "macos.zip");
-    await writeSummerBundle(macos, { targetPlatforms: ["ios", "macos"] });
-    expect((await failure(publishBuild({ gameId: "game-1", file: macos, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)))).code).toBe(
-      "platforms_unsupported"
-    );
     const phones = join(root, "phones.zip");
     await writeSummerBundle(phones, { targetPlatforms: ["ios", "android"] });
     expect(await publishBuild({ gameId: "game-1", file: phones, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
@@ -416,6 +411,53 @@ describe("publishBuild", () => {
     expect(await publishBuild({ gameId: "game-1", file: hosted, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
       target: { hosted: true, targetPlatforms: ["ios", "macos"] },
     });
+  });
+
+  it("uploads a summer.bundle.v2 export without a server and without summer.build.json, declaring its platforms", async () => {
+    const file = join(root, "hostless-v2.zip");
+    const written = await writeSummerBundle(file, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["ios", "android"] });
+    (globalThis as any).__bundleSize = written.length;
+    const store = fakeStore();
+    const result = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ ok: true, status: "uploaded", buildId: "build-1", clientPackageId: "pack-1" });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toEqual({ version: "v1.0.0", executionMode: "standalone", targetPlatforms: ["ios", "android"], client: { entryPoint: "res://main.tscn" } });
+    expect(create.body.exportedClient).toBeUndefined();
+    expect(Buffer.concat([...store.parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => part)).equals(written)).toBe(true);
+  });
+
+  it("uploads a game without a server for macOS and Windows", async () => {
+    const file = join(root, "desktop.zip");
+    const written = await writeSummerBundle(file, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["macos", "windows"] });
+    (globalThis as any).__bundleSize = written.length;
+    const store = fakeStore({
+      gameTargets: ["macos", "windows"],
+      checks: [
+        { id: "ver-1", platform: "macos", state: "ready", qualificationId: "qual-1" },
+        { id: "ver-2", platform: "windows", state: "ready", qualificationId: "qual-2" },
+      ],
+    });
+    const preview = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", target: { hosted: false, targetPlatforms: ["macos", "windows"] } });
+    expect(preview.warnings).toBeUndefined();
+    const result = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", checksState: "passed" });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toMatchObject({ executionMode: "standalone", targetPlatforms: ["macos", "windows"] });
+  });
+
+  it("declares only the platforms Summer has an app for, and refuses an export with none", async () => {
+    const store = fakeStore();
+    const mixed = join(root, "mixed.zip");
+    await writeSummerBundle(mixed, { targetPlatforms: ["windows", "linux"] });
+    expect(await publishBuild({ gameId: "game-1", file: mixed, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
+      target: { hosted: false, targetPlatforms: ["windows"] },
+    });
+    const linux = join(root, "linux.zip");
+    await writeSummerBundle(linux, { targetPlatforms: ["linux"] });
+    const error = await failure(publishBuild({ gameId: "game-1", file: linux, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("platforms_unsupported");
+    expect(store.calls.some((call) => call.method === "POST")).toBe(false);
   });
 
   it("refuses a hosted export whose summer.build.json declares other platforms, before anything is uploaded", async () => {

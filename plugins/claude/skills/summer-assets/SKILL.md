@@ -53,12 +53,12 @@ Each asset is a normal file in the person's Summer library: GLB for 3D models, P
 | Generating before you checked the person's own assets | `assets.search({ scope: "mine" })` first |
 | Generating the same asset again to get the file | `assets.get` with `out` on the asset you already have |
 | Telling the person the asset looks right without a preview | Say what you received, or that no preview came back |
-| The person wants a whole game, not assets | Say that this needs Summer Engine and the full setup: `npx -y summer-engine@4.9.0 setup <agent> --yes` |
+| The person wants a whole game, not assets | Say that this needs Summer Engine and the full setup: `npx -y summer-engine@4.9.1 setup <agent> --yes` |
 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
 
-No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.1` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
 
 | In this skill | Command |
 |---|---|

@@ -4,6 +4,14 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [4.9.1] - 2026-10-28
+
+Games without a server export and upload for every Summer app again: the CLI refused exports the store already takes.
+
+- **A `summer.bundle.v2` export without a server may leave out `config/summer.build.json`.** `summer_export_game` wrote a valid `.zip` and then answered `bundle_invalid` ("always holds config/summer.build.json"), and `summer_publish_build` (`store.upload_file`) refused the same file. Only a game with a server needs it, as before (summer-platform `docs/build-publications.md`, "summer.games bundle layout").
+- **A game without a server uploads for macOS and Windows**, not only iPhone and Android. `summer_publish_build` declares every platform in the bundle that Summer has an app for (`ios`, `android`, `macos`, `windows`, `web`); it answers `platforms_unsupported` only for an export with none of them (Linux only). `summer_export_game` no longer warns that desktop targets will be refused.
+- **Copy:** the `summer_export_game` description, the `export-and-ship`, `release-checklist`, `launch-ready` and `release-readiness` skills and the MCP tools reference no longer say a game without a server is for phones only, or that a `summer.bundle.v2` export always holds `config/summer.build.json`.
+
 ## [4.9.0] - 2026-10-24
 
 Games go live on Summer's automatic checks, with Summer's review afterwards: `summer_go_live` and `summer_publish_build` read that review, and name the platforms a hosted release left out.

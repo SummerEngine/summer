@@ -3,7 +3,7 @@
   "name": "io.github.SummerEngine/summer",
   "title": "Summer Engine",
   "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
-  "version": "4.9.0",
+  "version": "4.9.1",
   "websiteUrl": "https://summerengine.com",
   "icons": [
     {
@@ -22,7 +22,7 @@
     {
       "registryType": "npm",
       "identifier": "summer-engine",
-      "version": "4.9.0",
+      "version": "4.9.1",
       "transport": {
         "type": "stdio"
       },

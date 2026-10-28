@@ -148,18 +148,19 @@ describe("readSummerBundle", () => {
     expect((await readSummerBundle(path)).schema).toBe("summer.bundle.v1");
   });
 
-  it("refuses a summer.bundle.v2 export without config/summer.build.json", async () => {
+  it("reads a summer.bundle.v2 export without a server and without config/summer.build.json, with all its platforms", async () => {
     const path = join(root, "v2-no-build.zip");
-    const client = Buffer.from("GDPC".padEnd(512, "c"));
-    const manifest = {
-      schema: "summer.bundle.v2",
-      export: { summerVersion: "0.7.4", engineSha: "abc123" },
-      client: { path: "client.pck", mainScene: "res://main.tscn", targetPlatforms: ["ios"] },
-      server: null,
-      files: [{ path: "client.pck", sha256: `sha256:${createHash("sha256").update(client).digest("hex")}`, size: client.length }],
-    };
-    await writeFile(path, buildZip([{ name: "summer-bundle.json", data: Buffer.from(JSON.stringify(manifest)) }, { name: "client.pck", data: client }]));
-    await expect(readSummerBundle(path)).rejects.toThrow(/always holds config\/summer\.build\.json/);
+    await writeSummerBundle(path, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["ios", "android", "macos", "windows"] });
+    const bundle = await readSummerBundle(path);
+    expect(bundle).toMatchObject({ schema: "summer.bundle.v2", hosted: false, targetPlatforms: ["ios", "android", "macos", "windows"] });
+    expect(bundle.files.map((file) => file.path)).toEqual(["client.pck"]);
+    expect(bundle.hostedBuild).toBeUndefined();
+  });
+
+  it.each(["summer.bundle.v1", "summer.bundle.v2"])("still refuses a %s export with a server but no config/summer.build.json", async (schema) => {
+    const path = join(root, "hosted-no-build.zip");
+    await writeSummerBundle(path, { schema, hosted: true, buildFile: false });
+    await expect(readSummerBundle(path)).rejects.toThrow(/config\/summer\.build\.json is missing/);
   });
 
   it("asks for a newer package, not a newer engine, for a bundle schema it does not know yet", async () => {

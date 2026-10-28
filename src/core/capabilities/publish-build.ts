@@ -44,8 +44,12 @@ const POLL_MS = 3_000;
 export const CLIENT_VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-r[1-9]\d*)?$/;
 const INTAKE_DONE = ["preview_ready", "published", "ready", "succeeded"];
 const NOT_ACTIONABLE = "deployment_not_actionable";
-/** Games without a server run on the Summer Games phone apps only (the store's standalone targets). */
-const STANDALONE_TARGETS = ["ios", "android"];
+/**
+ * Platforms Summer runs a client on, with or without a server: the phone apps,
+ * the desktop apps and the browser (summer-platform gameplatforms.ClientTargets).
+ * Linux has no Summer client.
+ */
+const CLIENT_TARGETS = ["android", "ios", "macos", "web", "windows"];
 
 /** Why the Platform did not take the export, in plain words (same text Studio shows). */
 const INTAKE_FAILURES: Record<string, string> = {
@@ -386,16 +390,17 @@ function targetPlatforms(bundle: SummerBundle): string[] {
     );
   }
   if (bundle.hosted) return bundle.targetPlatforms;
-  const other = bundle.targetPlatforms.filter((platform) => !STANDALONE_TARGETS.includes(platform));
-  if (other.length) {
+  // A game without a server declares the bundle's platforms that Summer has a
+  // client on; the store targets the same ones when it reads the bundle.
+  const platforms = bundle.targetPlatforms.filter((platform) => CLIENT_TARGETS.includes(platform));
+  if (!platforms.length) {
     throw new BuildToolError(
       "platforms_unsupported",
-      `A game without a server runs on iPhone and Android only for now; this export also targets ${other.join(", ")}.`,
-      'Recovery: export again with summer_export_game targets ["ios"] or ["ios","android"]; ship macOS or Windows as a download (format "download").'
+      `Summer has no player app for ${bundle.targetPlatforms.join(", ")}, the only platforms in this export.`,
+      `Recovery: export again with summer_export_game targets from ${CLIENT_TARGETS.join(", ")}; then upload the new export.`
     );
   }
-  // The Build declares exactly what the bundle declares (declaration_mismatch otherwise).
-  return bundle.targetPlatforms;
+  return platforms;
 }
 
 type GameSummary = { id: unknown; name: unknown; slug: unknown; status: unknown; targets: unknown };

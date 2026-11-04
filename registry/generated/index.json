@@ -1290,8 +1290,8 @@
     {
       "id": "skill/debug",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "7cbe19eb8e8b5292dce7c5fdf144614a4623b8cd5aee4fb189cb89c874596b2b",
+      "version": "1.0.5",
+      "content_hash": "5506e2e64770b083afa10e147350f3968769acc3b2d2fda2a6b7f91a8521bf1f",
       "summary": "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -1317,6 +1317,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-cli",
           "skill/make-game",
           "skill/scene-composition",
           "skill/gdscript-patterns"
@@ -2634,9 +2635,9 @@
     {
       "id": "skill/new-project",
       "kind": "skill",
-      "version": "1.0.5",
-      "content_hash": "7a0ab67182886789962642b3abd0760ce50d994682557b14c6b044ca77a247cb",
-      "summary": "Create a blank Summer Engine project: ask for the project name and run summer create empty.",
+      "version": "1.0.6",
+      "content_hash": "7a08acbf46f0a7f796ed11cf218f74e66ddbd3a2fe95d2f895655a6d7a5f46eb",
+      "summary": "Create and open a fresh Summer Engine project with summer dev; verify the project connection.",
       "use_when": [
         "the user wants a fresh blank Summer Engine project — from scratch, blank canvas",
         "starting a Summer Engine project with no template, only a name, ready for an empty main scene"
@@ -2658,6 +2659,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-cli",
           "skill/make-game",
           "skill/painted-25d-world"
         ]
@@ -4182,13 +4184,14 @@
     {
       "id": "skill/summer-cli",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e63754837b2934b3f3970aae823f02febc20b3918af9b5f10f629d55ef592ae5",
+      "version": "1.0.2",
+      "content_hash": "d3c8383943eba8c280298cb924205d014d6094343a61bc9bf575eb65ba4d0d5c",
       "summary": "Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine.",
       "use_when": [
         "the session has no summer_* MCP tools, or Summer was set up with summer setup <agent> --cli",
         "running a Summer operation, a generation or an engine change from a shell, a script or CI",
-        "a skill names an MCP tool or an operation and you need the summer command that runs it"
+        "a skill names an MCP tool or an operation and you need the summer command that runs it",
+        "starting Summer Engine or reconnecting to an existing project"
       ],
       "facets": {
         "lifecycle": [
@@ -4875,8 +4878,8 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.6",
-      "content_hash": "e9c422cd1f1589c622b4c5fd04786313351ca4e9c6eda0bfe87ffbb5b46431e7",
+      "version": "1.0.7",
+      "content_hash": "e4283912324b17a9f8142826ba3dff763c99d8c9f2989036d597f60359ac387f",
       "summary": "Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",

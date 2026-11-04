@@ -245,7 +245,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [browse-templates](./browse-templates/SKILL.md) ★ | List Summer Engine project templates, present the choices, and create a project from the chosen one. | project |
 | [*camera-rigs*](./camera-rigs/SKILL.md) (preview) | Camera rigs: Camera2D follow with limits, first-person head, SpringArm3D third-person, top-down, FOV. | 3d, 2d |
 | [make-game](./make-game/SKILL.md) ★ | Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship. | project |
-| [new-project](./new-project/SKILL.md) ★ | Create a blank Summer Engine project: ask for the project name and run summer create empty. | project |
+| [new-project](./new-project/SKILL.md) ★ | Create and open a fresh Summer Engine project with summer dev; verify the project connection. | project |
 | [play](./play/SKILL.md) ★ | Run the project in Summer Engine, wait briefly, then report a clean run, errors or warnings. | project |
 | [scene-composition](./scene-composition/SKILL.md) ★ | Scene structure: node hierarchy, when to extract sub-scenes, reusable prefabs, instance vs add node. | project |
 | [*scene-hierarchy-design*](./scene-hierarchy-design/SKILL.md) (preview) | Structure scenes by access pattern: asset vs live hierarchies, wrapper nodes, sub-scenes, path-agnostic code. | project, agent-workflow |

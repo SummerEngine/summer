@@ -9,19 +9,31 @@ allowed-tools: Bash Read
 
 # Summer from the shell
 
-Use this skill when the session has no `summer_*` MCP tools (Summer was set up with `summer setup <agent> --cli`), or when a script or CI job runs Summer. Every Summer capability is an operation named `area.action`, and every operation is one command: `summer <area> <action>`. The commands run the same code as the MCP tools and give the same answers.
+Use this skill when the session has no `summer_*` MCP tools (including after setup, before the host loads them), when Summer Engine needs starting, or when a script or CI job runs Summer. Every Summer capability is an operation named `area.action`, and every operation is one command: `summer <area> <action>`. The commands run the same code as the MCP tools and give the same answers. Missing MCP tools do not mean the engine is stopped: continue through the Summer CLI in this session.
 
 First run `summer --version`. If the shell does not find `summer`, or the version is below 4.0 (an old global install, which has no `summer <area> <action>` commands), put `npx -y summer-engine@4.9.1` in place of `summer`, with the same arguments. In Windows PowerShell, write `npx.cmd`.
 
 ## The five commands in a game project
 
 <!-- project-commands: the AGENTS.md that summer create and summer setup write copies this list -->
-1. `summer run .` opens the project in Summer Engine. An agent's run stays in the background.
-2. `summer engine get-project-context` (MCP: `summer_get_project_context`) reads the project, its main scene and the engine version. Run it first.
+1. `summer run .` opens the project in Summer Engine when run from its root (the folder containing `project.godot`). An agent's run stays in the background. If the engine is not installed, use `summer dev .`; installation needs the person's consent before adding `--yes`. Bare `summer run` fails: always give the project path.
+2. `summer engine get-project-context` (MCP: `summer_get_project_context`) verifies the connected project, its main scene and the engine version. Run it before editing; a launch command exiting successfully does not by itself prove the editor is ready.
 3. `summer engine play`, then `summer engine get-diagnostics` (MCP: `summer_play`, `summer_get_diagnostics`), runs the game and reads its errors. `summer engine stop` (`summer_stop`) ends it.
 4. `summer engine screenshot` (MCP: `summer_screenshot`) saves an image of the editor or the running game. Open its `localPath` to look.
 5. `summer ops search "<what you want>"` (MCP: `summer_search`) finds any other operation. Run it as `summer <area> <action>` (MCP: `summer_call`), with `--dry-run` first for a change.
 <!-- /project-commands -->
+
+## Start or reconnect to Summer Engine
+
+Use this sequence for both MCP and CLI sessions. Engine commands need no sign-in.
+
+1. **Select the project.** Find its `project.godot` and run commands from that folder. For a new game, follow `new-project`: `summer dev 3d-basic my-game` creates and opens a starter. For an existing game, keep its exact path; do not create a replacement project to recover a connection.
+2. **Open it yourself when shell access is available.** Run `summer run .` from the project root, or `summer run "<project-path>"`. This opens an installed Summer Engine; it does not install one. `summer run --no-project` opens the project manager without a project and is not a recovery step for working on a game.
+3. **Handle a missing installation.** `summer dev "<project-path>"` opens an existing project and can install Summer Engine if needed. Without consent, a non-interactive call returns `needs_confirmation` and installs nothing. Ask the person once, then repeat the same command with `--yes` only after they agree. Keep any explicit `--bin` / `SUMMER_BIN` selection: an invalid override must be corrected, not silently replaced. Do not substitute a stock Godot executable for Summer Engine.
+4. **Wait for readiness.** `summer run` waits up to 20 seconds for the local API; it can exit successfully with an "API not responding yet" message. `summer dev` waits up to 180 seconds and exits with an error if the editor is still opening. Neither message means that another editor should be launched. Follow the output, use `summer status`, and retry the project-context read after 30 seconds if assets are still importing. If it still fails, run `summer doctor` and report the specific blocker instead of repeatedly launching or reinstalling.
+5. **Verify before changing anything.** Run `summer engine get-project-context` (or `summer_get_project_context` over MCP) and confirm that the project and engine version are the intended ones. If multiple editors are open, set `SUMMER_ENGINE_PROJECT` to that project's folder for the shell commands. Then continue the requested work through whichever transport is available; missing MCP tools alone do not require a restart to use the CLI.
+
+Without shell access, use `projects.open_local` if the session exposes it (`install: true` only with installation consent), then read project context. If neither transport is available, report that limitation and give the person the exact launch command for their project. Starting the editor cannot make an absent MCP tool appear in the host's tool list.
 
 ## 1. Sign in once
 
@@ -113,7 +125,7 @@ An error prints `Error (<code>): <message>` and one `Next:` step, and exits 1. D
 | Code | Do this |
 |---|---|
 | `not_signed_in` | Run the command in `Next` (`summer login`), then the same command again. |
-| `engine_not_running` | Open the project in Summer Engine, or `summer run <project-path>`. Then run it again. |
+| `engine_not_running` | Follow "Start or reconnect to Summer Engine" above, verify the project context, then retry the operation. |
 | `engine_lacks_op` | This engine build is too old for the command. Use the fallback the message names, or ask the person to update Summer Engine. |
 | `invalid_input` | `summer ops describe <op>`, fix the flags, run it again. |
 | `no_credits` | Give the person the link in `Next`. Do not run it again until they say they added credits. |

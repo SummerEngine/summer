@@ -24517,6 +24517,11 @@
             "minLength": 1,
             "maxLength": 60
           },
+          "remixOfGameId": {
+            "description": "Source game ID when creating a remix. Recorded permanently for attribution; omit for an original game.",
+            "type": "string",
+            "pattern": "^game_[A-Za-z0-9]+$"
+          },
           "targets": {
             "description": "web, macos-universal, windows-x64 and linux-x64 open the desktop store; ios and android the mobile store.",
             "minItems": 1,
@@ -24636,6 +24641,17 @@
           "gameId": {
             "type": "string"
           },
+          "remixOfGameId": {
+            "description": "Immediate source game for attribution; null for an original game.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -24687,6 +24703,7 @@
         },
         "required": [
           "gameId",
+          "remixOfGameId",
           "name",
           "slug",
           "status",
@@ -24974,6 +24991,17 @@
                 "gameId": {
                   "type": "string"
                 },
+                "remixOfGameId": {
+                  "description": "Immediate source game for attribution; null for an original game.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -25005,6 +25033,7 @@
               },
               "required": [
                 "gameId",
+                "remixOfGameId",
                 "name",
                 "slug",
                 "status",

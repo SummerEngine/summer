@@ -7770,6 +7770,39 @@
       }
     },
     {
+      "id": "tool/games-download-remix",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f1a26adb84f379f1044f381b95a2eb87d1c4b7b376d75d2987c159bdb0979ec1",
+      "summary": "Download and verify a PCK using the temporary link from its Remix prompt. Only remix-enabled games issue new links. Saves locally without overwriting files.",
+      "use_when": [
+        "download a PCK to remix it",
+        "save the game pack from a Remix prompt"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_games_download_remix",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/games-set-remix",
       "kind": "tool",
       "version": "1.0.0",

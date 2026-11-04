@@ -535,3 +535,22 @@ Some process skills (brainstorming, writing-plans, writing-skills, investigating
 - [Documentation](https://docs.summerengine.com)
 - [Issues](https://github.com/summerengine/summer/issues)
 - [Support](https://summer.games/support) · [Privacy policy](https://www.summerengine.com/privacy) · [Terms](https://www.summerengine.com/terms)
+
+### Download a game for Remix
+
+Click **Remix** on an enabled game in Summer Games. The copied prompt contains
+a temporary direct PCK URL, game ID, SHA-256, byte size and expiry. Pass those
+values to `summer games download-remix --game-id <id> --url <url> --sha256 <sha>
+--size <bytes> --expires-at <expiry> --output ./my-remix.pck`, or call
+`games.download_remix` through `summer_call` with the same camelCase fields and
+`output`. Quote shell values normally; the signed URL is a temporary download
+capability, so do not publish it or send account credentials to it.
+
+The command verifies the PCK header, size and checksum, and never overwrites an
+existing file. It works without an open editor or a CLI sign-in because the
+website already checked the player's access and the game's Remix permission
+before issuing the grant. Disabled games cannot issue new grants; existing URLs
+last until their expiry. An expired link requires another Remix click. The
+platform limits new URLs per account across games; copying or downloading an
+existing grant does not request another one. A PCK is an exported game, and may
+need source files before it can be edited.

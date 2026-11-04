@@ -28,7 +28,7 @@ export const CLI_AREAS = [
  * (models.list, models.estimate, models.run, models.batch, models.job).
  * Everything else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "store.go_live", "store.set_details", "games.set_remix", "economy.sync_items", "content.make", "projects.create_local", "projects.open_local", "models.list", "models.estimate", "models.run", "models.batch", "models.job"]);
+const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file", "store.go_live", "store.set_details", "games.set_remix", "games.download_remix", "economy.sync_items", "content.make", "projects.create_local", "projects.open_local", "models.list", "models.estimate", "models.run", "models.batch", "models.job"]);
 
 export function isLocalOp(op: string): boolean {
   return op.startsWith("engine.") || LOCAL_OPS.has(op);

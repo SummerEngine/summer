@@ -1,0 +1,60 @@
+id: tool/games-download-remix
+kind: tool
+version: 1.0.0
+summary: "Download and verify a PCK using the temporary link from its Remix prompt. Only remix-enabled games issue new links. Saves locally without overwriting files."
+use_when:
+  - "download a PCK to remix it"
+  - "save the game pack from a Remix prompt"
+facets:
+  lifecycle: [build]
+  domains: [creator, deployment]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases: [summer_games_download_remix]
+implementation:
+  module: src/core/capabilities/download-remix.ts
+  export: downloadRemix
+surfaces:
+  mcp:
+    tool_name: summer_games_download_remix
+    remote: false
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      pattern: '^game_[A-Za-z0-9_-]+$'
+      description: The game id from the copied Remix prompt.
+    url:
+      type: string
+      format: uri
+      description: The temporary direct PCK URL from Remix, not the game page. Never an account token.
+    sha256:
+      type: string
+      pattern: '^[a-f0-9]{64}$'
+      description: The expected SHA-256 from the Remix prompt.
+    size:
+      type: integer
+      minimum: 1
+      maximum: 42949672960
+      description: The exact byte size from the Remix prompt.
+    expiresAt:
+      type: string
+      format: date-time
+      description: The download expiry from the Remix prompt.
+    output:
+      type: string
+      minLength: 1
+      description: Destination .pck path. Existing files are never overwritten.
+  required: [gameId, url, sha256, size, expiresAt, output]
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks: [none]

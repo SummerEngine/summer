@@ -10,7 +10,8 @@
  * Consumed today by `summer tool <name>` (src/cli/commands/tool.ts).
  *
  * The helpers both faces need (scene-mutation chunking, guarded file writes,
- * Kenney import pairing, engine receipt failure semantics) live in ONE copy
+ * Kenney import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
+import pairing, engine receipt failure semantics) live in ONE copy
  * each — ./engine-ops.ts, ./asset-import.ts, ./engine-receipt.ts — imported
  * here and by src/mcp/tools/*. v3-followup: src/mcp should adopt this registry
  * as the single per-tool dispatch table so the handler bodies stop being two
@@ -1057,6 +1058,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       })
     )
   ),
+  entry("summer_games_download_remix", "Download a verified Remix PCK", false, (args) => structuredBuildFailure(() => downloadRemix(args as unknown as DownloadRemixInput))),
   entry("summer_games_set_remix", "Allow or disable Remix for one game", false, (args) =>
     structuredBuildFailure(() => setGameRemix({ gameId: str(args, "gameId"), spinnable: args.spinnable as boolean }))
   ),

@@ -21,3 +21,10 @@ describe("Remix command discovery", () => {
     });
   });
 });
+
+it("exposes the verified Remix download as a local write without account sign-in", () => {
+  expect(resolveCliOp("games", "download-remix")).toBe("games.download_remix");
+  const entry = localEntries().find(entry => entry.name === "games.download_remix");
+  expect(entry).toMatchObject({ provider: "local", effect: "write", mcpTool: "summer_games_download_remix" });
+  expect(entry?.needsSignIn).toBeUndefined();
+});

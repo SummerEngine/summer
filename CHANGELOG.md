@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Editor chat generation stays native.** With `SUMMER_EDITOR_CHAT=1`, operations with native `summer_cloud` equivalents and polling of native `aj_` asset jobs return a clear redirect. Build, upload, approval and ordinary CLI job tracking remain available, including `--wait`; makers and other operations without a native equivalent remain available. Outside editor chat, behavior is unchanged.
+
 - Startup skills now distinguish missing MCP tools from a stopped editor, use an explicit project path, and share the Summer CLI's installation and readiness checks. Agents can continue through the CLI without switching engines or asking the user to launch an already installed Summer Engine.
 
 ## [4.9.1] - 2026-10-28

@@ -141,6 +141,7 @@
     "summer_game_control": "tool/game-control",
     "summer_game_input": "tool/game-input",
     "summer_game_probe": "tool/game-probe",
+    "summer_games_download_remix": "tool/games-download-remix",
     "summer_games_set_remix": "tool/games-set-remix",
     "summer_generate_3d": "tool/generate-3d",
     "summer_generate_audio": "tool/generate-audio",

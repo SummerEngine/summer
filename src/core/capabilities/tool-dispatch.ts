@@ -16,6 +16,7 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
 import { setGameRemix } from "./game-remix.js";
 import { viewSetOp } from "./view-set.js";
 import { tmpdir } from "node:os";
@@ -1057,6 +1058,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       })
     )
   ),
+  entry("summer_games_download_remix", "Download a verified Remix PCK", false, (args) => structuredBuildFailure(() => downloadRemix(args as unknown as DownloadRemixInput))),
   entry("summer_games_set_remix", "Allow or disable Remix for one game", false, (args) =>
     structuredBuildFailure(() => setGameRemix({ gameId: str(args, "gameId"), spinnable: args.spinnable as boolean }))
   ),

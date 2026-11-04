@@ -1,3 +1,4 @@
+import { downloadRemix, downloadRemixInput } from "../../core/capabilities/download-remix.js";
 import { setGameRemix } from "../../core/capabilities/game-remix.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -147,6 +148,8 @@ export function registerCreatorTools(server: McpServer): void {
     },
     async (args) => creatorResult(() => goLive({ ...args, face: "mcp" }))
   );
+
+  server.tool("summer_games_download_remix", "Download and verify a game PCK using the temporary grant from its Remix prompt. Only enabled games issue grants; expired grants need a fresh Remix click. Never overwrites an existing file.", downloadRemixInput, async (args) => creatorResult(() => downloadRemix(args)));
 
   server.tool(
     "summer_games_set_remix",

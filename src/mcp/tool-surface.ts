@@ -43,7 +43,7 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
   ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_go_live", "summer_store_set_details", "summer_capture_gameplay"],
   // summer_view_set is in the catalog (engine.view_set, summer_call) for every profile.
   // Game administration remains available through summer_call in every v4 profile.
-  cloud: ["summer_games_set_remix"],
+  cloud: ["summer_games_set_remix", "summer_games_download_remix"],
   ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree", "summer_view_set"],
   // Create and open a project on this computer with no shell (the full profile;
   // the engine profile's clients have a shell, `summer dev`, and a tool cap).
@@ -191,6 +191,7 @@ const NETWORK_WRITES = new Set([
 
 /** Changes that only add something new, or only touch the editor view or the running game. */
 const ADDITIVE_OR_TRANSIENT = new Set([
+  "summer_games_download_remix",
   "summer_add_node",
   "summer_create_scene",
   "summer_instantiate_scene",

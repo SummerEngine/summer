@@ -1021,6 +1021,11 @@
       "note": "",
       "op": "store.set_bundles"
     },
+    "summer_games_download_remix": {
+      "kind": "keep",
+      "note": "",
+      "op": "games.download_remix"
+    },
     "summer_games_set_remix": {
       "kind": "same",
       "note": "local: set the canonical game Remix permission",

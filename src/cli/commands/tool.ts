@@ -155,7 +155,7 @@ export const toolCommand = new Command("tool")
     }
 
     const entry = resolveToolForCli(name);
-    // The Summer editor chat never waits on, checks or starts a generation job here (core/editor-chat.ts).
+    // Redirect native asset operations and native job polling; leave other jobs available.
     const refused = isEditorChat() ? editorChatBlockedCall(entry?.name ?? name, parseJsonArgs(options.args ?? options.json)) : null;
     if (refused) {
       noteCliError("unsupported");

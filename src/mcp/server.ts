@@ -505,7 +505,7 @@ export function createMcpServer(
     },
     {
       instructions:
-        // The Summer editor chat generates with its own tools and never waits on a job (core/editor-chat.ts).
+        // Native asset jobs deliver to editor chat; other jobs retain normal tracking.
         (editorChat ? editorChatInstructions(instructions) : instructions) +
         (options.notice ? ` ${options.notice} Tell the person once.` : ""),
     }
@@ -574,10 +574,11 @@ export function createMcpServer(
 
 /**
  * The Summer editor chat (SUMMER_EDITOR_CHAT=1): no tool call waits on,
- * checks or starts a generation job. tools/call answers those at once with
+ * checks a native asset job or starts an operation with a native equivalent.
+ * tools/call answers those at once with
  * the refusal, before any handler or hosted call runs, local and hosted tools
  * alike (the hosted mount's own handlers wrap these); tools/list leaves their
- * direct tools out.
+ * generation tools out. Job tools stay listed because other jobs need them.
  */
 function gateEditorChat(server: McpServer): void {
   const handlers = (server.server as unknown as { _requestHandlers: Map<string, (request: unknown, extra: unknown) => Promise<unknown>> })._requestHandlers;

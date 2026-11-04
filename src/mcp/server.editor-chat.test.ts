@@ -27,13 +27,13 @@ afterEach(async () => {
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const answerOf = (result: unknown) => JSON.parse((result as { content: Array<{ text: string }> }).content[0].text);
 
-/** A hosted server that would start jobs and answer waits; the editor chat must never reach it for those. */
+/** A hosted server that starts jobs and answers waits; native asset calls must not reach it. */
 function fakeCloud(): CloudCaller & { call: ReturnType<typeof vi.fn> } {
   return {
     call: vi.fn(async (name: string, args: Record<string, unknown>) => {
       if (name === "summer_search") return envelope({ ok: true, status: "done", result: { items: [] } });
       if (args.op === "jobs.wait") return envelope({ ok: true, status: "done", result: { job: { id: "gen:1", state: "running" }, finished: false } });
-      return envelope({ ok: true, status: "running", job: { id: "gen:5037aff5", state: "queued" } });
+      return envelope({ ok: true, status: "running", job: { id: "aj_native-job", state: "queued" } });
     }),
   };
 }
@@ -61,17 +61,16 @@ function expectRefusal(result: unknown, op: string) {
   });
 }
 
-describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) never waits on, checks or starts a generation job", () => {
+describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) redirects native asset operations and polling", () => {
   it.each([
-    ["jobs.wait", { jobId: "gen:5037aff5", timeoutSeconds: 50 }, "jobs.wait"],
-    ["jobs.get", { jobId: "gen:5037aff5" }, "jobs.get"],
-    ["summer_check_job", { jobId: "gen:5037aff5" }, "jobs.get"],
-    ["summer_jobs_wait", { jobId: "gen:5037aff5" }, "jobs.wait"],
+    ["jobs.wait", { jobId: "aj_native-job", timeoutSeconds: 50 }, "jobs.wait"],
+    ["jobs.get", { jobId: "aj_native-job" }, "jobs.get"],
+    ["summer_check_job", { jobId: "aj_native-job" }, "jobs.get"],
+    ["summer_jobs_wait", { jobId: "aj_native-job" }, "jobs.wait"],
     ["assets.generate_3d", { prompt: "a chest" }, "assets.generate_3d"],
     ["assets.generate_image", { prompt: "a chest" }, "assets.generate_image"],
     ["summer_generate_image", { prompt: "a chest" }, "assets.generate_image"],
     ["assets.rig", { assetId: "a1" }, "assets.rig"],
-    ["makers.bankai_motion", {}, "makers.bankai_motion"],
   ])("summer_call %s answers at once with the refusal, without Summer's server", async (op, input, resolved) => {
     vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
     const { client, cloud, close } = await session("v4");
@@ -85,20 +84,21 @@ describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) never waits on, checks o
     }
   });
 
-  it("refuses the hosted direct tools and leaves them out of tools/list", async () => {
+  it("hides native generation tools but keeps job and maker tools discoverable", async () => {
     vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
     const { client, hostedHandler, close } = await session("v4");
     try {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
-      for (const hidden of ["summer_jobs_wait", "summer_assets_generate_3d", "summer_tool_bankai_motion"]) expect(names).not.toContain(hidden);
-      expect(names).toEqual(expect.arrayContaining(["summer_call", "summer_search", "summer_games_list"]));
-      expectRefusal(await client.callTool({ name: "summer_jobs_wait", arguments: { jobId: "gen:1" } }), "jobs.wait");
+      for (const hidden of ["summer_assets_generate_3d"]) expect(names).not.toContain(hidden);
+      expect(names).toEqual(expect.arrayContaining(["summer_call", "summer_search", "summer_games_list", "summer_jobs_wait", "summer_tool_bankai_motion"]));
+      expectRefusal(await client.callTool({ name: "summer_jobs_wait", arguments: { jobId: "aj_native-job" } }), "jobs.wait");
       expectRefusal(await client.callTool({ name: "summer_assets_generate_3d", arguments: { prompt: "a chest" } }), "assets.generate_3d");
-      expectRefusal(await client.callTool({ name: "summer_tool_bankai_motion", arguments: {} }), "makers.bankai_motion");
       expect(hostedHandler).not.toHaveBeenCalled();
       // Everything else still runs.
       await client.callTool({ name: "summer_games_list", arguments: {} });
-      expect(hostedHandler).toHaveBeenCalledTimes(1);
+      await client.callTool({ name: "summer_jobs_wait", arguments: { jobId: "build:1" } });
+      await client.callTool({ name: "summer_tool_bankai_motion", arguments: {} });
+      expect(hostedHandler).toHaveBeenCalledTimes(3);
     } finally {
       await close();
     }
@@ -110,8 +110,9 @@ describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) never waits on, checks o
       const { client, close } = await session(surface, { legacy: surface === "v4" });
       try {
         const names = (await client.listTools()).tools.map((tool) => tool.name);
-        for (const hidden of ["summer_generate_image", "summer_generate_3d", "summer_check_job"]) expect(names).not.toContain(hidden);
-        expectRefusal(await client.callTool({ name: "summer_check_job", arguments: { jobId: "gen:1" } }), "jobs.get");
+        for (const hidden of ["summer_generate_image", "summer_generate_3d"]) expect(names).not.toContain(hidden);
+        expect(names).toContain("summer_check_job");
+        expectRefusal(await client.callTool({ name: "summer_check_job", arguments: { jobId: "aj_native-job" } }), "jobs.get");
         expectRefusal(await client.callTool({ name: "summer_generate_3d", arguments: { prompt: "a chest" } }), "assets.generate_3d");
       } finally {
         await close();
@@ -119,7 +120,7 @@ describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) never waits on, checks o
     }
   });
 
-  it("summer_search and ops.search do not find those operations", async () => {
+  it("summer_search and ops.search hide only native generation equivalents", async () => {
     vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
     const { client, close } = await session("v4");
     try {
@@ -128,9 +129,35 @@ describe("the Summer editor chat (SUMMER_EDITOR_CHAT=1) never waits on, checks o
         const viaCall = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "ops.search", input: { query, limit: 20 } } }));
         for (const answer of [direct, viaCall]) {
           const found = (answer.result.items as Array<{ name: string }>).map((item) => item.name);
-          expect(found.filter((name) => /^jobs\.(wait|get)$|^assets\.generate_|^makers\./.test(name))).toEqual([]);
+          expect(found.filter((name) => /^assets\.generate_(3d|image|audio|motion)$/.test(name))).toEqual([]);
         }
       }
+    } finally {
+      await close();
+    }
+  });
+
+  it.each(["jobs.wait", "jobs.get"])("keeps %s callable for builds, approvals and ordinary CLI jobs", async (op) => {
+    vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
+    const { client, cloud, close } = await session("v4");
+    try {
+      for (const jobId of ["build:1", "upload:1", "apr:1", "gen:existing-cli-job", "legacy-generation-id"]) {
+        await client.callTool({ name: "summer_call", arguments: { op, input: { jobId } } });
+        expect(cloud.call).toHaveBeenLastCalledWith("summer_call", expect.objectContaining({ op, input: { jobId } }));
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it.each(["jobs.wait", "jobs.get", "makers.bankai_motion", "assets.generate_video"])("keeps %s searchable and callable", async (op) => {
+    vi.stubEnv("SUMMER_EDITOR_CHAT", "1");
+    const { client, cloud, close } = await session("v4");
+    try {
+      const found = answerOf(await client.callTool({ name: "summer_search", arguments: { query: op, limit: 20 } }));
+      expect(found.result.items.map((item: { name: string }) => item.name)).toContain(op);
+      await client.callTool({ name: "summer_call", arguments: { op, input: { jobId: "build:1" } } });
+      expect(cloud.call).toHaveBeenLastCalledWith("summer_call", expect.objectContaining({ op }));
     } finally {
       await close();
     }

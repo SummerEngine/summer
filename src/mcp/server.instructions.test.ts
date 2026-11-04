@@ -142,10 +142,12 @@ describe("MCP server instructions in the Summer editor chat (SUMMER_EDITOR_CHAT=
     ["v3 assets", SUMMER_MCP_ASSETS_INSTRUCTIONS],
   ] as const;
 
-  it.each(variants)("%s: the job sentence becomes the editor chat sentence, and no job tool is named", (_label, text) => {
+  it.each(variants)("%s: distinguishes native asset delivery from other job tracking", (_label, text) => {
     const editor = editorChatInstructions(text);
     expect(editor.split(EDITOR_CHAT_JOB_SENTENCE)).toHaveLength(2);
     expect(editor).not.toMatch(JOB_WORDS);
+    expect(editor).toContain("native aj_ asset jobs");
+    expect(editor).toContain("builds and approvals, keep their normal job tracking");
     expect(editor).not.toContain("\n");
     expect(editor.length).toBeLessThanOrEqual(2048);
   });

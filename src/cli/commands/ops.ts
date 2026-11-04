@@ -10,7 +10,7 @@ import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { noteCliError, noteCliHosted } from "../../core/cli-usage.js";
-import { editorChatRefusal, isEditorChat, isEditorChatBlockedOp } from "../../core/editor-chat.js";
+import { editorChatBlockedCall, editorChatRefusal, isEditorChat, isEditorNativeAssetJob } from "../../core/editor-chat.js";
 
 /**
  * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
@@ -182,6 +182,8 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   if (current.ok && current.status === "needs_approval") deps.printError(`Waiting for approval: ${current.approval.url}`);
   for (let round = 0; round < 120 && current.ok && (current.status === "running" || current.status === "needs_approval"); round++) {
     const job = current.job.id;
+    // An approval can hand off to a native asset job. Its delivery belongs to the editor.
+    if (isEditorChat() && isEditorNativeAssetJob(job)) return current;
     const waited = await runCloud("jobs.wait", { input: { jobId: job, timeoutSeconds: 50 }, json: true, dryRun: false, wait: false }, deps);
     // The job runs on whatever the wait answered: a failed wait names it, so the job is waited on, not started again.
     // One that did not get through says to wait again; any other keeps its own next step (sign in, slow down).
@@ -221,6 +223,7 @@ function problemLines(details: Record<string, unknown> | undefined): string {
 }
 
 export function formatAnswer(answer: Answer, out?: string): string {
+  const nativeJob = (id: string) => isEditorChat() && isEditorNativeAssetJob(id);
   const waitFlags = (id: string) => `summer jobs wait --job-id ${id}${out ? ` --out ${shellWord(out)}` : ""}`;
   if (!answer.ok) {
     const next = answer.error.next;
@@ -231,10 +234,10 @@ export function formatAnswer(answer: Answer, out?: string): string {
     case "done":
       return JSON.stringify(answer.result, null, 2);
     case "running":
-      // The Summer editor chat never waits on a job (core/editor-chat.ts).
-      return isEditorChat() ? `Started: job ${answer.job.id}.` : `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
+      // Only native asset deliveries omit the wait command.
+      return nativeJob(answer.job.id) ? `Started: job ${answer.job.id}. The editor will deliver its result in this conversation.` : `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
     case "needs_approval":
-      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: ${waitFlags(answer.job.id)}`;
+      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. ${nativeJob(answer.job.id) ? "The editor will deliver its result in this conversation." : `Follow it: ${waitFlags(answer.job.id)}`}`;
     case "dry_run":
       return `Dry run: ${String(answer.preview.summary ?? "")}\n${JSON.stringify(answer.preview, null, 2)}`;
   }
@@ -246,16 +249,19 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     deps.printError(formatAnswer(errorAnswer("invalid_input", `"${op}" is not an operation name (area action).`, { next: { op: "ops.search" } })));
     return 1;
   }
-  // The Summer editor chat (SUMMER_EDITOR_CHAT=1) generates with its own tools and never waits on, polls or
-  // checks a job: those commands and --wait fail here at once, before any call to Summer's server.
-  if (isEditorChat() && (isEditorChatBlockedOp(resolveOpName(op)) || argv.some((token) => token === "--wait" || token.startsWith("--wait=")))) {
-    const refused = editorChatRefusal(resolveOpName(op));
-    noteCliError("unsupported");
-    deps.printError(argv.includes("--json") ? JSON.stringify(refused) : formatAnswer(refused));
-    return 1;
-  }
   let call: ParsedCall;
   try {
+    // Parse jobId before schema lookup so native jobs are refused without a
+    // network call. Ordinary jobs and --wait retain the usual execution path.
+    const refused = isEditorChat()
+      ? editorChatBlockedCall("summer_call", { op, input: parseCallFlags(argv, null).input })
+      : null;
+    if (refused) {
+      noteCliError("unsupported");
+      const answer = editorChatRefusal(refused);
+      deps.printError(argv.includes("--json") ? JSON.stringify(answer) : formatAnswer(answer));
+      return 1;
+    }
     const hasFields = argv.some((token) => token.startsWith("--") && !RESERVED_FLAGS.has(token.slice(2).split("=")[0]));
     call = parseCallFlags(argv, hasFields ? await schemaFor(op, deps) : null);
   } catch (error) {

@@ -207,9 +207,9 @@ export async function searchEverywhere(
   for (const entry of live) {
     cloud.set(entry.name, { ...cloud.get(entry.name), ...entry, ...(entry.input ? { input: withOutField(entry.name, entry.input) as Record<string, unknown> } : {}) });
   }
-  // The Summer editor chat never waits on a job or generates here (core/editor-chat.ts): those operations are not found.
+  // Hide only native generation equivalents; job tracking stays discoverable.
   const editorChat = isEditorChat();
-  const candidates = [...localEntries(), ...cloud.values()].filter((entry) => !editorChat || !isEditorChatBlockedOp(entry.name, entry.effect));
+  const candidates = [...localEntries(), ...cloud.values()].filter((entry) => !editorChat || !isEditorChatBlockedOp(entry.name));
   const items = searchEntries(candidates, query, filters).map(({ topics: _topics, ...entry }) =>
     isLocalOp(entry.name)
       ? { ...entry, input: localInputSchema(entry.name) ?? { type: "object" }, mcpTool: entry.mcpTool && isDirect(entry.mcpTool) ? entry.mcpTool : undefined }

@@ -40,7 +40,7 @@ const LOCAL_TOOLSETS: Partial<Record<Toolset, readonly string[]>> = {
     "summer_get_asset",
     "summer_get_asset_download_url",
   ],
-  ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_go_live", "summer_store_set_details", "summer_games_set_remix", "summer_capture_gameplay"],
+  ship: ["summer_export_game", "summer_export_templates", "summer_publish_build", "summer_go_live", "summer_store_set_details", "summer_capture_gameplay"],
   // summer_view_set is in the catalog (engine.view_set, summer_call) for every profile.
   ui: ["summer_ui_actions", "summer_ui_activate", "summer_ui_screenshot", "summer_ui_tree", "summer_view_set"],
   // Create and open a project on this computer with no shell (the full profile;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { knownOp } from "./catalog.js";
+import { knownOp, localEntries, localInputSchema, resolveCliOp } from "./catalog.js";
 
 describe("knownOp", () => {
   it("keeps a real operation, local or cloud, and drops any other word", () => {
@@ -7,5 +7,17 @@ describe("knownOp", () => {
     expect(knownOp("games.list")).toBe("games.list");
     expect(knownOp("engine.my_secret_game_jane_doe")).toBeNull();
     expect(knownOp(null)).toBeNull();
+  });
+});
+
+describe("Remix command discovery", () => {
+  it("exposes the same explicit per-game write to CLI and MCP", () => {
+    expect(resolveCliOp("games", "set-remix")).toBe("games.set_remix");
+    expect(localEntries().find((entry) => entry.name === "games.set_remix")).toMatchObject({
+      provider: "local", effect: "write", mcpTool: "summer_games_set_remix",
+    });
+    expect(localInputSchema("games.set_remix")).toMatchObject({
+      required: ["gameId", "spinnable"], properties: { spinnable: { type: "boolean" } },
+    });
   });
 });

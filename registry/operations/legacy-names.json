@@ -1021,6 +1021,11 @@
       "note": "",
       "op": "store.set_bundles"
     },
+    "summer_games_set_remix": {
+      "kind": "same",
+      "note": "local: set the canonical game Remix permission",
+      "op": "games.set_remix"
+    },
     "summer_store_set_details": {
       "kind": "same",
       "note": "local: the store page sections store.update_listing does not edit (genres, features, credits, languages, requirements, content survey, AI disclosure)",

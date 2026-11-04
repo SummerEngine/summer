@@ -1,3 +1,4 @@
+import { setGameRemix } from "../../core/capabilities/game-remix.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { captureGameplay, type CaptureGameplayInput } from "../../core/capabilities/capture-gameplay.js";
@@ -145,6 +146,16 @@ export function registerCreatorTools(server: McpServer): void {
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to watch before answering (default 600). On waiting, call again to keep watching."),
     },
     async (args) => creatorResult(() => goLive({ ...args, face: "mcp" }))
+  );
+
+  server.tool(
+    "summer_games_set_remix",
+    "Allow or disable Remix (spins) for one game immediately. Set spinnable=false to opt out; true to opt in. Summer Games checks the signed-in person's permission. Disabling blocks new remix downloads but cannot recall existing copies. Needs summer login --store.",
+    {
+      gameId: z.string().describe("The game id from games.list."),
+      spinnable: z.boolean().describe("False opts out of Remix; true allows Remix. No default."),
+    },
+    async (args) => creatorResult(() => setGameRemix(args))
   );
 
   server.tool(

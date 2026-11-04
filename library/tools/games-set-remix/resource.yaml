@@ -1,0 +1,42 @@
+id: tool/games-set-remix
+kind: tool
+version: 1.0.0
+summary: "Allow or disable Remix (spins) for one game. Set spinnable=false to opt out immediately. Existing downloaded copies cannot be recalled."
+use_when:
+  - "disable remixing or spins for my game"
+  - "opt my game out of Remix"
+  - "allow players to remix my game"
+facets:
+  lifecycle: [launch]
+  domains: [creator, deployment]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases: [summer_games_set_remix]
+implementation:
+  module: src/core/capabilities/game-remix.ts
+  export: setGameRemix
+surfaces:
+  mcp:
+    tool_name: summer_games_set_remix
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: The game id from games.list.
+    spinnable:
+      type: boolean
+      description: False opts out of Remix; true allows Remix. No default.
+  required: [gameId, spinnable]
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks: [none]

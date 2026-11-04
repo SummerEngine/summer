@@ -16,6 +16,7 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { setGameRemix } from "./game-remix.js";
 import { viewSetOp } from "./view-set.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1055,6 +1056,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         face: "cli",
       })
     )
+  ),
+  entry("summer_games_set_remix", "Allow or disable Remix for one game", false, (args) =>
+    structuredBuildFailure(() => setGameRemix({ gameId: str(args, "gameId"), spinnable: args.spinnable as boolean }))
   ),
   entry("summer_store_set_details", "Fill store page sections: genres, features, credits, languages, requirements, content survey, AI disclosure", false, (args) =>
     structuredBuildFailure(() =>

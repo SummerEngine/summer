@@ -53,14 +53,15 @@ let entriesCache: CatalogEntry[] | null = null;
  * account and the store sign-in `summer login` makes; `summer login --store`
  * for the store sign-in alone). Every other local one works signed out.
  */
-const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "store.go_live", "store.set_details", "apps.publish_folder", "content.make"]);
+const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "store.go_live", "store.set_details", "games.set_remix", "apps.publish_folder", "content.make"]);
 
 /**
  * Local operations that change Summer's records although their registry
  * authority names no local file or publish: store.set_details saves the store
- * page draft (players see nothing until it goes live).
+ * page draft (players see nothing until it goes live); games.set_remix changes
+ * the game permission immediately.
  */
-const REMOTE_WRITE_LOCAL_OPS: ReadonlySet<string> = new Set(["store.set_details"]);
+const REMOTE_WRITE_LOCAL_OPS: ReadonlySet<string> = new Set(["store.set_details", "games.set_remix"]);
 
 type IndexedTool = ReturnType<typeof loadLibraryIndex>[number];
 

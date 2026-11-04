@@ -8,6 +8,8 @@ import { localEntries } from "../../core/ops/catalog.js";
 import { isLocalOp, legacyNames, opFromCli } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS } from "../../core/ops/engine.js";
 import { TAKES_OUT } from "../../core/ops/save-files.js";
+import { devCommand } from "./dev.js";
+import { doctorCommand } from "./doctor.js";
 import { loginCommand } from "./login.js";
 import { opsCliCommands, runOpFromCli, type OpsCliDeps } from "./ops.js";
 import { previewCommand } from "./preview.js";
@@ -51,7 +53,7 @@ function words(command: string): string[] {
 }
 
 const commands = new Map<string, Command>(
-  [loginCommand, statusCommand, runCommand, setupCommand, toolCommand, previewCommand, ...opsCliCommands()].map((command) => [command.name(), command])
+  [devCommand, doctorCommand, loginCommand, statusCommand, runCommand, setupCommand, toolCommand, previewCommand, ...opsCliCommands()].map((command) => [command.name(), command])
 );
 const areas = new Set<string>(CLI_AREAS);
 const local = new Set([...localEntries().map((entry) => entry.name), ...Object.keys(ENGINE_SPLIT_OPS)]);
@@ -78,7 +80,7 @@ describe("the summer-cli skill and a project's AGENTS.md teach real commands", (
   const taught = taughtCommands(`${skill}\n${renderAgentsBlock()}`).filter((command) => !command.startsWith("summer <area>") && !command.includes("…"));
 
   it("teaches the sign-in, search, describe, run, wait, files and engine commands", () => {
-    for (const expected of ["summer login", "summer ops search", "summer ops describe", "summer jobs wait", "summer engine run-script", "summer run", "summer status", "summer preview"]) {
+    for (const expected of ["summer login", "summer ops search", "summer ops describe", "summer jobs wait", "summer engine run-script", "summer run", "summer dev", "summer doctor", "summer status", "summer preview"]) {
       expect(taught.some((command) => command.startsWith(expected))).toBe(true);
     }
   });

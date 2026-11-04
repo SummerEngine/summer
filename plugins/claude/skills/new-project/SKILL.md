@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: "Create a blank Summer Engine project: ask for the project name and run summer create empty."
+description: "Create and open a fresh Summer Engine project with summer dev; verify the project connection."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
@@ -52,17 +52,17 @@ If the user has clearly invoked `brainstorm-game` already and the brief calls fo
 
 ### 3. Create and open it
 
-One command creates the project and opens it. When Summer Engine is missing it also installs it (about 660 MB): ask the user first, and pass `--yes` only with their OK (without it nothing is installed):
+One command creates the project and opens it. Follow `summer-cli`'s "Start or reconnect to Summer Engine" sequence for CLI availability, installation and readiness. Start without `--yes`:
 
 ```
-summer dev --yes 3d-basic my-game
+summer dev 3d-basic my-game
 ```
 
-or `summer dev --yes empty my-game`. It writes `project.godot` and the chosen `main.tscn` (no network call for these two), opens the editor and waits until it answers.
+or `summer dev empty my-game`. If Summer Engine is installed, no installation approval is needed. If it is missing, a non-interactive call returns `needs_confirmation` without installing or creating the project. Ask the person about the download (about 660 MB), then repeat the same command with `--yes` after they agree. It writes `project.godot` and the chosen `main.tscn` (no network call for these two), opens the editor and waits for its local API.
 
 No shell in this session (a chat app)? Call `projects.create_local` with `template` and `name`, then `projects.open_local` with its `projectPath` (and `install: true` only after the user said yes to installing the engine).
 
-Confirm the project loaded with `summer_get_project_context`. If it fails, run `summer doctor` and surface the failure to the user.
+From the created project's folder, confirm the intended project and engine version with `summer_get_project_context` or `summer engine get-project-context`. If startup reports that assets are still importing, follow the readiness steps in `summer-cli`; if verification still fails, run `summer doctor` and surface the specific failure to the user.
 
 ### 4. Don't keep going automatically
 

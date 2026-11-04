@@ -823,7 +823,7 @@
     {
       "id": "skill/new-project",
       "name": "new-project",
-      "description": "Create a blank Summer Engine project: ask for the project name and run summer create empty.",
+      "description": "Create and open a fresh Summer Engine project with summer dev; verify the project connection.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

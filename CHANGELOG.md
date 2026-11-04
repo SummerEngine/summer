@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Startup skills now distinguish missing MCP tools from a stopped editor, use an explicit project path, and share the Summer CLI's installation and readiness checks. Agents can continue through the CLI without switching engines or asking the user to launch an already installed Summer Engine.
+
 ## [4.9.1] - 2026-10-28
 
 Exports the store already takes upload again: games without a server for every Summer app, and games with a server whatever platforms `summer.build.json` declares.

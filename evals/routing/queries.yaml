@@ -416,3 +416,6 @@ queries:
     expected: [tool/open]
   - query: "select the Player node in the editor so I can see it"
     expected: [tool/open]
+
+  - query: "download this game’s .pck so I can remix it"
+    expected: [tool/games-download-remix]

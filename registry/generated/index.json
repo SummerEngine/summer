@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "f640ab8e2cca224c7ad0291a54f96d534703d19a5da15ff6f55480d657b76f45",
+      "content_hash": "43fe94f78f878bc9eafda8f6bd1779c96ca0a6e9697c9b51d12e6ae4de0bc3eb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -7765,6 +7765,40 @@
         "filesystem": true,
         "editor_mutation": false,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/games-set-remix",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "683020fb332402a9f8d1af7c85519859b20aae57a2fdd19ee9e2b450aa6c8e11",
+      "summary": "Allow or disable Remix (spins) for one game. Set spinnable=false to opt out immediately. Existing downloaded copies cannot be recalled.",
+      "use_when": [
+        "disable remixing or spins for my game",
+        "opt my game out of Remix",
+        "allow players to remix my game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_games_set_remix",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

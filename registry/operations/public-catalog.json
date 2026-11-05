@@ -44947,6 +44947,10 @@
             "description": "bundle only: res:// path of the main scene.",
             "type": "string"
           },
+          "sandbox": {
+            "description": "bundle only: use the desktop runtime sandbox (default true). False requires staff review of this exact build before desktop release. C# and native code always require review.",
+            "type": "boolean"
+          },
           "hostedBuild": {
             "description": "bundle only, a hosted game: its summer.build.json as text, as exported.",
             "type": "string",
@@ -45010,7 +45014,7 @@
             "type": "number"
           },
           "resumed": {
-            "description": "bundle: an unfinished upload of the same version continues.",
+            "description": "Whether an existing upload was discovered and resumed.",
             "type": "boolean"
           },
           "partsNeedSha256": {

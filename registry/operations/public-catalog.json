@@ -24517,6 +24517,11 @@
             "minLength": 1,
             "maxLength": 60
           },
+          "remixOfGameId": {
+            "description": "Source game ID when creating a remix. Recorded permanently for attribution; omit for an original game.",
+            "type": "string",
+            "pattern": "^game_[A-Za-z0-9]+$"
+          },
           "targets": {
             "description": "web, macos-universal, windows-x64 and linux-x64 open the desktop store; ios and android the mobile store.",
             "minItems": 1,
@@ -24636,6 +24641,17 @@
           "gameId": {
             "type": "string"
           },
+          "remixOfGameId": {
+            "description": "Immediate source game for attribution; null for an original game.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -24687,6 +24703,7 @@
         },
         "required": [
           "gameId",
+          "remixOfGameId",
           "name",
           "slug",
           "status",
@@ -24974,6 +24991,17 @@
                 "gameId": {
                   "type": "string"
                 },
+                "remixOfGameId": {
+                  "description": "Immediate source game for attribution; null for an original game.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -25005,6 +25033,7 @@
               },
               "required": [
                 "gameId",
+                "remixOfGameId",
                 "name",
                 "slug",
                 "status",
@@ -40673,6 +40702,12 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 6000
+              },
+              "playerHourTokens": {
+                "description": "Text tokens one player's character replies may use in any hour; over it a reply answers 429 until the hour frees up.",
+                "type": "integer",
+                "minimum": 10000,
+                "maximum": 50000000
               }
             }
           },
@@ -40779,6 +40814,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -40854,6 +40894,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -41092,6 +41137,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -41167,6 +41217,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991

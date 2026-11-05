@@ -71,6 +71,8 @@ export interface PublishBuildInput {
   clientVersion?: string;
   /** Also make the Build available to players (summer_go_live does this and the release in one step). */
   publish?: boolean;
+  /** Run desktop builds in the sandbox. False requires staff review of this build. */
+  sandbox?: boolean;
   /**
    * A web build or native download (summer_export_game format "download"):
    * the store versions platform (web, macos-universal, windows-x64,
@@ -530,13 +532,13 @@ export async function platformHold(store: Store, gameId: string): Promise<Record
     return {
       by: "summer",
       stillCheckingSince: since,
-      message: "Summer is still checking this; nothing to do on your side. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+      message: "Summer is still checking this. The Build is kept. Unrestricted desktop builds require staff review before desktop activation; summer_go_live reports release progress.",
     };
   }
   return {
     by: "summer",
     message:
-      "Every automated check is done; the platform has not released this game's builds yet. That is on Summer's side and needs nothing from you. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+      "Every automated check is done; the platform has not released this game's builds yet. The Build is kept. Unrestricted desktop builds require staff review before desktop activation; summer_go_live reports release progress.",
   };
 }
 
@@ -546,6 +548,9 @@ export async function publishBuild(
   input: PublishBuildInput,
   overrides: Partial<PublishBuildDependencies> = {}
 ): Promise<PublishBuildResult> {
+  if (input.sandbox !== undefined && typeof input.sandbox !== "boolean") {
+    throw new BuildToolError("invalid_sandbox", "sandbox must be a boolean.", "Recovery: pass true or false.");
+  }
   const deps = { ...defaultDependencies, ...overrides };
   const gameId = input.gameId?.trim();
   const fileInput = input.file?.trim();
@@ -584,6 +589,7 @@ export async function publishBuild(
     hosted: bundle.hosted,
     summerVersion: bundle.summerVersion,
     publish,
+    sandbox: input.sandbox ?? true,
     // Informational: summer.build.json declares other platforms; the store targets the bundle's.
     ...(platformChange ? { targetPlatformChange: platformChange } : {}),
   };
@@ -608,7 +614,7 @@ export async function publishBuild(
   await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
   // Same keys Studio derives: the same bytes, version and scene are one declaration.
   const key = (write: string) =>
-    createHash("sha256").update(`${gameId}:${clientVersion}:${bundle.mainScene}:${digest.sha256}:${write}`).digest("hex");
+    createHash("sha256").update(`${gameId}:${clientVersion}:${bundle.mainScene}:${digest.sha256}:${input.sandbox === false ? "sandbox:false:" : ""}${write}`).digest("hex");
   const publications = `games/${seg(gameId)}/build-publications`;
 
   try {
@@ -617,6 +623,7 @@ export async function publishBuild(
       body: {
         source: { kind: "exported-game", format: "summer-bundle", archiveSha256: digest.sha256, sizeBytes: digest.sizeBytes },
         clientVersion,
+        ...(input.sandbox === false ? { sandbox: false } : {}),
         ...(bundle.hostedBuild ? { exportedClient: { entryPoint: bundle.mainScene } } : {}),
         build: bundle.hostedBuild
           ? // A declaration that names the bundle's platforms is sent as written, so a retry sends the same bytes.

@@ -242,21 +242,20 @@ async function latestReviewOf(store: Store, gameId: string, review: Record<strin
   }
 }
 
-const STILL_CHECKING = "Summer is still checking this; nothing to do on your side.";
+const STILL_CHECKING = "Summer is still checking this.";
 
 /** When a Publish's automated checks have run over an hour, the platform says since when. */
 const stillCheckingSince = (snapshot: Snapshot): string | null => text(snapshot.review?.stillCheckingSince);
 
-/** What the platform is waiting on, said so an agent never tells a creator to wait for a review. */
+/** Report a platform hold without assuming which review is pending. */
 function summerHold(snapshot: Snapshot): Record<string, unknown> {
   const since = stillCheckingSince(snapshot);
   return {
     by: "summer",
     ...(since ? { stillCheckingSince: since } : {}),
     message: since
-      ? `${STILL_CHECKING} This request stays in place and goes live by itself once the checks finish.`
-      : "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
-        "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
+      ? `${STILL_CHECKING} The request remains in place. Unrestricted desktop builds require staff review before desktop activation.`
+      : "The platform has not released it yet. Unrestricted desktop builds require staff review before desktop activation; server outbound HTTP also requires staff approval.",
   };
 }
 

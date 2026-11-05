@@ -51,7 +51,7 @@ export const OPS_MCP_INSTRUCTIONS =
   " Write GDScript files directly; create scenes and import assets through Summer while the project is open. summer_get_project_context tells you which project you are connected to. " +
   "Listed tools are the common jobs; for anything else, summer_search describes the job in words and returns the operation and its exact input, then summer_call runs it. " +
   "More than 3 scene edits: one summer_run_script with scenePath. Each engine tool's full guide: summer_docs_read. Long work answers with a job: jobs.wait. " +
-  "Going live: skill/release-checklist, then store.go_live with the person's yes; a game is live once Summer's automated checks pass, so never tell anyone to wait for a review. Prices and other live changes may answer needs_approval with a link: give it to the person. " +
+  "Going live: skill/release-checklist, then store.go_live with the person's yes; unrestricted desktop builds require staff review before desktop activation. Prices and other live changes may answer needs_approval with a link: give it to the person. " +
   "Opening the Summer editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot to see it; close what you opened, one editor at a time.";
 
 /** The assets profile's version: no engine tools, so it names none. */

@@ -237,6 +237,26 @@ describe("publishBuild", () => {
     expect(audit[0]).toMatchObject({ operation: "publish_build", gameId: "game-1", sha256: sha(bytes) });
   });
 
+  it("preserves the desktop sandbox choice across preview, upload and retry", async () => {
+    const preview = fakeStore();
+    expect(await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", sandbox: false, face: "mcp" }, deps(preview.fetch)))
+      .toMatchObject({ target: { sandbox: false } });
+    const first = fakeStore();
+    const retry = fakeStore();
+    const defaults = fakeStore();
+    for (const store of [first, retry]) {
+      await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", sandbox: false, confirm: true, face: "mcp" }, deps(store.fetch));
+    }
+    await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(defaults.fetch));
+    const create = (calls: Call[]) => calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create(first.calls).body.sandbox).toBe(false);
+    expect(create(retry.calls).body).toEqual(create(first.calls).body);
+    expect(create(retry.calls).headers["idempotency-key"]).toBe(create(first.calls).headers["idempotency-key"]);
+    expect(create(defaults.calls).body.sandbox).toBeUndefined(); // Platform defaults to true.
+    expect(create(defaults.calls).headers["idempotency-key"]).not.toBe(create(first.calls).headers["idempotency-key"]);
+    await expect(publishBuild({ sandbox: "false", face: "mcp" } as any, deps(first.fetch))).rejects.toMatchObject({ code: "invalid_sandbox" });
+  });
+
   it("keeps the same idempotency keys on a retry, so the same publication continues", async () => {
     const first = fakeStore();
     await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(first.fetch));
@@ -271,10 +291,10 @@ describe("publishBuild", () => {
     expect(String((result.hold as Record<string, unknown>).message)).toMatch(/new build alone does not/);
   });
 
-  it("says Summer is still checking, with nothing to do, when the platform reports long-running checks", async () => {
+  it("reports staff review for unrestricted desktop builds when checks run long", async () => {
     const store = fakeStore({ publishStatus: 409, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
     const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
-    expect(result.hold).toMatchObject({ by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z", message: expect.stringContaining("Summer is still checking this; nothing to do on your side.") });
+    expect(result.hold).toMatchObject({ by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z", message: expect.stringContaining("staff review before desktop activation") });
   });
 
   it("waits for the per-platform checks and reports each one", async () => {

@@ -298,12 +298,12 @@ describe("goLive", () => {
     expect(String(result.next)).toMatch(/Agent permissions/);
   });
 
-  it("says Summer is still checking, with nothing to do, when a Publish's checks run long", async () => {
+  it("reports that unrestricted desktop builds require staff review when a Publish waits", async () => {
     const store = fakeStore({ hold: true, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
     const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z" }, review: { stillCheckingSince: "2026-10-19T09:00:00Z" } });
-    expect(String(result.next)).toContain("Summer is still checking this; nothing to do on your side.");
-    expect(JSON.stringify(result)).not.toMatch(/wait(ing)? for (a |the )?review|in review|until Summer approves/i);
+    expect(String(result.next)).toContain("Summer is still checking this.");
+    expect(JSON.stringify(result.hold)).toContain("staff review before desktop activation");
   });
 
   it("reports Summer's decision and feedback when the page was sent back", async () => {

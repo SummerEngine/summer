@@ -24517,6 +24517,11 @@
             "minLength": 1,
             "maxLength": 60
           },
+          "remixOfGameId": {
+            "description": "Source game ID when creating a remix. Recorded permanently for attribution; omit for an original game.",
+            "type": "string",
+            "pattern": "^game_[A-Za-z0-9]+$"
+          },
           "targets": {
             "description": "web, macos-universal, windows-x64 and linux-x64 open the desktop store; ios and android the mobile store.",
             "minItems": 1,
@@ -24636,6 +24641,17 @@
           "gameId": {
             "type": "string"
           },
+          "remixOfGameId": {
+            "description": "Immediate source game for attribution; null for an original game.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -24687,6 +24703,7 @@
         },
         "required": [
           "gameId",
+          "remixOfGameId",
           "name",
           "slug",
           "status",
@@ -24974,6 +24991,17 @@
                 "gameId": {
                   "type": "string"
                 },
+                "remixOfGameId": {
+                  "description": "Immediate source game for attribution; null for an original game.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -25005,6 +25033,7 @@
               },
               "required": [
                 "gameId",
+                "remixOfGameId",
                 "name",
                 "slug",
                 "status",
@@ -40673,6 +40702,12 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 6000
+              },
+              "playerHourTokens": {
+                "description": "Text tokens one player's character replies may use in any hour; over it a reply answers 429 until the hour frees up.",
+                "type": "integer",
+                "minimum": 10000,
+                "maximum": 50000000
               }
             }
           },
@@ -40779,6 +40814,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -40854,6 +40894,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -41092,6 +41137,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -41167,6 +41217,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -42572,7 +42627,7 @@
     {
       "name": "store.publish",
       "title": "Publish the game",
-      "summary": "Publish the store page with a build and price: live once the automatic checks pass, never waiting on staff. Publishes now (a job) when the person's Agent permissions allow; else answers the owner's approval link. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
+      "summary": "Publish the store page with a build and price: automatic checks run; desktop builds may also need staff review. Publishes now (a job) when the person's Agent permissions allow; else answers the owner's approval link. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -42693,7 +42748,7 @@
     {
       "name": "store.release",
       "title": "Release a build",
-      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. Never waits on staff, except a build asking for internet access. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
+      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. A desktop build or requested capability may require staff review. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -44892,6 +44947,10 @@
             "description": "bundle only: res:// path of the main scene.",
             "type": "string"
           },
+          "sandbox": {
+            "description": "bundle only: use the desktop runtime sandbox (default true). False requires staff review of this exact build before desktop release. C# and native code always require review.",
+            "type": "boolean"
+          },
           "hostedBuild": {
             "description": "bundle only, a hosted game: its summer.build.json as text, as exported.",
             "type": "string",
@@ -44955,7 +45014,7 @@
             "type": "number"
           },
           "resumed": {
-            "description": "bundle: an unfinished upload of the same version continues.",
+            "description": "Whether an existing upload was discovered and resumed.",
             "type": "boolean"
           },
           "partsNeedSha256": {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
-import { createStore, defaultDependencies, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
+import { createStore, defaultDependencies, isDesktopReviewPending, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
 import { droppedPlatforms, notUsedPlatforms, serverOnlyRefusal, type DroppedPlatform, type NotUsedPlatform } from "./release-drops.js";
 import { describeFailure, summarizeChecks, type PlatformCheck } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
@@ -22,10 +22,9 @@ import { BuildToolError } from "./summer-bundle.js";
  * An agent credential may call the three :publish actions without an owner
  * approval while the person's Agent permissions allow Publish (the platform
  * default; summer-platform internal/management/agent_gate.go). The platform
- * runs every automated check, and a game goes live as soon as they pass:
- * Summer's staff review it afterwards (review after live). A staff hold is
- * reported with what to change; a platform hold is reported as Summer's, never
- * as a step the creator waits on. Calling again continues: the same
+ * runs the checks and any required staff review before activation. A staff hold
+ * is reported without treating owner permission as staff approval. Calling again
+ * continues: the same
  * idempotency keys replay what was already asked, so nothing is requested
  * twice.
  */
@@ -242,21 +241,20 @@ async function latestReviewOf(store: Store, gameId: string, review: Record<strin
   }
 }
 
-const STILL_CHECKING = "Summer is still checking this; nothing to do on your side.";
+const STILL_CHECKING = "Summer is still checking this.";
 
 /** When a Publish's automated checks have run over an hour, the platform says since when. */
 const stillCheckingSince = (snapshot: Snapshot): string | null => text(snapshot.review?.stillCheckingSince);
 
-/** What the platform is waiting on, said so an agent never tells a creator to wait for a review. */
+/** Report a platform hold without assuming which review is pending. */
 function summerHold(snapshot: Snapshot): Record<string, unknown> {
   const since = stillCheckingSince(snapshot);
   return {
     by: "summer",
     ...(since ? { stillCheckingSince: since } : {}),
     message: since
-      ? `${STILL_CHECKING} This request stays in place and goes live by itself once the checks finish.`
-      : "Every automated check passed and the platform has not released it yet. That is on Summer's side and needs nothing from you: " +
-        "this request stays in place and goes live by itself. (If the server asks for outbound HTTP, Summer staff approve that before it goes live.)",
+      ? `${STILL_CHECKING} The request remains in place. Unrestricted desktop builds require staff review before desktop activation.`
+      : "The platform has not released it yet. Unrestricted desktop builds require staff review before desktop activation; server outbound HTTP also requires staff approval.",
   };
 }
 
@@ -386,6 +384,7 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
     try {
       await store.call("POST", `${publicationPath}:publish`, { body: {}, key: keyOf(gameId, "prepare", build.publicationId) });
     } catch (error) {
+      if (isDesktopReviewPending(error)) return { by: "summer", code: "desktop_access_review_pending", message: "This exact Build needs staff review before desktop activation." };
       if (error instanceof BuildToolError && error.status === 409 && error.code === "deployment_not_actionable") return summerHold(snapshot);
       throw error;
     }
@@ -420,6 +419,9 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
       headers: { [REVISION_HEADER]: `"${draft.revision}"` },
     });
   } catch (error) {
+    if (isDesktopReviewPending(error)) {
+      return { by: "summer", code: "desktop_access_review_pending", message: "This exact Build needs staff review before desktop activation." };
+    }
     if (error instanceof BuildToolError && error.code === "playable_release_required") {
       requested.refused = { message: text(error.detail?.message) };
       return null;
@@ -514,8 +516,34 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     const stopped = blockers(snapshot);
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
     if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
+    if (hold?.code === "desktop_access_review_pending") {
+      return { ok: true, status: "waiting", waitingOn: "desktop_access_review", ...view(snapshot), hold, next: "This exact Build needs staff review before desktop activation. Check its status again after review." };
+    }
+    if (hold) return { ok: true, status: "waiting", waitingOn: "summer", ...view(snapshot), hold, next: "The Build is not ready for release. Call summer_go_live again to check its status." };
     if (requested.refused) {
       return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped, notUsed: requested.notUsed }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
+    }
+    // A release can be accepted before its worker parks it for staff review.
+    // Wait for activation before publishing the page, and keep the operation on retry.
+    if (snapshot.build) {
+      for (;;) {
+        snapshot = await read(store, gameId, snapshot.build!.publicationId, requested);
+        const afterReleaseStops = blockers(snapshot);
+        if (afterReleaseStops.length) return { ok: true, status: "blocked", ...view(snapshot), failures: afterReleaseStops, next: "Fix each failure, then call summer_go_live again." };
+        if ((snapshot.environment?.desiredReleaseId && snapshot.environment.desiredReleaseId !== snapshot.environment.activeReleaseId) || (snapshot.pending && snapshot.pending.status !== "active") || (requested.releaseId && requested.releaseId !== snapshot.environment?.activeReleaseId)) {
+          const review = snapshot.pending?.rollout?.waiting === "capability_approval";
+          if (!review && deps.now() < deadline) {
+            await deps.sleep(Math.min(POLL_MS, deadline - deps.now()));
+            continue;
+          }
+          return {
+            ok: true, status: "waiting", waitingOn: review ? "staff_review" : "activation", ...view(snapshot),
+            ...(review ? { hold: { by: "summer", code: "staff_review_pending", message: "This release is waiting for staff review." } } : {}),
+            next: review ? "This release is waiting for staff review. Call summer_go_live again after review to finish publishing the page." : "The release is not active yet. Call summer_go_live again to check it and finish publishing the page.",
+          };
+        }
+        break;
+      }
     }
     const refused = await publishPage(store, gameId, snapshot);
     if (refused) return { ...view(snapshot), ...refused };

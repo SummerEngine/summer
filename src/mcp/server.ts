@@ -105,7 +105,7 @@ export const SUMMER_MCP_INSTRUCTIONS =
   "After play: summer_get_diagnostics, not only summer_get_console. " +
   "All-black screenshot: no redraw yet, recapture. " +
   "Report verified entries via summer_library_feedback. " +
-  "Publish: summer_export_game, summer_publish_build, skill/release-checklist, summer_go_live, each confirmed. Live once automated checks pass: never say wait for review. " +
+  "Publish: summer_export_game, summer_publish_build, skill/release-checklist, summer_go_live, each confirmed. Unrestricted desktop builds require staff review before desktop activation. " +
   "Opening the editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot; close what you opened, one editor at a time.";
 
 /** The same first-turn habits for a profile without engine tools (`--profile assets`). */

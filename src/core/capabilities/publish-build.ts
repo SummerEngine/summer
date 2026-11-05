@@ -71,6 +71,8 @@ export interface PublishBuildInput {
   clientVersion?: string;
   /** Also make the Build available to players (summer_go_live does this and the release in one step). */
   publish?: boolean;
+  /** Run desktop builds in the sandbox. False requires staff review of this build. */
+  sandbox?: boolean;
   /**
    * A web build or native download (summer_export_game format "download"):
    * the store versions platform (web, macos-universal, windows-x64,
@@ -103,6 +105,13 @@ export interface Store {
     path: string,
     options?: { body?: unknown; key?: string; headers?: Record<string, string> }
   ): Promise<T>;
+}
+
+/** Platform's management API uses this shared 409 code for several refusals. */
+export function isDesktopReviewPending(error: unknown): boolean {
+  return error instanceof BuildToolError && error.status === 409 &&
+    (error.code === "desktop_access_review_pending" ||
+      (error.code === "deployment_not_actionable" && error.message.includes("desktop access review pending")));
 }
 
 export function storeError(status: number, code: string, message: string | undefined, requestId?: string, detail?: Record<string, unknown>): BuildToolError {
@@ -530,13 +539,13 @@ export async function platformHold(store: Store, gameId: string): Promise<Record
     return {
       by: "summer",
       stillCheckingSince: since,
-      message: "Summer is still checking this; nothing to do on your side. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+      message: "Summer is still checking this. The Build is kept. Unrestricted desktop builds require staff review before desktop activation; summer_go_live reports release progress.",
     };
   }
   return {
     by: "summer",
     message:
-      "Every automated check is done; the platform has not released this game's builds yet. That is on Summer's side and needs nothing from you. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+      "Every automated check is done; the platform has not released this game's builds yet. The Build is kept. Unrestricted desktop builds require staff review before desktop activation; summer_go_live reports release progress.",
   };
 }
 
@@ -546,6 +555,9 @@ export async function publishBuild(
   input: PublishBuildInput,
   overrides: Partial<PublishBuildDependencies> = {}
 ): Promise<PublishBuildResult> {
+  if (input.sandbox !== undefined && typeof input.sandbox !== "boolean") {
+    throw new BuildToolError("invalid_sandbox", "sandbox must be a boolean.", "Recovery: pass true or false.");
+  }
   const deps = { ...defaultDependencies, ...overrides };
   const gameId = input.gameId?.trim();
   const fileInput = input.file?.trim();
@@ -557,6 +569,9 @@ export async function publishBuild(
   // The store's second path: a web build or native download becomes a store version.
   const platform = input.platform?.trim() || (last?.path === file ? last.storePlatform : undefined);
   if (platform) {
+    if (input.sandbox === false) {
+      throw new BuildToolError("sandbox_not_supported", "The sandbox choice applies only to bundle builds; web builds and native downloads do not accept sandbox=false.", "Recovery: omit sandbox or use a bundle export. Native downloads require staff review.");
+    }
     const clientVersion = normalizeClientVersion(input.clientVersion);
     if (!gameId) return listGamesOrThrow(deps);
     const download = { gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face };
@@ -584,6 +599,7 @@ export async function publishBuild(
     hosted: bundle.hosted,
     summerVersion: bundle.summerVersion,
     publish,
+    sandbox: input.sandbox ?? true,
     // Informational: summer.build.json declares other platforms; the store targets the bundle's.
     ...(platformChange ? { targetPlatformChange: platformChange } : {}),
   };
@@ -608,7 +624,7 @@ export async function publishBuild(
   await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
   // Same keys Studio derives: the same bytes, version and scene are one declaration.
   const key = (write: string) =>
-    createHash("sha256").update(`${gameId}:${clientVersion}:${bundle.mainScene}:${digest.sha256}:${write}`).digest("hex");
+    createHash("sha256").update(`${gameId}:${clientVersion}:${bundle.mainScene}:${digest.sha256}:${input.sandbox === false ? "sandbox:false:" : ""}${write}`).digest("hex");
   const publications = `games/${seg(gameId)}/build-publications`;
 
   try {
@@ -617,6 +633,7 @@ export async function publishBuild(
       body: {
         source: { kind: "exported-game", format: "summer-bundle", archiveSha256: digest.sha256, sizeBytes: digest.sizeBytes },
         clientVersion,
+        ...(input.sandbox === false ? { sandbox: false } : {}),
         ...(bundle.hostedBuild ? { exportedClient: { entryPoint: bundle.mainScene } } : {}),
         build: bundle.hostedBuild
           ? // A declaration that names the bundle's platforms is sent as written, so a retry sends the same bytes.
@@ -723,7 +740,9 @@ export async function publishBuild(
         published = true;
       } catch (error) {
         if (!(error instanceof BuildToolError && error.status === 409 && error.code === NOT_ACTIONABLE)) throw error;
-        hold = await platformHold(store, gameId);
+        hold = isDesktopReviewPending(error)
+          ? { by: "summer", code: "desktop_access_review_pending", message: "This exact Build needs staff review before desktop activation." }
+          : await platformHold(store, gameId);
       }
     }
 
@@ -749,7 +768,9 @@ export async function publishBuild(
       published,
       ...(hold ? { hold } : {}),
       next:
-        checks.state === "failed"
+        hold?.code === "desktop_access_review_pending"
+          ? "This exact Build needs staff review before desktop activation. Check its status again after review."
+          : checks.state === "failed"
           ? `Summer's automated checks failed${failed.length ? ` on ${failed.map((check) => check.platform).join(", ")}` : ""}. Apply each fix, export again and upload with a new clientVersion.`
           : checks.state === "checking"
             ? "Summer is still checking the client pack. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice."

@@ -45,6 +45,7 @@ function fakeStore(options: {
   desktopReviewPending?: boolean;
   desktopPreparePending?: boolean;
   asyncStaffReview?: boolean;
+  asyncActivate?: boolean;
   /** Newer clients the release does not use (notUsedTargets): those platforms keep a live client of another Build. */
   notUsed?: Array<Record<string, unknown>>;
   /** The platform's message with that refusal; absent, it sends none. */
@@ -62,6 +63,7 @@ function fakeStore(options: {
     contentDescriptors: [],
     ...options.page,
   };
+  let environmentReads = 0;
   let buildStatus = options.buildStatus ?? "preview_ready";
   const environment: Record<string, any> = { id: "env_production", kind: "production", status: "active", revision: 7, activeReleaseId: options.live ? "rel-1" : null, desiredReleaseId: options.live ? "rel-1" : null };
   let release: Record<string, any> | null = options.live
@@ -96,7 +98,14 @@ function fakeStore(options: {
     if (method === "GET" && url === `${GAME}/build-publications`) return json(200, { items: options.noBuild ? [] : [{ ...publication, clientPackage: undefined }] });
     if (method === "GET" && url === `${GAME}/build-publications/pub-1`) return json(200, publication);
     if (method === "GET" && url === `${GAME}/store/versions`) return json(200, { items: [] });
-    if (method === "GET" && url === ENV) return json(200, environment);
+    if (method === "GET" && url === ENV) {
+      environmentReads++;
+      if (options.asyncActivate && environment.desiredReleaseId && environmentReads >= 3) {
+        environment.activeReleaseId = "rel-1";
+        release = { id: "rel-1", status: "active", targets: [{ target: "ios", buildId: "build-1", qualificationId: "q-ios" }] };
+      }
+      return json(200, environment);
+    }
     if (method === "GET" && url === `${ENV}/releases/rel-1`) return release ? json(200, release) : json(404, { error: { code: "not_found" } });
     if (method === "GET" && url === `${GAME}/builds/build-1`) return json(200, { id: "build-1", status: buildStatus, executionMode: options.hosted ? "hosted" : "standalone" });
     if (method === "POST" && url === `${GAME}/build-publications/pub-1:publish`) {
@@ -115,8 +124,8 @@ function fakeStore(options: {
         return json(202, { releaseId: "rel-1", operationId: "op-release", state: "pending", ...(options.drop ? { droppedTargets: dropped } : {}) });
       }
       environment.desiredReleaseId = "rel-1";
-      if (options.asyncStaffReview || options.hold) release = { id: "rel-1", status: "pending", targets: [], rollout: { state: "pending", ...(options.asyncStaffReview ? { waiting: "capability_approval" } : {}) } };
-      if (!options.hold && !options.asyncStaffReview) {
+      if (options.asyncStaffReview || options.asyncActivate || options.hold) release = { id: "rel-1", status: "pending", targets: [], rollout: { state: "pending", ...(options.asyncStaffReview ? { waiting: "capability_approval" } : {}) } };
+      if (!options.hold && !options.asyncStaffReview && !options.asyncActivate) {
         environment.activeReleaseId = "rel-1";
         release = {
           id: "rel-1",
@@ -298,6 +307,16 @@ describe("goLive", () => {
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "waiting", waitingOn: "desktop_access_review", hold: { code: "desktop_access_review_pending" } });
     expect(store.calls.some((call) => call.url.endsWith("revisions/rev-1:publish"))).toBe(false);
+  });
+
+  it("waits within the budget for activation before publishing the page", async () => {
+    const store = fakeStore({ asyncActivate: true });
+    const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("live");
+    const activationRead = store.calls.findIndex((call) => call.url === `${ENV}/releases/rel-1` && call.method === "GET");
+    const pagePublish = store.calls.findIndex((call) => call.url.endsWith("revisions/rev-1:publish"));
+    expect(activationRead).toBeGreaterThanOrEqual(0);
+    expect(pagePublish).toBeGreaterThan(activationRead);
   });
 
   it("waits for a release worker's staff approval before publishing the page", async () => {

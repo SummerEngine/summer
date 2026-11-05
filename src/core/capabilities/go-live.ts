@@ -526,16 +526,23 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     // A release can be accepted before its worker parks it for staff review.
     // Wait for activation before publishing the page, and keep the operation on retry.
     if (snapshot.build) {
-      snapshot = await read(store, gameId, snapshot.build.publicationId, requested);
-      const afterReleaseStops = blockers(snapshot);
-      if (afterReleaseStops.length) return { ok: true, status: "blocked", ...view(snapshot), failures: afterReleaseStops, next: "Fix each failure, then call summer_go_live again." };
-      if ((snapshot.environment?.desiredReleaseId && snapshot.environment.desiredReleaseId !== snapshot.environment.activeReleaseId) || (snapshot.pending && snapshot.pending.status !== "active") || (requested.releaseId && requested.releaseId !== snapshot.environment?.activeReleaseId)) {
-        const review = snapshot.pending?.rollout?.waiting === "capability_approval";
-        return {
-          ok: true, status: "waiting", waitingOn: review ? "staff_review" : "activation", ...view(snapshot),
-          ...(review ? { hold: { by: "summer", code: "staff_review_pending", message: "This release is waiting for staff review." } } : {}),
-          next: review ? "This release is waiting for staff review. Call summer_go_live again after review to finish publishing the page." : "The release is not active yet. Call summer_go_live again to check it and finish publishing the page.",
-        };
+      for (;;) {
+        snapshot = await read(store, gameId, snapshot.build!.publicationId, requested);
+        const afterReleaseStops = blockers(snapshot);
+        if (afterReleaseStops.length) return { ok: true, status: "blocked", ...view(snapshot), failures: afterReleaseStops, next: "Fix each failure, then call summer_go_live again." };
+        if ((snapshot.environment?.desiredReleaseId && snapshot.environment.desiredReleaseId !== snapshot.environment.activeReleaseId) || (snapshot.pending && snapshot.pending.status !== "active") || (requested.releaseId && requested.releaseId !== snapshot.environment?.activeReleaseId)) {
+          const review = snapshot.pending?.rollout?.waiting === "capability_approval";
+          if (!review && deps.now() < deadline) {
+            await deps.sleep(Math.min(POLL_MS, deadline - deps.now()));
+            continue;
+          }
+          return {
+            ok: true, status: "waiting", waitingOn: review ? "staff_review" : "activation", ...view(snapshot),
+            ...(review ? { hold: { by: "summer", code: "staff_review_pending", message: "This release is waiting for staff review." } } : {}),
+            next: review ? "This release is waiting for staff review. Call summer_go_live again after review to finish publishing the page." : "The release is not active yet. Call summer_go_live again to check it and finish publishing the page.",
+          };
+        }
+        break;
       }
     }
     const refused = await publishPage(store, gameId, snapshot);

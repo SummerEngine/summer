@@ -562,6 +562,9 @@ export async function publishBuild(
   // The store's second path: a web build or native download becomes a store version.
   const platform = input.platform?.trim() || (last?.path === file ? last.storePlatform : undefined);
   if (platform) {
+    if (input.sandbox === false) {
+      throw new BuildToolError("sandbox_not_supported", "The sandbox choice applies only to bundle builds; web builds and native downloads do not accept sandbox=false.", "Recovery: omit sandbox or use a bundle export. Native downloads require staff review.");
+    }
     const clientVersion = normalizeClientVersion(input.clientVersion);
     if (!gameId) return listGamesOrThrow(deps);
     const download = { gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face };

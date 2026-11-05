@@ -42,6 +42,7 @@ function fakeStore(options: {
   drop?: Array<Record<string, unknown>>;
   /** The platform refuses the release: "now" answers the publish with 409, "rollout" fails the deploy afterwards. */
   serverOnly?: "now" | "rollout";
+  desktopReviewPending?: boolean;
   /** Newer clients the release does not use (notUsedTargets): those platforms keep a live client of another Build. */
   notUsed?: Array<Record<string, unknown>>;
   /** The platform's message with that refusal; absent, it sends none. */
@@ -102,6 +103,7 @@ function fakeStore(options: {
     }
     if (method === "POST" && url === `${ENV}/release-drafts`) return json(200, { id: "draft-1", revision: 2, gameId: "game-1", baseEnvironmentRevision: 7, targets: body.targets });
     if (method === "POST" && url === `${ENV}/release-drafts/draft-1:publish`) {
+      if (options.desktopReviewPending) return json(409, { error: { code: "desktop_access_review_pending", message: "This game is waiting for review." } });
       if (options.serverOnly === "now") return json(409, { error: { code: "playable_release_required", ...(options.serverOnlyMessage ? { message: options.serverOnlyMessage } : {}), retryable: false } });
       const dropped = options.drop ?? [];
       if (options.serverOnly === "rollout") {
@@ -289,6 +291,13 @@ describe("goLive", () => {
     const store = fakeStore({ pagePublish: { status: 422, code: "store_page_incomplete", missing: ["media"] } });
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "blocked", failures: [{ field: "media", fix: expect.stringContaining("store.set_art") }] });
+  });
+
+  it("reports desktop review pending without publishing the page or claiming live", async () => {
+    const store = fakeStore({ desktopReviewPending: true, checks: [{ id: "v1", platform: "windows", state: "ready", qualificationId: "q-win" }] });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "desktop_access_review", hold: { code: "desktop_access_review_pending" } });
+    expect(store.calls.some((call) => call.url.endsWith("revisions/rev-1:publish"))).toBe(false);
   });
 
   it("says Publish is off in the person's Agent permissions when the platform asks for the owner", async () => {

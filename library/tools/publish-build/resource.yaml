@@ -51,7 +51,7 @@ input_schema:
     sandbox:
       type: boolean
       default: true
-      description: "Bundles only: run desktop builds in the sandbox. False requests unrestricted desktop access and requires staff review of this exact build before desktop activation."
+      description: "Bundles only: run desktop builds in the sandbox. False requests unrestricted desktop access and requires staff review of this exact build before desktop activation. False is rejected for web builds and native downloads; native downloads require staff review."
     publish:
       type: boolean
       default: false

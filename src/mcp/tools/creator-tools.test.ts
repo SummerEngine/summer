@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { setSummerDirForTests } from "../../core/store.js";
 import { registerCreatorTools } from "./creator-tools.js";
 
@@ -56,6 +57,15 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
+  it("validates the sandbox choice on the MCP schema", () => {
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    const schema = z.object(getTool(tools, "summer_publish_build").schema as z.ZodRawShape);
+    expect(schema.parse({ clientVersion: "v1.0.0" }).sandbox).toBe(true);
+    expect(schema.parse({ clientVersion: "v1.0.0", sandbox: false }).sandbox).toBe(false);
+    expect(schema.safeParse({ clientVersion: "v1.0.0", sandbox: "false" }).success).toBe(false);
+  });
+
   it("returns structured failures from summer_publish_build", async () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);

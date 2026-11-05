@@ -419,6 +419,9 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
       headers: { [REVISION_HEADER]: `"${draft.revision}"` },
     });
   } catch (error) {
+    if (error instanceof BuildToolError && error.status === 409 && error.code === "desktop_access_review_pending") {
+      return { by: "summer", code: error.code, message: "This exact Build needs staff review before desktop activation." };
+    }
     if (error instanceof BuildToolError && error.code === "playable_release_required") {
       requested.refused = { message: text(error.detail?.message) };
       return null;
@@ -513,6 +516,9 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     const stopped = blockers(snapshot);
     if (stopped.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stopped, next: "Fix each failure, then call summer_go_live again." };
     if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
+    if (hold?.code === "desktop_access_review_pending") {
+      return { ok: true, status: "waiting", waitingOn: "desktop_access_review", ...view(snapshot), hold, next: "This exact Build needs staff review before desktop activation. Check its status again after review." };
+    }
     if (requested.refused) {
       return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped, notUsed: requested.notUsed }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
     }

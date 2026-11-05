@@ -126,7 +126,7 @@ export function registerCreatorTools(server: McpServer): void {
       gameId: z.string().optional().describe("The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
       file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
       clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
-      sandbox: z.boolean().default(true).describe("Bundles only: run desktop builds in the sandbox. False requests unrestricted desktop access and requires staff review of this exact build before desktop activation."),
+      sandbox: z.boolean().default(true).describe("Bundles only: run desktop builds in the sandbox. False requests unrestricted desktop access and requires staff review of this exact build before desktop activation. False is rejected for web builds and native downloads; native downloads require staff review."),
       publish: z.boolean().default(false).describe("Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."),
       platform: z
         .enum(["web", "macos-universal", "windows-x64", "linux-x64"])

@@ -107,6 +107,13 @@ export interface Store {
   ): Promise<T>;
 }
 
+/** Platform's management API uses this shared 409 code for several refusals. */
+export function isDesktopReviewPending(error: unknown): boolean {
+  return error instanceof BuildToolError && error.status === 409 &&
+    (error.code === "desktop_access_review_pending" ||
+      (error.code === "deployment_not_actionable" && error.message.includes("desktop access review pending")));
+}
+
 export function storeError(status: number, code: string, message: string | undefined, requestId?: string, detail?: Record<string, unknown>): BuildToolError {
   if (status === 401) {
     // The token was sent and refused: signing in again gives the same token
@@ -733,7 +740,9 @@ export async function publishBuild(
         published = true;
       } catch (error) {
         if (!(error instanceof BuildToolError && error.status === 409 && error.code === NOT_ACTIONABLE)) throw error;
-        hold = await platformHold(store, gameId);
+        hold = isDesktopReviewPending(error)
+          ? { by: "summer", code: "desktop_access_review_pending", message: "This exact Build needs staff review before desktop activation." }
+          : await platformHold(store, gameId);
       }
     }
 
@@ -759,7 +768,9 @@ export async function publishBuild(
       published,
       ...(hold ? { hold } : {}),
       next:
-        checks.state === "failed"
+        hold?.code === "desktop_access_review_pending"
+          ? "This exact Build needs staff review before desktop activation. Check its status again after review."
+          : checks.state === "failed"
           ? `Summer's automated checks failed${failed.length ? ` on ${failed.map((check) => check.platform).join(", ")}` : ""}. Apply each fix, export again and upload with a new clientVersion.`
           : checks.state === "checking"
             ? "Summer is still checking the client pack. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice."

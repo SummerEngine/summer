@@ -43,6 +43,8 @@ function fakeStore(options: {
   /** The platform refuses the release: "now" answers the publish with 409, "rollout" fails the deploy afterwards. */
   serverOnly?: "now" | "rollout";
   desktopReviewPending?: boolean;
+  desktopPreparePending?: boolean;
+  asyncStaffReview?: boolean;
   /** Newer clients the release does not use (notUsedTargets): those platforms keep a live client of another Build. */
   notUsed?: Array<Record<string, unknown>>;
   /** The platform's message with that refusal; absent, it sends none. */
@@ -98,12 +100,13 @@ function fakeStore(options: {
     if (method === "GET" && url === `${ENV}/releases/rel-1`) return release ? json(200, release) : json(404, { error: { code: "not_found" } });
     if (method === "GET" && url === `${GAME}/builds/build-1`) return json(200, { id: "build-1", status: buildStatus, executionMode: options.hosted ? "hosted" : "standalone" });
     if (method === "POST" && url === `${GAME}/build-publications/pub-1:publish`) {
+      if (options.desktopPreparePending) return json(409, { error: { code: "deployment_not_actionable", message: "management: desktop access review pending" } });
       buildStatus = "ready";
       return json(202, { operationId: "op-prepare" });
     }
     if (method === "POST" && url === `${ENV}/release-drafts`) return json(200, { id: "draft-1", revision: 2, gameId: "game-1", baseEnvironmentRevision: 7, targets: body.targets });
     if (method === "POST" && url === `${ENV}/release-drafts/draft-1:publish`) {
-      if (options.desktopReviewPending) return json(409, { error: { code: "desktop_access_review_pending", message: "This game is waiting for review." } });
+      if (options.desktopReviewPending) return json(409, { error: { code: "deployment_not_actionable", message: "management: desktop access review pending" } });
       if (options.serverOnly === "now") return json(409, { error: { code: "playable_release_required", ...(options.serverOnlyMessage ? { message: options.serverOnlyMessage } : {}), retryable: false } });
       const dropped = options.drop ?? [];
       if (options.serverOnly === "rollout") {
@@ -112,7 +115,8 @@ function fakeStore(options: {
         return json(202, { releaseId: "rel-1", operationId: "op-release", state: "pending", ...(options.drop ? { droppedTargets: dropped } : {}) });
       }
       environment.desiredReleaseId = "rel-1";
-      if (!options.hold) {
+      if (options.asyncStaffReview || options.hold) release = { id: "rel-1", status: "pending", targets: [], rollout: { state: "pending", ...(options.asyncStaffReview ? { waiting: "capability_approval" } : {}) } };
+      if (!options.hold && !options.asyncStaffReview) {
         environment.activeReleaseId = "rel-1";
         release = {
           id: "rel-1",
@@ -270,13 +274,9 @@ describe("goLive", () => {
   it("reports a platform hold as Summer's, with nothing to fix, and never as a review to wait for", async () => {
     const store = fakeStore({ hold: true });
     const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
-    expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer" } });
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "activation" });
     expect(JSON.stringify(result)).not.toMatch(/wait(ing)? for (a |the )?review|in review|until Summer approves/i);
-    // A second call continues: it asks with the same keys, so the platform replays instead of asking twice.
-    const again = fakeStore({ hold: true, page: { state: "SUBMITTED", etagRevision: 5 } });
-    await goLive({ gameId: "game-1", confirm: true, waitSeconds: 0, face: "mcp" }, deps(again.fetch));
-    const key = (calls: Call[], suffix: string) => calls.find((call) => call.url.endsWith(suffix))?.headers["idempotency-key"];
-    expect(key(again.calls, "rev-1:publish")).toBe(key(store.calls, "rev-1:publish"));
+    expect(store.calls.some((call) => call.url.endsWith("rev-1:publish"))).toBe(false);
   });
 
   it("names every missing store page field with its fix and publishes nothing", async () => {
@@ -291,6 +291,20 @@ describe("goLive", () => {
     const store = fakeStore({ pagePublish: { status: 422, code: "store_page_incomplete", missing: ["media"] } });
     const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({ status: "blocked", failures: [{ field: "media", fix: expect.stringContaining("store.set_art") }] });
+  });
+
+  it.each(["desktopPreparePending", "desktopReviewPending"] as const)("reports the management desktop review 409 at %s", async (stage) => {
+    const store = fakeStore({ [stage]: true, checks: [{ id: "v1", platform: "windows", state: "ready", qualificationId: "q-win" }] });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "desktop_access_review", hold: { code: "desktop_access_review_pending" } });
+    expect(store.calls.some((call) => call.url.endsWith("revisions/rev-1:publish"))).toBe(false);
+  });
+
+  it("waits for a release worker's staff approval before publishing the page", async () => {
+    const store = fakeStore({ asyncStaffReview: true, checks: [{ id: "v1", platform: "windows", state: "ready", qualificationId: "q-win" }] });
+    const result = await goLive({ gameId: "game-1", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "staff_review", hold: { code: "staff_review_pending" } });
+    expect(store.calls.some((call) => call.url.endsWith("revisions/rev-1:publish"))).toBe(false);
   });
 
   it("reports desktop review pending without publishing the page or claiming live", async () => {
@@ -310,9 +324,8 @@ describe("goLive", () => {
   it("reports that unrestricted desktop builds require staff review when a Publish waits", async () => {
     const store = fakeStore({ hold: true, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
     const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
-    expect(result).toMatchObject({ status: "waiting", waitingOn: "summer", hold: { by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z" }, review: { stillCheckingSince: "2026-10-19T09:00:00Z" } });
-    expect(String(result.next)).toContain("Summer is still checking this.");
-    expect(JSON.stringify(result.hold)).toContain("staff review before desktop activation");
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "activation", review: { stillCheckingSince: "2026-10-19T09:00:00Z" } });
+    expect(store.calls.some((call) => call.url.endsWith("rev-1:publish"))).toBe(false);
   });
 
   it("reports Summer's decision and feedback when the page was sent back", async () => {

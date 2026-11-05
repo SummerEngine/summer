@@ -27,6 +27,7 @@ function fakeStore(options: {
   finalState?: string;
   errorCode?: string;
   publishStatus?: number;
+  publishMessage?: string;
   refuseAll?: number;
   refusePartOnce?: number;
   neverDone?: boolean;
@@ -117,7 +118,7 @@ function fakeStore(options: {
     if (method === "GET" && url === `${STORE}/games/game-1/review`) return options.review ? json(200, options.review) : json(404, { error: { code: "not_found" } });
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:publish`) {
       return options.publishStatus === 409
-        ? json(409, { error: { code: "deployment_not_actionable", message: "runtime approval pending" } })
+        ? json(409, { error: { code: "deployment_not_actionable", message: options.publishMessage ?? "runtime approval pending" } })
         : json(200, {});
     }
     return json(404, { error: { code: "not_found" } });
@@ -255,6 +256,12 @@ describe("publishBuild", () => {
     expect(create(defaults.calls).body.sandbox).toBeUndefined(); // Platform defaults to true.
     expect(create(defaults.calls).headers["idempotency-key"]).not.toBe(create(first.calls).headers["idempotency-key"]);
     await expect(publishBuild({ sandbox: "false", face: "mcp" } as any, deps(first.fetch))).rejects.toMatchObject({ code: "invalid_sandbox" });
+  });
+
+  it("reports the management desktop-review refusal without claiming publication", async () => {
+    const store = fakeStore({ publishStatus: 409, publishMessage: "management: desktop access review pending" });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", published: false, hold: { code: "desktop_access_review_pending" } });
   });
 
   it("keeps the same idempotency keys on a retry, so the same publication continues", async () => {

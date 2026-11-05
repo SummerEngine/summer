@@ -42627,7 +42627,7 @@
     {
       "name": "store.publish",
       "title": "Publish the game",
-      "summary": "Publish the store page with a build and price: live once the automatic checks pass, never waiting on staff. Publishes now (a job) when the person's Agent permissions allow; else answers the owner's approval link. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
+      "summary": "Publish the store page with a build and price: automatic checks run; desktop builds may also need staff review. Publishes now (a job) when the person's Agent permissions allow; else answers the owner's approval link. Needs an idempotencyKey. Next: jobs.wait, then store.status.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -42748,7 +42748,7 @@
     {
       "name": "store.release",
       "title": "Release a build",
-      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. Never waits on staff, except a build asking for internet access. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
+      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. A desktop build or requested capability may require staff review. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",

@@ -206,7 +206,7 @@ export type OpenEditor =
   | { kind: "none" }
   | { kind: "this"; port: number; health: EngineHealth }
   /** An editor process has this project but does not answer: busy, or still importing. */
-  | { kind: "starting"; port: number | null; pid?: number }
+  | { kind: "starting"; port: number | null; pid?: number; instanceId?: string }
   | { kind: "other"; port: number; health: EngineHealth; project: string };
 
 /**
@@ -227,7 +227,7 @@ export async function findOpenEditor(projectPath: string | null): Promise<OpenEd
       const health = await checkEngineHealth(instance.port);
       if (health?.instanceId === instance.instanceId) return { kind: "this", port: instance.port, health };
       // The registered process may still be starting; never trust a reused port.
-      return { kind: "starting", port: instance.port, pid: instance.pid };
+      return { kind: "starting", port: instance.port, pid: instance.pid, instanceId: instance.instanceId };
     }
     for (const instance of instances) {
       const health = await checkEngineHealth(instance.port);
@@ -344,7 +344,8 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     const waitForApi = async (
       port: number | null,
       failed: () => Promise<LaunchEditorResult | null>,
-      onUp: (health: EngineHealth) => void
+      onUp: (health: EngineHealth) => void,
+      expectedInstanceId?: string
     ): Promise<LaunchEditorResult | null> => {
       const startTime = Date.now();
       const end = deadline ?? startTime + (options.waitMs ?? RUN_WAIT_MS);
@@ -356,7 +357,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
         if (failure) return failure;
         const probe = port ?? (await getApiPort());
         const health = await checkEngineHealth(probe);
-        if (health) {
+        if (health && (!expectedInstanceId || health.instanceId === expectedInstanceId)) {
           out.log(`Summer Engine running (v${health.version}) on port ${probe}`);
           if (health.project_name) {
             out.log(`  Project: ${health.project_name}`);
@@ -396,7 +397,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     // or busy): wait for it, never start a second one.
     if (open.kind === "starting") {
       out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
-      const waited = await waitForApi(open.port, async () => null, () => {});
+      const waited = await waitForApi(open.port, async () => null, () => {}, open.instanceId);
       return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null, pid: open.pid });
     }
 

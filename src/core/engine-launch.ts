@@ -11,7 +11,7 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
 import { writeStoreJson } from "./store.js";
-import { checkEngineHealth, getApiPort, getEngineDiscoveryDir, listEngineInstances, type EngineHealth } from "./engine.js";
+import { checkEngineHealth, ENGINE_STATE_DIR_ENV, getApiPort, getEngineDiscoveryDir, listEngineInstances, type EngineHealth } from "./engine.js";
 import {
   describeEngineExecutableProblem,
   ENGINE_BIN_ENV,
@@ -220,6 +220,24 @@ export type OpenEditor =
  * (so any editor there counts as "another project" unless no project was asked for).
  */
 export async function findOpenEditor(projectPath: string | null): Promise<OpenEditor> {
+  if (process.env[ENGINE_STATE_DIR_ENV] !== undefined) {
+    const root = projectPath ? canonical(projectPath) : null;
+    const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true });
+    for (const instance of instances.filter((i) => !root || i.resourceRoot === root)) {
+      const health = await checkEngineHealth(instance.port);
+      if (health?.instanceId === instance.instanceId) return { kind: "this", port: instance.port, health };
+      // The registered process may still be starting; never trust a reused port.
+      return { kind: "starting", port: instance.port, pid: instance.pid };
+    }
+    for (const instance of instances) {
+      const health = await checkEngineHealth(instance.port);
+      if (health?.instanceId !== instance.instanceId) continue;
+      const project = instance.projectName ? `${instance.projectName} (${instance.resourceRoot})` : instance.resourceRoot;
+      return { kind: "other", port: instance.port, health, project };
+    }
+    // An isolated registry cannot be authenticated by an unowned legacy pointer.
+    return { kind: "none" };
+  }
   if (projectPath) {
     const root = canonical(projectPath);
     const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true });

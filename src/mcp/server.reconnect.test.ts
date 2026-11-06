@@ -21,6 +21,7 @@ vi.mock("../core/engine.js", () => ({
   // Pointer-only engine: no env selection, and the registry fallback is
   // never reached while the pointer names a live engine.
   engineSelectionFromEnv: vi.fn(() => null),
+  getEngineDiscoveryDir: vi.fn(() => "/isolated-test-engine-state"),
   discoverRegistryConnection: vi.fn(async () => null),
   engineNotRunningError: vi.fn(() => new Error("not running")),
   getApiPort: vi.fn(async () => state.port),

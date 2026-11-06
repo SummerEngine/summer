@@ -4056,13 +4056,14 @@
     {
       "id": "skill/summer-board",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "549f68428810c2f35bcb921f7b36af2a95893d99f9a0fe232dda5eb291c38006",
+      "version": "1.0.1",
+      "content_hash": "33893a612082296e5e3aa53457da04866e2405ae232156b06df3818b8661df78",
       "summary": "Summer Board co-op: tasks, claims, files, card frames.",
       "use_when": [
         "the person says board, co-op, team, work together or coordinate with a teammate's agent",
         "picking up work on a game that has other members, or a board message, file or ping answer reached you",
-        "putting a set of ideas (10 character concepts, the levels) on the board as one frame with a numbered grid and a next-step note"
+        "putting a set of ideas (10 character concepts, the levels) on the board as one frame with a numbered grid and a next-step note",
+        "showing the current local game as a private playable board preview"
       ],
       "facets": {
         "lifecycle": [

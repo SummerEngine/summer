@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: workflow
 user-invocable: true
-allowed-tools: summer_call summer_search summer_whoami
+allowed-tools: summer_call summer_search summer_whoami summer_get_project_context summer_export_templates summer_export_game
 ---
 
 # The Summer Board
@@ -19,7 +19,7 @@ Every board op answers `boardUrl`. Open it (`studio.open {target: boardUrl}`) on
 - **You are a worker on the board, not its screen.** Never open the board in a browser, a built-in browser sidebar or your own app unless the person asks. The person stays in the interface they already use; you work through `board.*` calls.
 - **Check sign-in first, with one call:** `whoami`. Signed in: find the game with `games.list` and go on. Never build or open a URL from a board code or link to get in. Not signed in: give the person the one sign-in link the answer has and wait. Once a call succeeds you are signed in: never ask the person to approve again.
 - **One read, no probing.** After `board.join`, one `board.read` gives the whole state. Do not call ops one by one to see what they do: `summer_search "board"` lists them.
-- **Act when asked.** Joining is not a request. Say in one `board.status` line that you are here, then wait for a person or a task.
+- **Act when asked.** Joining alone is not a request. Say in one `board.status` line that you are here; if the person already gave you a task, start it. Otherwise wait for a person or a task.
 
 ## 1. Join once per chat
 
@@ -131,6 +131,27 @@ Show the game's scene on the canvas as a model people turn around in 3D, and ref
 3. `board.canvas {action: "update", itemId: "live-scene", kind: "model", url, name: "Level 1"}`. The same itemId swaps the model in place; everyone sees the new one.
 Refresh after real changes, not every edit.
 
+## 8b. A playable private preview
+
+When asked to show the current game on its board, use a local web export. This is a private, hostless snapshot for game members, not a live editor stream or a published game. The GLB scene above is a static model, not a playable game.
+
+1. Confirm the project with `summer_get_project_context`. Get its canonical `gameId` from `games.list` and verify it is the intended game; do not derive it from a folder name. Join that game's board and keep the returned `agent`.
+2. Save the intended project changes. Check `summer_export_templates {action: "list"}` and the installed engine. For a GDScript project with the matching Summer web template, use Forward+ or Mobile for the web renderer, then `summer_export_game {project: <project path>, targets: ["web"], format: "download"}`. This creates a local web zip; it does not publish. If the engine, template, renderer or export is unavailable, report the exact blocker. Do not claim a pack alone is playable.
+3. Unpack the zip into a local scratch folder and make a manifest of the exact exported files: `index.html`, a `.js`, a `.wasm`, a `.pck`, and any other needed files. Each entry is `{path, size, sha256}`: flat filename, byte length and lowercase SHA-256. The preview accepts 4–30 files, at most 64 MiB each and 256 MiB total; supported extensions are html, js, wasm, pck, png, svg, ico, json and css. Do not drop a required file to fit the limit. `source` is a short label for the export, not a secret or URL.
+4. Check `summer_search "board preview"` for the current operations. Use `summer_call` for:
+   ```
+   board.preview_begin {gameId, requestId: <new UUID v4>, manifest: {source, files}}
+   board.preview_upload {gameId, previewId: <requestId>, path: <one manifest filename>}
+   board.preview_finish {gameId, previewId: <requestId>}
+   ```
+   After each upload call, PUT the exact file bytes to its returned `url`, with the returned `size` as `Content-Length`; check the response before continuing. The short-lived URL is a credential: do not post it or put it on the canvas. If it expires while the preview is pending, call `board.preview_upload` again for the same file and send the same bytes to the new URL. Retry a lost begin with the same request ID and unchanged manifest; finish only after every file uploads. If a newer preview was started, a stale finish is refused: report the conflict and use the current intended export.
+5. Reuse an existing game item, or add one with `board.canvas {gameId, agent, kind: "game", itemId: <your unique stable item id>}`. Check `board.read` before reusing an ID so you do not change another item. The item uses the board's game, so do not supply a game ID or URL inside it. Select it in an available Studio Board view. The `summer-board` form exposes `game-play`, `game-retry` and `game-stop` for the selected item; when the connected view exposes them, use `studio.submit_form {form: "summer-board", action: "game-play"}` and the equivalent actions for Retry and Stop. Play selects the private preview first; Retry reloads it and Stop closes it. Check the view identifies the private preview; it can fall back to a public release when the private preview is unavailable.
+6. Prove the game is visible and responds to an input in the actual Board view. A loaded frame or successful finish alone does not prove gameplay. If the view or visual/input proof is unavailable, say exactly what succeeded and what is still blocked; do not claim the game was played. Finish the owned task with the export and proof or a clear handoff, then leave the board when done.
+
+The private read grant expires after 120 seconds: a loaded game can continue, but a later asset fetch may fail. Retry checks membership and gets a fresh grant; do not re-upload just to refresh playback.
+
+Previews consume board storage and are not automatically removed. `board.preview_list {gameId}` lists them. Removal is a person-confirmed game-manager action (`board.preview_delete`); never delete previews automatically.
+
 ## 9. People's talk-and-draw requests
 
 People hold a key, talk and draw on the canvas, and let go. You get one message with a timed transcript in `body`, and the same as data:
@@ -157,6 +178,9 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 
 | In this skill | Command |
 |---|---|
+| `summer_export_game` | `summer engine export-game` |
+| `summer_export_templates` | `summer engine export-templates` |
+| `summer_get_project_context` | `summer engine get-project-context` |
 | `games.list` | `summer games list` |
 | `summer_search` | `summer ops search "<what you want>"` |
 | `summer_whoami` | `summer whoami` |

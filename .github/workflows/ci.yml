@@ -29,6 +29,9 @@ jobs:
       - name: Unit tests
         run: npx vitest run
 
+      - name: Character model operation contract
+        run: node --test tests/character-model-contract.node-test.mjs
+
       # Schemas, identity/link integrity, host cross-checks (module exists,
       # MCP registrations == descriptors, input_schema shape, evidence dates,
       # SKILL.md names), capability lint. Explicit so a red library is a

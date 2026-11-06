@@ -30,7 +30,7 @@ const LEGACY_NAMES = path.join("registry", "operations", "legacy-names.json");
 export const SHELL_GUIDE_SKILL = "summer-cli";
 const AREAS: ReadonlySet<string> = new Set(CLI_AREAS);
 /** 4.0 operations no 3.x tool became, so legacy-names.json has no row for them. */
-export const V4_ONLY_OPS: readonly string[] = ["jobs.wait"];
+export const V4_ONLY_OPS: readonly string[] = ["assets.rig", "jobs.wait"];
 
 const TOOL_NAME = /\bsummer_[a-z0-9_]*[a-z0-9]\b/g;
 /** An operation in code: `assets.generate_image` or `assets.search({ ... })`. */

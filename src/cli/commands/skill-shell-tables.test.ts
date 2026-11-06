@@ -7,7 +7,7 @@ import { CLI_AREAS } from "../../core/ops/areas.js";
 import { localEntries } from "../../core/ops/catalog.js";
 import { isLocalOp, legacyNames, opFromCli } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS } from "../../core/ops/engine.js";
-import { TAKES_OUT } from "../../core/ops/save-files.js";
+import { shippedCloudEntries } from "../../core/ops/public-catalog.js";
 import { runOpFromCli, type OpsCliDeps } from "./ops.js";
 import { resolveToolForCli } from "./tool.js";
 
@@ -30,7 +30,8 @@ const commands = new Set(
 describe("shell commands: every command the library prints runs", () => {
   const areas = new Set<string>(CLI_AREAS);
   const local = new Set([...localEntries().map((entry) => entry.name), ...Object.keys(ENGINE_SPLIT_OPS)]);
-  const cloud = new Set([...Object.values(legacyNames()).map((row) => row.op), ...TAKES_OUT]);
+  // Include 3.x bridges such as docs.workflows as well as current cloud ops.
+  const cloud = new Set([...Object.values(legacyNames()).map((row) => row.op), ...shippedCloudEntries().map((entry) => entry.name)]);
 
   it("the library has sections, and every one is current", () => {
     expect(commands.size).toBeGreaterThan(50);
@@ -54,6 +55,30 @@ describe("shell commands: every command the library prints runs", () => {
       if (!(isLocalOp(op) ? local : cloud).has(op)) problems.push(`${command}: ${op} is not in the catalog`);
     }
     expect(problems).toEqual([]);
+  });
+});
+
+describe("character rig shell command", () => {
+  it("forwards the approved asset ID to the hosted operation", async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const output: string[] = [];
+    const deps: OpsCliDeps = {
+      hosted: async (name, args) => {
+        calls.push({ name, args });
+        return { content: [{ type: "text", text: JSON.stringify({ ok: true, status: "running", job: { id: "gen:42", state: "queued" } }) }] };
+      },
+      dispatch: dispatchTool,
+      print: (text) => output.push(text),
+      printError: (text) => output.push(text),
+    };
+    const assetId = "7b1c0e9e-4a4f-4d55-9f1e-2c3d4e5f6a7b";
+    expect(commands.has("summer assets rig")).toBe(true);
+    expect(await runOpFromCli(opFromCli("assets", "rig"), ["--asset-id", assetId, "--json"], deps)).toBe(0);
+    expect(calls).toEqual([
+      { name: "summer_call", args: { op: "ops.describe", input: { name: "assets.rig" } } },
+      { name: "summer_call", args: { op: "assets.rig", input: { assetId } } },
+    ]);
+    expect(JSON.parse(output[0]!)).toMatchObject({ status: "running", job: { id: "gen:42" } });
   });
 });
 

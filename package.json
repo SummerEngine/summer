@@ -68,7 +68,7 @@
     "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
-    "test": "vitest run && npm run validate:library",
+    "test": "vitest run && npm run validate:library && node --test tests/character-model-contract.node-test.mjs",
     "validate:library": "node scripts/validate-library/cli.ts",
     "eval:routing": "node evals/routing/runner.ts",
     "eval:routing:heldout": "node evals/routing/runner.ts --heldout",

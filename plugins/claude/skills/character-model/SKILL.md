@@ -73,6 +73,8 @@ assets.generate_image({
 })
 ```
 
+Use `result.assets[0].fileUrl` from the completed `assets.generate_image` response as the image URL in step 2. If no file URL is present, resolve the asset with `assets.get` before continuing.
+
 Show the image to the user:
 
 > Generated the T-pose reference. [link]. Approve to proceed to mesh generation, or regenerate?

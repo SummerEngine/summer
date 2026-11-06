@@ -924,7 +924,7 @@
       "id": "skill/character-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "697e8870759d4901a7091eebd397d58cd0b1522fde081a4be4335fa7d5cbcf81",
+      "content_hash": "15c1774c8e5f795282ea99b3262cf4176f08222ca83ec1d8971d5d900bcff8bc",
       "summary": "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",

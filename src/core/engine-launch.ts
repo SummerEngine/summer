@@ -11,7 +11,7 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
 import { writeStoreJson } from "./store.js";
-import { checkEngineHealth, getApiPort, listEngineInstances, type EngineHealth } from "./engine.js";
+import { checkEngineHealth, getApiPort, getEngineDiscoveryDir, listEngineInstances, type EngineHealth } from "./engine.js";
 import {
   describeEngineExecutableProblem,
   ENGINE_BIN_ENV,
@@ -222,7 +222,7 @@ export type OpenEditor =
 export async function findOpenEditor(projectPath: string | null): Promise<OpenEditor> {
   if (projectPath) {
     const root = canonical(projectPath);
-    const instances = await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true });
+    const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true });
     for (const instance of instances.filter((i) => i.resourceRoot === root)) {
       const health = await checkEngineHealth(instance.port);
       return health ? { kind: "this", port: instance.port, health } : { kind: "starting", port: instance.port, pid: instance.pid };
@@ -267,7 +267,7 @@ function editorPidFor(projectPath: string): number | null {
 /** The editor that took over the project after the launched one exited cleanly (it restarted itself): a live registered instance, or an editor process on the project. */
 async function successorFor(projectPath: string, exited: number | undefined): Promise<number | null> {
   const root = canonical(projectPath);
-  const instance = (await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true })).find(
+  const instance = (await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true })).find(
     (candidate) => candidate.resourceRoot === root && candidate.pid !== exited
   );
   if (instance) return instance.pid;

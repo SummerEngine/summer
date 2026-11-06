@@ -7,6 +7,7 @@ import {
   discoverRegistryConnection,
   engineNotRunningError,
   engineSelectionFromEnv,
+  getEngineDiscoveryDir,
   getApiPort,
   getApiToken,
   resolveEngineConnection,
@@ -240,6 +241,7 @@ export class EngineApiClient {
   // instance registry (no live pointer): credentialsChanged then re-runs the
   // registry lookup with the same options instead of reading the pointer.
   private registryDiscovery: DiscoverEngineOptions | null = null;
+  private discoveryDir: string | undefined;
   // The most recent /api/health seen at connect/rebind. Carries the engine's
   // capability advert (opKinds, singleOnlyOps) so tools can fail closed on a
   // provably missing op without a second health round trip per call.
@@ -276,11 +278,12 @@ export class EngineApiClient {
     selection?: EngineSelection,
     discovery: DiscoverEngineOptions = {}
   ): Promise<EngineApiClient> {
+    const summerDir = discovery.summerDir ?? getEngineDiscoveryDir(discovery.env);
     const envSelection = selection ? null : engineSelectionFromEnv(discovery.env);
     const effective = selection ?? envSelection;
     if (effective) {
       const connection = await resolveEngineConnection(effective, {
-        summerDir: discovery.summerDir,
+        summerDir,
         nowMs: discovery.nowMs,
       });
       const client = new EngineApiClient(
@@ -294,6 +297,7 @@ export class EngineApiClient {
         { ...effective }
       );
       client.lastHealth = connection.health;
+      client.discoveryDir = summerDir;
       noteBoundProject(connection.health.projectIdHash);
       return client;
     }
@@ -303,8 +307,8 @@ export class EngineApiClient {
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
-    const port = await getApiPort(discovery.summerDir);
-    const token = await getApiToken(discovery.summerDir);
+    const port = await getApiPort(summerDir);
+    const token = await getApiToken(summerDir);
     if (token) {
       const health = await checkEngineHealth(port);
       if (health) {
@@ -314,13 +318,14 @@ export class EngineApiClient {
           projectIdHash: health.projectIdHash,
         });
         client.lastHealth = health;
+        client.discoveryDir = summerDir;
         noteBoundProject(health.projectIdHash);
         return client;
       }
     }
 
-    const connection = await discoverRegistryConnection(discovery);
-    if (!connection) throw engineNotRunningError({ port, token }, discovery.summerDir);
+    const connection = await discoverRegistryConnection({ ...discovery, summerDir });
+    if (!connection) throw engineNotRunningError({ port, token }, summerDir);
     const client = new EngineApiClient(connection.port, connection.token, {
       instanceId: connection.health.instanceId,
       projectId: connection.health.projectId,
@@ -328,7 +333,8 @@ export class EngineApiClient {
     });
     client.lastHealth = connection.health;
     noteBoundProject(connection.health.projectIdHash);
-    client.registryDiscovery = { ...discovery };
+    client.registryDiscovery = { ...discovery, summerDir };
+    client.discoveryDir = summerDir;
     return client;
   }
 
@@ -1067,7 +1073,7 @@ export class EngineApiClient {
   async credentialsChanged(): Promise<boolean> {
     if (this.selection) {
       try {
-        const connection = await resolveEngineConnection(this.selection);
+        const connection = await resolveEngineConnection(this.selection, { summerDir: this.discoveryDir });
         return (
           connection.port !== this.port ||
           connection.token !== this.token ||
@@ -1099,7 +1105,7 @@ export class EngineApiClient {
     }
 
     try {
-      const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
+      const [port, token] = await Promise.all([getApiPort(this.discoveryDir), getApiToken(this.discoveryDir)]);
       if (!token) return false;
       return port !== this.port || token !== this.token;
     } catch {

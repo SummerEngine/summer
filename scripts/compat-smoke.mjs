@@ -25,17 +25,16 @@
 
 import { spawn } from "node:child_process";
 import { readdir, readFile, realpath, unlink } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
+import { getEngineDiscoveryDir, ENGINE_STATE_DIR_ENV } from "../dist/core/engine.js";
 import { verificationFailure } from "./compat-smoke-verification.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI_DIR = resolve(__dirname, "..");
-// Hardcoded to match src/core/store.ts getSummerDir(): the spawned MCP server always
-// reads ~/.summer, so preflight must look in exactly the same place.
-const SUMMER_DIR = join(homedir(), ".summer");
+// Match the same engine-only discovery directory used by the spawned MCP server.
+const SUMMER_DIR = getEngineDiscoveryDir();
 const INSTANCE_STALE_MS = 180_000;
 const GLOBAL_BUDGET_MS = Number(process.env.SUMMER_COMPAT_TIMEOUT_MS || 115_000);
 const RUN_ID = Date.now().toString(36);
@@ -148,7 +147,14 @@ async function preflight() {
     if (!health) {
       fatal(2, `PRECONDITION NOT MET: registry instance ${inst.instanceId} is not responding on port ${inst.port}.`);
     }
+    if (process.env[ENGINE_STATE_DIR_ENV] !== undefined && health.instanceId !== inst.instanceId) {
+      fatal(2, `PRECONDITION NOT MET: the isolated registry instance does not own its port.`);
+    }
     return { port: inst.port, engineVersion: health.version ?? inst.engineVersion, resourceRoot: inst.resourceRoot, source: "registry" };
+  }
+
+  if (projectArg && process.env[ENGINE_STATE_DIR_ENV] !== undefined) {
+    fatal(2, "PRECONDITION NOT MET: no isolated editor matches the selected project.");
   }
 
   // Legacy single-editor files

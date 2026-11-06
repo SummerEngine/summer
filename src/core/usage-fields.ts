@@ -19,7 +19,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { currentToolContext } from "./agent-host.js";
 import { hasEnvAuthToken } from "./auth.js";
-import { listEngineInstances } from "./engine.js";
+import { getEngineDiscoveryDir, listEngineInstances } from "./engine.js";
 import { findEngineBinary } from "./engine-install.js";
 import { loadLibraryIndex } from "./library-search.js";
 import { getSummerDir } from "./store.js";
@@ -132,7 +132,7 @@ export async function templateForProject(projectIdHash: string): Promise<string 
 
 /** What is true on this machine when the engine could not be reached. Local files only. */
 export async function engineState(): Promise<EngineState> {
-  const instances = await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true }).catch(() => []);
+  const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true }).catch(() => []);
   return {
     desktopInstalled: findEngineBinary() !== null,
     engineRunning: instances.length > 0,

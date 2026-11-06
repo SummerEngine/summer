@@ -81,6 +81,15 @@ async function failureOf(run: Promise<unknown>): Promise<EngineNotRunningError> 
 }
 
 describe("the MCP opens the session's project when no editor runs", () => {
+  it("does not launch a normal editor when an isolated discovery directory is selected", async () => {
+    const launch = launcher({ status: "running", launched: true, port: 6551, health: up as never });
+    const error = await failureOf(selfStartEngine({ projectPath: project }, notRunning(), {
+      env: { ...on, SUMMER_ENGINE_STATE_DIR: join(root, "isolated-api") }, launch,
+    }));
+    expect(error.message).toContain("isolated Summer editor");
+    expect(launch).not.toHaveBeenCalled();
+  });
+
   it("launches the project the agent works in (background), waits, and returns a connected client", async () => {
     const launch = launcher({ status: "running", launched: true, port: 6551, health: up as never });
     const connect = vi.fn(async () => fakeClient);

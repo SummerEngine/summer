@@ -17,7 +17,7 @@ import { execSync } from "child_process";
 import { realpathSync } from "fs";
 import { basename, resolve, sep } from "path";
 import { EngineApiClient } from "./api-client.js";
-import { checkEngineHealth, findProjectRoot, listEngineInstances, type EngineInstance, type EngineSelection } from "./engine.js";
+import { checkEngineHealth, ENGINE_STATE_DIR_ENV, findProjectRoot, listEngineInstances, type EngineInstance, type EngineSelection } from "./engine.js";
 import { CLOSED_EARLY, lastLaunch, LaunchLockBusyError, launchEditor, resolveRunBinary, type LaunchEditorResult } from "./engine-launch.js";
 import { ENGINE_BIN_ENV } from "./engine-install.js";
 import { installEngine } from "./engine-installer.js";
@@ -419,6 +419,10 @@ export async function selfStartEngine(
   notRunning: EngineNotRunningError,
   deps: SelfStartDeps = {}
 ): Promise<EngineApiClient> {
+  if ((deps.env ?? process.env)[ENGINE_STATE_DIR_ENV] !== undefined) {
+    throw new EngineNotRunningError("The isolated Summer editor is not available.", notRunning.reason,
+      `Start the isolated editor for this project and check ${ENGINE_STATE_DIR_ENV}.`);
+  }
   const now = deps.now ?? Date.now;
   if (recent && now() - recent.at < RECENT_MS) throw recent.error;
   try {

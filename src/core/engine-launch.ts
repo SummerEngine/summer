@@ -11,7 +11,7 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
 import { writeStoreJson } from "./store.js";
-import { checkEngineHealth, getApiPort, listEngineInstances, type EngineHealth } from "./engine.js";
+import { checkEngineHealth, ENGINE_STATE_DIR_ENV, getApiPort, getEngineDiscoveryDir, listEngineInstances, type EngineHealth } from "./engine.js";
 import {
   describeEngineExecutableProblem,
   ENGINE_BIN_ENV,
@@ -206,7 +206,7 @@ export type OpenEditor =
   | { kind: "none" }
   | { kind: "this"; port: number; health: EngineHealth }
   /** An editor process has this project but does not answer: busy, or still importing. */
-  | { kind: "starting"; port: number | null; pid?: number }
+  | { kind: "starting"; port: number | null; pid?: number; instanceId?: string }
   | { kind: "other"; port: number; health: EngineHealth; project: string };
 
 /**
@@ -220,9 +220,27 @@ export type OpenEditor =
  * (so any editor there counts as "another project" unless no project was asked for).
  */
 export async function findOpenEditor(projectPath: string | null): Promise<OpenEditor> {
+  if (process.env[ENGINE_STATE_DIR_ENV] !== undefined) {
+    const root = projectPath ? canonical(projectPath) : null;
+    const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true });
+    for (const instance of instances.filter((i) => !root || i.resourceRoot === root)) {
+      const health = await checkEngineHealth(instance.port);
+      if (health?.instanceId === instance.instanceId) return { kind: "this", port: instance.port, health };
+      // The registered process may still be starting; never trust a reused port.
+      return { kind: "starting", port: instance.port, pid: instance.pid, instanceId: instance.instanceId };
+    }
+    for (const instance of instances) {
+      const health = await checkEngineHealth(instance.port);
+      if (health?.instanceId !== instance.instanceId) continue;
+      const project = instance.projectName ? `${instance.projectName} (${instance.resourceRoot})` : instance.resourceRoot;
+      return { kind: "other", port: instance.port, health, project };
+    }
+    // An isolated registry cannot be authenticated by an unowned legacy pointer.
+    return { kind: "none" };
+  }
   if (projectPath) {
     const root = canonical(projectPath);
-    const instances = await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true });
+    const instances = await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true });
     for (const instance of instances.filter((i) => i.resourceRoot === root)) {
       const health = await checkEngineHealth(instance.port);
       return health ? { kind: "this", port: instance.port, health } : { kind: "starting", port: instance.port, pid: instance.pid };
@@ -267,7 +285,7 @@ function editorPidFor(projectPath: string): number | null {
 /** The editor that took over the project after the launched one exited cleanly (it restarted itself): a live registered instance, or an editor process on the project. */
 async function successorFor(projectPath: string, exited: number | undefined): Promise<number | null> {
   const root = canonical(projectPath);
-  const instance = (await listEngineInstances(Date.now(), getSummerDir(), { anyHeartbeat: true })).find(
+  const instance = (await listEngineInstances(Date.now(), getEngineDiscoveryDir(), { anyHeartbeat: true })).find(
     (candidate) => candidate.resourceRoot === root && candidate.pid !== exited
   );
   if (instance) return instance.pid;
@@ -326,7 +344,8 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     const waitForApi = async (
       port: number | null,
       failed: () => Promise<LaunchEditorResult | null>,
-      onUp: (health: EngineHealth) => void
+      onUp: (health: EngineHealth) => void,
+      expectedInstanceId?: string
     ): Promise<LaunchEditorResult | null> => {
       const startTime = Date.now();
       const end = deadline ?? startTime + (options.waitMs ?? RUN_WAIT_MS);
@@ -338,7 +357,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
         if (failure) return failure;
         const probe = port ?? (await getApiPort());
         const health = await checkEngineHealth(probe);
-        if (health) {
+        if (health && (!expectedInstanceId || health.instanceId === expectedInstanceId)) {
           out.log(`Summer Engine running (v${health.version}) on port ${probe}`);
           if (health.project_name) {
             out.log(`  Project: ${health.project_name}`);
@@ -378,7 +397,7 @@ export async function launchEditor(options: LaunchEditorOptions): Promise<Launch
     // or busy): wait for it, never start a second one.
     if (open.kind === "starting") {
       out.log(`Summer Engine is already starting with ${projectPath}; waiting for it...`);
-      const waited = await waitForApi(open.port, async () => null, () => {});
+      const waited = await waitForApi(open.port, async () => null, () => {}, open.instanceId);
       return waited?.status === "running" ? { ...waited, launched: false } : (waited ?? { status: "starting", binary: null, pid: open.pid });
     }
 

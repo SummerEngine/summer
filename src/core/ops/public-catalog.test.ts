@@ -82,6 +82,19 @@ describe("search and describe without Summer's server", () => {
     expect(items[0].needsSignIn).toBeUndefined();
   });
 
+  it("describes private Board preview operations offline and keeps deletion confirmation", () => {
+    const offline = errorAnswer("not_signed_in", "No sign-in.");
+    for (const name of ["begin", "upload", "finish", "list", "delete"]) {
+      const op = `board.preview_${name}`;
+      expect(describeFromShipped(op, offline)).toMatchObject({
+        ok: true, status: "done", result: { operation: { name: op } },
+      });
+    }
+    expect(describeFromShipped("board.preview_delete", offline)).toMatchObject({
+      result: { operation: { effect: "destructive", approval: "confirm" } },
+    });
+  });
+
   it("describes a cloud operation from the shipped catalog when the server cannot answer", () => {
     const answer = describeFromShipped("summer_store_submit", errorAnswer("not_signed_in", "No sign-in."));
     expect(answer).toMatchObject({ ok: true, status: "done", result: { operation: { name: "store.publish" } }, warnings: [expect.stringMatching(/^Not signed in/)] });

@@ -29,6 +29,7 @@ import { homedir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
+import { verificationFailure } from "./compat-smoke-verification.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI_DIR = resolve(__dirname, "..");
@@ -499,18 +500,19 @@ async function main() {
         "extends SummerProbeBase",
         "func _ready() -> void:",
         "\tawait super._ready()",
-        "\tawait get_tree().process_frame",
-        '\treport("compat", true)',
+        "\tawait settle()",
+        '\tcheck("compat", true)',
         '\tsave_frame("compat")',
         "\tfinish()",
       ].join("\n");
       const res = await client.callTool(
         "summer_batch",
-        { ops: [{ op: "RunVerification", probe_source: probe, max_seconds: 15 }] },
+        { ops: [{ op: "RunVerification", probe_source: probe, required_assertions: ["compat"], required_captures: ["compat.jpg"], max_seconds: 15 }] },
         60_000
       );
-      if (checkTransportIncompatibility("RunVerification", res) || res.isError) {
-        recordFail("RunVerification probe (save_frame compat)", `${failureReasonOf(res) ?? ""} ${res.text.slice(0, 300)}`);
+      const failure = verificationFailure(res, "compat.jpg");
+      if (checkTransportIncompatibility("RunVerification", res) || failure) {
+        recordFail("RunVerification probe (save_frame compat)", failure ?? "unsupported transport");
         throw new Error("RunVerification failed");
       }
       recordPass("RunVerification probe (save_frame compat)");

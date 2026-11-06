@@ -11874,7 +11874,7 @@
             "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
           },
           "kind": {
-            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
+            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region), card (one thing of a board type; board.types), or game (this board’s public released game, if supported). update with kind card turns a note or title into a card.",
             "type": "string",
             "enum": [
               "note",
@@ -11884,7 +11884,8 @@
               "model",
               "connector",
               "frame",
-              "card"
+              "card",
+              "game"
             ]
           },
           "type": {
@@ -12088,7 +12089,7 @@
                   "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
                 },
                 "kind": {
-                  "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
+                  "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region), card (one thing of a board type; board.types), or game (this board’s public released game, if supported). update with kind card turns a note or title into a card.",
                   "type": "string",
                   "enum": [
                     "note",
@@ -12098,7 +12099,8 @@
                     "model",
                     "connector",
                     "frame",
-                    "card"
+                    "card",
+                    "game"
                   ]
                 },
                 "type": {
@@ -12987,6 +12989,379 @@
             ]
           },
           "note": "Ask another agent about a canvas item."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_begin",
+      "title": "Start a private game preview",
+      "summary": "Choose this game and submit the manifest of its local web export. Files stay private to game members. Reuse requestId on retry. Next: board.preview_upload for each file.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_begin",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "manifest": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "files": {
+                "minItems": 4,
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 181
+                    },
+                    "size": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 67108864
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "size",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "source",
+              "files"
+            ],
+            "additionalProperties": false
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "requestId",
+          "manifest"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "web export",
+        "playtest"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "requestId": "12345678-1234-4123-8123-123456789abc",
+            "manifest": {
+              "source": "Local game export",
+              "files": [
+                {
+                  "path": "index.html",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.js",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.wasm",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.pck",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            }
+          },
+          "note": "Reserve the exact exported files."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_delete",
+      "title": "Remove one private game preview",
+      "summary": "Ask the person to remove one exact private preview. A game manager must confirm; pending file deletion keeps its storage reservation until it succeeds. The project and other Board files stay.",
+      "effect": "destructive",
+      "approval": "confirm",
+      "permission": "ask",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_delete",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "delete",
+        "storage"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc"
+          },
+          "note": "Ask to remove this preview."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_finish",
+      "title": "Select a private game preview",
+      "summary": "Check every uploaded file and select this exact local export on the game board. Only the newest started preview can be selected. Then open the game item and press Play.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_finish",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "playtest"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc"
+          },
+          "note": "Select the uploaded game."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_list",
+      "title": "List private game previews",
+      "summary": "List the local exports reserved for this game and their pending, ready or removing state. Next: board.preview_delete for one exact preview.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_list",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "list",
+        "storage"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X"
+          },
+          "note": "List this game’s previews."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_upload",
+      "title": "Upload a private preview file",
+      "summary": "Get a short-lived PUT address for one file in the reserved web export. Send the exact bytes and Content-Length directly; the address cannot access the board. Next: board.preview_finish after every file.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_upload",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 181
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId",
+          "path"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "upload"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc",
+            "path": "index.wasm"
+          },
+          "note": "Upload a reserved file."
         }
       ]
     },
@@ -24517,6 +24892,11 @@
             "minLength": 1,
             "maxLength": 60
           },
+          "remixOfGameId": {
+            "description": "Source game ID when creating a remix. Recorded permanently for attribution; omit for an original game.",
+            "type": "string",
+            "pattern": "^game_[A-Za-z0-9]+$"
+          },
           "targets": {
             "description": "web, macos-universal, windows-x64 and linux-x64 open the desktop store; ios and android the mobile store.",
             "minItems": 1,
@@ -24636,6 +25016,17 @@
           "gameId": {
             "type": "string"
           },
+          "remixOfGameId": {
+            "description": "Immediate source game for attribution; null for an original game.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -24687,6 +25078,7 @@
         },
         "required": [
           "gameId",
+          "remixOfGameId",
           "name",
           "slug",
           "status",
@@ -24974,6 +25366,17 @@
                 "gameId": {
                   "type": "string"
                 },
+                "remixOfGameId": {
+                  "description": "Immediate source game for attribution; null for an original game.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -25005,6 +25408,7 @@
               },
               "required": [
                 "gameId",
+                "remixOfGameId",
                 "name",
                 "slug",
                 "status",
@@ -40673,6 +41077,12 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 6000
+              },
+              "playerHourTokens": {
+                "description": "Text tokens one player's character replies may use in any hour; over it a reply answers 429 until the hour frees up.",
+                "type": "integer",
+                "minimum": 10000,
+                "maximum": 50000000
               }
             }
           },
@@ -40779,6 +41189,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -40854,6 +41269,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -41092,6 +41512,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -41167,6 +41592,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991

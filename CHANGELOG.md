@@ -4,6 +4,9 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Codex plugin: Summer's hosted server and Codex's own marketplace file.** The Codex plugin now lists two servers in `.codex-plugin/mcp.json`: `summer-engine` (the desktop-app bridge) and `summer-cloud` (`https://mcp.summerengine.com/mcp`, sign-in on first use), like the Claude plugin. `.agents/plugins/marketplace.json` is Codex's marketplace file with the same name, `summer-engine`, so existing `summer@summer-engine` installs keep working. Install: `codex plugin marketplace add summerengine/summer`, then `codex plugin add summer@summer-engine` (docs/CODEX.md). The root `.mcp.json` (Cursor, Factory) is unchanged.
+- **The Claude plugin for Anthropic's directory has its own README** (`plugins/claude/README.md`): what the plugin runs, connects to and sends. The directory blocks a plugin folder without one.
+
 - The Board skill now guides agents through a private playable preview of a local web export.
 
 - **Editor chat generation stays native.** With `SUMMER_EDITOR_CHAT=1`, operations with native `summer_cloud` equivalents and polling of native `aj_` asset jobs return a clear redirect. Build, upload, approval and ordinary CLI job tracking remain available, including `--wait`; makers and other operations without a native equivalent remain available. Outside editor chat, behavior is unchanged.

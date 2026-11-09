@@ -48,6 +48,10 @@ input_schema:
     clientVersion:
       type: string
       description: Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version.
+    sandbox:
+      type: boolean
+      default: true
+      description: "Bundles only: run desktop builds in the sandbox. False requests unrestricted desktop access and requires staff review of this exact build before desktop activation. False is rejected for web builds and native downloads; native downloads require staff review."
     publish:
       type: boolean
       default: false

@@ -103,6 +103,13 @@ async function failure(promise: Promise<unknown>): Promise<BuildToolError> {
 }
 
 describe("summer_publish_build: web builds and native downloads (store versions)", () => {
+  it.each(["web", "macos-universal", "windows-x64", "linux-x64"])("rejects sandbox=false for %s downloads without making requests", async (platform) => {
+    const store = fakeStore();
+    const error = await failure(publishBuild({ gameId: "game-1", file: webZip, platform, clientVersion: "v1.0.0", sandbox: false, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("sandbox_not_supported");
+    expect(store.calls).toEqual([]);
+  });
+
   it("previews the last download export with its platform, checks the game and sends nothing before confirm", async () => {
     const store = fakeStore();
     const result = await publishBuild({ gameId: "game-1", clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));

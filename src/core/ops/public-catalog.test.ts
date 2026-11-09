@@ -43,6 +43,9 @@ describe("the shipped public catalog (registry/operations/public-catalog.json)",
     expect(rows.some((row) => isLocalOp(row.name))).toBe(false);
     expect(rows.find((row) => row.name === "store.publish")).toMatchObject({ provider: "cloud", effect: "publish", approval: "owner", tags: expect.arrayContaining(["publish"]) });
     expect(rows.find((row) => row.name === "assets.generate_image")?.input?.properties).toHaveProperty("out");
+    const upload = shippedWireForm("store.upload_begin");
+    expect(upload).toMatchObject({ needsSignIn: true, input: { properties: { sandbox: { type: "boolean", description: expect.stringContaining("default true") } } } });
+    expect((upload!.input as any).required ?? []).not.toContain("sandbox");
     expect(shippedWireForm("store.publish")).toMatchObject({ contract: CONTRACT_VERSION, name: "store.publish", needsSignIn: true, input: { required: expect.arrayContaining(["gameId"]) } });
     expect(shippedWireForm("engine.add_node")).toBeNull();
     expect(shippedWireForm("no.such_op")).toBeNull();

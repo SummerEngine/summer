@@ -615,6 +615,24 @@
       ]
     },
     {
+      "id": "skill/hero-art",
+      "name": "hero-art",
+      "description": "Hero splash art, seamless splash loops and rigged animated heroes, gated.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/hero-art/",
+      "domains": [
+        "2d",
+        "3d",
+        "animation",
+        "video",
+        "pipeline",
+        "assets"
+      ],
+      "bundled": false
+    },
+    {
       "id": "skill/in-game-purchases",
       "name": "in-game-purchases",
       "description": "Sell items for Sparks via the Summer purchase sheet: checkout, not enough Sparks, unlocks, grants.",

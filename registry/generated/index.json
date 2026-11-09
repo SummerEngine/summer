@@ -421,8 +421,8 @@
     {
       "id": "skill/animated-loop",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "2b68856274c9e1b0a844b33a657e93bcf580f9c581b7666583c9b728dadce173",
+      "version": "1.0.5",
+      "content_hash": "8ad21f9600f7fcc9fd2c984e7348aac7ed313c316a2be624ab28ce99bd190feb",
       "summary": "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -446,7 +446,8 @@
       },
       "related": {
         "skills": [
-          "skill/asset-strategy"
+          "skill/asset-strategy",
+          "skill/hero-art"
         ]
       },
       "status": "stable",
@@ -2016,6 +2017,63 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/hero-art",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "0f037f4c4881d16c6d7ff49295a22661d9f3d1c2b313874b02f90891d35af097",
+      "summary": "Hero splash art, seamless splash loops and rigged animated heroes, gated.",
+      "use_when": [
+        "making splash art for a hero, champion or playable class: character select, hero page, loading screen",
+        "one splash looks weaker or more generic than the rest of the roster and must be redone in the same style",
+        "animating splash art: an animated splash, a living painting, a seamless looping character-select background",
+        "building a playable hero from approved concept art to a rigged, animated, game-ready model with secondary motion and per-platform budgets",
+        "a generated character has six fingers, fused hair, tears in motion, warps on its skeleton or looks low poly in game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "2d",
+          "3d",
+          "animation",
+          "video",
+          "pipeline",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "video",
+          "3d-models",
+          "animation",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/character-model",
+          "skill/character-portrait",
+          "skill/concept-art",
+          "skill/animated-loop",
+          "skill/retarget",
+          "skill/character-animation-wiring",
+          "skill/animation-tree"
+        ],
+        "tools": [
+          "tool/generate-image",
+          "tool/generate-video",
+          "tool/generate-3d",
+          "tool/generate-motion",
+          "tool/run-script"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/in-game-purchases",

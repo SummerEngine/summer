@@ -112,6 +112,8 @@ describe("library-only skills", () => {
       "summer-board-types",
       "summer-board-modeling",
       "summer-board-to-game",
+      // routed from animated-loop, which points character splashes to it; same budget
+      "hero-art",
     ];
     const registry = getSkillRegistry();
     expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());

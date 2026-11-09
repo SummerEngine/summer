@@ -58,7 +58,7 @@ are listed where they differ.
 | claude-desktop | — | MCP: `~/Library/Application Support/Claude/claude_desktop_config.json`; Linux `~/.config/Claude/claude_desktop_config.json`; Windows `%APPDATA%/Claude/claude_desktop_config.json`; no skills folder (MCP only) |
 | codex | `.codex-plugin/plugin.json` | MCP: `~/.codex/config.toml`; project `.codex/config.toml`; skills: `~/.agents/skills`; project `.agents/skills` (`<skill>/SKILL.md`) |
 | cursor | `.cursor-plugin/plugin.json` | MCP: `~/.cursor/mcp.json`; project `.cursor/mcp.json`; skills: `~/.agents/skills`; project `.agents/skills` (`<skill>/SKILL.md`) |
-| windsurf | — | MCP: `~/.codeium/windsurf/mcp_config.json`; skills: `~/.agents/skills`; project `.agents/skills` (`<skill>/SKILL.md`) |
+| windsurf | — | MCP: `~/.config/devin/mcp_config.json`; Windows `%APPDATA%/devin/mcp_config.json`; skills: `~/.agents/skills`; project `.agents/skills` (`<skill>/SKILL.md`) |
 | antigravity | — | MCP: `~/.gemini/config/mcp_config.json`; project `.agents/mcp_config.json`; skills: `~/.gemini/config/skills`; project `.agents/skills` (`<skill>/SKILL.md`) |
 | gemini (legacy) | `gemini-extension.json` | MCP: `~/.gemini/extensions/summer-engine/gemini-extension.json`; skills: `~/.gemini/extensions/summer-engine/skills` (`<skill>/SKILL.md`) |
 | cline | — | MCP: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`; Linux `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`; Windows `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`; skills: `~/.cline/skills`; project `.cline/skills` (`<skill>/SKILL.md`) |

@@ -1,0 +1,82 @@
+id: tool/api-batch
+kind: tool
+version: 1.0.0
+summary: Run up to 500 Summer API jobs at once, all or none, with the Summer sign-in; follow every job and save the files.
+use_when:
+  - making many game assets through the Summer API in one go (a set of props, sounds or icons)
+  - following or downloading a batch that summer_api_batch started
+do_not_use_when:
+  - one job (summer_api_run)
+  - the person has not agreed to spend credits
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_api_batch
+implementation:
+  module: src/mcp/tools/api-tools.ts
+  export: registerApiTools
+surfaces:
+  mcp:
+    tool_name: summer_api_batch
+    remote: true
+input_schema:
+  type: object
+  properties:
+    jobs:
+      type: array
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        properties:
+          model:
+            type: string
+            minLength: 1
+            maxLength: 120
+            description: A Summer API model id or alias from summer_api_models, e.g. 3d/default.
+          input:
+            type: object
+            additionalProperties: {}
+            description: The model's input, matching its inputSchema from summer_api_models.
+          idempotencyKey:
+            type: string
+            minLength: 1
+            maxLength: 200
+            description: "This job's own key; by default the batch key and the job's position."
+        required:
+          - model
+        additionalProperties: false
+      description: Up to 500 jobs, all or none. Leave out with batchId.
+    batchId:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: Read a batch summer_api_batch answered, instead of starting one.
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: Reuse to retry the same batch without queuing it twice.
+    wait:
+      type: boolean
+      description: Follow every job until it finishes (up to about a minute in this call).
+    out:
+      type: string
+      minLength: 1
+      description: "A folder on this computer: save the finished job's files there (implies wait)."
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: true
+  publish: false

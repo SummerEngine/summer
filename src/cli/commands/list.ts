@@ -6,16 +6,40 @@ import { getTemplateRegistry, type TemplateEntry } from "../../core/templates.js
 export const listCommand = new Command("list")
   .description("List available templates or local projects")
   .argument("<what>", "'templates' or 'projects'")
-  .action(async (what: string) => {
+  .option("--json", "Print the list as JSON")
+  .action(async (what: string, opts: { json?: boolean }) => {
     if (what === "templates") {
-      listTemplates();
+      if (opts.json) console.log(JSON.stringify({ templates: templatesJson() }));
+      else listTemplates();
     } else if (what === "projects") {
-      listProjects();
+      if (opts.json) console.log(JSON.stringify({ directory: process.cwd(), projects: findProjects(process.cwd()) }));
+      else listProjects();
     } else {
       console.error(`Unknown: '${what}'. Use 'templates' or 'projects'.`);
       process.exit(1);
     }
   });
+
+/** `summer list templates --json`: what the text lists, one object per template. */
+export function templatesJson(): Array<Pick<TemplateEntry, "id" | "slug" | "version" | "summary" | "status" | "builtin" | "systems" | "do_not_use_when">> {
+  return getTemplateRegistry().map(({ id, slug, version, summary, status, builtin, systems, do_not_use_when }) => ({
+    id,
+    slug,
+    version,
+    summary,
+    status,
+    builtin,
+    systems,
+    do_not_use_when,
+  }));
+}
+
+/** Subdirectories of `dir` that hold a project.godot. */
+export function findProjects(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, "project.godot")))
+    .map((entry) => entry.name);
+}
 
 /**
  * Registry-only listing (CONTRACT.md §7): every template shown here resolves
@@ -50,17 +74,7 @@ function listTemplates(): void {
 
 function listProjects(): void {
   const cwd = process.cwd();
-  const entries = readdirSync(cwd, { withFileTypes: true });
-  const projects: string[] = [];
-
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const projectFile = join(cwd, entry.name, "project.godot");
-      if (existsSync(projectFile)) {
-        projects.push(entry.name);
-      }
-    }
-  }
+  const projects = findProjects(cwd);
 
   if (projects.length === 0) {
     console.log("No Summer Engine projects found in current directory.");

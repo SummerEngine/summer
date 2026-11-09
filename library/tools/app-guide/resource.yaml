@@ -1,0 +1,55 @@
+id: tool/app-guide
+kind: tool
+version: 1.0.0
+summary: "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples."
+use_when:
+  - before building or changing a Summer App
+  - '"build us a loot balance tool"'
+  - '"make a tool for our team to track creatures"'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_guide
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_guide
+    remote: true
+input_schema:
+  type: object
+  properties:
+    section:
+      type: string
+      enum:
+        - all
+        - overview
+        - manifest
+        - sdk
+        - kit
+        - layout
+        - design
+        - examples
+        - types
+      default: overview
+      description: "Start with overview (the default), then read what the app needs: examples (a working app to copy), sdk, manifest, kit, design, layout, types (exact SDK TypeScript types). all returns every section but types (about 100 KB)"
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

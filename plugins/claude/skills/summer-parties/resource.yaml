@@ -1,0 +1,30 @@
+id: skill/summer-parties
+kind: skill
+version: 1.0.0
+summary: "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only."
+use_when:
+  - "friends in a Summer party should land in the same multiplayer match: party play, play with friends, squad up"
+  - "adding invite-friends and party buttons, a party roster or ready checks to a Summer game's menu"
+  - "a party join fails with party_member_offline, party_not_searching or capability_unavailable"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - ui
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-testing
+    - skill/summer-matchmaking
+    - skill/summer-friends
+    - skill/summer-world-chat
+source: official
+license: MIT
+status: preview
+recommended: false

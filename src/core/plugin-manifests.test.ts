@@ -1,7 +1,7 @@
 /**
  * Validates that every agent plugin manifest references real, on-disk library
- * skills, and that every on-disk library skill is registered in the Claude
- * Code manifest.
+ * skills, and that every bundled on-disk library skill (not `bundled: false`)
+ * is registered in the Claude Code manifest.
  *
  * The manifests are GENERATED from library/ by `npm run generate:registry`
  * (parity with registry/generated/ is enforced by `generate:registry --check`);
@@ -108,17 +108,22 @@ describe("repo-lint: agent plugin manifests", () => {
   }
 
   describe("library/skills <-> manifest coverage", () => {
-    it("every on-disk library skill is listed in .claude-plugin/plugin.json", () => {
+    it("every bundled on-disk library skill is listed in .claude-plugin/plugin.json, and no library-only one", () => {
+      const registry = JSON.parse(
+        readFileSync(join(repoRoot, "registry", "generated", "skills-registry.json"), "utf-8")
+      ) as { skills: Array<{ path: string; bundled?: boolean }> };
+      const libraryOnly = new Set(registry.skills.filter((s) => s.bundled === false).map((s) => `./${s.path}`));
       const onDisk = listLibrarySkillDirs();
       const claudeManifest = JSON.parse(
         readFileSync(join(repoRoot, ".claude-plugin", "plugin.json"), "utf-8")
       ) as { skills: string[] };
       const listed = new Set(claudeManifest.skills);
-      const orphans = onDisk.filter((p) => !listed.has(p));
+      const orphans = onDisk.filter((p) => !listed.has(p) && !libraryOnly.has(p));
       expect(
         orphans,
         `On-disk library skills missing from .claude-plugin/plugin.json:\n${orphans.join("\n")}`
       ).toEqual([]);
+      expect(claudeManifest.skills.filter((p) => libraryOnly.has(p))).toEqual([]);
     });
 
     it("every generated-registry skill path exists on disk with a resource.yaml", () => {

@@ -1,6 +1,6 @@
 ---
 name: vfx-hit-spark
-description: "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact."
+description: "Hit-spark effect: a one-shot burst of additive particles oriented to the surface, fired on impact."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -371,3 +371,26 @@ After firing this recipe, suggest:
 - `vfx-lightning` — caller; spawns sparks at bolt endpoints
 - `vfx-water-ripple` — surface companion for water impacts
 - `game-feel` — shake/hit-stop pairings
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_replace_node` | `summer engine replace-node` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

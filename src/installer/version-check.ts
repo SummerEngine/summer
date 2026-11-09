@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { parse as parseYaml } from "yaml";
-import { allAgentSpecs, defaultPathContext, resolveSkillPath, type McpFormat } from "./agent-table.js";
+import { agentSpec, allAgentSpecs, cliSetupRefusal, defaultPathContext, resolveSkillPath, type McpFormat } from "./agent-table.js";
 import { join, sep } from "node:path";
 import { PACKAGE_ROOT } from "../core/package-root.js";
 import {
@@ -46,6 +46,8 @@ export interface DriftClassification {
 }
 
 const NPM_REGISTRY_LATEST_URL = "https://registry.npmjs.org/summer-engine/latest";
+const NPM_REGISTRY_DIST_TAGS_URL = "https://registry.npmjs.org/-/package/summer-engine/dist-tags";
+const NPM_REGISTRY_PACKAGE_URL = "https://registry.npmjs.org/summer-engine";
 const REGISTRY_FETCH_TIMEOUT_MS = 3000;
 
 export function parseSemver(version: string): SemverParts | null {
@@ -121,10 +123,11 @@ export interface RegistryFetchFailure {
   message?: string;
 }
 
-export async function fetchLatestRegistryVersion(
-  options: RegistryFetchOptions = {}
-): Promise<RegistryFetchResult | RegistryFetchFailure> {
-  const url = options.url ?? NPM_REGISTRY_LATEST_URL;
+async function fetchRegistryJson(
+  defaultUrl: string,
+  options: RegistryFetchOptions
+): Promise<{ ok: true; body: unknown } | RegistryFetchFailure> {
+  const url = options.url ?? defaultUrl;
   const timeoutMs = options.timeoutMs ?? REGISTRY_FETCH_TIMEOUT_MS;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
@@ -144,15 +147,7 @@ export async function fetchLatestRegistryVersion(
         message: `registry responded ${response.status}`,
       };
     }
-    const body = (await response.json()) as { version?: unknown };
-    if (typeof body.version !== "string") {
-      return {
-        ok: false,
-        reason: "registry-unreachable",
-        message: "registry payload missing version",
-      };
-    }
-    return { ok: true, version: body.version };
+    return { ok: true, body: await response.json() };
   } catch (error) {
     return {
       ok: false,
@@ -160,6 +155,55 @@ export async function fetchLatestRegistryVersion(
       message: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export async function fetchLatestRegistryVersion(
+  options: RegistryFetchOptions = {}
+): Promise<RegistryFetchResult | RegistryFetchFailure> {
+  const result = await fetchRegistryJson(NPM_REGISTRY_LATEST_URL, options);
+  if (!result.ok) return result;
+  const body = result.body as { version?: unknown } | null;
+  if (typeof body?.version !== "string") {
+    return {
+      ok: false,
+      reason: "registry-unreachable",
+      message: "registry payload missing version",
+    };
+  }
+  return { ok: true, version: body.version };
+}
+
+export interface RegistryDistTagsResult {
+  ok: true;
+  /** dist-tag -> version, e.g. { latest: "3.8.0", next: "3.1.0" }. */
+  tags: Record<string, string>;
+}
+
+export async function fetchRegistryDistTags(
+  options: RegistryFetchOptions = {}
+): Promise<RegistryDistTagsResult | RegistryFetchFailure> {
+  const result = await fetchRegistryJson(NPM_REGISTRY_DIST_TAGS_URL, options);
+  if (!result.ok) return result;
+  const body = result.body as Record<string, unknown> | null;
+  const tags: Record<string, string> = {};
+  for (const [tag, value] of Object.entries(body ?? {})) {
+    if (typeof value === "string") tags[tag] = value;
+  }
+  if (!tags.latest) {
+    return { ok: false, reason: "registry-unreachable", message: "registry payload missing latest" };
+  }
+  return { ok: true, tags };
+}
+
+/** Whether npm has this exact version: true, false (registry says 404), or
+ *  null when the registry could not be asked. */
+export async function isRegistryVersionPublished(
+  version: string,
+  options: RegistryFetchOptions = {}
+): Promise<boolean | null> {
+  const result = await fetchRegistryJson(`${NPM_REGISTRY_PACKAGE_URL}/${encodeURIComponent(version)}`, options);
+  if (result.ok) return true;
+  return result.message === "registry responded 404" ? false : null;
 }
 
 /**
@@ -259,6 +303,8 @@ export const SKILL_VERSION_MARKER_FILENAME = ".summer-version";
 export interface SkillVersionMarker {
   version: string;
   installedAt: string;
+  /** Summer skills the upgrade refresh left because someone changed them (installer/skills-refresh.ts). */
+  kept?: string[];
 }
 
 export function readSkillMarker(dir: string): SkillVersionMarker | null {
@@ -276,15 +322,33 @@ export function readSkillMarker(dir: string): SkillVersionMarker | null {
   }
 }
 
+/** The skills the upgrade refresh left in this folder (the raw marker; readSkillMarker keeps setup's fields). */
+export function readKeptSkills(dir: string): string[] {
+  try {
+    const kept = (JSON.parse(readFileSync(join(dir, SKILL_VERSION_MARKER_FILENAME), "utf-8")) as SkillVersionMarker).kept;
+    return Array.isArray(kept) ? kept.filter((name): name is string => typeof name === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Write the folder's marker. The skills an upgrade refresh left stay listed
+ * (so later refreshes keep leaving them), except the ones this install just
+ * wrote: `installed` names them; leave it out to keep every one.
+ */
 export function writeSkillMarker(
   dir: string,
   version: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  installed?: readonly string[]
 ): string {
   const path = join(dir, SKILL_VERSION_MARKER_FILENAME);
+  const kept = readKeptSkills(dir).filter((name) => !installed?.includes(name));
   const payload: SkillVersionMarker = {
     version,
     installedAt: now.toISOString(),
+    ...(kept.length > 0 ? { kept } : {}),
   };
   writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf-8");
   return path;
@@ -331,31 +395,71 @@ export interface RecordedInstall {
   /** Where the answer came from: the agent's config file, or — when it has
    *  no readable Summer entry — the nature of the CLI running this check. */
   source: "agent-config" | "running-cli";
+  /** The agent's config lists no summer-engine server in any shape (`setup
+   *  --cli`, or skills installed alone) and `setup --cli` can set the agent
+   *  up: the refresh keeps it without an MCP server. */
+  cliOnly?: boolean;
+  /** The bundled node executable the entry runs (`setup --runtime <node> --package-dir <dir>`); cliPath is then that package's dist/bin/summer.js. */
+  runtime?: string;
 }
 
-export type RefreshChannel = "latest" | "next";
+/** An npm dist-tag (`latest`, `next`) or an exact version (`3.9.1`). */
+export type RefreshChannel = string;
 
-/** The npm dist-tag a refresh command should name. A CLI that is AHEAD of
- *  npm `latest` was installed from `next` (a soaking release); telling that
- *  user to run `summer-engine@latest` would silently downgrade the MCP server
- *  while leaving the newer skills in place (release review P1-3). */
-export function refreshChannel(installedVersion: string, latestVersion: string | undefined): RefreshChannel {
+/** The npm spec a refresh command or a new MCP entry should name, so the agent
+ *  never runs an older release than this CLI (release review P1-3). `latest`
+ *  unless this CLI is AHEAD of npm latest; then `next` only when the next
+ *  dist-tag is this exact version, else this exact version. A CLI that is ahead
+ *  is not always on `next`: `next` stayed on 3.1.0 while latest moved to 3.8.0,
+ *  and pinning it dropped every option newer than 3.1.0 (SUMMER_PROFILE). */
+export function refreshChannel(
+  installedVersion: string,
+  latestVersion: string | undefined,
+  nextVersion?: string
+): RefreshChannel {
   const installed = parseSemver(installedVersion);
   const latest = latestVersion ? parseSemver(latestVersion) : null;
   if (!installed || !latest) return "latest";
-  return classifyDrift(installed, latest).reason === "ahead" ? "next" : "latest";
+  if (classifyDrift(installed, latest).reason !== "ahead") return "latest";
+  return nextVersion?.trim() === installedVersion.trim() ? "next" : installedVersion.trim();
+}
+
+export interface DefaultChannelDeps {
+  fetchDistTags?: typeof fetchRegistryDistTags;
+  isPublished?: typeof isRegistryVersionPublished;
 }
 
 /** Default `summer setup` channel when neither --channel nor SUMMER_CHANNEL is
- *  given: `next` while this CLI is ahead of npm latest, else `latest`. Network
- *  failure means `latest` (never blocks setup). */
-export async function resolveDefaultChannel(installedVersion: string): Promise<{ channel: RefreshChannel; note?: string }> {
-  const registry = await fetchLatestRegistryVersion();
+ *  given: `latest`, unless this CLI is ahead of npm latest. Then `next` when
+ *  next is this exact version, this exact version when npm has it, and
+ *  otherwise (a checkout that was never published) `latest` with a note that
+ *  points at --local-dev. Network failure means `latest` (never blocks setup). */
+export async function resolveDefaultChannel(
+  installedVersion: string,
+  deps: DefaultChannelDeps = {}
+): Promise<{ channel: RefreshChannel; note?: string }> {
+  const registry = await (deps.fetchDistTags ?? fetchRegistryDistTags)();
   if (!registry.ok) return { channel: "latest" };
-  const channel = refreshChannel(installedVersion, registry.version);
-  return channel === "next"
-    ? { channel, note: `This CLI (${installedVersion}) is ahead of npm latest (${registry.version}); the MCP entry is pinned to summer-engine@next so the agent keeps running this release. Pass --channel latest to override.` }
-    : { channel };
+  const latest = registry.tags.latest;
+  const channel = refreshChannel(installedVersion, latest, registry.tags.next);
+  if (channel === "latest") return { channel };
+  if (channel === "next") {
+    return {
+      channel,
+      note: `This CLI (${installedVersion}) is the npm next release, ahead of latest (${latest}); the MCP entry runs summer-engine@next. Pass --channel latest to override.`,
+    };
+  }
+  const published = await (deps.isPublished ?? isRegistryVersionPublished)(installedVersion);
+  if (published) {
+    return {
+      channel,
+      note: `This CLI (${installedVersion}) is ahead of npm latest (${latest}); the MCP entry is pinned to summer-engine@${installedVersion} so the agent runs this release. Pass --channel latest to override.`,
+    };
+  }
+  return {
+    channel: "latest",
+    note: `This CLI (${installedVersion}) is not on npm, so the MCP entry runs summer-engine@latest (${latest}), which can lack options this CLI has. To run this build, pass --local-dev.`,
+  };
 }
 
 export interface SkillsVersionCheckInput {
@@ -363,6 +467,8 @@ export interface SkillsVersionCheckInput {
   candidates: SkillMarkerCandidate[];
   /** npm latest, when known, so the refresh command names the right dist-tag. */
   latestRegistryVersion?: string;
+  /** npm next, when known: the refresh names `next` only when it is this CLI. */
+  nextRegistryVersion?: string;
   /** Resolves how the stale agent's MCP entry was recorded; defaults to
    *  detectRecordedInstall. Seam for tests. */
   recordedInstall?: (agent: string) => Promise<RecordedInstall | null> | RecordedInstall | null;
@@ -460,7 +566,7 @@ export async function buildSkillsVersionCheck(
       ...baseDetails,
       drift: worst.drift.reason,
       ...(install ? { install } : {}),
-      recommendedAction: skillsRefreshCommand(worst.agent, install, refreshChannel(input.installedCliVersion, input.latestRegistryVersion)),
+      recommendedAction: skillsRefreshCommand(worst.agent, install, refreshChannel(input.installedCliVersion, input.latestRegistryVersion, input.nextRegistryVersion)),
     },
   };
 }
@@ -482,14 +588,42 @@ async function resolveRecordedInstall(
  * The command that refreshes an agent's skills without changing how its MCP
  * entry was recorded: the local-dev form re-links the same checkout
  * (`setup --local-dev --force` re-copies the checkout's skills); the npx form
- * is for installs that already run the published package.
+ * is for installs that already run the published package. An agent with no
+ * summer-engine entry refreshes with `--cli`, so the refresh adds no MCP server.
  */
 export function skillsRefreshCommand(agent: string, install: RecordedInstall | null, channel: RefreshChannel = "latest"): string {
+  if (install?.cliOnly) {
+    // No MCP entry to keep: --local-dev and --channel shape only that entry.
+    return install.localDev && install.cliPath
+      ? `node ${install.cliPath} setup ${agent} --cli --yes --force`
+      : `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --cli --yes --force`;
+  }
+  if (install?.runtime && install.cliPath) {
+    // Keep the bundled runtime: the npx form needs a Node.js the person may not have.
+    const packageDir = install.cliPath.replace(/[\\/]dist[\\/]bin[\\/]summer\.js$/, "");
+    const runtime = shellArg(install.runtime);
+    return `${runtime} ${shellArg(install.cliPath)} setup ${agent} --runtime ${runtime} --package-dir ${shellArg(packageDir)} --yes --force`;
+  }
   if (install?.localDev && install.cliPath) {
     return `node ${install.cliPath} setup ${agent} --local-dev --yes --force`;
   }
-  const tag = channel === "next" ? "next" : "latest";
-  return `npx clear-npx-cache && npx -y summer-engine@${tag} setup ${agent} --yes --force${channel === "next" ? " --channel next" : ""}`;
+  return `npx clear-npx-cache && npx -y summer-engine@${channel} setup ${agent} --yes --force${channel === "latest" ? "" : ` --channel ${channel}`}`;
+}
+
+/** A path in a printed command: quoted when it has a space (~/Library/Application Support, C:\\Program Files). */
+function shellArg(value: string): string {
+  return /[\s"'$`]/.test(value) ? JSON.stringify(value) : value;
+}
+
+/** The shape `summer setup --runtime <node> --package-dir <dir>` writes:
+ *  `<absolute path to node> <dir>/dist/bin/summer.js mcp` (bundledRuntimeServerConfig). */
+export function isBundledRuntimeServerConfig(server: StdioMcpServerConfig): boolean {
+  return (
+    /^([a-z]:)?[\\/]/i.test(server.command) &&
+    /(^|[\\/])node(\.exe)?$/i.test(server.command) &&
+    /[\\/]dist[\\/]bin[\\/]summer\.js$/.test(server.args[0] ?? "") &&
+    server.args[1] === "mcp"
+  );
 }
 
 /** The shape `summer setup --local-dev` writes: `node <…>/dist/bin/summer.js mcp`
@@ -581,6 +715,32 @@ export function readRecordedMcpServer(
   return null;
 }
 
+/**
+ * Does the agent's config list a summer-engine server in any shape: the stdio
+ * entry setup writes, a URL entry under that name, or (Claude Code) a
+ * per-project entry under projects.<dir>.mcpServers?
+ */
+export function listsSummerEngine(text: string, format: McpFormat): boolean {
+  if (readRecordedMcpServer(text, format)) return true;
+  if (!text.trim()) return false;
+  if (format === "toml") return new RegExp(`^\\s*\\[mcp_servers\\.(?:"${SUMMER_MCP_SERVER_NAME}"|${SUMMER_MCP_SERVER_NAME})[\\].]`, "m").test(text);
+  if (format === "toml-array") return new RegExp(`^\\s*name\\s*=\\s*"${SUMMER_MCP_SERVER_NAME}"`, "m").test(text);
+  let parsed: unknown;
+  try {
+    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : JSON.parse(text);
+  } catch {
+    return false;
+  }
+  if (!parsed || typeof parsed !== "object") return false;
+  const root = parsed as Record<string, unknown>;
+  const projects = root.projects && typeof root.projects === "object" ? Object.values(root.projects as Record<string, unknown>) : [];
+  const maps = [
+    ...[topLevelKey(format), "mcpServers", "servers", "mcp", "context_servers", "extensions", "mcp_servers", "amp.mcpServers"].map((key) => root[key]),
+    ...projects.map((project) => (project && typeof project === "object" ? (project as Record<string, unknown>).mcpServers : undefined)),
+  ];
+  return maps.some((map) => Boolean(map) && typeof map === "object" && SUMMER_MCP_SERVER_NAME in (map as Record<string, unknown>));
+}
+
 /** Is the CLI running this check a source checkout rather than an installed
  *  package? npm/npx/global installs all live under a node_modules directory. */
 export function runningCliIsCheckout(packageRoot: string = PACKAGE_ROOT): boolean {
@@ -597,16 +757,20 @@ export function runningCliIsCheckout(packageRoot: string = PACKAGE_ROOT): boolea
  */
 export async function detectRecordedInstall(agent: string): Promise<RecordedInstall | null> {
   const supported = parseAgent(agent);
+  let cliOnly = false;
   if (supported) {
     try {
       const target = await configureAgentMcp({ agent: supported, scope: "user", print: true });
-      if (existsSync(target.path)) {
-        const recorded = readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format);
-        if (recorded) {
-          const localDev = isLocalDevServerConfig(recorded);
-          return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
+      const text = existsSync(target.path) ? readFileSync(target.path, "utf-8") : "";
+      const recorded = readRecordedMcpServer(text, target.format);
+      if (recorded) {
+        if (isBundledRuntimeServerConfig(recorded)) {
+          return { localDev: false, cliPath: recorded.args[0], runtime: recorded.command, source: "agent-config" };
         }
+        const localDev = isLocalDevServerConfig(recorded);
+        return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
       }
+      cliOnly = !listsSummerEngine(text, target.format) && cliSetupRefusal(agentSpec(supported)) === null;
     } catch {
       // Unreadable config: fall through to the running-CLI answer.
     }
@@ -616,6 +780,7 @@ export async function detectRecordedInstall(agent: string): Promise<RecordedInst
     localDev: checkout,
     cliPath: checkout ? [PACKAGE_ROOT, "dist", "bin", "summer.js"].join(sep) : null,
     source: "running-cli",
+    ...(cliOnly ? { cliOnly } : {}),
   };
 }
 

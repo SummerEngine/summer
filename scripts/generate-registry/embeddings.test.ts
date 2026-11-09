@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decodeVector, type EmbedResponse } from "../../src/core/embeddings.ts";
 import { applyManifests } from "./apply.ts";
+import { applyMirrors, mirrorsOf } from "./mirrors.ts";
 import { checkRegistry } from "./check.ts";
 import {
   EMBEDDINGS_BANNER,
@@ -41,6 +42,7 @@ function generateAndApply(root: string): LoadedResource[] {
   const result = generateRegistry(root, { schemasDir });
   writeGenerated(path.join(root, "registry", "generated"), result);
   applyManifests(root);
+  applyMirrors(root, mirrorsOf(root, result.resources));
   return result.resources;
 }
 

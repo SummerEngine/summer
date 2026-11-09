@@ -48,6 +48,7 @@ If this stops, do not improvise. Fix the version or source in a reviewed commit,
 
 ```bash
 npm ci
+npm run sync:catalog -- --check
 npm test
 npm run build
 npm pack --dry-run
@@ -58,6 +59,7 @@ test -z "$(git status --porcelain)"
 
 The package scripts are:
 
+- Catalog: `npm run sync:catalog -- --check` fails when `registry/operations/public-catalog.json` differs from the hosted server's (PublicSummerEngine main; needs `gh` signed in). Fix it with `npm run sync:catalog` in a reviewed PR, never in this clone.
 - Build: `npm run build`, which cleans `dist/` and compiles TypeScript.
 - Test: `npm test`, which runs Vitest once, then `validate:library`.
 - Publish guard: `prepublishOnly`, which runs the build and tests again immediately before a real publish.
@@ -73,7 +75,7 @@ test "$(npm whoami)" = "summer-engine"
 npm publish
 ```
 
-For a release that should soak before `latest` moves (every major), publish to the `next` dist-tag instead — `npm publish --tag next` — and promote later with `npm dist-tag add summer-engine@<version> latest`. Step 5's `dist-tags.latest` check then applies at promotion time, not at publish time; until then verify `dist-tags.next`.
+For a release that should soak before `latest` moves (every major), publish to the `next` dist-tag instead — `npm publish --tag next` — and promote later with `npm dist-tag add summer-engine@<version> latest`. Step 5's `dist-tags.latest` check then applies at promotion time, not at publish time; until then verify `dist-tags.next`. Step 6 applies at promotion time too.
 
 The browser flow must authenticate the `summer-engine` npm account with its configured security key. npm may prompt for the security key again when publishing. If the account name is different, authentication fails, or npm requests a factor you do not have, stop. Do not disable 2FA and do not create a bypass token for a one-off manual release.
 
@@ -92,4 +94,42 @@ test "$(cd "$VERIFY_DIR" && npm exec --yes --cache "$VERIFY_CACHE" --package="su
 
 Use a fresh npm cache so a pre-publish registry response cannot produce a false failure. Run the CLI smoke test outside the package checkout so npm links the published binary instead of resolving an older global `summer` command.
 
-Keep the terminal output with the release record. The temporary clone can be deleted after verification.
+Keep the terminal output with the release record. Keep the clone until step 8: steps 7 and 8 read `CHANGELOG.md` and `server.json` from it.
+
+## 6. Point `next` at the new release
+
+`npx summer-engine@next` and `summer setup --channel next` install whatever `next` names. A `next` older than `latest` installs an old release: `next` stayed on 3.1.0 while `latest` moved to 3.8.0. After every release that moves `latest`, point `next` at it too:
+
+```bash
+npm dist-tag add "summer-engine@$PACKAGE_VERSION" next
+test "$(npm view summer-engine dist-tags.next --prefer-online --cache "$(mktemp -d)")" = "$PACKAGE_VERSION"
+```
+
+`summer setup` no longer follows a stale `next` (it pins the exact version it runs), but `npx summer-engine@next` and older CLIs still do.
+
+## 7. Tag the release on GitHub
+
+Create the `v<version>` tag on the published commit and a GitHub Release with this version's CHANGELOG section as its notes:
+
+```bash
+awk -v v="$PACKAGE_VERSION" 'index($0, "## [" v "]") == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > "$VERIFY_DIR/notes.md"
+test -s "$VERIFY_DIR/notes.md"
+gh release create "v$PACKAGE_VERSION" --repo summerengine/summer --target "$(git rev-parse HEAD)" --title "summer-engine $PACKAGE_VERSION" --notes-file "$VERIFY_DIR/notes.md"
+```
+
+`gh release create` makes the tag on GitHub, so nothing is pushed from this clone. For a release on `next`, add `--prerelease` and drop it when you promote (`gh release edit "v$PACKAGE_VERSION" --prerelease=false`).
+
+## 8. Check the MCP Registry and Homebrew
+
+Publishing the GitHub Release in step 7 runs `.github/workflows/publish-mcp-registry.yml`. It lists `server.json` in the official MCP Registry as `io.github.SummerEngine/summer`, signed in with GitHub OIDC, so no personal sign-in is needed. Check that it finished, then check the registry:
+
+```bash
+gh run list --repo summerengine/summer --workflow publish-mcp-registry.yml --limit 1
+curl -fsS "https://registry.modelcontextprotocol.io/v0/servers/io.github.SummerEngine%2Fsummer/versions/latest" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const v=JSON.parse(d).server.version;if(v!==process.argv[1]){console.error("STOP: registry has "+v);process.exit(1)}console.log("registry",v)})' "$PACKAGE_VERSION"
+```
+
+If the run failed, run it again for the tag: `gh workflow run publish-mcp-registry.yml --repo summerengine/summer -f tag=v$PACKAGE_VERSION`.
+
+Homebrew (`brew install summerengine/tap/summer`) needs no step: SummerEngine/homebrew-tap checks npm `latest` every hour and bumps its formula.
+
+The temporary clone can be deleted now.

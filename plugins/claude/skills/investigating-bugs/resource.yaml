@@ -1,0 +1,24 @@
+id: skill/investigating-bugs
+kind: skill
+version: 1.0.3
+summary: Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes.
+use_when:
+  - encountering any bug, test failure, or unexpected behavior, before proposing fixes
+  - the character falls through the floor and nobody knows why — find the root cause before patching
+  - a test fails or the game misbehaves and the first guess at the cause is unproven
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - debug
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/workflow/investigating-bugs

@@ -1,6 +1,6 @@
 ---
 name: scene-composition
-description: "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions."
+description: "Scene structure: node hierarchy, when to extract sub-scenes, reusable prefabs, instance vs add node."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -165,3 +165,20 @@ Don't skip the player mask update. If you only move foliage to layer 9 without a
 ## Collaborative protocol
 
 This skill creates and mutates scene files. Always ask before applying: "May I create `res://scenes/player.tscn` and instantiate it under `./World`?".
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_open_scene` | `summer engine open-scene` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

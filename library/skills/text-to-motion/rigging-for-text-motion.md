@@ -43,8 +43,8 @@ clips; keep the package's canonical idle/walk/run/jump from `generate-motion`.
 
 ## Rigging an unrigged mesh
 
-- Humanoid: the Summer auto-rig (`character-model`, `summer_generate_3d` with
-  `options.rig: true`).
+- Humanoid: the Summer auto-rig (`character-model`, `assets.generate_3d` with
+  `rig: true`).
 - Other body plans: rig in the user's own Blender (`fabricating-assets`) or offline
   (`skintokens-auto-rigging`), using the human bone names above where the body plan allows
   (stem as spine, leaves as arms).

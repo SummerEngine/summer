@@ -1,0 +1,48 @@
+id: tool/app-list
+kind: tool
+version: 1.0.0
+summary: List the Summer Apps (team tools inside Summer Studio) in the person's workspaces.
+use_when:
+  - '"which apps do we have"'
+  - finding an app id to change or read
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_list
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_list
+    remote: true
+input_schema:
+  type: object
+  properties:
+    workspaceId:
+      type: string
+      format: uuid
+      description: "Only this workspace (team). Default: every workspace the person is in"
+    q:
+      type: string
+      maxLength: 200
+      description: Search app names and purposes
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

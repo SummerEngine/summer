@@ -10,9 +10,11 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { OAuthError } from "../core/oauth.js";
+import { HostedUnreachableError } from "../core/hosted-mcp.js";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer } from "./server.js";
 import { defaultHostedMountDependencies, prepareHostedMount, STORE_TOOLS_STATUS, type HostedMountDependencies } from "./hosted-mount.js";
+import { resolveToolSelection, selectionIncludes } from "./tool-surface.js";
 
 const TOKEN = "store-oauth-token";
 
@@ -35,8 +37,14 @@ function hostedSummerEngine() {
     server.registerResource("store-art", "summer://skills/store-art", { mimeType: "text/markdown" }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: "# Store art" }] }));
     return server;
   };
+  const requestHeaders: Array<{ tool?: string; host?: string; client?: string }> = [];
   const http: Server = createServer(async (req, res) => {
     const authorization = req.headers.authorization;
+    requestHeaders.push({
+      tool: req.headers["x-summer-mcp-tool"] as string | undefined,
+      host: req.headers["x-summer-agent-host"] as string | undefined,
+      client: req.headers["x-summer-client"] as string | undefined,
+    });
     if (authorization !== `Bearer ${TOKEN}`) {
       res.writeHead(401, { "content-type": "application/json" }).end(JSON.stringify({ error: "invalid_token" }));
       return;
@@ -53,7 +61,7 @@ function hostedSummerEngine() {
     await server.connect(transport);
     await transport.handleRequest(req, res, body);
   });
-  return { http, seen };
+  return { http, seen, requestHeaders };
 }
 
 let hosted: ReturnType<typeof hostedSummerEngine>;
@@ -94,6 +102,27 @@ const deps = (overrides: Partial<HostedMountDependencies> = {}): HostedMountDepe
 });
 
 describe("one Summer Engine MCP: hosted tools mounted locally", () => {
+  it("mounts the hosted 3.x tools from the hosted 3.x surface, asked for by name", () => {
+    expect(new URL(defaultHostedMountDependencies.url()).searchParams.get("surface")).toBe("v3");
+  });
+
+  it("call() says why nothing was sent: a refused sign-in keeps an OAuth code, a server that never answered is unreachable", async () => {
+    const refused = await localSession(deps({ token: async () => "wrong-token" }));
+    try {
+      await expect(refused.mount.call("summer_store_list_games", {})).rejects.toMatchObject({ name: "OAuthError", code: "oauth_token_invalid" });
+    } finally {
+      await refused.client.close();
+      await refused.server.close();
+    }
+    const down = await localSession(deps({ url: () => "http://127.0.0.1:1/mcp" }));
+    try {
+      await expect(down.mount.call("summer_store_list_games", {})).rejects.toBeInstanceOf(HostedUnreachableError);
+    } finally {
+      await down.client.close();
+      await down.server.close();
+    }
+  });
+
   it("lists the hosted publishing tools with their own schema next to the engine tools", async () => {
     const { client, mount, server } = await localSession(deps());
     try {
@@ -125,6 +154,8 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1", priceUsdCents: 499 } });
       expect(JSON.parse((result.content as Array<{ text: string }>)[0].text).status).toBe("awaiting_owner_approval");
       expect(hosted.seen).toEqual([{ tool: "summer_store_submit", args: { gameId: "g1", priceUsdCents: 499 }, authorization: `Bearer ${TOKEN}` }]);
+      // The call names its tool and the agent app (the local client is "agent").
+      expect(hosted.requestHeaders).toContainEqual({ tool: "summer_store_submit", host: "other.agent", client: "summer-cli" });
     } finally {
       await client.close();
       await server.close();
@@ -185,6 +216,26 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
     }
   });
 
+  it("holds a call to a hosted tool that arrives before any tools/list until the mount finishes", async () => {
+    const { server } = createMcpServer();
+    const slowConnect: HostedMountDependencies["connect"] = (...args) =>
+      new Promise((done) => setTimeout(done, 200)).then(() => defaultHostedMountDependencies.connect(...args));
+    const mount = prepareHostedMount(server, deps({ connect: slowConnect }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "agent", version: "1.0.0" });
+    await client.connect(clientSide);
+    try {
+      void mount.mount();
+      const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1" } });
+      expect(result.isError).not.toBe(true);
+      expect(hosted.seen.map((entry) => entry.tool)).toEqual(["summer_store_submit"]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("answers the first tools/list after the wait cap when the mount is slow", async () => {
     const { server } = createMcpServer();
     const mount = prepareHostedMount(
@@ -207,5 +258,51 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       await client.close();
       await server.close();
     }
+  });
+
+  it("mounts only the hosted tools the profile includes", async () => {
+    const assets = resolveToolSelection({ profile: "assets" }, {});
+    const { server } = createMcpServer(assets);
+    const mount = prepareHostedMount(server, deps(), { includeTool: (name) => selectionIncludes(assets, name, false) });
+    const state = await mount.mount();
+    expect(state.status).toBe("mounted");
+    // summer_store_submit is a store tool; the assets profile has no store.
+    expect(state.tools).toEqual([]);
+    await server.close();
+
+    const engine = resolveToolSelection({ profile: "engine" }, {});
+    const second = createMcpServer(engine);
+    const engineMount = prepareHostedMount(second.server, deps(), { includeTool: (name) => selectionIncludes(engine, name, false) });
+    expect((await engineMount.mount()).tools).toEqual(["summer_store_submit"]);
+    await second.server.close();
+  });
+
+  it("stops mounting at the tool limit and logs what it left out", async () => {
+    const { server, getRegisteredToolCount } = createMcpServer();
+    const mount = prepareHostedMount(server, deps(), { maxTools: getRegisteredToolCount() });
+    const state = await mount.mount();
+    expect(state.tools).toEqual([]);
+    expect(state.overLimit).toEqual(["summer_store_submit"]);
+    await server.close();
+  });
+
+  it("counts only the tools a client lists against the limit (v4 keeps 3.x tools registered, unlisted)", async () => {
+    const { server } = createMcpServer(resolveToolSelection({ profile: "full" }, {}), { surface: "v4" });
+    const registered = Object.values((server as unknown as { _registeredTools: Record<string, { enabled: boolean }> })._registeredTools);
+    const listed = registered.filter((tool) => tool.enabled).length;
+    expect(registered.length).toBeGreaterThan(listed);
+    const mount = prepareHostedMount(server, deps(), { maxTools: listed + 1 });
+    expect((await mount.mount()).tools).toEqual(["summer_store_submit"]);
+    await server.close();
+  });
+
+  it("gives mounted tools the description a surface asks for and says when it mounted", async () => {
+    const { server } = createMcpServer();
+    let mounted = 0;
+    const mount = prepareHostedMount(server, deps(), { describe: (tool) => `3.x name; ${tool.name}`, onMounted: () => (mounted += 1) });
+    await mount.mount();
+    expect((server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools.summer_store_submit.description).toBe("3.x name; summer_store_submit");
+    expect(mounted).toBe(1);
+    await server.close();
   });
 });

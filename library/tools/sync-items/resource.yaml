@@ -1,0 +1,72 @@
+id: tool/sync-items
+kind: tool
+version: 1.0.0
+summary: Sync summer.items.json to the store game by item slug - a plan, then the owner's approval in Studio. Needs the store sign-in (summer login --store).
+use_when:
+  - '"add these items to my game"'
+  - '"sync my items to staging"'
+  - '"put the same items in production"'
+  - '"change the price of emote_ponder"'
+  - creating or revising store items from summer.items.json, matched by slug
+  - making the staging game and the production game carry the same items
+do_not_use_when:
+  - the user has not approved the exact plan for this gateway and game
+  - more than 50 items change at once - one approval takes 50; confirm each listed batch with slugs
+  - the store sign-in is for the other environment - after changing SUMMER_GATEWAY_URL and SUMMER_MCP_RESOURCE_URL, run summer login --store --force first
+  - releasing or activating an item for players - after Summer approves it, the owner activates each item in Studio (Review activation); players can buy it only while the game is live
+  - Passport collectibles (stamps, pins, badges) - a Passport item with the same slug is blocked, never synced
+  - retiring or deleting an item - items the file does not name are listed, never changed
+  - the game's own price or store page - store.update_listing, pricing.set_base
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-store
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_sync_items
+implementation:
+  module: src/core/capabilities/sync-items.ts
+  export: syncItems
+surfaces:
+  mcp:
+    tool_name: summer_sync_items
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: The store game id on this gateway (from games.list). Staging and production games have different ids. Without it the call fails with game_required and lists your store games. Switching between staging and production takes SUMMER_GATEWAY_URL and SUMMER_MCP_RESOURCE_URL, then "summer login --store --force" (one store sign-in per machine).
+    project:
+      type: string
+      description: Project folder with project.godot and summer.items.json. Defaults to the MCP's bound project, then the working directory.
+    file:
+      type: string
+      description: The items file, relative to the project. Default summer.items.json.
+    slugs:
+      type: array
+      items:
+        type: string
+      description: Only these items (their slugs); the rest of the file is left out of the plan. Confirm a plan of more than 50 changed items one batch (from batches) at a time.
+    confirm:
+      type: boolean
+      default: false
+      description: Set true only after the user approves the plan.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: true
+evidence_checks:
+  - none

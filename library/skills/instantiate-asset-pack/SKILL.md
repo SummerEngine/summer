@@ -1,6 +1,6 @@
 ---
 name: instantiate-asset-pack
-description: "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out."
+description: "Lay out a whole create-asset-sheet pack in the scene: composites, paint order, Sprite2D and NinePatch."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -228,7 +228,7 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 
 After this, hand `panel_bg` and `apply_button` to `use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
 
-Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ## Failure modes
 
@@ -245,3 +245,20 @@ Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)
 - `create-asset-sheet` — production side; how the pack was made.
 - `use-widget-asset` — wiring an individual widget slice (NinePatchRect, TextureProgressBar geometry).
 - `asset-strategy` — broader find-or-generate -> import -> apply flow.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

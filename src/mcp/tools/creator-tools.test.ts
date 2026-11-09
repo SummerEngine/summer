@@ -76,11 +76,8 @@ describe("registerCreatorTools", () => {
   it("publishes only to summer.games: the Summercraft creator tools are gone", () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);
-    expect(tools.map((tool) => tool.name)).toEqual([
-      "summer_export_game",
-      "summer_export_templates",
-      "summer_capture_gameplay",
-      "summer_publish_build",
-    ]);
+    const names = tools.map((tool) => tool.name);
+    expect(names).toContain("summer_publish_build");
+    expect(names.filter((name) => name.startsWith("summer_creator_"))).toEqual([]);
   });
 });

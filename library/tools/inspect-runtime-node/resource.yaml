@@ -43,6 +43,11 @@ input_schema:
     path:
       type: string
       description: Runtime node path, e.g. '/root/Main/Player'. Get it from summer_get_runtime_tree.
+    maxCharacters:
+      type: integer
+      minimum: 500
+      maximum: 1000000
+      description: Most characters of text to return (default 4000). A longer result is cut and says so.
   required:
     - path
   additionalProperties: false

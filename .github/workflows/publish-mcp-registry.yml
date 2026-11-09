@@ -1,0 +1,44 @@
+name: Publish to MCP Registry
+
+# Lists the npm package in the official MCP Registry (io.github.SummerEngine/summer).
+# GitHub OIDC proves the repository owner, so no secret and no personal sign-in.
+# Runs when a GitHub Release is published, or by hand for an existing tag.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to list (for example v4.0.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC authentication to the registry
+      contents: read
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Check the npm package for this version is published
+        run: |
+          VERSION=$(node -p 'require("./server.json").version')
+          npm view "summer-engine@${VERSION}" version
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish

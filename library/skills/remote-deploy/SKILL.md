@@ -1,6 +1,6 @@
 ---
 name: remote-deploy
-description: "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging."
+description: "Run or test the game on a real phone, tablet or computer with Remote Deploy and on-device debugging."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment
@@ -137,3 +137,17 @@ never replaces the proof.
 | Greyed, "No Remote Deploy export presets configured." | No runnable preset **or** no detected device | Add a Runnable preset; connect/authorize a device |
 | Enabled, dropdown lists devices | Ready to deploy | Pick a device to build + run |
 | Deploy fails in result dialog | Templates/toolchain/signing/device issue | Read the dialog; install the named missing piece |
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_export_templates` | `summer engine export-templates` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_project_setting` | `summer engine project-setting` |
+<!-- /shell-commands -->

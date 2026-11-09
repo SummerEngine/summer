@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getSkillRegistry, type SkillRegistryEntry } from "../skills-registry.js";
+import { getSkillRegistry, isAssetSkill, type SkillRegistryEntry } from "../skills-registry.js";
 
 export const GAME_TASK_MODES = [
   "auto",
@@ -57,6 +57,10 @@ export interface GameTaskPlanOptions {
   target?: GameTaskTarget;
   assetPolicy?: AssetPolicy;
   verification?: VerificationLevel;
+  /** False when the session has no engine tools (the assets profile): the plan
+   *  then ends at a delivered file and names only tools the session has. Not
+   *  part of the input schema; the MCP server sets it from its profile. */
+  engine?: boolean;
 }
 
 export interface SkillRoute {
@@ -84,6 +88,8 @@ export interface GameTaskPlan {
   userGates: string[];
   nextAgentSteps: string[];
   antiPatterns: string[];
+  /** Present only without engine tools: what this session can and cannot do. */
+  profileNote?: string;
 }
 
 type WeightedSkill = { name: string; why: string; weight: number };
@@ -188,7 +194,12 @@ function addSkill(routes: WeightedSkill[], name: string, why: string, weight: nu
   routes.push({ name, why, weight });
 }
 
-function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"], goal: string): SkillRoute[] {
+function inferSkills(
+  mode: GameTaskPlan["mode"],
+  target: GameTaskPlan["target"],
+  goal: string,
+  engine = true
+): SkillRoute[] {
   const text = goal.toLowerCase();
   const routes: WeightedSkill[] = [];
   const animationIntent = includesAny(text, [
@@ -222,7 +233,11 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
       "animation clip",
     ]);
 
-  addSkill(routes, "using-summer", "Baseline workflow for building through Summer CLI/MCP.", 100);
+  if (engine) {
+    addSkill(routes, "using-summer", "Baseline workflow for building through Summer CLI/MCP.", 100);
+  } else {
+    addSkill(routes, "summer-assets", "The asset loop without Summer Engine: reuse, generate, check, download.", 250);
+  }
 
   if (mode === "debug") {
     addSkill(routes, "debug", "Primary runtime/script/diagnostics loop.", 300);
@@ -355,6 +370,8 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
   addSkill(routes, "verification-before-completion", "Do not finish without a clean verification story.", 80);
 
   return routes
+    // Without engine tools, only the skills that work without them.
+    .filter((route) => engine || isAssetSkill(skillByName().get(route.name) as SkillRegistryEntry))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 7)
     .map((route) => {
@@ -432,9 +449,38 @@ function buildMcpToolPlan(
   return { start, mutate, assets, verify };
 }
 
-function buildUserGates(mode: GameTaskPlan["mode"], assetPolicy: AssetPolicy): string[] {
+/** The plan for a session without engine tools: find, generate, check, hand over a file. */
+function buildAssetsToolPlan(
+  target: GameTaskPlan["target"],
+  assetPolicy: AssetPolicy,
+  verification: VerificationLevel
+): GameTaskPlan["mcpToolPlan"] {
+  const assets = ["summer_list_my_assets", "summer_search_assets", "summer_get_asset"];
+  if (assetPolicy !== "no-paid-generation") {
+    const generator: Partial<Record<GameTaskPlan["target"], string>> = {
+      "3d": "summer_generate_3d",
+      "2d": "summer_generate_image",
+      ui: "summer_generate_image",
+      audio: "summer_generate_audio",
+      animation: "summer_generate_motion",
+    };
+    if (generator[target]) assets.push(generator[target] as string);
+    assets.push("summer_check_job");
+  }
+  assets.push("summer_get_asset_download_url");
+  return {
+    start: ["summer_search_library", "summer_read_library"],
+    mutate: [],
+    assets,
+    verify: verification === "none" ? [] : ["summer_check_job", "summer_get_asset"],
+  };
+}
+
+function buildUserGates(mode: GameTaskPlan["mode"], assetPolicy: AssetPolicy, engine = true): string[] {
   const gates = [
-    "Ask before destructive scene changes, deleting assets, or changing locked .summer memory.",
+    engine
+      ? "Ask before destructive scene changes, deleting assets, or changing locked .summer memory."
+      : "Ask before deleting or replacing the person's assets.",
   ];
   if (assetPolicy !== "generate-when-clearly-needed") {
     gates.push("Ask before paid generation, rigging, video, or large batch asset creation.");
@@ -456,6 +502,7 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
   const verification = options.verification ?? "full";
   const mode = inferMode(goal, options.mode ?? "auto");
   const target = inferTarget(goal, options.target ?? "auto");
+  if (options.engine === false) return buildAssetsPlan(goal, mode, target, assetPolicy, verification);
 
   return {
     goal,
@@ -490,6 +537,55 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
       "Do not generate assets before checking library/user assets.",
       "Do not search by name for an asset immediately after generation; use the returned asset ID.",
       "Do not finish with only code changes when the request affects gameplay; run engine verification.",
+    ],
+  };
+}
+
+/** summer_start_game_task in a session without engine tools (the assets profile). */
+function buildAssetsPlan(
+  goal: string,
+  mode: GameTaskPlan["mode"],
+  target: GameTaskPlan["target"],
+  assetPolicy: AssetPolicy,
+  verification: VerificationLevel
+): GameTaskPlan {
+  const needsEngine = mode !== "asset";
+  return {
+    goal,
+    mode,
+    target,
+    assetPolicy,
+    verification,
+    profileNote:
+      "This session has generation and the Summer asset library, and no Summer Engine tools. Deliver files the person can use in any engine or web app." +
+      (needsEngine
+        ? " Building or changing a game needs Summer Engine and the full setup: npx -y summer-engine@latest setup <agent> --yes. Until then, make the assets the task needs."
+        : ""),
+    principles: [
+      "Deliver files, not scenes: the asset is done when it is saved where the person asked.",
+      "Reuse the person's assets and the Summer library before paid generation unless the person wants something custom.",
+      "Use the asset id a job returns; never search by name right after a generation.",
+      "Check each asset before claiming it is done: the job finished, and you saw the preview (or the person heard the sound).",
+    ],
+    recommendedSkills: inferSkills(mode, target, goal, false),
+    mcpToolPlan: buildAssetsToolPlan(target, assetPolicy, verification),
+    hostFileWork: [
+      "summer_generate_image saves the file itself when you pass out (a folder or a file path in the person's project).",
+      "Download other assets from summer_get_asset_download_url with your own shell into the folder the person named.",
+    ],
+    userGates: buildUserGates(mode, assetPolicy, false),
+    nextAgentSteps: [
+      "Load the top recommended skill; follow it until the asset exists, then its 'Without Summer Engine' section.",
+      "Ask what the asset is for: engine or app, format, size or scale, style, how many.",
+      "Check summer_list_my_assets and summer_search_assets before generating.",
+      "Generate after the person confirms the spend; poll summer_check_job until the state is terminal.",
+      "Hand the file over and tell the person its path and format.",
+    ],
+    antiPatterns: [
+      "Do not call engine tools (summer_get_project_context, summer_add_node, summer_play, summer_import_asset_by_id): this session does not have them.",
+      "Do not generate assets before checking library/user assets.",
+      "Do not search by name for an asset immediately after generation; use the returned asset ID.",
+      "Do not say an asset looks right without a preview you actually received.",
     ],
   };
 }

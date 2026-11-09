@@ -1,6 +1,6 @@
 ---
 name: running-in-the-cloud
-description: "Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser."
+description: "Run Summer Engine on a Linux box with no display: install, launch headless, xvfb, sign in without a browser."
 ---
 
 # Running in the Cloud
@@ -101,3 +101,13 @@ Treat it as a secret: env-inject it from the runner's secret store, never bake i
 - `headless-scripting` — the headless invocation contract, exit-code traps, and what scripts unlock.
 - `playtesting-a-feature` — the verify instance and probes (run them under xvfb in the cloud).
 - `verification-before-completion` — judging work by artifacts, which matters more when nobody can see a screen.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_screenshot` | `summer engine screenshot` |
+<!-- /shell-commands -->

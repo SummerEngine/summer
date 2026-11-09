@@ -7,10 +7,21 @@ Codex can use Summer skills from the standard `.agents/skills` locations.
 Paste this into Codex:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 Codex runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
+
+## Plugin
+
+One install gives Codex the skills, the local server (`summer-engine`, drives the Summer Engine app) and Summer's hosted server (`summer-cloud`, for cloud work without the app):
+
+```bash
+codex plugin marketplace add summerengine/summer
+codex plugin add summer@summer-engine
+```
+
+Start a new session. `summer-cloud` asks you to sign in the first time Codex uses it (`codex mcp login summer-cloud`). Update with `codex plugin marketplace upgrade summer-engine`. The plugin's hooks run only after you trust them in `/hooks`.
 
 ## Install Skills
 
@@ -23,8 +34,10 @@ npx -y summer-engine@latest setup codex --yes --force
 Project-local:
 
 ```bash
-npx -y summer-engine@latest skills install --recommended --agent codex --scope project
+npx -y summer-engine@latest skills install --all --agent codex --scope project
 ```
+
+`--recommended` instead of `--all` installs a smaller starter set.
 
 Paths:
 
@@ -37,6 +50,17 @@ Paths:
 
 ```bash
 npx -y summer-engine@latest mcp
+```
+
+After `summer login` it also runs Summer's cloud operations, so Codex needs one server.
+
+### Cloud work without the engine
+
+For assets, plans, the store, publishing, prices and analytics only, nothing needs installing. Add Summer's hosted server and sign in once:
+
+```bash
+codex mcp add summer-cloud --url https://mcp.summerengine.com/mcp
+codex mcp login summer-cloud
 ```
 
 ### Summer Games
@@ -57,6 +81,8 @@ Keep Summer Engine running on the project while the agent works:
 ```bash
 npx -y summer-engine@latest run path/to/project
 ```
+
+To let Codex see the game in its in-app browser, run `npx -y summer-engine@latest preview` in the project folder and open `http://127.0.0.1:5199`: the running game, or the editor viewport when no game runs.
 
 ## Prompt Seed
 

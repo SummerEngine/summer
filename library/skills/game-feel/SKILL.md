@@ -1,6 +1,6 @@
 ---
 name: game-feel
-description: "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact."
+description: "Add juice: hit-flash, trauma camera shake and audio ducking, one hit fires all three."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -117,7 +117,7 @@ func flash() -> void:
 
 **Tunable knobs:** `duration` 0.06–0.12s — under 0.06 reads as a flicker, over 0.12 looks slow. `emission_energy_multiplier` 1.5–3.0.
 
-> Note: `summer_set_prop(key="material_override", value="StandardMaterial3D")` creates an inline `StandardMaterial3D` sub_resource that `summer_set_resource_property(resourceProperty="material_override", subProperty="albedo_color", value="Color(r, g, b, a)")` then edits and `summer_save_scene` persists — so the inline route, the script above, and a saved `materials/flash.tres` are all valid. What breaks is the value *shape*: a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or destructively coerces on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff — never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+> Note: `summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Enemy/Mesh", key="material_override", value="StandardMaterial3D")` creates an inline `StandardMaterial3D` sub_resource that `summer_set_resource_property(scenePath="res://levels/world.tscn", nodePath="./World/Enemy/Mesh", resourceProperty="material_override", subProperty="albedo_color", value="Color(r, g, b, a)")` then edits and `summer_save_scene` persists — so the inline route, the script above, and a saved `materials/flash.tres` are all valid. What breaks is the value *shape*: a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or destructively coerces on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff — never from `ok` alone. See `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ## Step 5 — Install Section 2 (Trauma Camera Shake)
 
@@ -370,12 +370,12 @@ Tune one knob at a time:
 | Equal pitch/yaw shake | `yaw_factor ≤ 0.5` | Eyes are sensitive to vertical motion; equal axes feel mechanical |
 | `Engine.time_scale` for every hit | Reserve hit-stop for big events only (boss hits, deaths) | Time-scale dips on every hit feel laggy, not impactful |
 | A JSON object (or a misspelled key) as the `summer_set_prop` / `summer_set_resource_property` value — e.g. `value={"type": "StandardMaterial3D", ...}` through `summer_batch`, which forwards ops verbatim | `value="StandardMaterial3D"` to create the inline material, then `summer_set_resource_property(... value="Color(r, g, b, a)")` per field; confirm in the saved `.tscn` | Current engines return `ok:true` and silently no-op or coerce destructively — dict → material cleared, dict → `Color(0,0,0,1)`. The inline sub_resource itself is fine |
-| `summer_set_prop(key="groups", value='["player_camera"]')` | `add_to_group(&"player_camera")` in `_ready()`, or a `groups = [...]` line in the `.tscn` | `Node` has no `groups` property, and `summer_set_prop` takes only string/number/boolean — never an array |
+| `summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Player/Camera3D", key="groups", value='["player_camera"]')` | `add_to_group(&"player_camera")` in `_ready()`, or a `groups = [...]` line in the `.tscn` | `Node` has no `groups` property, and `summer_set_prop` takes only string/number/boolean — never an array |
 | `BaseMaterial3D.new()` | `StandardMaterial3D.new()` | `BaseMaterial3D` is abstract; constructing it is a parse error that kills the whole script |
 
 ## Collaborative protocol
 
-This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## When NOT to use this skill
 
@@ -386,11 +386,37 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list, especially `summer_set_resource_property` on inline sub_resources and which failures are loud vs. silent
-- `../../references/godot-version/godot-version.md` — Summer compatibility and
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list, especially `summer_set_resource_property` on inline sub_resources and which failures are loud vs. silent
+- `summer_docs_read` id `reference/godot-version` — Summer compatibility and
   version-sensitive API notes
-- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
-- `../../references/gd-style/gd-style.md` — typed GDScript conventions
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/gd-style` — typed GDScript conventions
 - `audio-direction` — bus layout setup (prerequisite for ducking)
 - `vfx-hit-spark` — particles to layer on top of the trio
 - `debugging-game-feel` — when the trio is installed and it still feels wrong
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

@@ -1,5 +1,16 @@
 {
   "targets": [
-    { "generated": "plugin.codex.json", "destination": ".codex-plugin/plugin.json" }
+    {
+      "generated": "plugin.codex.json",
+      "destination": ".codex-plugin/plugin.json"
+    },
+    {
+      "generated": "mcp.codex.json",
+      "destination": ".codex-plugin/mcp.json"
+    },
+    {
+      "generated": "marketplace.codex.json",
+      "destination": ".agents/plugins/marketplace.json"
+    }
   ]
 }

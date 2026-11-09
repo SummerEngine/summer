@@ -8,5 +8,10 @@ export default defineConfig({
   test: {
     setupFiles: ["src/test-helpers/fake-home.ts"],
     globalSetup: ["src/test-helpers/real-summer-dir-guard.ts"],
+    // `npm publish` runs the suite again right after a build (prepublishOnly),
+    // often on a busy machine: tests that take 2-3 s alone (validating the
+    // whole library, spawning processes) passed the 5 s default there. A hung
+    // test still fails.
+    testTimeout: 20_000,
   },
 });

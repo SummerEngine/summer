@@ -56,6 +56,8 @@ type SkillMeta = SkillRegistryEntry;
 interface InstallOptions {
   all?: boolean;
   recommended?: boolean;
+  /** The assets-only subset (isAssetSkill). */
+  assets?: boolean;
   stableOnly?: boolean;
   /** Hidden no-op alias kept for one release; preview skills install by default now. */
   includePreview?: boolean;
@@ -64,6 +66,8 @@ interface InstallOptions {
   asClaudeSkill?: boolean;
   asCursorSkill?: boolean;
   force?: boolean;
+  /** false with --no-commands: no Claude Code slash commands. */
+  commands?: boolean;
 }
 
 interface InstallResult {
@@ -126,28 +130,29 @@ function selectSkills(
   name: string | undefined,
   opts: InstallOptions
 ): { skills: SkillMeta[]; previewIncluded: number; previewSkipped: number } {
-  if (opts.all && opts.recommended) {
-    die("Use only one bulk option: --all or --recommended.");
+  if ([opts.all, opts.recommended, opts.assets].filter(Boolean).length > 1) {
+    die("Use only one bulk option: --all, --recommended or --assets.");
   }
-  if (name && (opts.all || opts.recommended)) {
+  if (name && (opts.all || opts.recommended || opts.assets)) {
     die("Specify either a skill name or a bulk option, not both.");
   }
 
   const skills = getBuiltinSkills();
-  if (opts.all || opts.recommended) {
+  if (opts.all || opts.recommended || opts.assets) {
     // Bulk installs take stable and preview skills (preview is a label, not a
     // gate); --stable-only skips preview. An explicit name below installs
     // regardless of status.
     const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(skills, {
       recommended: Boolean(opts.recommended),
       stableOnly: Boolean(opts.stableOnly),
+      assetsOnly: Boolean(opts.assets),
     });
     return { skills: selected, previewIncluded, previewSkipped };
   }
 
   if (!name) {
     console.error(
-      "Specify a skill name, --recommended, or --all."
+      "Specify a skill name, --recommended, --assets, or --all."
     );
     printAvailableSkillNames();
     process.exit(1);
@@ -328,8 +333,13 @@ skillsCommand
   .command("list")
   .description("List available skills")
   .option("--by-domain", "Group skills by their primary domain (same grouping as library/skills/README.md)")
-  .action((opts: { byDomain?: boolean }) => {
+  .option("--json", "Print the skills as JSON")
+  .action((opts: { byDomain?: boolean; json?: boolean }) => {
     const skills = getBuiltinSkills();
+    if (opts.json) {
+      console.log(JSON.stringify({ skills }));
+      return;
+    }
     if (skills.length === 0) {
       console.log("No skills found.");
       return;
@@ -375,8 +385,12 @@ skillsCommand
     "Install only the recommended skill subset (summer setup installs all by default)"
   )
   .option(
+    "--assets",
+    "Install only the asset skills (sound, music, voice, images, 3D, animation, video) for agents that make assets without the engine"
+  )
+  .option(
     "--stable-only",
-    "With --all / --recommended, skip preview skills (installed by default; labelled preview in their guidance)"
+    "With --all / --recommended / --assets, skip preview skills (installed by default; labelled preview in their guidance)"
   )
   .option(
     "--agent <agent>",
@@ -395,6 +409,7 @@ skillsCommand
     "--force",
     "Overwrite existing skill files (wipe stale skill dirs before copying)"
   )
+  .option("--no-commands", "Claude Code: skip the slash commands (/summer, /gameskill, /start), which start work through the MCP tools")
   .action((name: string | undefined, opts: InstallOptions) => {
     const agent = orDie(() => resolveSkillAgent(opts));
     const scope = orDie(() => resolveSkillScope(agent, opts));
@@ -452,14 +467,17 @@ skillsCommand
 
     // Claude Code: also install slash commands (`commands/*.md`)
     // into `~/.claude/commands/`. Other agents don't have an equivalent today.
-    if (agent === "claude-code") {
+    // The commands start and route game work in the engine through the MCP
+    // tools, so the asset skills (--assets, setup --assets-only) and a setup
+    // without MCP (--no-commands, setup --cli) leave them out.
+    if (agent === "claude-code" && !opts.assets && opts.commands !== false) {
       const commandResults = installClaudeCommands(scope, Boolean(opts.force));
       for (const r of commandResults) {
         console.log(`  ${r.action} command ${r.name} -> ${r.path}`);
       }
     }
 
-    writeMarkerForLocation(location);
+    writeMarkerForLocation(location, skills.map((skill) => skill.name));
     printInstallSummary(skills.length, agent, scope, location);
   });
 
@@ -500,11 +518,12 @@ function installClaudeCommands(
  * `skills-version-stale` check can detect drift later. Devin Desktop (formerly Windsurf) writes a
  * single rules file with no surrounding dir, so we skip it there.
  */
-function writeMarkerForLocation(location: InstallLocation): void {
+function writeMarkerForLocation(location: InstallLocation, installed: readonly string[]): void {
   if (location.kind === "windsurf-rule-file") return;
   try {
     mkdirSync(location.path, { recursive: true });
-    writeSkillMarker(location.path, cliVersion);
+    // Skills the upgrade refresh left stay protected, unless this install just replaced them.
+    writeSkillMarker(location.path, cliVersion, new Date(), installed);
   } catch {
     // Marker is purely informational. If the FS rejects it (e.g. permission
     // surprises on locked-down corp machines) we don't want to fail the install.
@@ -514,7 +533,8 @@ function writeMarkerForLocation(location: InstallLocation): void {
 skillsCommand
   .command("info <name>")
   .description("Show skill description and preview")
-  .action((name: string) => {
+  .option("--json", "Print the skill and its full SKILL.md body as JSON")
+  .action((name: string, opts: { json?: boolean }) => {
     const meta = getSkillMeta(name);
     if (!meta) {
       console.error(`Unknown skill: ${name}`);
@@ -524,6 +544,10 @@ skillsCommand
     if (!src) die(`Skill files missing: ${name}`);
     const skillPath = join(src, "SKILL.md");
     const content = readFileSync(skillPath, "utf-8");
+    if (opts.json) {
+      console.log(JSON.stringify({ ...meta, file: skillPath, body: content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "") }));
+      return;
+    }
     console.log(`\n${meta.name}`);
     console.log("-".repeat(40));
     console.log(meta.description);

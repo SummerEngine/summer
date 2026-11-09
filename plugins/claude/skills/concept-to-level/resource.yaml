@@ -1,0 +1,44 @@
+id: skill/concept-to-level
+kind: skill
+version: 1.0.1
+summary: "3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision in step."
+use_when:
+  - polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects
+  - reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map
+  - deciding which questions to ask the user before building or polishing a level
+do_not_use_when:
+  - a quick 2D or playable scene from one reference image — skill/scene-to-level
+  - designing layout, pacing and encounters on paper — skill/design-level
+  - generating a single prop or kit — skill/prop-model or skill/environment-kit
+facets:
+  lifecycle:
+    - build
+  domains:
+    - level-design
+    - 3d
+    - world-building
+    - agent-workflow
+  modalities:
+    - scenes
+    - assets
+    - shaders
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/concept-art
+    - skill/art-direction
+    - skill/design-level
+    - skill/scene-to-level
+    - skill/environment-kit
+    - skill/fabricating-assets
+    - skill/headless-scripting
+    - skill/bounded-engine-runs
+    - skill/verifying-scenes
+    - skill/tune-performance
+    - skill/dispatching-parallel-agents
+source: official
+license: MIT
+status: preview
+recommended: false

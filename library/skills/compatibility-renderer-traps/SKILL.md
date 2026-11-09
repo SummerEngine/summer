@@ -1,6 +1,6 @@
 ---
 name: compatibility-renderer-traps
-description: "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors."
+description: "Make a Forward+ game look right on the Compatibility renderer: instance uniforms, MultiMesh, vertex colors."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
@@ -76,3 +76,14 @@ you test it on both renderers. One path for both renderers means one set of bugs
 - `web-compatibility-look` (a finished look when the game only runs on Compatibility, as on the web)
 - `3d-lighting` (lighting profiles)
 - `bounded-engine-runs` (safe offscreen capture runs)
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_project_setting` | `summer engine project-setting` |
+<!-- /shell-commands -->

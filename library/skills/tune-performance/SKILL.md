@@ -1,6 +1,6 @@
 ---
 name: tune-performance
-description: "Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations."
+description: "Profile a slow game, find rendering, physics or script hotspots, and propose fixes with expected gains."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: performance
@@ -221,7 +221,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 ## Collaborative protocol
 
-This skill makes scene/resource/code changes. Always ask before each fix is applied. See `../../references/collaborative-protocol/collaborative-protocol.md`.
+This skill makes scene/resource/code changes. Always ask before each fix is applied. See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -229,10 +229,36 @@ No template — this is a workflow. Performance tuning is project-specific by de
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list
-- `../../references/godot-version/godot-version.md` — renderer API churn notes (Compositor, RenderSceneBuffers)
-- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
-- `../../references/gd-style/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_docs_read` id `reference/godot-version` — renderer API churn notes (Compositor, RenderSceneBuffers)
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/gd-style` — GDScript conventions (avoid bare types, use `:=`)
 - `debug` — bug triage (related but different)
 - `diagnosing-perf-regressions` — when it *got* slow rather than always was
 - `3d-lighting` — light setup and bake decisions
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_clear_console` | `summer engine clear-console` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

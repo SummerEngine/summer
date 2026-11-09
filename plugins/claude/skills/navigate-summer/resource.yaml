@@ -1,0 +1,37 @@
+id: skill/navigate-summer
+kind: skill
+version: 1.0.1
+summary: "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work."
+use_when:
+  - the user asks to see, check, or decide something — "show me my billing", "where do I change my plan", "open my games", "let me look at the scene", "take me to the MCP guide for Cursor"
+  - deciding whether to open a surface (a page of the website) for the user or to do the work through Summer tools or an API
+  - handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser
+  - "you drive Summer Engine from outside (Claude Code, Codex, Cursor, the summer CLI) and the editor should show what you work on: the view, rail and focus for editing, scripting, playtesting, review and the end result"
+do_not_use_when:
+  - the user wants a change made — add/set/remove nodes, publish, generate; use the build skills and mutation tools
+  - opening a project directory in the engine — `summer run <path>`
+facets:
+  lifecycle:
+    - build
+    - launch
+    - support
+  domains:
+    - navigation
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/open
+    - tool/view-set
+  references:
+    - reference/product-map
+  skills:
+    - skill/using-summer
+source: official
+license: MIT
+status: stable
+recommended: true

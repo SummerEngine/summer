@@ -1,6 +1,6 @@
 ---
 name: vfx-smoke
-description: "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D."
+description: "Smoke effect: a rising column or puff of soft particles with a noise and density falloff shader."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -228,42 +228,19 @@ child nodes, and `ParticleProcessMaterial` is a `Material` — you cannot
 
 ### 5. Wire it in (MCP calls)
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
-
-For chimney smoke or fire pairing, parent the Smoke just above the heat source:
+Write the three files, then wire the emitter with ONE `summer_run_script` call
+with an explicit `scenePath` — transactional, and it builds the QuadMesh +
+ShaderMaterial resources directly instead of `.tres` sidecars. For chimney
+smoke, parent the Smoke just above the heat source:
 
 ```
 summer_write_file(path="res://addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc", content="<from this skill>", create_only=true)
 summer_write_file(path="res://addons/vfx/smoke/smoke.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/smoke/smoke_controller.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World/Cottage/Chimney", type="GPUParticles3D", name="Smoke")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="script", value="res://addons/vfx/smoke/smoke_controller.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="position", value="Vector3(0, 0.3, 0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="rise_height", value=4.0)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="particle_count", value=48)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="wind_direction", value="Vector3(0.4, 0, 0.1)")
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-For pairing with a fire:
-
-```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Campfire", type="GPUParticles3D", name="Smoke")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="position", value="Vector3(0, 1.5, 0)")  # above flame top
-summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="rise_height", value=3.0)
-```
-
-### 5a. One-script wiring (summer_run_script)
-
-On engines with `summer_run_script` (see `scene-scripting`), the node wiring
-above is ONE ctx script — transactional, and it builds the QuadMesh + ShaderMaterial
-resources directly instead of `.tres` sidecars:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var smoke := ctx.add_node("GPUParticles3D", "Smoke", ctx.find("Chimney"))
+    var smoke = ctx.add_node("GPUParticles3D", "Smoke", ctx.find("Chimney"))
     smoke.set_script(load("res://addons/vfx/smoke/smoke_controller.gd"))
     smoke.process_material = ParticleProcessMaterial.new()
     var quad := QuadMesh.new()
@@ -277,11 +254,16 @@ func run(ctx):
     smoke.set("particle_count", 48)
     smoke.set("wind_direction", Vector3(0.4, 0, 0.1))
     ctx.save_scene()
+""")
 ```
+
+For pairing with a fire, run the same script with `ctx.find("Campfire")` as the
+parent, `position = Vector3(0, 1.5, 0)` (above the flame top) and
+`rise_height` 3.0.
 
 Verify with `summer_snapshot_diff` (exactly one node added) and a `summer_screenshot`.
 
-### 5b. Verify
+### 5a. Verify
 
 The shader and the controller are compiled code. Check them before tuning anything.
 
@@ -466,3 +448,29 @@ After firing this recipe, suggest:
 - `vfx-fire` — sister recipe, almost always paired
 - `vfx-dissolve` — for ash particles after disintegration
 - `gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_stop` | `summer engine stop` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

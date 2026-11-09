@@ -1,30 +1,32 @@
 ---
 name: character-model
-description: "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D."
+description: "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_image summer_assets_generate_3d summer_assets_rig summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_jobs_wait summer_assets_generate_motion summer_call
 paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
 # Character Model — T-Pose to Rigged Humanoid, Gated
 
-This is the canonical auto-rig pipeline. It produces a humanoid `.glb` with a skeleton that `generate-motion` can drive directly. The work is two paid passes with a **mandatory user-review gate between them**: the rig pass costs more credits and locks the topology, so the user must see the un-rigged preview and approve it first.
+This is the canonical auto-rig pipeline. It produces a humanoid `.glb` with a skeleton that `generate-motion` can drive directly. The work is two paid passes with a **mandatory user-review gate between them**: the rig pass costs more credits, so the user must see the un-rigged preview and approve it first.
 
 The whole flow:
 
 ```
-1. T-pose reference image    →  summer_generate_image                          (~10s)
-2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~60s)
+1. T-pose reference image    →  assets.generate_image                          (~10s)
+2. Un-rigged 3D mesh         →  assets.generate_3d(image-to-3d)  → a job       (~60s)
 3. ── USER REVIEW GATE ──
-4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig=true)      (~90s)
+4. Rigged .glb               →  assets.rig(approved asset ID) → a job            (~90s)
 5. Import → editor RESTART → wire as CharacterBody3D / Node3D
 6. Hand off to generate-motion for clips
 ```
 
 The animation skill (`generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
+
+`assets.generate_3d` returns a job. `assets.rig` returns a job for a new rig, or a completed result if the asset is already rigged. Follow a running job with `jobs.wait({ jobId, timeoutSeconds: 50 })`; repeat until `result.finished` is true, then check `result.job.state` is `done` before using `result.job.result`. A failed or cancelled job is not a successful result. Both passes spend credits: use `dryRun: true` to check the estimate before getting permission to spend.
 
 ## When to use
 
@@ -44,15 +46,7 @@ The animation skill (`generate-motion`) requires a rigged humanoid; a static `.g
 
 ## Polycount targets
 
-| Role | Tris | Pass via |
-|---|---|---|
-| Hero character (player, close camera) | 8k–15k | `target_polycount: 12000` |
-| Grunt enemy (mid-range, multiple onscreen) | 3k–6k | `target_polycount: 5000` |
-| Crowd / background NPC (LOD-able) | 1k–2k | `target_polycount: 1500` |
-| Mobile-game character | 1k–3k | `target_polycount: 2000` |
-| Cinematic hero (no realtime constraint) | 20k–40k | `target_polycount: 30000` |
-
-Pass at the **mesh-generation step** (step 2). The rig pass preserves the topology; you can't reduce polycount after rigging without breaking weights.
+Choose a target for the character's role and platform, and check that the selected model supports it before generation. Targets are approximate, not guarantees. Hunyuan Pro accepts an explicit target of at least 40,000 faces; the example below leaves it unset for the provider's automatic default. Inspect the generated mesh before approval, particularly for mobile or crowded scenes. Rigging can change geometry and weights, so verify the resulting model rather than assuming its topology is unchanged.
 
 ## Steps
 
@@ -61,10 +55,11 @@ Pass at the **mesh-generation step** (step 2). The rig pass preserves the topolo
 The rig pass requires a **front-facing T-pose** with arms out and legs slightly apart. If the reference is in an action pose, the rig will bend wrong and locomotion clips will look broken (knees inverted, elbows snapped — common Meshy failure mode).
 
 ```
-summer_generate_image(
-  prompt="A fantasy knight in full plate armor, red cape, T-pose, arms straight out horizontal, legs slightly apart, front-facing, neutral expression. Game character asset, stylized, clean white background, soft studio lighting, full body in frame, ready for 3D mesh generation.",
-  model="nano-banana-2"
-)
+assets.generate_image({
+  prompt: "A fantasy knight in full plate armor, red cape, T-pose, arms straight out horizontal, legs slightly apart, front-facing, neutral expression. Game character asset, stylized, clean white background, soft studio lighting, full body in frame, ready for 3D mesh generation.",
+  model: "nano-banana-2",
+  aspectRatio: "3:4"
+})
 ```
 
 The phrase `T-pose, arms straight out horizontal, legs slightly apart, front-facing` is load-bearing — drop any of those and the model will drift toward A-pose or a hero stance.
@@ -72,11 +67,13 @@ The phrase `T-pose, arms straight out horizontal, legs slightly apart, front-fac
 If the user already has a concept image in an action pose, re-pose it to T-pose via img2img without re-rolling the design:
 
 ```
-summer_generate_image({
+assets.generate_image({
   referenceImageUrl: "<existing concept image>",
   prompt: "<character> in T-pose, arms extended horizontally, neutral facing camera, white background, clean lighting"
 })
 ```
+
+Use `result.assets[0].fileUrl` from the completed `assets.generate_image` response as the image URL in step 2. If no file URL is present, resolve the asset with `assets.get` before continuing.
 
 Show the image to the user:
 
@@ -85,20 +82,19 @@ Show the image to the user:
 ### 2. Generate the un-rigged 3D mesh
 
 ```
-summer_generate_3d(
-  kind="image-to-3d",
-  imageUrl="<image url from step 1>",
-  model="hunyuan",
-  options={ target_polycount: 12000 },
-  wait=true
-)
+assets.generate_3d({
+  kind: "image-to-3d",
+  imageUrl: "<image url from step 1>",
+  model: "hunyuan"
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished
 ```
 
-Returns a job result with `assetId` and `fileUrl` — an un-rigged static `.glb`.
+The finished job's `result` has `assetId` and `fileUrl` — an un-rigged static `.glb`.
 Use the asset ID as the stable handle. Import it for preview only:
 
 ```
-summer_get_asset(assetId="<assetId>")
+assets.get({ assetId: "<assetId>" })
 summer_import_asset_by_id(
   assetId="<assetId>",
   path="res://assets/characters/knight_unrigged.glb"
@@ -109,41 +105,42 @@ summer_import_asset_by_id(
 
 Before paying for the rig pass, surface the un-rigged mesh:
 
-> Un-rigged knight mesh ready: `res://assets/characters/knight_unrigged.glb` (~12k tris, [preview link]).
+> Un-rigged knight mesh ready: `res://assets/characters/knight_unrigged.glb` ([preview link]; report the measured polygon count if known).
 >
-> Next step is the **rig pass** (uses credits, ~90s). It locks the topology and adds a skeleton compatible with `generate-motion`. Once you approve I'll run it.
+> Next step is the **rig pass** (uses credits, ~90s). It attempts to add a humanoid skeleton to this saved mesh. Once you approve I'll run it.
 >
 > **Approve the mesh and proceed to rig?** Or regenerate the mesh first (different prompt, different polycount, different model)?
 
-If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it spends more credits and locks the design.
+If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it spends more credits.
 
 ### 4. Run the rig pass
 
-```
-summer_generate_3d({
-  kind: "image-to-3d",
-  imageUrl: "<image url from step 1>",
-  rig: true,
-  options: { target_polycount: 12000 }
-})
-```
-
-`rig` is a **top-level boolean argument** on `summer_generate_3d` (the tool also merges it into `options.rig`, so `options: { rig: true }` works too). There is no `polyTarget` — the polycount key is `target_polycount` inside `options`, exactly as in step 2. Related top-level arguments worth knowing here: `riggingHeightMeters` for character height, and `animationNames` / `actionIds` to have the shared animated-character pipeline produce clips in the same job instead of a separate `summer_generate_motion` pass.
-
-Returns a job whose result includes `assetId`, `fileUrl`, and `rigAssetId`.
-If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The
-`rigAssetId` is the handle `generate-motion` needs — store it.
-Resolve it before import so the agent has the viewer/download metadata:
-
-Import the rigged version, replacing the un-rigged file:
+Use the approved saved mesh's asset ID, not the original image. Keep the unrigged preview file from step 2 before rigging: for an asset owned by the caller, rigging updates the same asset record to point to the rigged file.
 
 ```
-summer_get_asset(assetId="<rigAssetId>")
+assets.rig({ assetId: "<assetId>", dryRun: true })  // show estimate and get approval
+assets.rig({ assetId: "<assetId>" })                // only after approval
+```
+
+If the call returns `status: "running"`, wait for its `job.id`:
+
+```
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })
+```
+
+Repeat while `result.finished` is false. When finished, require `result.job.state` to be `done`; otherwise report the failure and stop. The completed rig job supplies `result.job.result.assetId`. If the rig call instead returns `status: "done"` with `result.alreadyRigged`, use its `result.assetId`. Do not assume the job result has a `rigAssetId` or a top-level `fileUrl`.
+
+Resolve the returned ID with `assets.get` and use the asset's current `fileUrl` for the rigged GLB. Save this ID as `rigAssetId` for `assets.generate_motion`. Import to a separate path, so the unrigged preview remains available:
+
+```
+assets.get({ assetId: "<rigAssetId>" })
 summer_import_asset_by_id(
   assetId="<rigAssetId>",
   path="res://assets/characters/knight.glb"
 )
 ```
+
+Inspect the rig and mesh before claiming animation readiness; a successful job does not guarantee provider quality.
 
 ### 5. WARNING: Restart the editor
 
@@ -162,27 +159,28 @@ No programmatic workaround is known. Tell the user, wait, then continue.
 | Pure-visual character (background extra, dialogue head) | `Node3D` | Same as above |
 | Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `procedural-animation` |
 
-Four things the call shapes below encode:
+Three things the call shapes below encode:
 
-- **Every scene-mutating tool takes an explicit `scenePath`** and the scene need not be the active editor tab.
-- **Node paths are relative to that scene's root (`./`)**, not absolute `/root/...` runtime paths.
-- **`summer_set_prop`'s property argument is named `key`**, not `property`.
-- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene rather than a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. Use `summer_instantiate_scene`.
+- **Every scene tool, `summer_run_script` included, takes an explicit `scenePath`**, and the scene need not be the active editor tab.
+- **A character is several nodes: build it in one `summer_run_script`**, not a chain of single calls.
+- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene rather than a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. Use `ctx.instance_scene` in a script, or `summer_instantiate_scene` for one model.
 
 **CharacterBody3D wiring (player / enemy):**
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="CharacterBody3D", name="Knight")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Knight", key="position", value="Vector3(0, 0, 0)")
-summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Knight", scene="res://assets/characters/knight.glb", name="Mesh")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Knight", type="CollisionShape3D", name="Collider")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Knight/Collider", key="shape", value="CapsuleShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="height", value=1.7)
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="radius", value=0.4)
-summer_save_scene(scenePath="res://main.tscn")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var knight = ctx.add_node("CharacterBody3D", "Knight", ctx.find("World"), {"position": Vector3(0, 0, 0)})
+    ctx.instance_scene("res://assets/characters/knight.glb", knight, "Mesh")
+    var capsule := CapsuleShape3D.new()
+    capsule.height = 1.7
+    capsule.radius = 0.4
+    ctx.add_node("CollisionShape3D", "Collider", knight, {"shape": capsule})
+    ctx.save_scene()
+""")
 ```
 
-Assigning a bare class name like `"CapsuleShape3D"` to a resource property auto-instantiates it, which is how you get a shape you can then size. `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
+Build the shape as a real resource and size it before you assign it. Later, one size change on that shape is one `summer_set_resource_property` (`nodePath`, `resourceProperty="shape"`, `subProperty`, `value`, plus `scenePath`).
 
 **Node3D wiring (cinematic NPC):**
 
@@ -198,8 +196,8 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 > Knight is wired at `./World/Knight` with an auto-rigged skeleton. `rigAssetId` saved.
 >
 > Next: `generate-motion` to add idle / walk / run / attack
-> clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>",
-> backend: "meshy-library", motionName: "walk")`. For custom actions, use
+> clips. Example call: `assets.generate_motion({ rigAssetId: "<saved id>",
+> backend: "meshy-library", motionNames: ["walk"] })`. For custom actions, use
 > `text-to-motion` (`backend: "text-to-motion"`).
 
 ## Anti-patterns
@@ -220,23 +218,27 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 - **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `fps-controller` for first-person wiring.
 - **Stylized non-human (goblin, orc, halfling).** Works fine as long as the silhouette is bipedal with two arms, two legs, one head. Quadrupeds and centaurs do not.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4, including the review gate, and stop when the rig pass finishes. Skip steps 5-6 (editor restart, scene wiring). Save the unrigged GLB before rigging, then save the rigged GLB to a different path using `out` on `assets.get` (the `summer-assets` skill says how). The caller-owned asset ID stays the same while its file URL changes. Tell the person both paths. Step 7 still applies: `generate-motion` runs without the engine.
+
 ## Fallback (no MCP)
 
 1. Generate the T-pose reference in the Summer dashboard.
-2. Run image-to-3D with rigging enabled in the Summer dashboard.
+2. Generate and review the unrigged mesh. If the dashboard can rig an existing saved model, rig that approved model after credit approval. Otherwise explain that the approved mesh cannot be submitted through this fallback; do not silently regenerate it.
 3. Download the `.glb`.
 4. Drop into `res://assets/characters/`; Summer Engine's Import dock picks it up.
 5. Restart the editor.
 6. Wire as CharacterBody3D / Node3D in Summer Engine manually.
 
-The output matches the MCP path — same skeleton, same compatibility with `generate-motion` (which has its own dashboard fallback).
+Inspect the output before relying on its skeleton or animation compatibility.
 
 ## Handoff
 
 After the rigged character is wired:
 
 > `Knight` is at `./World/Knight` with an auto-rigged skeleton. Next:
-> - **Animations:** `generate-motion` for idle / walk / run / attack. Pass the `rigAssetId` returned in step 4.
+> - **Animations:** `generate-motion` for idle / walk / run / attack. Pass the saved rigged asset ID from step 4 as `rigAssetId`.
 > - **State machine:** after a few clips exist, `animation-tree` for idle → walk → run blends.
 > - **Player input:** if this is the player, wire WASD + mouse via `fps-controller` or a third-person controller skill.
 > - **NPC behavior:** if it's an NPC, `design-npc` for behavior trees and dialogue hooks.
@@ -244,8 +246,37 @@ After the rigged character is wired:
 
 ## See also
 
-- `generate-motion` — the next-step animation skill that consumes the `rigAssetId` produced here.
+- `generate-motion` — the next-step animation skill that consumes the rigged asset ID saved here as `rigAssetId`.
 - `asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `prop-model` — for non-character props.
 - `scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`, `assets.rig`, `assets.generate_image` and `assets.generate_motion`; `summer_search` returns each one's exact input.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d`, `summer_assets_generate_3d` | `summer assets generate-3d` |
+| `assets.generate_image`, `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.generate_motion`, `summer_assets_generate_motion` | `summer assets generate-motion` |
+| `assets.get`, `summer_assets_get` | `summer assets get` |
+| `assets.rig`, `summer_assets_rig` | `summer assets rig` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

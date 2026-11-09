@@ -11,6 +11,10 @@
     {
       "generated": "mcp.json",
       "destination": ".mcp.json"
+    },
+    {
+      "generated": "plugin.claude-directory.json",
+      "destination": "plugins/claude/.claude-plugin/plugin.json"
     }
   ]
 }

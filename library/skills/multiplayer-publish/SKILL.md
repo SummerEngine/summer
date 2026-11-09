@@ -1,11 +1,11 @@
 ---
 name: multiplayer-publish
-description: "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build."
+description: "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
 user-invocable: true
-allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_open
+allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_call
 paths: ["export_presets.cfg", "summer.build.json", "world.json", "source-domains.json", "runtime-manifest.json", "project.godot"]
 ---
 
@@ -15,11 +15,6 @@ Step 5 of the multiplayer sequence. It assumes the layout from
 `multiplayer-project`: `summer.build.json`, `world.json`,
 `runtime-manifest.json`, `source-domains.json`, and the `client/`,
 `authority/` and `network/` folders.
-
-**Status:** the summer.games export is in Summer's editor. Bundle upload in
-Studio is rolling out: if the game's Builds page doesn't accept a `.zip`
-bundle yet, stop after step 4 and tell the user the bundle is ready to
-upload.
 
 ## 1. What gets built
 
@@ -121,6 +116,21 @@ is the Summer editor executable):
 <summer> --headless --path . --export-release "summer.games" build/courtyard.summer.zip
 ```
 
+On Windows, in PowerShell. `Run-Summer` bounds a run and keeps its output,
+because Summer.exe writes it to `--log-file`; step 4 uses it again:
+
+```powershell
+$summer = "$env:LOCALAPPDATA\SummerEngine\current\Summer.exe"
+function Run-Summer([int]$seconds, [string]$log, [string[]]$engineArgs) {
+  $quoted = ($engineArgs + @('--log-file', $log) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+  $p = Start-Process $summer -ArgumentList $quoted -PassThru -NoNewWindow
+  if (-not $p.WaitForExit($seconds * 1000)) { $p | Stop-Process }
+}
+Run-Summer 600 build\import.log '--headless','--path','.','--import'
+Run-Summer 600 build\export.log '--headless','--path','.','--export-release','summer.games','build\courtyard.summer.zip'
+Get-Content build\export.log -Tail 12
+```
+
 A good export ends like this:
 
 ```text
@@ -177,6 +187,11 @@ func _init() -> void:
 <summer> --headless --path . --script ~/check_graph.gd
 ```
 
+```powershell
+Run-Summer 120 build\graph.log '--headless','--path','.','--script',"$HOME\check_graph.gd"
+Select-String -Path build\graph.log -Pattern 'ok=|SUMMER_COMPOSITION'
+```
+
 Both lines must say `ok=true`. `SUMMER_COMPOSITION_DOMAIN_LEAK` means a
 client file loads a server file; move the shared part into `network/`.
 `SUMMER_COMPOSITION_DYNAMIC_PATH_UNDECLARED` flags any call whose name ends
@@ -204,6 +219,16 @@ unzip -o build/courtyard.summer.zip client.pck server.pck -d "$P/out"
   --summer-native-probe-output "$P/out/server-report.json"
 ```
 
+```powershell
+$P = "$HOME\summer-probe"
+New-Item -ItemType Directory -Force "$P\probe", "$P\out" | Out-Null
+Set-Content "$P\probe\project.godot" "config_version=5`n`n[application]`nconfig/name=`"Summer Native Upload Probe`"`n`n[rendering]`nrenderer/rendering_method=`"gl_compatibility`"`n"
+Expand-Archive build\courtyard.summer.zip -DestinationPath "$P\out" -Force
+foreach ($side in @(@('client', 'res://client/main.tscn'), @('server', 'res://authority/main.tscn'))) {
+  Run-Summer 120 "$P\out\$($side[0])-probe.log" '--headless', '--path', "$P\probe", '--summer-native-upload-probe', "$P\out\$($side[0]).pck", '--summer-native-probe-scene', $side[1], '--summer-native-probe-composition', 'res://network/composition.tres', '--summer-native-probe-output', "$P\out\$($side[0])-report.json"
+}
+```
+
 Paths must be absolute. Pass: both reports say `"sceneLoaded": true`, and
 their `compositionManifest` objects are identical. On failure the probe
 writes `rejection.json`; its codes are in [export-errors.md](export-errors.md).
@@ -216,6 +241,11 @@ a few seconds:
 
 ```sh
 perl -e 'alarm shift; exec @ARGV' 15 <summer> --headless --verbose --main-pack "$P/out/server.pck"
+```
+
+```powershell
+Run-Summer 15 "$P\out\server-run.log" '--headless', '--verbose', '--main-pack', "$P\out\server.pck"
+Select-String -Path "$P\out\server-run.log" -Pattern "Completed load for: 'res://.*tscn'" | Select-Object -First 1
 ```
 
 The first `Completed load for: 'res://….tscn'` line must be the authority
@@ -234,6 +264,14 @@ perl -e 'alarm shift; exec @ARGV' 60 <released-summer> --headless --verbose --ma
 grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' "$P/out/client-run.log"
 ```
 
+```powershell
+Run-Summer 60 "$P\out\client-run.log" '--headless', '--verbose', '--main-pack', "$P\out\client.pck", '--quit-after', '600'
+Select-String -Path "$P\out\client-run.log" -Pattern 'SCRIPT ERROR|Parse Error|Failed to load script'
+```
+
+On Windows, `$summer` must be the released Summer of the stamped version for
+this check; the default install path is the current release.
+
 The grep must print nothing; the run itself exits normally even when a
 script fails. A failure here, such as `Static function "party_queue()" not
 found`, means the scripts use an API the released version lacks, usually
@@ -246,16 +284,17 @@ empty window. Re-export with the current Summer release.
    `summer.build.json` must be its id. The export leaves `gameId` out of the
    bundle, and the game code calls `Summer.initialize()` with no ID: a
    literal or fallback ID fails hosted with `game_identity_mismatch`.
-2. Open the game's Builds page: `summer_open` with target `game`,
+2. Open the game's Builds page: `studio.open` with target `game`,
    `gameId` and section `builds`, or summerengine.com → Studio → your game →
    Builds.
 3. Upload the `.zip` as a new Build. Summer checks it again: unknown fields,
    queue rules, both packs, and the composition match. From an agent:
-   `summer_export_game`, then `summer_publish_build` with `gameId` and
+   `summer_export_game`, then `store.upload_file` with `gameId` and
    `clientVersion`; it asks for confirmation first and needs
-   `summer login --store`. If it answers `store_auth_refused`, upload in
-   Studio.
-4. Release the Build to an environment. Its queues go live there, and
+   `summer login --store`. If the store refuses this machine's sign-in,
+   upload in Studio.
+4. Release the Build to an environment (`store.release` releases the Build
+   the owner approved with `store.publish`). Its queues go live there, and
    clients join them with `Summer.client.join(SummerJoinTarget.queue(...))`.
    The code is the same as in Local Play.
 
@@ -316,3 +355,20 @@ Use step 4d to see which scene runs.
 | Export with a development build of Summer | Export with the released editor from the download page, again after every update | Players run the pack on the released Summer of the stamped version; newer APIs fail to compile and the game opens to an empty window |
 | Read an empty server log as a hang | Run step 4d | A release server holds back its output until it exits |
 | Export a patch | Export Project, or Export PCK/ZIP without Export As Patch | summer.games takes complete bundles or packs |
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_export_game` | `summer engine export-game` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_write_file` | `summer engine write-file` |
+| `store.publish` | `summer store publish` |
+| `store.release` | `summer store release` |
+| `store.upload_file` | `summer store upload-file` |
+| `studio.open` | `summer studio open` |
+<!-- /shell-commands -->

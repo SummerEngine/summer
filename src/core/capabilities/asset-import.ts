@@ -5,6 +5,7 @@
  */
 import type { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";
+import { importUrls, ogvResPath } from "./video-ogv.js";
 
 /** An asset record as returned by the Summer gateway asset APIs. */
 export type GatewayAsset = {
@@ -16,6 +17,8 @@ export type GatewayAsset = {
   pack?: string | null;
   packSlug?: string | null;
   importUrl?: string;
+  /** A video's Ogg Theora rendition (summerengine.com names it): the one video file Summer Engine can load. */
+  ogvUrl?: string | null;
   downloadUrl?: string;
   fileName?: string | null;
   mimeType?: string | null;
@@ -89,6 +92,13 @@ async function buildImportEntriesForAsset(
   const fileUrl = asset.importUrl || asset.fileUrl;
   if (!fileUrl) throw new Error("Asset has no import URL.");
 
+  if (asset.ogvUrl) {
+    // A video: import its .ogv rendition, the one video file Summer Engine can load.
+    const name = asset.fileName || fileNameFromUrl(asset.fileUrl || fileUrl);
+    const path = ogvResPath({ url: asset.fileUrl || fileUrl, path: targetPath ?? `res://assets/videos/${name}` });
+    return { importPath: path, imports: [{ url: asset.ogvUrl, path }] };
+  }
+
   const fileName =
     targetPath?.split("/").pop() || asset.fileName || fileNameFromUrl(fileUrl);
   const packSlug = asset.packSlug ?? getPackSlugFromUrl(fileUrl) ?? "misc";
@@ -142,13 +152,11 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
   if (parent && !scenePath) {
     throw new ToolInputError("scenePath is required when importing an asset into a scene");
   }
-  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
-  const importResult =
-    imports.length === 1
-      ? await client.executeOps([
-          { op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path },
-        ])
-      : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
+  const { imports, importPath: plannedPath } = await buildImportEntriesForAsset(asset, path);
+  // A video without a rendition is converted to .ogv on the way in (video-ogv.ts).
+  const importResult = await importUrls(client, imports, { batch: imports.length > 1 });
+  const conversions = (importResult as { videoConversions?: Array<{ to: string }> })?.videoConversions;
+  const importPath = conversions?.[conversions.length - 1]?.to ?? plannedPath;
 
   const importReceipts = (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
   const importFailure = importReceipts.find((receipt) => receipt?.ok === false);
@@ -183,6 +191,9 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
 
   return {
     success: true,
+    ...(conversions?.length || asset.ogvUrl
+      ? { note: `Summer Engine plays video only as Ogg Theora (.ogv), so the video was imported as ${importPath}. Load it from that path.` }
+      : {}),
     assetId: asset.id,
     asset: asset.title,
     type: asset.type,

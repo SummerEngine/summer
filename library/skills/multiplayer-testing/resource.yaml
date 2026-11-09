@@ -1,7 +1,7 @@
 id: skill/multiplayer-testing
 kind: skill
 version: 1.0.0
-summary: "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows."
+summary: "Test a Summer multiplayer game with Local Play: several players, bad network, bots, a passing run."
 use_when:
   - "running or testing a Summer multiplayer game locally with several players (Local Play)"
   - "testing multiplayer under latency, jitter or packet loss, or with bots"

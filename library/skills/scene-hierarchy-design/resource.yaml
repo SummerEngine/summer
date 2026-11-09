@@ -1,7 +1,7 @@
 id: skill/scene-hierarchy-design
 kind: skill
 version: 0.1.1
-summary: "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic."
+summary: "Structure scenes by access pattern: asset vs live hierarchies, wrapper nodes, sub-scenes, path-agnostic code."
 use_when:
   - "how should I structure the node hierarchy for this level or character"
   - "reorganize a scene that grew ad hoc — long node chains, duplicated clusters, hard-to-delete groups"

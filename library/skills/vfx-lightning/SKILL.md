@@ -1,6 +1,6 @@
 ---
 name: vfx-lightning
-description: "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake."
+description: "Lightning bolt effect: a jagged procedural path with a glow shader, end sparks and screen shake."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -222,31 +222,22 @@ Recommended: register one `LightningCaster` as an autoload (`/root/Lightning`) s
 
 Place one `LightningCaster` per "world" (or autoload it), then call from gameplay code.
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
+Write the two files, then place the caster with ONE `summer_run_script` call
+with an explicit `scenePath` — one transactional run, and several casters or
+anything computed is a loop in the same script:
 
 ```
 summer_write_file(path="res://addons/vfx/lightning/lightning.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/lightning/lightning_caster.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="Node3D", name="LightningCaster")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="script", value="res://addons/vfx/lightning/lightning_caster.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="bolt_color", value="Color(0.55, 0.75, 1.0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="trauma_amount", value=0.6)
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-Or, on engines with `summer_run_script` (see `scene-scripting`), the two node
-calls collapse into one transactional ctx script — worth it when placing several
-casters or anything computed:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var caster := ctx.add_node("Node3D", "LightningCaster", null)
+    var caster = ctx.add_node("Node3D", "LightningCaster", ctx.find("World"))
     caster.set_script(load("res://addons/vfx/lightning/lightning_caster.gd"))
     caster.set("bolt_color", Color(0.55, 0.75, 1.0))
     caster.set("trauma_amount", 0.6)
     ctx.save_scene()
+""")
 ```
 
 Then verify — the caster `preload`s its own shader, so a shader that failed to write
@@ -415,3 +406,26 @@ After firing this recipe, suggest:
 - `vfx-magic-glow` — pre-cast charge-up
 - `vfx-muzzle-flash` — for the cast-release flash
 - `game-feel` — full game-feel pairing
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

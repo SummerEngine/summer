@@ -1,0 +1,33 @@
+id: skill/sound-effect
+kind: skill
+version: 1.1.0
+summary: "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them."
+use_when:
+  - generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues
+  - an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it
+  - a timed sound that must match an animation, such as a rifle reload or an attack combo
+  - the person wants several versions of a sound to pick from
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - assets
+  modalities:
+    - audio
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+  tools:
+    - tool/generate-sfx-choices
+    - tool/get-choices
+    - tool/generate-audio
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/audio/sound-effect

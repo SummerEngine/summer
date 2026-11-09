@@ -1,6 +1,6 @@
 ---
 name: debug
-description: "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes."
+description: "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: debugging
@@ -100,17 +100,13 @@ Fall back to the editor session only when the repro genuinely needs a human (fee
 
 If you go this route, do not skip the "reproduce now" prompt. Auto-running and grabbing whatever's in the buffer leads you to chase ghosts from previous sessions.
 
-### 2c. MCP unavailable (engine not running, or no Summer install)
+### 2c. Missing MCP tools versus an unavailable engine
 
-If `summer_get_script_errors` returns "Summer Engine is not running" or the tool isn't available:
+If `summer_get_script_errors` is not listed in this session, use `summer engine get-script-errors` from the shell (see `summer-cli` for flags and the package-version fallback). Missing MCP tools alone do not mean Summer Engine is stopped. Continue the same diagnostic order through the shell equivalents below.
 
-1. Tell the user `summer run` starts it. One command restores every tool in this loop — try that before degrading to an interview.
-2. If they cannot or will not, ask the user to copy-paste the Output panel and
-   the Debugger panel from Summer Engine.
-3. Reason over the pasted text exactly as you would over MCP output.
-4. Continue with the rest of the loop unchanged.
+If the operation returns `engine_not_running` (or "Summer Engine is not running"), follow `summer-cli`'s "Start or reconnect to Summer Engine" sequence: open the existing project yourself, wait for readiness, verify project context, then retry the diagnostic. Use the project's exact path; bare `summer run` fails. Starting the engine does not reload the host's MCP tool list.
 
-Do NOT loop on MCP retry. Do NOT pretend the engine will come back. Use the fallback the moment it fails once.
+Only when neither MCP nor shell access can read the engine, ask the user for the Output and Debugger panel text. Reason over it and continue the diagnostic loop, explicitly noting anything you could not verify. Do not loop on unavailable MCP tools, recreate the project, or substitute stock Godot.
 
 ### 3. Hypothesize — one specific theory
 
@@ -143,7 +139,7 @@ Surface the proposed fix in plain language and ask permission. Two patterns:
 
 - For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
 - For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
-- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of an engine literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of an engine literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ### 6. Verify — re-run the diagnostic that found it
 
@@ -248,3 +244,35 @@ When you've made code changes and want to declare them "verified":
 A typical cautionary scenario: many parallel agents write thousands of lines of game code in one batch with verification static-only. The build is "diagnostic-clean" yet the running game has telegraph meshes that render the wrong axis, parse-valid scripts that crash on first autoload because of a guard pattern that doesn't compile, projectile tracers sized so they read as straight lines instead of projectiles, transform-leaked colliders from a copied scene, and `@onready` paths that throw on every boot when the script is loaded into a sibling scene that lacks one of the referenced children. None of these surface in `summer_get_diagnostics` until something actually plays the game — which is exactly what a `RunVerification` probe does, and why "I had no way to test it" is not an available excuse.
 
 Static analysis is necessary but never sufficient.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_clear_console` | `summer engine clear-console` |
+| `summer_create_debug_report` | `summer engine create-debug-report` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_debugger_warnings` | `summer engine get-debugger-warnings` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_play` | `summer engine play` |
+| `summer_replace_node` | `summer engine replace-node` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

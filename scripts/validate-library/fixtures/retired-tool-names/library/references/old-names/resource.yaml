@@ -1,0 +1,14 @@
+id: reference/old-names
+kind: reference
+version: 1.0.0
+summary: How an agent finds and reads Summer's library entries.
+use_when:
+  - looking up a skill before building
+  - reporting how a library entry worked after verifying it
+facets:
+  lifecycle: [build]
+  domains: [project, gameplay]
+  modalities: [project]
+source: official
+license: MIT
+status: stable

@@ -1,0 +1,23 @@
+id: skill/summer-apps-design
+kind: skill
+version: 0.1.0
+summary: "How a Summer App should look: layout, Summer UI kit components, tables, charts, states, pre-ship check."
+use_when:
+  - building or changing the UI of a Summer App (agent-built team tool inside Summer Studio)
+  - an app looks generic, cluttered or off-brand
+  - choosing layout for a table, chart, board, pick grid or settings tool
+facets:
+  lifecycle:
+    - build
+  domains:
+    - ui
+    - tools
+  modalities:
+    - docs
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+recommended: true

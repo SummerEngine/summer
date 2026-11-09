@@ -1,7 +1,7 @@
 id: skill/debugging-game-feel
 kind: skill
 version: 1.0.3
-summary: Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers.
+summary: "Debug features that work but feel wrong: floaty jumps, mushy combat, sluggish camera."
 use_when:
   - a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts
   - tuning jump height, gravity, camera lag, hit-stop, or impact feedback until controls feel right

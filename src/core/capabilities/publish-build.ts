@@ -2,13 +2,15 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { open } from "node:fs/promises";
 import { extname, resolve } from "node:path";
+import { summerRequestHeaders } from "../agent-host.js";
 import { resolveGatewayUrl } from "../config.js";
 import { getStoreAccessToken, OAuthError } from "../oauth.js";
 import { appendStoreJsonLine } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
 import { publishDownload } from "./publish-download.js";
-import { BuildToolError, declarationMismatch, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
+import { CHECK_FIXES, summarizeChecks } from "./store-checks.js";
+import { BuildToolError, readSummerBundle, targetPlatformChange, type SummerBundle } from "./summer-bundle.js";
 
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
@@ -42,8 +44,12 @@ const POLL_MS = 3_000;
 export const CLIENT_VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-r[1-9]\d*)?$/;
 const INTAKE_DONE = ["preview_ready", "published", "ready", "succeeded"];
 const NOT_ACTIONABLE = "deployment_not_actionable";
-/** Games without a server run on the Summer Games phone apps only (the store's standalone targets). */
-const STANDALONE_TARGETS = ["ios", "android"];
+/**
+ * Platforms Summer runs a client on, with or without a server: the phone apps,
+ * the desktop apps and the browser (summer-platform gameplatforms.ClientTargets).
+ * Linux has no Summer client.
+ */
+const CLIENT_TARGETS = ["android", "ios", "macos", "web", "windows"];
 
 /** Why the Platform did not take the export, in plain words (same text Studio shows). */
 const INTAKE_FAILURES: Record<string, string> = {
@@ -54,7 +60,7 @@ const INTAKE_FAILURES: Record<string, string> = {
     "Summer Games cannot run this Summer version yet. If you exported with the newest Summer Engine, Summer Games may still be turning that version on: retry the same upload later, there is nothing to update. With an older engine, update Summer Engine and export again.",
   client_version_conflict: "This version number already belongs to a different export. Use a new clientVersion.",
   artifact_exists: "This exact export is already uploaded for this game. Export a new version and upload that.",
-  approval_denied: "Summer Games did not approve this game, so it cannot take new builds.",
+  approval_denied: "This game was taken down, so it can't take new builds.",
   capacity_limit_reached: "Summer Games is busy right now. Try again in a few minutes.",
 };
 
@@ -63,7 +69,7 @@ export interface PublishBuildInput {
   /** Exported .zip. Defaults to the last summer_export_game result. */
   file?: string;
   clientVersion?: string;
-  /** Also approve the Build for players (needs a game that passed review). */
+  /** Also make the Build available to players (summer_go_live does this and the release in one step). */
   publish?: boolean;
   /**
    * A web build or native download (summer_export_game format "download"):
@@ -95,11 +101,11 @@ export interface Store {
   call<T = Record<string, unknown>>(
     method: string,
     path: string,
-    options?: { body?: unknown; key?: string }
+    options?: { body?: unknown; key?: string; headers?: Record<string, string> }
   ): Promise<T>;
 }
 
-export function storeError(status: number, code: string, message: string | undefined, requestId?: string): BuildToolError {
+export function storeError(status: number, code: string, message: string | undefined, requestId?: string, detail?: Record<string, unknown>): BuildToolError {
   if (status === 401) {
     // The token was sent and refused: signing in again gives the same token
     // shape and the same answer, so it is not the first thing to try.
@@ -115,7 +121,7 @@ export function storeError(status: number, code: string, message: string | undef
     return new BuildToolError(
       "owner_approval_required",
       message || "Only the game's owner can do this.",
-      "Recovery: nothing went live. Submit with summer_store_submit and give the owner the approval link it returns; a live game's new download is finished by the owner in Studio.",
+      "Recovery: nothing went live. The person's Agent permissions do not let this agent publish: ask them to turn on Publish (Studio > Agent permissions), or send them the approval link store.publish returns. A live game's new web build or download is finished by the owner in Studio.",
       status
     );
   }
@@ -125,24 +131,36 @@ export function storeError(status: number, code: string, message: string | undef
   if (status === 404 && code === "not_found") {
     return new BuildToolError("store_not_found", "The Summer store has no such game, or this part of the store is not open for this account.", "Recovery: check gameId (Studio shows it in the store page URL).", status);
   }
+  if (code === "playable_release_required") {
+    // Every platform the store page lists is left out of the new server's release (SUM-1107); the message says why.
+    return new BuildToolError(code, message || "No platform the store page lists can be released.", "Recovery: upload a build with the game's apps, then publish again.", status, { ...(requestId ? { requestId } : {}), ...(message ? { message } : {}), ...detail });
+  }
   if (status === 503 || code === "store_unavailable") {
     return new BuildToolError("store_unavailable", message || "Summer Games is not reachable right now.", "Recovery: try again in a few minutes.", status);
   }
-  return new BuildToolError(code, INTAKE_FAILURES[code] ?? message ?? `The Summer store refused the request (${status}).`, "Recovery: read the message, fix the export or version, and retry.", status);
+  return new BuildToolError(
+    code,
+    INTAKE_FAILURES[code] ?? message ?? `The Summer store refused the request (${status}).`,
+    CHECK_FIXES[code] ? `Recovery: ${CHECK_FIXES[code].fix}` : "Recovery: read the message, fix the export or version, and retry.",
+    status,
+    { ...(requestId ? { requestId } : {}), ...detail }
+  );
 }
 
 export function createStore(baseUrl: string, token: string, deps: PublishBuildDependencies): Store {
   return {
-    async call<T>(method: string, path: string, options: { body?: unknown; key?: string } = {}): Promise<T> {
+    async call<T>(method: string, path: string, options: { body?: unknown; key?: string; headers?: Record<string, string> } = {}): Promise<T> {
       let response: Response;
       try {
         response = await deps.fetch(`${baseUrl}${STORE_PROXY_PATH}/${path}`, {
           method,
           headers: {
+            ...summerRequestHeaders(),
             accept: "application/json",
             authorization: `Bearer ${token}`,
             ...(options.body === undefined ? {} : { "content-type": "application/json" }),
             ...(options.key ? { "idempotency-key": options.key } : {}),
+            ...options.headers,
           },
           body: options.body === undefined ? undefined : JSON.stringify(options.body),
           redirect: "error",
@@ -160,7 +178,13 @@ export function createStore(baseUrl: string, token: string, deps: PublishBuildDe
       if (!response.ok) {
         const error = body.error && typeof body.error === "object" ? body.error : {};
         const requestId = [error.requestId, body.requestId, response.headers.get("x-request-id")].find((value) => typeof value === "string" && value) as string | undefined;
-        throw storeError(response.status, typeof error.code === "string" ? error.code : `http_${response.status}`, typeof error.message === "string" ? error.message : undefined, requestId);
+        throw storeError(
+          response.status,
+          typeof error.code === "string" ? error.code : `http_${response.status}`,
+          typeof error.message === "string" ? error.message : undefined,
+          requestId,
+          Array.isArray(error.missing) ? { missing: error.missing } : undefined
+        );
       }
       return body as T;
     },
@@ -356,26 +380,21 @@ export function normalizeClientVersion(value?: string): string {
   return version;
 }
 
+/**
+ * The Build declares the bundle's platforms that Summer has a client on, with
+ * or without a server: the store targets the same ones when it reads the
+ * bundle, whatever summer.build.json declares.
+ */
 function targetPlatforms(bundle: SummerBundle): string[] {
-  const mismatch = declarationMismatch(bundle);
-  if (mismatch) {
-    throw new BuildToolError(
-      "declaration_mismatch",
-      `The store would refuse this upload (declaration_mismatch): ${mismatch}. Nothing was uploaded and no version was used.`,
-      "Recovery: export again with summer_export_game alignDeclaration:true (it sets summer.build.json targetPlatforms to the targets you export), or with targets equal to what summer.build.json declares; then upload the new export."
-    );
-  }
-  if (bundle.hosted) return bundle.targetPlatforms;
-  const other = bundle.targetPlatforms.filter((platform) => !STANDALONE_TARGETS.includes(platform));
-  if (other.length) {
+  const platforms = bundle.targetPlatforms.filter((platform) => CLIENT_TARGETS.includes(platform));
+  if (!platforms.length) {
     throw new BuildToolError(
       "platforms_unsupported",
-      `A game without a server runs on iPhone and Android only for now; this export also targets ${other.join(", ")}.`,
-      'Recovery: export again with summer_export_game targets ["ios"] or ["ios","android"]; ship macOS or Windows as a download (format "download").'
+      `Summer has no player app for ${bundle.targetPlatforms.join(", ")}, the only platforms in this export.`,
+      `Recovery: export again with summer_export_game targets from ${CLIENT_TARGETS.join(", ")}; then upload the new export.`
     );
   }
-  // The Build declares exactly what the bundle declares (declaration_mismatch otherwise).
-  return bundle.targetPlatforms;
+  return platforms;
 }
 
 type GameSummary = { id: unknown; name: unknown; slug: unknown; status: unknown; targets: unknown };
@@ -392,7 +411,7 @@ async function listGames(deps: PublishBuildDependencies): Promise<{ games: GameS
 }
 
 /** gameId is required: the error carries the person's games, or why the store did not list them. */
-async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
+export async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
   const listed = await listGames(deps);
   if ("games" in listed) {
     throw new BuildToolError(
@@ -402,7 +421,7 @@ async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> 
         : "gameId is required, and this account has no store game yet.",
       listed.games.length
         ? "Recovery: call again with gameId from the list."
-        : "Recovery: create the store game first (summer_store_create_game), then call again with its gameId.",
+        : "Recovery: create the store game first (games.create), then call again with its gameId.",
       undefined,
       { games: listed.games }
     );
@@ -416,7 +435,7 @@ async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> 
   );
 }
 
-async function storeToken(deps: PublishBuildDependencies): Promise<string> {
+export async function storeToken(deps: PublishBuildDependencies): Promise<string> {
   try {
     return await deps.token();
   } catch (error) {
@@ -448,7 +467,7 @@ export async function checkStoreGame(
           : `The store did not find game "${gameId}", and did not list your games either: ${listed.error}`,
         "games" in listed && listed.games.length
           ? "Recovery: call again with gameId from the list."
-          : "Recovery: create the store game first (summer_store_create_game), or copy its id from Studio (the store page URL).",
+          : "Recovery: create the store game first (games.create), or copy its id from Studio (the store page URL).",
         404,
         "games" in listed ? { games: listed.games } : undefined
       );
@@ -460,9 +479,65 @@ export async function checkStoreGame(
   const catalog = new Set(targets.map((target) => target.replace(/-(universal|x64)$/, "")));
   const unlisted = exportTargets.filter((target) => !catalog.has(target));
   const warnings = unlisted.length
-    ? [`The store page of "${game.name ?? gameId}" does not list ${unlisted.join(", ")} (it lists ${targets.join(", ") || "no platforms"}). Players on ${unlisted.join(", ")} will not see this build until the store page lists them: add them with summer_store_update_listing.`]
+    ? [`The store page of "${game.name ?? gameId}" does not list ${unlisted.join(", ")} (it lists ${targets.join(", ") || "no platforms"}). Players on ${unlisted.join(", ")} will not see this build until the store page lists them: add them with store.update_listing.`]
     : [];
   return { game: { gameId, name: typeof game.name === "string" ? game.name : null, status: typeof game.status === "string" ? game.status : null, targets }, warnings };
+}
+
+/**
+ * Seal the upload. While Summer's malware scan of the stored bytes runs, the
+ * store answers 409 malware_scan_pending; that is a wait, not a failure.
+ */
+async function sealWhenScanned(store: Store, publicationPath: string, key: string, deps: PublishBuildDependencies, deadline: number): Promise<void> {
+  for (;;) {
+    try {
+      await store.call("POST", `${publicationPath}:source-complete`, { body: {}, key });
+      return;
+    } catch (error) {
+      if (!(error instanceof BuildToolError && error.code === "malware_scan_pending") || deps.now() >= deadline) throw error;
+      await deps.sleep(POLL_MS);
+    }
+  }
+}
+
+/**
+ * Why the platform did not take a Build to players when asked. A game goes
+ * live once its automated checks pass and Summer's staff review it afterwards
+ * (review after live): a staff hold or take-down is reported with what to do,
+ * anything else as Summer's own hold that needs nothing from the creator.
+ */
+export async function platformHold(store: Store, gameId: string): Promise<Record<string, unknown>> {
+  let review: Record<string, any> | null = null;
+  try {
+    review = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/review`);
+  } catch {
+    // A platform before review after live, or a failed read: the hold is still reported.
+  }
+  if (review?.takenDown === true) {
+    return { by: "summer_decision", review: "taken_down", message: "Summer took this game down: players can't find or play it. Contact Summer support to have it restored.", ...(review.message ? { feedback: review.message } : {}) };
+  }
+  if (review?.outcome === "rejected") {
+    return {
+      by: "summer_decision",
+      review: "on_hold",
+      ...(review.message ? { feedback: review.message } : {}),
+      message: "Summer reviewed this game and put it on hold until the changes in feedback are made. Make them on the store page, then publish it again; a new build alone does not lift the hold.",
+    };
+  }
+  // Set when a Publish's automated checks have run over an hour; a platform before it omits the field.
+  const since = typeof review?.stillCheckingSince === "string" && review.stillCheckingSince ? review.stillCheckingSince : null;
+  if (since) {
+    return {
+      by: "summer",
+      stillCheckingSince: since,
+      message: "Summer is still checking this; nothing to do on your side. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+    };
+  }
+  return {
+    by: "summer",
+    message:
+      "Every automated check is done; the platform has not released this game's builds yet. That is on Summer's side and needs nothing from you. The Build is kept, and summer_go_live takes it live and reports the moment players get it.",
+  };
 }
 
 export type PublishBuildResult = Record<string, unknown> & { ok: true; status: string };
@@ -495,6 +570,7 @@ export async function publishBuild(
   const clientVersion = normalizeClientVersion(input.clientVersion);
   const bundle = await readSummerBundle(file);
   const platforms = targetPlatforms(bundle);
+  const platformChange = targetPlatformChange(bundle);
   const digest = await hashParts(file, PART_BYTES);
   const publish = input.publish === true;
   const target = {
@@ -508,6 +584,8 @@ export async function publishBuild(
     hosted: bundle.hosted,
     summerVersion: bundle.summerVersion,
     publish,
+    // Informational: summer.build.json declares other platforms; the store targets the bundle's.
+    ...(platformChange ? { targetPlatformChange: platformChange } : {}),
   };
 
   if (!gameId) return listGamesOrThrow(deps);
@@ -541,7 +619,8 @@ export async function publishBuild(
         clientVersion,
         ...(bundle.hostedBuild ? { exportedClient: { entryPoint: bundle.mainScene } } : {}),
         build: bundle.hostedBuild
-          ? { ...bundle.hostedBuild, version: clientVersion }
+          ? // A declaration that names the bundle's platforms is sent as written, so a retry sends the same bytes.
+            { ...bundle.hostedBuild, version: clientVersion, ...(platformChange ? { targetPlatforms: platforms } : {}) }
           : { version: clientVersion, executionMode: "standalone", targetPlatforms: platforms, client: { entryPoint: bundle.mainScene } },
       },
     });
@@ -565,7 +644,7 @@ export async function publishBuild(
         plan,
         deps
       );
-      await store.call("POST", `${publicationPath}:source-complete`, { body: {}, key: key(`seal:${publicationId}`) });
+      await sealWhenScanned(store, publicationPath, key(`seal:${publicationId}`), deps, deps.now() + (input.waitSeconds ?? DEFAULT_WAIT_SECONDS) * 1000);
       uploaded = true;
     }
 
@@ -587,9 +666,11 @@ export async function publishBuild(
             ? "Recovery: fix what the message names, export again and retry; the same clientVersion still works, because a refused upload records no version."
             : code === "template_set_unavailable"
               ? `Recovery: ${INTAKE_FAILURES.template_set_unavailable.replace(/^Summer Games cannot run this Summer version yet\. /, "")} The same clientVersion works on the retry.`
-              : "Recovery: export again, use a new clientVersion, and retry.",
+              : CHECK_FIXES[code]
+                ? `Recovery: ${CHECK_FIXES[code].fix}`
+                : "Recovery: export again, use a new clientVersion, and retry.",
           undefined,
-          { publicationId }
+          { publicationId, failedCheck: { code, owner: CHECK_FIXES[code]?.owner ?? "creator" } }
         );
       }
       if (deps.now() >= deadline) {
@@ -625,22 +706,32 @@ export async function publishBuild(
       clientPackageId = named.package?.id ?? null;
     }
 
+    // Summer's automated checks on the client pack, one per platform: wait for
+    // them within the same budget, so the answer says whether the build passed.
+    let checks = summarizeChecks(publication);
+    while (checks.state === "checking" && deps.now() < deadline) {
+      await deps.sleep(POLL_MS);
+      publication = await store.call<Record<string, any>>("GET", publicationPath);
+      checks = summarizeChecks(publication);
+    }
+
     let published = false;
-    let publishNote: string | null = null;
-    if (publish) {
+    let hold: Record<string, unknown> | null = null;
+    if (publish && checks.state !== "failed") {
       try {
         await store.call("POST", `${publicationPath}:publish`, { body: {}, key: key(`publish:${publicationId}`) });
         published = true;
       } catch (error) {
         if (!(error instanceof BuildToolError && error.status === 409 && error.code === NOT_ACTIONABLE)) throw error;
-        publishNote = "The game has not passed review yet, so this Build waits as a preview.";
+        hold = await platformHold(store, gameId);
       }
     }
 
-    await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "succeeded", publicationId, buildId, published });
+    await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "succeeded", publicationId, buildId, published, checks: checks.state });
+    const failed = checks.checks.filter((check) => check.state === "failed");
     return {
       ok: true,
-      status: published ? "published" : "uploaded",
+      status: checks.state === "failed" ? "checks_failed" : published ? "published" : "uploaded",
       gameId,
       publicationId,
       buildId,
@@ -649,11 +740,20 @@ export async function publishBuild(
       clientVersion,
       sha256: digest.sha256,
       sizeBytes: digest.sizeBytes,
+      targetPlatforms: platforms,
+      ...(platformChange ? { targetPlatformChange: platformChange } : {}),
+      // passed: every platform passed Summer's automated checks; checking: call again to keep waiting.
+      checksState: checks.state,
+      checks: checks.checks,
+      ...(checks.packFailure ? { packFailure: checks.packFailure } : {}),
       published,
-      ...(publishNote ? { publishNote } : {}),
-      next: published
-        ? "The Build is approved. Summer checks the client pack per platform; Studio shows the result."
-        : "The Build exists as a preview. Summer checks the client pack per platform; publish it from Studio or call again with publish=true.",
+      ...(hold ? { hold } : {}),
+      next:
+        checks.state === "failed"
+          ? `Summer's automated checks failed${failed.length ? ` on ${failed.map((check) => check.platform).join(", ")}` : ""}. Apply each fix, export again and upload with a new clientVersion.`
+          : checks.state === "checking"
+            ? "Summer is still checking the client pack. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice."
+            : `Every automated check passed. Take it live with summer_go_live (gameId ${gameId}, publicationId ${publicationId}).`,
     };
   } catch (error) {
     await appendStoreJsonLine("creator-audit.jsonl", {

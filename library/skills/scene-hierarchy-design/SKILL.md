@@ -1,6 +1,6 @@
 ---
 name: scene-hierarchy-design
-description: "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic."
+description: "Structure scenes by access pattern: asset vs live hierarchies, wrapper nodes, sub-scenes, path-agnostic code."
 license: MIT
 category: workflow
 tags:
@@ -74,7 +74,7 @@ Rules of thumb:
 
 Follow the canonical scene loop from the Summer MCP reference: route → orient → read rules → resolve `scenePath` → mutate → verify.
 
-1. **Orient.** `summer_start_game_task` to route the goal; `summer_get_project_context`; `summer_get_agent_playbook`.
+1. **Orient.** `summer_call` `{"op":"docs.plan"}` to route the goal; `summer_get_project_context`; `summer_call` `{"op":"summer_get_agent_playbook"}`.
 2. **Read before writing.** `summer_get_scene_tree` on the exact `res://...tscn`. Never mutate blind, and never edit `.tscn` text while the engine is running — use the MCP tools.
 3. **Pick the access pattern.** For each planned cluster decide: operated as a subtree (→ wrapper parent), queried by type across the scene (→ flat siblings + group), or unique (→ inline under root container).
 4. **Build asset hierarchies first.** For reusable setups create the sub-scene (`summer_create_scene` / build inline then `summer_save_scene(scenePath="res://main.tscn", path="res://scenes/<name>.tscn")`), then bring them in with `summer_instantiate_scene(scenePath="res://main.tscn", parent="./<Wrapper>", scene="res://scenes/<name>.tscn", name="<Role>_01")`.
@@ -100,3 +100,27 @@ Follow the canonical scene loop from the Summer MCP reference: route → orient 
 3. Deleting a wrapper parent (`summer_remove_node`) removes exactly its subtree — the recursive-despawn feature works.
 4. No script references a path deeper than one or two segments; group/signal/NodePath used instead.
 5. `summer_get_script_errors` and (if played) `summer_get_debugger_errors` are clean; `summer_screenshot` matches the intended layout.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `docs.plan` | `summer docs plan` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_remove_node` | `summer engine remove-node` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_stop` | `summer engine stop` |
+| `summer_get_agent_playbook` | `summer tool get-agent-playbook` |
+<!-- /shell-commands -->

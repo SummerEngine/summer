@@ -1,7 +1,7 @@
 id: skill/animated-loop
 kind: skill
 version: 1.0.4
-summary: Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer.
+summary: "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen."
 use_when:
   - generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience
   - an idle backdrop behind the UI needs subtle motion without a real-time animated scene

@@ -1,0 +1,59 @@
+id: tool/app-dock
+kind: tool
+version: 1.0.0
+summary: Dock a Summer App as a panel in the running Summer Engine editor, close it, or list docked apps.
+use_when:
+  - '"put the quest editor next to my scene"'
+  - keeping a team tool open while editing
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_dock
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_dock
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - open
+        - close
+        - list
+      default: open
+    appId:
+      type: string
+      format: uuid
+      description: "open, close: the app"
+    slot:
+      type: string
+      enum:
+        - left
+        - right
+        - bottom
+      default: right
+      description: "open: left, right or bottom"
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

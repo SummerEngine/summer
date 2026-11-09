@@ -1,0 +1,53 @@
+id: tool/enable-plugin
+kind: tool
+version: 1.0.0
+summary: Enable an editor plugin (res://addons/<name>/) and report the real load result, or that an older engine only queued it.
+use_when:
+  - an agent wrote or installed an editor plugin and needs it running
+  - a Summer App's paired plugin must be enabled before the app can message it
+  - '"turn on the quest_tools plugin"'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - tools
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_enable_plugin
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_enable_plugin
+    remote: false
+input_schema:
+  type: object
+  properties:
+    plugin:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: The plugin folder under res://addons/ (e.g. 'quest_tools') or its 'res://addons/<name>/plugin.cfg'
+    timeoutMs:
+      type: integer
+      minimum: 1000
+      maximum: 120000
+      description: How long the engine waits for the plugin to load (default 30000)
+  required:
+    - plugin
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

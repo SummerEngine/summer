@@ -1,6 +1,6 @@
 ---
 name: save-load
-description: "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks."
+description: "Save and load game state: user:// paths, JSON progress vs ConfigFile settings, versioned saves, autosave."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scripting-patterns
@@ -154,3 +154,18 @@ Set `get_tree().set_auto_accept_quit(false)` so you control the quit.
   instead: a `RunVerification` probe (see `playtesting-a-feature`) that calls
   `save_game()`, changes a value, calls `load_game()`, and `report()`s the
   restored value.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_replace_text` | `summer engine replace-text` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

@@ -31,11 +31,22 @@ function fakeStore(options: {
   refusePartOnce?: number;
   neverDone?: boolean;
   gameTargets?: string[];
+  /** Per-platform client pack checks once settled (default: ios passed). */
+  checks?: Array<Record<string, unknown>>;
+  /** Polls that answer before the checks settle (default 0); Infinity never settles. */
+  checkingPolls?: number;
+  /** Answers to :source-complete with 409 malware_scan_pending this many times first. */
+  scanPendingSeals?: number;
+  /** Summer's review after live (GET games/{g}/review); absent answers 404, as a platform before it. */
+  review?: Record<string, unknown>;
 } = {}) {
   const calls: Call[] = [];
   const parts = new Map<number, Buffer>();
   let sealed = options.startPhase === "inspecting";
   let polls = 0;
+  let donePolls = 0;
+  let seals = 0;
+  let named = false;
   let refused = false;
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -63,7 +74,19 @@ function fakeStore(options: {
       if (!sealed) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "upload" } });
       polls += 1;
       if (options.neverDone || polls < 2) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "inspecting" } });
-      return json(200, { id: "pub-1", buildId: "build-1", state: options.finalState ?? "preview_ready", errorCode: options.errorCode ?? null });
+      if (named) donePolls += 1;
+      const settled = donePolls > (options.checkingPolls ?? 0);
+      const verifications = settled
+        ? options.checks ?? [{ id: "ver-1", platform: "ios", state: "ready", qualificationId: "qual-1" }]
+        : [{ id: "ver-1", platform: "ios", state: "checking" }];
+      return json(200, {
+        id: "pub-1",
+        buildId: "build-1",
+        state: options.finalState ?? "preview_ready",
+        errorCode: options.errorCode ?? null,
+        // The pack appears once the upload named it.
+        ...(named ? { clientPackage: { id: "pack-1", state: "uploaded", verifications } } : {}),
+      });
     }
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:source-upload`) {
       const size = Number((globalThis as any).__bundleSize);
@@ -82,12 +105,16 @@ function fakeStore(options: {
       });
     }
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:source-complete`) {
+      seals += 1;
+      if (seals <= (options.scanPendingSeals ?? 0)) return json(409, { error: { code: "malware_scan_pending", message: "The malware scan is still running." } });
       sealed = true;
       return json(200, {});
     }
     if (method === "POST" && url === `${STORE}/games/game-1/builds/build-1/client-packages`) {
+      named = true;
       return json(201, { package: { id: "pack-1" } });
     }
+    if (method === "GET" && url === `${STORE}/games/game-1/review`) return options.review ? json(200, options.review) : json(404, { error: { code: "not_found" } });
     if (method === "POST" && url === `${PUBLICATIONS}/pub-1:publish`) {
       return options.publishStatus === 409
         ? json(409, { error: { code: "deployment_not_actionable", message: "runtime approval pending" } })
@@ -221,16 +248,79 @@ describe("publishBuild", () => {
     expect(second.calls.some((call) => call.url.endsWith(":source-upload") || call.url.startsWith("https://r2.test/"))).toBe(false);
   });
 
-  it("publishes when asked, and says when the game still waits for review", async () => {
+  it("publishes when asked, and reports a platform hold as Summer's, never as a review to wait for", async () => {
     const approved = fakeStore();
     expect(
       await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(approved.fetch))
-    ).toMatchObject({ status: "published", published: true });
+    ).toMatchObject({ status: "published", published: true, checksState: "passed" });
 
-    const waiting = fakeStore({ publishStatus: 409 });
-    expect(
-      await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(waiting.fetch))
-    ).toMatchObject({ status: "uploaded", published: false, publishNote: expect.stringContaining("review") });
+    const held = fakeStore({ publishStatus: 409 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(held.fetch));
+    expect(result).toMatchObject({ status: "uploaded", published: false, hold: { by: "summer" } });
+    const said = JSON.stringify(result);
+    expect(said).not.toMatch(/wait(s|ing)? for (the )?review|passed review|until Summer approves/i);
+  });
+
+  it("names the changes Summer asked for when staff put the live game on hold", async () => {
+    const store = fakeStore({
+      publishStatus: 409,
+      review: { gameId: "game-1", outcome: "rejected", takenDown: false, message: "Add real screenshots.", reviewedRevisionId: "rev-1" },
+    });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.hold).toMatchObject({ by: "summer_decision", review: "on_hold", feedback: "Add real screenshots." });
+    expect(String((result.hold as Record<string, unknown>).message)).toMatch(/new build alone does not/);
+  });
+
+  it("says Summer is still checking, with nothing to do, when the platform reports long-running checks", async () => {
+    const store = fakeStore({ publishStatus: 409, review: { gameId: "game-1", outcome: "not_live", takenDown: false, message: "", stillCheckingSince: "2026-10-19T09:00:00Z" } });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.hold).toMatchObject({ by: "summer", stillCheckingSince: "2026-10-19T09:00:00Z", message: expect.stringContaining("Summer is still checking this; nothing to do on your side.") });
+  });
+
+  it("waits for the per-platform checks and reports each one", async () => {
+    const store = fakeStore({ checkingPolls: 2 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", checksState: "passed", checks: [{ platform: "ios", state: "passed" }] });
+    expect(String(result.next)).toContain("summer_go_live");
+  });
+
+  it("reports a failed platform check with its code and the fix, and does not publish", async () => {
+    const store = fakeStore({
+      checks: [
+        { id: "ver-1", platform: "ios", state: "ready", qualificationId: "qual-1" },
+        { id: "ver-2", platform: "android", state: "failed", errorCode: "package_not_verified", errorMessage: "main scene res://main.tscn did not open" },
+      ],
+    });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "checks_failed", checksState: "failed", published: false });
+    expect(result.checks).toContainEqual(expect.objectContaining({ platform: "android", state: "failed", code: "package_not_verified", owner: "creator", fix: expect.stringContaining("main scene") }));
+    expect(store.calls.some((call) => call.url.endsWith(":publish"))).toBe(false);
+  });
+
+  it("keeps waiting, then says to call again, while the checks run past the wait", async () => {
+    let clock = 0;
+    const store = fakeStore({ checkingPolls: Infinity });
+    const result = await publishBuild(
+      { gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, waitSeconds: 30, face: "mcp" },
+      deps(store.fetch, { now: () => clock, sleep: async (ms) => void (clock += ms) })
+    );
+    expect(result).toMatchObject({ status: "uploaded", checksState: "checking" });
+    expect(String(result.next)).toMatch(/call summer_publish_build again/i);
+  });
+
+  it("treats a running malware scan at seal time as a wait, not a failure", async () => {
+    const store = fakeStore({ scanPendingSeals: 2 });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("uploaded");
+    expect(store.calls.filter((call) => call.url.endsWith(":source-complete")).length).toBe(3);
+  });
+
+  it("gives a creator-side fix for an intake failure the platform names", async () => {
+    const store = fakeStore({ finalState: "failed", errorCode: "engine_build_unreleased" });
+    const error = await failure(publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("engine_build_unreleased");
+    expect(error.recovery).toMatch(/released Summer Engine/);
+    expect(error.detail).toMatchObject({ failedCheck: { owner: "creator" } });
   });
 
   it("passes the store's reason for a refused sign-in through, and does not send people round a re-login loop", async () => {
@@ -311,11 +401,6 @@ describe("publishBuild", () => {
       target: { file: bundle },
     });
 
-    const macos = join(root, "macos.zip");
-    await writeSummerBundle(macos, { targetPlatforms: ["ios", "macos"] });
-    expect((await failure(publishBuild({ gameId: "game-1", file: macos, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)))).code).toBe(
-      "platforms_unsupported"
-    );
     const phones = join(root, "phones.zip");
     await writeSummerBundle(phones, { targetPlatforms: ["ios", "android"] });
     expect(await publishBuild({ gameId: "game-1", file: phones, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
@@ -328,18 +413,69 @@ describe("publishBuild", () => {
     });
   });
 
-  it("refuses a hosted export whose summer.build.json declares other platforms, before anything is uploaded", async () => {
+  it("uploads a summer.bundle.v2 export without a server and without summer.build.json, declaring its platforms", async () => {
+    const file = join(root, "hostless-v2.zip");
+    const written = await writeSummerBundle(file, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["ios", "android"] });
+    (globalThis as any).__bundleSize = written.length;
     const store = fakeStore();
+    const result = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ ok: true, status: "uploaded", buildId: "build-1", clientPackageId: "pack-1" });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toEqual({ version: "v1.0.0", executionMode: "standalone", targetPlatforms: ["ios", "android"], client: { entryPoint: "res://main.tscn" } });
+    expect(create.body.exportedClient).toBeUndefined();
+    expect(Buffer.concat([...store.parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => part)).equals(written)).toBe(true);
+  });
+
+  it("uploads a game without a server for macOS and Windows", async () => {
+    const file = join(root, "desktop.zip");
+    const written = await writeSummerBundle(file, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["macos", "windows"] });
+    (globalThis as any).__bundleSize = written.length;
+    const store = fakeStore({
+      gameTargets: ["macos", "windows"],
+      checks: [
+        { id: "ver-1", platform: "macos", state: "ready", qualificationId: "qual-1" },
+        { id: "ver-2", platform: "windows", state: "ready", qualificationId: "qual-2" },
+      ],
+    });
+    const preview = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", target: { hosted: false, targetPlatforms: ["macos", "windows"] } });
+    expect(preview.warnings).toBeUndefined();
+    const result = await publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", checksState: "passed" });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toMatchObject({ executionMode: "standalone", targetPlatforms: ["macos", "windows"] });
+  });
+
+  it("declares only the platforms Summer has an app for, and refuses an export with none", async () => {
+    const store = fakeStore();
+    const mixed = join(root, "mixed.zip");
+    await writeSummerBundle(mixed, { targetPlatforms: ["windows", "linux"] });
+    expect(await publishBuild({ gameId: "game-1", file: mixed, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
+      target: { hosted: false, targetPlatforms: ["windows"] },
+    });
+    const linux = join(root, "linux.zip");
+    await writeSummerBundle(linux, { targetPlatforms: ["linux"] });
+    const error = await failure(publishBuild({ gameId: "game-1", file: linux, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("platforms_unsupported");
+    expect(store.calls.some((call) => call.method === "POST")).toBe(false);
+  });
+
+  it("uploads a hosted export whose summer.build.json declares other platforms, declaring the bundle's platforms", async () => {
     const mismatched = join(root, "mismatched.zip");
-    await writeSummerBundle(mismatched, { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["android", "ios", "macos", "web", "windows"] });
-    for (const confirm of [false, true]) {
-      const error = await failure(publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", confirm, face: "mcp" }, deps(store.fetch)));
-      expect(error.code).toBe("declaration_mismatch");
-      expect(error.message).toContain("the bundle targets ios, macos, windows but its summer.build.json declares android, ios, macos, web, windows");
-      expect(error.recovery).toContain("alignDeclaration:true");
-    }
-    // Nothing reached the store: the version is not spent.
-    expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
+    const written = await writeSummerBundle(mismatched, { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["android", "ios", "linux", "web"] });
+    (globalThis as any).__bundleSize = written.length;
+    const store = fakeStore({ gameTargets: ["ios", "macos", "windows"] });
+    const change = { declared: ["android", "ios", "linux", "web"], missing: ["android", "linux", "web"], added: ["macos", "windows"] };
+
+    const preview = await publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", target: { hosted: true, targetPlatforms: ["ios", "macos", "windows"], targetPlatformChange: change } });
+    expect(preview.warnings).toBeUndefined();
+
+    const result = await publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ ok: true, status: "uploaded", targetPlatforms: ["ios", "macos", "windows"], targetPlatformChange: change });
+    const create = store.calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+    expect(create.body.build).toMatchObject({ executionMode: "hosted", version: "v1.0.0", targetPlatforms: ["ios", "macos", "windows"] });
+    expect(create.body.exportedClient).toEqual({ entryPoint: "res://main.tscn" });
   });
 
   it("accepts Summer client versions only", () => {

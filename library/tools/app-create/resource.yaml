@@ -1,0 +1,67 @@
+id: tool/app-create
+kind: tool
+version: 1.0.0
+summary: Create a new scratch Summer App (a tool for the person's team inside Summer Studio) and open it in their Studio tab.
+use_when:
+  - '"build me a tool for…" / "make an app that…"'
+  - the person needs a UI to decide or edit something they will come back to
+do_not_use_when:
+  - "a one-off answer: reply in chat"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_create
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_create
+    remote: true
+input_schema:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    purpose:
+      type: string
+      maxLength: 280
+      description: "One line: what the tool does and where its data goes"
+    format:
+      type: string
+      enum:
+        - code
+        - layout
+      default: code
+      description: "code: index.html + JS/CSS (default). layout: a JSON layout of kit nodes, for quick decision UIs"
+    workspaceId:
+      type: string
+      format: uuid
+      description: "A workspace id. Default: the person's team (the one their Studio tab is on, else their latest team, else personal); the result's workspace says which"
+    folder:
+      type: string
+      minLength: 1
+      maxLength: 80
+  required:
+    - name
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

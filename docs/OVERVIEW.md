@@ -1,6 +1,6 @@
 # How Summer Works
 
-Summer Engine is the AI game engine. **Summer**, this repo, is the open-source layer that lets any coding agent use it.
+Summer Engine is the game engine built for AI. **Summer**, this repo, is the MCP server, CLI and skills that let any agent build, test and publish full games with it.
 
 Source: [github.com/summerengine/summer](https://github.com/summerengine/summer)
 
@@ -10,9 +10,9 @@ Three things, plus glue.
 
 **Skills.** Markdown guides: debug, brainstorm, FPS controller, multiplayer, art direction, ship. The host loads the right one from what the user asks; no slash command needed.
 
-**MCP server.** Tools that talk to a running Summer Engine over its local API (port 6550 by default): scene edits, asset import, runtime control, diagnostics, generation.
+**MCP server.** Tools that talk to a running Summer Engine over its local API (port 6550 by default): scene edits, asset import, runtime control, diagnostics, generation. After `summer login` it also carries the hosted store, publishing and Grow tools. The same hosted tools, without the engine ones, are at `https://mcp.summerengine.com/mcp` (README, "Connect").
 
-**CLI.** Install the engine, log in, scaffold projects, run them, run doctor — and `summer tool <name>` runs any MCP tool from the terminal. The complete command reference is in [`DEVELOPMENT.md`](DEVELOPMENT.md#cli-command-reference); `summer --help` is the source of truth.
+**CLI.** Install the engine, log in, scaffold projects, run them, run doctor — and `summer tool <name>` runs any MCP tool from the terminal, `summer <area> <action>` any operation (`summer ops search <words>` finds one). The complete command reference is in [`DEVELOPMENT.md`](DEVELOPMENT.md#cli-command-reference); `summer --help` is the source of truth.
 
 The glue: **lifecycle hooks** (session-start orientation, opt-in pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Claude Desktop, Codex, Cursor, Devin Desktop, Antigravity, Cline (VS Code), Cline CLI, Kilo Code, GitHub Copilot CLI, GitHub Copilot in VS Code, GitHub Copilot in Visual Studio, GitHub Copilot in JetBrains IDEs, OpenCode, Zed, Kiro, Goose, Hermes Agent, Trae, Qwen Code, Kimi Code CLI, Crush, Amp, Factory Droid, Junie, Warp, Rovo Dev CLI, Qoder CLI, Grok Build, Mistral Vibe, LM Studio. The per-client map is [`../integrations/README.md`](../integrations/README.md).
 
@@ -21,7 +21,7 @@ The glue: **lifecycle hooks** (session-start orientation, opt-in pre-commit doct
 Paste this into your AI environment:
 
 ```text
-Install Summer Engine and let's make a game.
+Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 ```
 
 The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine. In most agents, setup also adds Summer Games (`summer-games`: friends, parties and messages as you); you sign in once through summer.games, and setup prints the step for your agent.
@@ -45,7 +45,7 @@ Or download from [summerengine.com/download](https://summerengine.com/download).
 
 ## Where skills live per agent
 
-Skills install as `<skill>/SKILL.md`. Agents whose docs read the agentskills.io folder (`~/.agents/skills`, `.agents/skills`) share it, so one install covers Codex, Cursor, Zed, OpenCode, Copilot in VS Code, Devin Desktop, Amp, Crush, Warp, Kimi, Factory, Rovo Dev and Grok Build; the rest keep their own folder. Agents with no skills folder (Claude Desktop, Copilot in Visual Studio and JetBrains, Trae, Junie, LM Studio) get the MCP server only and pull guidance in-chat via `summer_get_agent_playbook`.
+Skills install as `<skill>/SKILL.md`. Agents whose docs read the agentskills.io folder (`~/.agents/skills`, `.agents/skills`) share it, so one install covers Codex, Cursor, Zed, OpenCode, Copilot in VS Code, Devin Desktop, Amp, Crush, Warp, Kimi, Factory, Rovo Dev and Grok Build; the rest keep their own folder. Agents with no skills folder (Claude Desktop, Copilot in Visual Studio and JetBrains, Trae, Junie, LM Studio) get the MCP server only and pull guidance in-chat via `summer_docs_search` and `summer_docs_read`.
 
 | Agent | User scope | Project scope |
 |---|---|---|
@@ -81,9 +81,11 @@ Skills install as `<skill>/SKILL.md`. Agents whose docs read the agentskills.io 
 Use `--scope project` when you want the skills committed with the game:
 
 ```bash
-summer skills install --recommended --agent codex --scope project
+summer skills install --all --agent codex --scope project
 summer skills install fps-controller --agent cursor --scope project
 ```
+
+`--recommended` installs a smaller starter set instead of every skill.
 
 ## The tool boundary
 

@@ -22,6 +22,7 @@ source: official
 license: MIT
 status: stable
 recommended: false
+bundled: false
 aliases:
   - skills/workflow/writing-skills
 lint_exceptions:

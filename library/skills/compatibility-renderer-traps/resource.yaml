@@ -1,7 +1,7 @@
 id: skill/compatibility-renderer-traps
 kind: skill
 version: 1.0.0
-summary: "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors."
+summary: "Make a Forward+ game look right on the Compatibility renderer: instance uniforms, MultiMesh, vertex colors."
 use_when:
   - a game must run on phones or weak GPUs that may use the Compatibility or Mobile renderer
   - objects render black, pale or stop animating on one renderer but not another

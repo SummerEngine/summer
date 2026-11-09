@@ -6,7 +6,7 @@ is intentionally empty. Support is delivered at install time by
 
 - MCP config: `.trae/mcp.json` (project only; Trae manages user-level servers in its UI, so a user-scope request writes the project file with a warning).
   Shape: `mcpServers.summer-engine = { command, args }`.
-- Skills: none. Trae documents no skills folder; the MCP server ships summer_get_agent_playbook for in-chat guidance.
+- Skills: none. Trae documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.
 - After: Restart Trae and open the MCP settings; summer-engine should show as connected.
 
 Source of truth: `src/installer/agent-table.ts` (one row per agent).

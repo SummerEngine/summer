@@ -21,7 +21,7 @@ import {
   type StoreTarget,
 } from "./export-presets.js";
 import { engineTemplateInfo, findInstalledTemplate, templateFileFor, type TemplatesDependencies } from "./export-templates.js";
-import { BuildToolError, declarationMismatch, hashFile, readSummerBundle, samePlatforms, type SummerBundle } from "./summer-bundle.js";
+import { BUNDLE_MANIFEST, BuildToolError, hashFile, readSummerBundle, samePlatforms, targetPlatformChange, type SummerBundle, type TargetPlatformChange } from "./summer-bundle.js";
 
 export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
 
@@ -31,7 +31,8 @@ export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
  *
  *   <engine> --headless --summer-no-api --path <project> --export-release "<preset>" <out>
  *
- * format "bundle" (default): the summer.bundle.v1 .zip for build-publications
+ * format "bundle" (default): the summer.bundle.v2 .zip (summer.bundle.v1 from
+ * engines before 0.7.4) for build-publications
  * (summer_publish_build). Summer runs its client.pck on its own templates in
  * the Summer Games apps, so no template and no signing. Without targets the
  * engine's in-memory "summer.games" preset is used as is (every platform
@@ -62,9 +63,6 @@ const STORE_VERSION_PLATFORM: Record<"web" | "macos" | "windows", string> = {
 
 /** Web zip limits of the store. */
 const WEB_LIMITS = { zipBytes: 500 * 1024 * 1024, fileBytes: 200 * 1024 * 1024, files: 2000 };
-
-/** Games without a server run on the phone apps only (the store's standalone targets). */
-const STANDALONE_TARGETS: readonly string[] = ["ios", "android"];
 
 /** Engine support per bundle target, for the recovery text when a target is missing. */
 const TARGET_ENGINE_NOTE: Partial<Record<StoreTarget, string>> = {
@@ -106,8 +104,14 @@ export interface ExportGameResult {
   debug: boolean;
   engine: string;
   durationMs: number;
+  /**
+   * A game with a server whose summer.build.json declares other platforms than
+   * the bundle holds. Informational: the store targets the bundle's platforms.
+   */
+  targetPlatformChange?: TargetPlatformChange;
   /** Bundle format: the bundle manifest. */
-  bundle?: Omit<SummerBundle, "hostedBuild" | "files"> & { fileCount: number };
+  /** paths: every entry of the .zip, summer-bundle.json included (the fixed layout a release checklist compares). */
+  bundle?: Omit<SummerBundle, "hostedBuild" | "files"> & { fileCount: number; paths: string[] };
   /** Download format: the store versions platform id (web, macos-universal, windows-x64). */
   storePlatform?: string;
   /** Download format: files in the zip. */
@@ -425,7 +429,11 @@ async function runExport(
   }
 }
 
-/** Set the project's summer.build.json targetPlatforms to the export targets (a hosted game's Build declaration). */
+/**
+ * Set the project's summer.build.json targetPlatforms to the export targets,
+ * so the project's declaration names what was exported. The store targets the
+ * bundle's platforms either way.
+ */
 async function alignBuildDeclaration(project: string, targets: readonly string[]): Promise<void> {
   const path = join(project, "summer.build.json");
   if (!existsSync(path)) return;
@@ -533,23 +541,11 @@ export async function exportGame(
     );
   }
   const warnings: string[] = [...skippedWarnings, ...projectChangeWarnings(projectChanges)];
-  const mismatch = declarationMismatch(bundle);
-  if (mismatch) {
-    warnings.unshift(
-      `summer_publish_build will refuse this export (declaration_mismatch): ${mismatch}. Export again with alignDeclaration:true to set summer.build.json targetPlatforms to [${bundle.targetPlatforms.join(", ")}], or with targets equal to what it declares.`
-    );
-  }
+  const platformChange = targetPlatformChange(bundle);
   if (partial) {
     warnings.push(
       `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform. ` +
         ["Update Summer Engine and export them again.", ...missing.flatMap((target) => TARGET_ENGINE_NOTE[target] ?? [])].join(" ")
-    );
-  }
-  const desktopOnly = bundle.hosted ? [] : bundle.targetPlatforms.filter((target) => !STANDALONE_TARGETS.includes(target));
-  if (desktopOnly.length) {
-    warnings.push(
-      `This game has no server, and the store runs games without a server on iPhone and Android only: summer_publish_build will refuse ${desktopOnly.join(", ")}. ` +
-        'Export targets ["ios","android"] for the store build, and macOS or Windows as a download (format "download").'
     );
   }
   const { sha256, sizeBytes } = await hashFile(out);
@@ -572,7 +568,8 @@ export async function exportGame(
     debug,
     engine: binary,
     durationMs: deps.now().getTime() - started.getTime(),
-    bundle: { ...summary, fileCount: files.length },
+    bundle: { ...summary, fileCount: files.length, paths: [BUNDLE_MANIFEST, ...files.map((file) => file.path)].sort() },
+    ...(platformChange ? { targetPlatformChange: platformChange } : {}),
     ...(projectChanges.length ? { projectChanges } : {}),
     ...(warnings.length ? { warnings } : {}),
     next: "Upload it to the game's store listing with summer_publish_build (gameId, clientVersion).",

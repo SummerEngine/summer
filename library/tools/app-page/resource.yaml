@@ -1,0 +1,74 @@
+id: tool/app-page
+kind: tool
+version: 1.0.0
+summary: Read or use the fields and buttons an open Summer App declared (fill values, press actions).
+use_when:
+  - '"set the budget to 60 in the balance app"'
+  - reading what the person has selected in an open app
+do_not_use_when:
+  - "changing shared data with no app open: apps.write_data"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_page
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_page
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+    fill:
+      type: array
+      items:
+        type: object
+        properties:
+          field:
+            type: string
+            minLength: 1
+            maxLength: 200
+          value:
+            anyOf:
+              - type: string
+                maxLength: 10000
+              - type: number
+              - type: boolean
+        required:
+          - field
+          - value
+        additionalProperties: false
+      maxItems: 50
+      description: "Values to set: [{field, value}] with field ids from a read"
+    press:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: An action id to press after filling
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,0 +1,30 @@
+id: skill/publish-your-game
+kind: skill
+version: 1.0.0
+summary: "Publish a game on Summer Games over MCP: store page, art, build upload, go live."
+use_when:
+  - "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'"
+  - "taking a built Summer game to live: listing text, art, build upload, the release checklist and summer_go_live"
+  - "an agent publishes for the owner end to end and needs the order of the store.* operations"
+do_not_use_when:
+  - "only producing a local export build — skill/export-and-ship"
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+  modalities:
+    - docs
+related:
+  skills:
+    - skill/store-listing
+    - skill/store-art
+    - skill/grow-analytics
+    - skill/export-and-ship
+    - skill/release-checklist
+hosted_resource: "summer://skills/publish-your-game"
+source: official
+license: MIT
+status: stable
+recommended: false

@@ -1,6 +1,6 @@
 ---
 name: play
-description: "Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings."
+description: "Run the project in Summer Engine, wait briefly, then report a clean run, errors or warnings."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -111,3 +111,21 @@ Any Summer project with a main scene set in `project.godot`.
 ## See also
 
 - `debug` — what to do when /play surfaces an error
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_clear_console` | `summer engine clear-console` |
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_open_scene` | `summer engine open-scene` |
+| `summer_play` | `summer engine play` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

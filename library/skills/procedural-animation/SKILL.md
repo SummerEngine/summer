@@ -1,6 +1,6 @@
 ---
 name: procedural-animation
-description: "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation."
+description: "Runtime bone changes on top of clips: head look-at, foot IK, hand grabs a prop, lean, recoil."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -61,30 +61,34 @@ The most common NPC liveliness fix.
 ```gdscript
 func run(ctx):
     var skel = ctx.find("NPC").find_children("*", "Skeleton3D", true, false)[0]
-    var mod := ctx.look_at_modifier(skel, ctx.find("Player"), {
+    var mod = ctx.look_at_modifier(skel, ctx.find("Player"), {
         "bone_name": "Head", "forward_axis": 2, "primary_rotation_axis": 1,
         "use_secondary_rotation": true, "use_angle_limitation": true,
         "symmetry_limitation": true, "primary_limit_angle": 1.4, "secondary_limit_angle": 1.0,
     })
 ```
 
-Unknown prop names land in the `prop_warnings` report entry instead of failing silently — read it. On an older engine the helper is a plain script error; fall back to the structured ops:
+Unknown prop names land in the `prop_warnings` report entry instead of failing silently — read it. On an older engine the helper is a plain script error; fall back to plain GDScript in the same tool (confirm the bone names first with `summer_inspect_node`):
 
 ```
-summer_inspect_node "./World/NPC/Skeleton3D"   # confirm bone names
-summer_add_node parent="./World/NPC/Skeleton3D" type="LookAtModifier3D" name="HeadLookAt"
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="bone_name" value="Head"
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="forward_axis" value=2   # +Z forward (Meshy default)
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="primary_rotation_axis" value=1   # Y-up
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="use_secondary_rotation" value=true
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="use_angle_limitation" value=true    # OFF by default — nothing clamps until you set this
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="symmetry_limitation" value=true     # one angle drives both directions
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="primary_limit_angle" value=1.4      # ~80°, prevents the Exorcist
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="secondary_limit_angle" value=1.0
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var skel = ctx.find("NPC").find_children("*", "Skeleton3D", true, false)[0]
+    var look = LookAtModifier3D.new()
+    look.name = "HeadLookAt"
+    look.bone_name = "Head"
+    look.forward_axis = 2                 # +Z forward (Meshy default)
+    look.primary_rotation_axis = 1        # Y-up
+    look.use_secondary_rotation = true
+    look.use_angle_limitation = true      # OFF by default: nothing clamps until you set this
+    look.symmetry_limitation = true       # one angle drives both directions
+    look.primary_limit_angle = 1.4        # ~80 degrees, prevents the Exorcist
+    look.secondary_limit_angle = 1.0
+    skel.add_child(look)
+    ctx.set_owner_recursive(look)
+    ctx.save_scene()
+""")
 ```
-
-Every `summer_set_prop` above also needs the required `scenePath` (e.g.
-`scenePath="res://main.tscn"`); the paths are shown bare here for readability.
 
 There is no `symmetry_limit` and no `secondary_rotation_axis` property on
 `LookAtModifier3D` — the real names are the ones above, and the secondary
@@ -264,3 +268,21 @@ driving them. Foot raycasts can be set up visually with a RayCast3D child.
 - Upstream API reference matching the current Summer technical base:
   `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`,
   `PhysicalBoneSimulator3D`.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

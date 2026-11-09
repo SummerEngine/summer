@@ -1,9 +1,11 @@
-import { existsSync, readFileSync } from "fs";
+import { accessSync, constants as fsConstants, existsSync, readFileSync, statSync, type Stats } from "fs";
 import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { Document, isMap, parseDocument } from "yaml";
 import { PACKAGE_ROOT } from "../core/package-root.js";
+import { SetupError } from "./setup-error.js";
+import type { Profile } from "../core/tool-profiles.js";
 import {
   agentAliasMap,
   agentSpec,
@@ -32,9 +34,15 @@ export interface AgentConfigOptions {
   dryRun?: boolean;
   print?: boolean;
   localDev?: boolean;
-  /** npm dist-tag the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
+  /** npm dist-tag or exact version the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
    *  Default "latest"; "next" while a release soaks on the next tag. Ignored with localDev. */
   channel?: string;
+  /** MCP tool profile written as SUMMER_PROFILE; default the agent's own (full for most). */
+  profile?: Profile;
+  /** A bundled Node runtime and summer-engine package (the Summer desktop installer):
+   *  the entry runs `<node> <packageDir>/dist/bin/summer.js mcp` instead of npx.
+   *  Check it with resolveBundledRuntime first. Ignores localDev and channel. */
+  runtime?: BundledRuntime;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }
@@ -52,8 +60,13 @@ export interface AgentConfigResult {
   dryRun: boolean;
   print: boolean;
   localDev: boolean;
-  /** The dist-tag the written entry runs ("latest" unless --channel / SUMMER_CHANNEL). */
+  /** The dist-tag or exact version the written entry runs ("latest" unless --channel /
+   *  SUMMER_CHANNEL, or a CLI ahead of npm latest: see resolveDefaultChannel). */
   channel: string;
+  /** The MCP tool profile the entry runs (full = every tool, no SUMMER_PROFILE written). */
+  profile: Profile;
+  /** Set when the entry runs a bundled Node runtime (--runtime, --package-dir). */
+  runtime: BundledRuntime | null;
   warnings: string[];
   nextSteps: string[];
 }
@@ -84,9 +97,14 @@ export function resolveAgentSelection(
     throw new Error("Specify the agent either positionally or with --agent, not both.");
   }
 
-  const parsed = parseAgent(agentOpt ?? agentArg);
+  const name = agentOpt ?? agentArg;
+  const parsed = parseAgent(name);
   if (!parsed) {
-    throw new Error(`Specify an agent: ${supportedAgents.join(", ")}`);
+    throw new Error(
+      name
+        ? `Unknown agent "${name}". Supported: ${supportedAgents.join(", ")}`
+        : `Specify an agent: ${supportedAgents.join(", ")}`
+    );
   }
 
   return parsed;
@@ -107,9 +125,19 @@ export async function configureAgentMcp(
   const env = options.env ?? process.env;
   const cwd = resolve(options.cwd ?? process.cwd());
   const channel = normalizeChannel(options.channel);
-  const server = createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel);
   const spec = agentSpec(options.agent);
+  const profile = options.profile ?? spec.mcpProfile ?? "full";
+  const runtime = options.runtime ?? null;
+  const server = withProfile(
+    runtime ? bundledRuntimeServerConfig(runtime) : createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel),
+    profile
+  );
   const target = resolveConfigTarget(spec, options.scope, cwd, env);
+  // An entry an earlier setup wrote where the agent no longer reads (Devin Desktop moved from ~/.codeium/windsurf).
+  const moved = spec.mcp.movedFrom ? spec.mcp.movedFrom(defaultPathContext(env, cwd)) : null;
+  if (moved && moved !== target.path && (await readTextFileIfExists(moved)).includes(`"${SUMMER_MCP_SERVER_NAME}"`)) {
+    target.warnings.push(`${moved} still lists ${SUMMER_MCP_SERVER_NAME} from an earlier setup. ${spec.label} now reads ${target.path}, so setup writes it there; the old entry stays for older builds.`);
+  }
   const snippet = renderConfigSnippet(options.agent, server);
   const dryRun = Boolean(options.dryRun);
   const print = Boolean(options.print);
@@ -131,8 +159,10 @@ export async function configureAgentMcp(
     wrote: shouldWrite && update.changed,
     dryRun,
     print,
-    localDev: Boolean(options.localDev),
+    localDev: !runtime && Boolean(options.localDev),
     channel,
+    profile,
+    runtime,
     warnings: target.warnings,
     nextSteps: [`Updated ${target.path}.`, spec.restart],
   };
@@ -344,17 +374,28 @@ async function upsertConfig(
 export const DEFAULT_CHANNEL = "latest";
 
 /** npm dist-tags are lowercase words like `latest`, `next`, `beta`, `v3-preview`;
- *  anything that could be read as a version or a path is refused (a bare
- *  version belongs in a version bump, not a channel). */
+ *  an exact version (`3.9.1`, `3.9.1-rc.1`) pins the entry to that release, which
+ *  setup does for a CLI that is ahead of npm latest. Anything else, partial
+ *  versions and paths included, is refused. */
 export function normalizeChannel(channel: string | undefined): string {
   const value = (channel ?? "").trim();
   if (value === "") return DEFAULT_CHANNEL;
+  if (/^\d+\.\d+\.\d+(?:-[0-9a-z][0-9a-z.-]*)?$/.test(value)) return value;
   if (!/^[a-z][a-z0-9-]*$/.test(value) || /^v?\d/.test(value)) {
     throw new Error(
-      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens).`
+      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens), or an exact version such as 4.0.0.`
     );
   }
   return value;
+}
+
+/**
+ * The profile rides in the entry's env, not its args: an older summer-engine
+ * that an agent still runs ignores the variable and serves every tool, where
+ * an unknown --profile flag would stop it from starting.
+ */
+export function withProfile(server: StdioMcpServerConfig, profile: Profile): StdioMcpServerConfig {
+  return profile === "full" ? server : { ...server, env: { ...server.env, SUMMER_PROFILE: profile } };
 }
 
 export function createSummerMcpServerConfig(
@@ -386,6 +427,76 @@ export function createSummerMcpServerConfig(
     command: "npx",
     args: ["-y", spec, "mcp"],
   };
+}
+
+/**
+ * A Node runtime and a summer-engine package shipped next to each other (the
+ * Summer desktop installer bundles both, so the person needs no Node.js of
+ * their own). Both are absolute paths.
+ */
+export interface BundledRuntime {
+  /** The node executable (node, or node.exe on Windows). */
+  node: string;
+  /** The summer-engine package folder: the one with package.json and dist/bin/summer.js. */
+  packageDir: string;
+}
+
+/** The CLI entry point inside a summer-engine package folder. */
+export function bundledCliPath(packageDir: string): string {
+  return join(packageDir, "dist", "bin", "summer.js");
+}
+
+/**
+ * --runtime <node> and --package-dir <dir>: both or neither, and both must
+ * exist. The runtime must be an executable file (any file on Windows); the
+ * package folder must hold summer-engine's package.json and its built CLI.
+ * Returns absolute paths, so the agent's entry works from any folder.
+ */
+export function resolveBundledRuntime(node: string | undefined, packageDir: string | undefined, cwd: string = process.cwd()): BundledRuntime | null {
+  if (node === undefined && packageDir === undefined) return null;
+  if (!node || !packageDir) {
+    throw new SetupError("runtime_incomplete", "--runtime and --package-dir go together: name the node executable and the summer-engine package folder.");
+  }
+  const nodePath = resolve(cwd, node);
+  const nodeStat = statIfExists(nodePath);
+  if (!nodeStat) throw new SetupError("runtime_not_found", `--runtime ${nodePath} does not exist.`);
+  if (!nodeStat.isFile()) throw new SetupError("runtime_not_found", `--runtime ${nodePath} is not a file. Name the node executable itself.`);
+  if (process.platform !== "win32") {
+    try {
+      accessSync(nodePath, fsConstants.X_OK);
+    } catch {
+      throw new SetupError("runtime_not_executable", `--runtime ${nodePath} is not executable.`);
+    }
+  }
+  const dir = resolve(cwd, packageDir);
+  if (!statIfExists(dir)?.isDirectory()) throw new SetupError("package_dir_not_found", `--package-dir ${dir} is not a folder.`);
+  let name: unknown;
+  try {
+    name = (JSON.parse(readFileSync(join(dir, "package.json"), "utf-8")) as { name?: unknown }).name;
+  } catch {
+    name = undefined;
+  }
+  if (name !== "summer-engine") {
+    throw new SetupError("package_dir_invalid", `--package-dir ${dir} is not the summer-engine package: it has no package.json named summer-engine.`);
+  }
+  if (!statIfExists(bundledCliPath(dir))?.isFile()) {
+    throw new SetupError("package_dir_invalid", `--package-dir ${dir} has no built CLI at dist/bin/summer.js.`);
+  }
+  return { node: nodePath, packageDir: dir };
+}
+
+/** The entry for a bundled runtime: `<node> <packageDir>/dist/bin/summer.js mcp`.
+ *  node is a real executable, so no cmd.exe wrapper is needed on Windows. */
+export function bundledRuntimeServerConfig(runtime: BundledRuntime): StdioMcpServerConfig {
+  return { command: runtime.node, args: [bundledCliPath(runtime.packageDir), "mcp"] };
+}
+
+function statIfExists(path: string): Stats | null {
+  try {
+    return statSync(path);
+  } catch {
+    return null;
+  }
 }
 
 export function renderConfigSnippet(
@@ -546,14 +657,14 @@ async function upsertYamlConfig(
   // would make the root a flow mapping and the whole file would render as {}.
   const doc = current.trim() === "" ? new Document({}) : parseDocument(current);
   if (doc.errors.length > 0) {
-    throw new Error(`Could not parse YAML in ${path}: ${doc.errors[0].message}`);
+    throw new SetupError("config_invalid", `Could not parse YAML in ${path}: ${doc.errors[0].message}`);
   }
   if (!isMap(doc.contents)) {
-    throw new Error(`Expected ${path} to contain a YAML mapping.`);
+    throw new SetupError("config_invalid", `Expected ${path} to contain a YAML mapping.`);
   }
   const parent = doc.getIn(keyPath.slice(0, -1));
   if (parent !== undefined && parent !== null && !isMap(parent)) {
-    throw new Error(`Existing ${keyPath[0]} value in ${path} must be a mapping.`);
+    throw new SetupError("config_invalid", `Existing ${keyPath[0]} value in ${path} must be a mapping.`);
   }
   doc.setIn(keyPath, doc.createNode(entry));
   const next = doc.toString();
@@ -573,7 +684,7 @@ async function readJsonConfig(path: string): Promise<JsonObject> {
   try {
     content = await readFile(path, "utf-8");
   } catch (error) {
-    throw new Error(`Could not read ${path}: ${formatError(error)}`);
+    throw new SetupError("config_unreadable", `Could not read ${path}: ${formatError(error)}`);
   }
 
   if (content.trim() === "") return {};
@@ -582,11 +693,11 @@ async function readJsonConfig(path: string): Promise<JsonObject> {
   try {
     parsed = JSON.parse(content);
   } catch (error) {
-    throw new Error(`Could not parse JSON in ${path}: ${formatError(error)}`);
+    throw new SetupError("config_invalid", `Could not parse JSON in ${path}: ${formatError(error)}`);
   }
 
   if (!isJsonObject(parsed)) {
-    throw new Error(`Expected ${path} to contain a JSON object.`);
+    throw new SetupError("config_invalid", `Expected ${path} to contain a JSON object.`);
   }
 
   return parsed;
@@ -786,7 +897,7 @@ async function readTextFileIfExists(path: string): Promise<string> {
   try {
     return await readFile(path, "utf-8");
   } catch (error) {
-    throw new Error(`Could not read ${path}: ${formatError(error)}`);
+    throw new SetupError("config_unreadable", `Could not read ${path}: ${formatError(error)}`);
   }
 }
 
@@ -860,7 +971,7 @@ function mergeNamedObject(
   label: string
 ): Record<string, unknown> {
   if (value !== undefined && !isJsonObject(value)) {
-    throw new Error(`Existing ${label} value must be a JSON object.`);
+    throw new SetupError("config_invalid", `Existing ${label} value must be a JSON object.`);
   }
 
   return {

@@ -21,6 +21,10 @@
 
 queries:
   # ── 2D assets ──────────────────────────────────────────────────────────
+  - query: "make me a cozy 2D village game where I can walk into the houses"
+    expected: [skill/painted-25d-world]
+  - query: "I want a top-down 2.5D RPG that looks hand painted"
+    expected: [skill/painted-25d-world]
   - query: "draw a portrait of my wizard for the dialogue box"
     expected: [skill/character-portrait]
   - query: "show me a few different art styles for the main character before we commit"
@@ -89,6 +93,17 @@ queries:
     expected: [skill/sound-effect, tool/generate-sfx-choices]
   - query: "I approved the sounds I liked in Studio, use them"
     expected: [tool/get-choices]
+  # ── Summer Apps (team tools inside Summer Studio) ─────────────────────
+  - query: "build us a loot balance tool for res://data/items.json that the whole team can use"
+    expected: [skill/summer-apps, tool/app-create]
+  - query: "make an app in Studio to track every creature from concept to in-engine"
+    expected: [skill/summer-apps]
+  - query: "nerf the bow in our balance sheet app"
+    expected: [tool/app-data]
+  - query: "how should the team tool look so it is on brand"
+    expected: [skill/summer-apps-design]
+  - query: "dock the quest editor app next to my scene in the editor"
+    expected: [tool/app-dock]
 
   # ── Gameplay & design ──────────────────────────────────────────────────
   - query: "add a grappling hook"
@@ -101,6 +116,10 @@ queries:
     expected: [skill/auto-fire-targeting]
   - query: "turn this concept art into a playable level"
     expected: [skill/scene-to-level]
+  - query: "polish our 3D arena map to shipping quality, it should match the concept art"
+    expected: [skill/concept-to-level]
+  - query: "what should I ask before we start building out this level's art"
+    expected: [skill/concept-to-level]
 
   - query: "add a shop where players can buy a skin for Sparks"
     expected: [skill/in-game-purchases]
@@ -121,6 +140,20 @@ queries:
   - query: "the game looks flat and grey in the browser preview"
     expected: [skill/web-compatibility-look]
 
+  # ── Summer API and Summer Router ───────────────────────────────────────
+  - query: "generate 10 game assets for my fantasy RPG with the Summer API"
+    expected: [skill/summer-api]
+  - query: "how much will 50 props cost with the summer api, then run them all as a batch"
+    expected: [skill/summer-api, tool/api-batch]
+  - query: "add a talking shopkeeper NPC players can chat with in my multiplayer game"
+    expected: [skill/summer-router]
+  - query: "my guard should answer what the player types and open the gate when convinced"
+    expected: [skill/summer-router]
+  # ── Summer Board ───────────────────────────────────────────────────────
+  - query: "join my teammate's board and put 10 character concepts on it"
+    expected: [skill/summer-board]
+  - query: "what is everyone working on, coordinate with Marcus's agent on the board"
+    expected: [skill/summer-board]
   # ── Gameplay systems ───────────────────────────────────────────────────
   - query: "add a save and load system"
     expected: [skill/save-load]
@@ -217,6 +250,18 @@ queries:
   # ── Project lifecycle ──────────────────────────────────────────────────
   - query: "publish my game"
     expected: [skill/publish-your-game, skill/export-and-ship]
+  - query: "is my game ready to go live on summer.games, what is missing from my store page"
+    expected: [skill/release-checklist]
+  - query: "fill in the age rating questionnaire and the AI disclosure for my store page"
+    expected: [tool/store-set-details, skill/release-checklist]
+  - query: "make my uploaded game live for players now"
+    expected: [tool/go-live, skill/publish-your-game]
+  - query: "get my game ready to launch"
+    expected: [skill/launch-ready]
+  - query: "make my store page"
+    expected: [skill/launch-ready, skill/store-listing, skill/store-art]
+  - query: "publish my game to summer.games"
+    expected: [skill/launch-ready, skill/publish-your-game]
   - query: "export a windows build I can send to my friend"
     expected: [skill/export-and-ship]
   - query: "test the game on my phone"
@@ -248,8 +293,14 @@ queries:
     expected: [skill/cinematic-cutscene]
   - query: "I need trailer footage for my Steam page"
     expected: [skill/trailer-shot]
+  - query: "make a TikTok of my game's new boss fight"
+    expected: [skill/make-content]
+  - query: "cut a short clip of the game for Reels and Shorts with captions"
+    expected: [skill/make-content]
   - query: "animated looping background for the splash screen"
     expected: [skill/animated-loop]
+  - query: "I don't have the MCP tools, how do I run Summer commands from the terminal"
+    expected: [skill/summer-cli]
 
   # ── Tool intent (engine/editor actions a single tool performs) ─────────
   - query: "take a screenshot of the running game"
@@ -365,3 +416,6 @@ queries:
     expected: [tool/open]
   - query: "select the Player node in the editor so I can see it"
     expected: [tool/open]
+
+  - query: "download this game’s .pck so I can remix it"
+    expected: [tool/games-download-remix]

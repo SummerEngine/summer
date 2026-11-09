@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { allAgentSpecs } from "./agent-table.js";
@@ -11,9 +11,14 @@ import {
   createSummerMcpServerConfig,
   normalizeChannel,
   parseAgent,
+  resolveAgentSelection,
+  resolveBundledRuntime,
   resolvePackageRoot,
   topLevelKey,
 } from "./agent-config.js";
+import { readRecordedMcpServer } from "./version-check.js";
+import { SetupError } from "./setup-error.js";
+import { chmodSync } from "fs";
 
 const tmpDirs: string[] = [];
 
@@ -79,11 +84,14 @@ describe("createSummerMcpServerConfig", () => {
     expect(createSummerMcpServerConfig(false, "win32", "next").args).toEqual(["/c", "npx", "-y", "summer-engine@next", "mcp"]);
   });
 
-  it("blank channel means latest; versions, paths and shouting are refused", () => {
+  it("blank channel means latest; exact versions pin; partial versions, paths and shouting are refused", () => {
     expect(normalizeChannel(undefined)).toBe("latest");
     expect(normalizeChannel("  ")).toBe("latest");
     expect(normalizeChannel("beta")).toBe("beta");
-    for (const bad of ["3.0.0", "v3", "Next", "../x", "next mcp", "@next"]) {
+    expect(normalizeChannel("3.9.1")).toBe("3.9.1");
+    expect(normalizeChannel("3.9.1-rc.1")).toBe("3.9.1-rc.1");
+    expect(createSummerMcpServerConfig(false, "darwin", "3.9.1").args).toEqual(["-y", "summer-engine@3.9.1", "mcp"]);
+    for (const bad of ["3.0", "v3", "v3.0.0", "Next", "../x", "next mcp", "@next", "3.0.0 mcp"]) {
       expect(() => normalizeChannel(bad)).toThrow(/Invalid channel/);
     }
   });
@@ -346,6 +354,39 @@ describe("configureAgentMcp", () => {
     expect(written.servers["summer-engine"].type).toBe("stdio");
     expect(written.servers["summer-engine"].command).toBe("npx");
     expect(written.servers["summer-engine"].args).toEqual(NPX_ARGS);
+    // VS Code Copilot takes at most 128 tools per request: the engine profile fits.
+    expect(written.servers["summer-engine"].env).toEqual({ SUMMER_PROFILE: "engine" });
+    expect(result.profile).toBe("engine");
+  });
+
+  it("writes the profile into the entry's env, and nothing for the full profile", async () => {
+    const dir = tmp();
+    const vscode = join(dir, "mcp.json");
+    const full = await configureAgentMcp({
+      agent: "vscode-copilot",
+      scope: "user",
+      profile: "full",
+      env: { SUMMER_VSCODE_COPILOT_CONFIG_FILE: vscode } as NodeJS.ProcessEnv,
+    });
+    expect(full.profile).toBe("full");
+    expect(JSON.parse(readFileSync(vscode, "utf-8")).servers["summer-engine"]).not.toHaveProperty("env");
+
+    const claude = join(dir, ".claude.json");
+    await configureAgentMcp({
+      agent: "claude-code",
+      scope: "user",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: claude } as NodeJS.ProcessEnv,
+    });
+    expect(JSON.parse(readFileSync(claude, "utf-8")).mcpServers["summer-engine"]).not.toHaveProperty("env");
+
+    const assets = await configureAgentMcp({
+      agent: "claude-code",
+      scope: "user",
+      profile: "assets",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: claude } as NodeJS.ProcessEnv,
+    });
+    expect(assets.changed).toBe(true);
+    expect(JSON.parse(readFileSync(claude, "utf-8")).mcpServers["summer-engine"].env).toEqual({ SUMMER_PROFILE: "assets" });
   });
 
   it("writes a fresh opencode config with the array-shaped command", async () => {
@@ -588,5 +629,125 @@ describe("configureSummerGamesMcp", () => {
     });
     expect(result).toBeNull();
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe("resolveAgentSelection", () => {
+  it("names an unknown agent instead of only asking for one", () => {
+    expect(() => resolveAgentSelection("notanagent", undefined)).toThrow(/^Unknown agent "notanagent"\. Supported: .*claude-code/);
+    expect(() => resolveAgentSelection(undefined, undefined)).toThrow(/^Specify an agent: /);
+    expect(resolveAgentSelection("claude", undefined)).toBe("claude-code");
+  });
+});
+
+describe("Devin Desktop moved its MCP config to ~/.config/devin", () => {
+  it("writes the new file and names an entry an earlier setup left in ~/.codeium/windsurf", async () => {
+    const home = tmp();
+    const oldFile = join(home, ".codeium", "windsurf", "mcp_config.json");
+    mkdirSync(dirname(oldFile), { recursive: true });
+    writeFileSync(oldFile, JSON.stringify({ mcpServers: { "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] } } }));
+    const previousHome = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const env = { XDG_CONFIG_HOME: join(home, "xdg") } as NodeJS.ProcessEnv;
+      const result = await configureAgentMcp({ agent: "windsurf", scope: "user", env });
+      expect(result.path).toBe(join(home, "xdg", "devin", "mcp_config.json"));
+      expect(JSON.parse(readFileSync(result.path, "utf-8")).mcpServers["summer-engine"]).toBeDefined();
+      expect(result.warnings).toEqual([expect.stringContaining(`${oldFile} still lists summer-engine`)]);
+      expect(readFileSync(oldFile, "utf-8")).toContain("summer-engine");
+    } finally {
+      process.env.HOME = previousHome;
+    }
+  });
+});
+
+describe("a bundled runtime (--runtime, --package-dir)", () => {
+  /** A node file and a summer-engine package folder, as the desktop installer ships them. */
+  function bundle(): { root: string; node: string; packageDir: string; cli: string } {
+    const dir = tmp();
+    const node = join(dir, "runtime", "bin", process.platform === "win32" ? "node.exe" : "node");
+    const packageDir = join(dir, "Summer Support", "summer-engine");
+    const cli = join(packageDir, "dist", "bin", "summer.js");
+    mkdirSync(dirname(node), { recursive: true });
+    writeFileSync(node, "");
+    chmodSync(node, 0o755);
+    mkdirSync(dirname(cli), { recursive: true });
+    writeFileSync(join(packageDir, "package.json"), JSON.stringify({ name: "summer-engine", version: "4.5.0" }));
+    writeFileSync(cli, "");
+    return { root: dir, node, packageDir, cli };
+  }
+
+  it("writes <node> <package>/dist/bin/summer.js mcp in every agent's file format", async () => {
+    const { node, packageDir, cli } = bundle();
+    const runtime = resolveBundledRuntime(node, packageDir)!;
+    for (const spec of allAgentSpecs()) {
+      const path = join(tmp(), `${spec.id}-config`);
+      const result = await configureAgentMcp({
+        agent: spec.id,
+        scope: "user",
+        runtime,
+        env: { [spec.envOverride]: path } as NodeJS.ProcessEnv,
+      });
+      expect(result.runtime, spec.id).toEqual({ node, packageDir });
+      expect(result.localDev, spec.id).toBe(false);
+      expect(readRecordedMcpServer(readFileSync(path, "utf-8"), spec.format), spec.id).toEqual({
+        command: node,
+        args: [cli, "mcp"],
+      });
+    }
+  });
+
+  it("keeps the agent's profile in the entry's env", async () => {
+    const { node, packageDir } = bundle();
+    const path = join(tmp(), "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "vscode-copilot",
+      scope: "user",
+      runtime: resolveBundledRuntime(node, packageDir)!,
+      env: { SUMMER_VSCODE_COPILOT_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.server).toMatchObject({ command: node, env: { SUMMER_PROFILE: "engine" } });
+  });
+
+  it("resolves relative paths to absolute ones", () => {
+    const { root, node, packageDir } = bundle();
+    const relativeNode = join("runtime", "bin", node.split(/[\\/]/).pop()!);
+    expect(resolveBundledRuntime(relativeNode, join("Summer Support", "summer-engine"), root)).toEqual({ node, packageDir });
+    expect(resolveBundledRuntime(undefined, undefined)).toBeNull();
+  });
+
+  it("refuses a missing or wrong runtime or package folder, with a code", () => {
+    const { node, packageDir } = bundle();
+    const code = (run: () => unknown) => {
+      try {
+        run();
+      } catch (error) {
+        return error instanceof SetupError ? error.code : "not-a-setup-error";
+      }
+      return "no-error";
+    };
+    expect(code(() => resolveBundledRuntime(node, undefined))).toBe("runtime_incomplete");
+    expect(code(() => resolveBundledRuntime(undefined, packageDir))).toBe("runtime_incomplete");
+    expect(code(() => resolveBundledRuntime(join(dirname(node), "missing"), packageDir))).toBe("runtime_not_found");
+    expect(code(() => resolveBundledRuntime(dirname(node), packageDir))).toBe("runtime_not_found");
+    if (process.platform !== "win32") {
+      chmodSync(node, 0o644);
+      expect(code(() => resolveBundledRuntime(node, packageDir))).toBe("runtime_not_executable");
+      chmodSync(node, 0o755);
+    }
+    expect(code(() => resolveBundledRuntime(node, join(packageDir, "missing")))).toBe("package_dir_not_found");
+    expect(code(() => resolveBundledRuntime(node, dirname(packageDir)))).toBe("package_dir_invalid");
+    rmSync(join(packageDir, "dist"), { recursive: true });
+    expect(code(() => resolveBundledRuntime(node, packageDir))).toBe("package_dir_invalid");
+  });
+});
+
+describe("config errors carry a code", () => {
+  it("an unparsable file is config_invalid", async () => {
+    const path = join(tmp(), ".claude.json");
+    writeFileSync(path, "{ not json");
+    await expect(
+      configureAgentMcp({ agent: "claude-code", scope: "user", env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv })
+    ).rejects.toMatchObject({ code: "config_invalid", message: expect.stringContaining("Could not parse JSON") });
   });
 });

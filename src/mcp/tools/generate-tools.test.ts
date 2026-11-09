@@ -368,7 +368,8 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.error).toBe(true);
+    expect(body).toMatchObject({ ok: false, code: "not_signed_in" });
+    expect(body.recovery).toMatch(/summer-engine@latest login --force/);
     // Server message is preserved (and the raw response is spread in too).
     expect(body.message).toMatch(/Auth token expired/);
   });
@@ -394,8 +395,54 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.error).toBe(true);
+    expect(body).toMatchObject({ ok: false, code: "no_credits" });
+    expect(body.recovery).toContain("/studio/credits");
     expect(body.message).toMatch(/Insufficient credits/);
+  });
+
+  it("names the real network cause with code unavailable", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("fetch failed", { cause: new Error("connect ECONNREFUSED 127.0.0.1:443") });
+    }) as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_motion").handler({
+      rigAssetId: "rig_123",
+      backend: "meshy-library",
+      motionName: "walk",
+      wait: false,
+    });
+
+    expect(result.isError).toBe(true);
+    const body = parseResult(result);
+    expect(body).toMatchObject({ ok: false, code: "unavailable", details: { cause: "connect ECONNREFUSED 127.0.0.1:443" } });
+    expect(body.error).toContain("ECONNREFUSED 127.0.0.1:443");
+  });
+});
+
+describe("registerGenerateTools — not signed in", () => {
+  it("answers every generation and job tool with the same not_signed_in shape, sending nothing", async () => {
+    const { getAuthToken } = await import("../../core/auth.js");
+    vi.mocked(getAuthToken).mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as any;
+    try {
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const bodies = [
+        parseResult(await getTool(tools, "summer_generate_image").handler({ prompt: "a tree" })),
+        parseResult(await getTool(tools, "summer_check_job").handler({ jobId: "job_1" })),
+        parseResult(await getTool(tools, "summer_generate_3d").handler({ prompt: "a crate", wait: false })),
+      ];
+      for (const body of bodies) {
+        expect(body).toMatchObject({ ok: false, code: "not_signed_in", error: "Not signed in to Summer." });
+        expect(body.recovery).toContain("npx -y summer-engine@latest login");
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.mocked(getAuthToken).mockResolvedValue("test-token");
+    }
   });
 });
 
@@ -720,6 +767,29 @@ describe("summer_generate_motion across MCP and CLI", () => {
       expect(JSON.parse(init.body as string)).toEqual({ rigAssetId: "rig_123", backend: "meshy-library", motionName: "walk" });
     });
   }
+
+  it("3D and motion return the jobId at once by default on both faces, like the hosted tools", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ jobId: "job_now" }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const gen3d = getTool(tools, "summer_generate_3d");
+    const motion = getTool(tools, "summer_generate_motion");
+
+    const results = [
+      parseResult(await gen3d.handler(z.object(gen3d.schema).parse({ prompt: "a crate" }))),
+      parseResult(await motion.handler(z.object(motion.schema).parse({ rigAssetId: "rig_123", motionName: "walk" }))),
+      (await dispatchTool("generate-3d", { prompt: "a crate" }, noEngine)) as Record<string, unknown>,
+      (await dispatchTool("generate-motion", { rigAssetId: "rig_123", motionName: "walk" }, noEngine)) as Record<string, unknown>,
+    ];
+    for (const result of results) {
+      expect(result.jobId).toBe("job_now");
+      expect(String(result.next)).toMatch(/check[-_]job/);
+    }
+    // One POST per call, never a poll of /api/mcp/jobs/.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    for (const [url] of fetchMock.mock.calls as unknown as [string][]) expect(url).not.toContain("/api/mcp/jobs/");
+  });
 
   it("cli rejects meshy-library without motionName and text-to-motion without a prompt before contacting the gateway", async () => {
     await expect(dispatchTool("generate-motion", { rigAssetId: "rig_123", wait: false }, noEngine)).rejects.toThrow(

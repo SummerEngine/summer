@@ -84,7 +84,7 @@ describe("exportGame targets (store bundle)", () => {
     expect(presets).toContain("platforms/ios=true\nplatforms/android=true\nplatforms/web=false");
   });
 
-  it("says when the engine left a target out and warns on desktop targets for a game without a server", async () => {
+  it("says when the engine left a target out, and exports desktop targets for a game without a server without a warning", async () => {
     await writeSummerBundle(process.env.FAKE_BUNDLE!, { targetPlatforms: ["ios"] });
     // Some asked targets made it: the bundle is kept, and the missing one is named.
     const partial = await exportGame({ project, targets: ["ios", "android"] }, deps());
@@ -95,9 +95,10 @@ describe("exportGame targets (store bundle)", () => {
     expect(error.code).toBe("export_target_unsupported");
     expect(error.recovery).toContain("newer than 0.7.0");
 
-    await writeSummerBundle(process.env.FAKE_BUNDLE!, { targetPlatforms: ["macos"] });
-    const result = await exportGame({ project, targets: ["macos"] }, deps());
-    expect(result.warnings?.[0]).toContain("summer_publish_build will refuse macos");
+    await writeSummerBundle(process.env.FAKE_BUNDLE!, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["macos", "windows"] });
+    const result = await exportGame({ project, targets: ["macos", "windows"] }, deps());
+    expect(result).toMatchObject({ ok: true, bundle: { hosted: false, targetPlatforms: ["macos", "windows"] } });
+    expect(result.warnings).toBeUndefined();
   });
 
   it("refuses web in a bundle, several download targets, and targets with a preset", async () => {
@@ -109,6 +110,7 @@ describe("exportGame targets (store bundle)", () => {
   });
 });
 
+// Builds and zips an app bundle and an exe on disk: slow on a busy machine.
 describe("exportGame download format", () => {
   it("names the template to fetch when it is missing", async () => {
     const error = await failure(exportGame({ project, targets: ["web"] }, deps()));
@@ -159,4 +161,4 @@ describe("exportGame download format", () => {
     expect(entries.map((entry) => entry.name)).toEqual(["star-weavers.exe"]);
     expect(await readFile(join(project, "export_presets.cfg"), "utf8")).toContain("binary_format/embed_pck=true");
   });
-});
+}, 60_000);

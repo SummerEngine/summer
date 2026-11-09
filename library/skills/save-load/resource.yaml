@@ -1,7 +1,7 @@
 id: skill/save-load
 kind: skill
 version: 1.0.0
-summary: "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks."
+summary: "Save and load game state: user:// paths, JSON progress vs ConfigFile settings, versioned saves, autosave."
 use_when:
   - persisting progress, settings, high scores, checkpoints, or save slots
   - deciding between JSON and ConfigFile for a save or settings file

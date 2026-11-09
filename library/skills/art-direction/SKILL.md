@@ -1,6 +1,6 @@
 ---
 name: art-direction
-description: "Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md."
+description: "Define the game's visual style (palette, mood, lighting, post) as an art bible in .summer/art-bible.md."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
@@ -185,7 +185,7 @@ If a `WorldEnvironment` node is in the main scene, set its environment defaults 
 
 ```
 summer_inspect_node(path="./World/WorldEnvironment")
-summer_set_prop(path="./World/WorldEnvironment/...", key="...", value="...")
+summer_set_prop(scenePath="res://main.tscn", path="./World/WorldEnvironment/...", key="...", value="...")
 ```
 
 Ask before each:
@@ -247,7 +247,7 @@ End with:
 > - `/audio-direction` to define the sonic identity that pairs with this look.
 > - `/game-feel` to design particle / hit-feedback styles within the palette.
 > - Open the project's `WorldEnvironment` node and dial in the lighting plan.
-> - Or generate first-pass concept assets via `summer_generate_image` using the palette + mood as the prompt prefix.
+> - Or generate first-pass concept assets via `assets.generate_image` using the palette + mood as the prompt prefix.
 
 ## Common mistakes
 
@@ -277,3 +277,17 @@ No template — this is a workflow that produces the bible the rest of the proje
 - `brainstorm-game` — produces the brief that anchors the bible
 - `audio-direction` — the sonic counterpart
 - `3d-lighting` — implements the lighting plan and the environment's glow, tonemap and SSAO settings
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_image` | `summer assets generate-image` |
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_set_prop` | `summer engine set-prop` |
+<!-- /shell-commands -->

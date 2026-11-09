@@ -30,3 +30,4 @@ source: official
 license: MIT
 status: preview
 recommended: false
+bundled: false

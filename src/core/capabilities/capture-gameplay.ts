@@ -768,6 +768,6 @@ export async function captureGameplay(
     ...(imported && importReason ? { importReason } : {}),
     durationMs: deps.now().getTime() - started.getTime(),
     ...(warnings.length ? { warnings } : {}),
-    next: "Look at each frame before using it. For the store: upload with summer_upload_image_begin/complete and set them as desktop.screenshots or mobile.screenshots (summer_store_set_art). The game's own HUD may show; add no captions, logos or overlays.",
+    next: "Look at each frame before using it. For the store: upload with assets.upload_begin and assets.upload_complete and set them as desktop.screenshots or mobile.screenshots (store.set_art). The game's own HUD may show; add no captions, logos or overlays.",
   };
 }

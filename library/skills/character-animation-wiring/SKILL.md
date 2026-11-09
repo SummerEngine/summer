@@ -1,6 +1,6 @@
 ---
 name: character-animation-wiring
-description: "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion."
+description: "Wire a rigged character end to end: real clips and bones, locomotion states, method tracks, root motion."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -11,7 +11,7 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.glb"]
 
 # Character Animation Wiring — Rigged GLB to Living Character
 
-The game-critical path: a rigged, animated character lands in the scene — from `summer_generate_3d({options:{rig:true}})` + `summer_generate_motion`, or an imported GLB — and nothing moves yet. This skill wires it end to end: inspect what actually arrived, build locomotion, fire gameplay events off animation frames, add poses and head tracking, key the face, and handle root motion. Then **prove it in a playtest** — a wired tree that was never played is a claim, not a result.
+The game-critical path: a rigged, animated character lands in the scene — from `assets.generate_3d({ ..., rig: true })` + `assets.generate_motion`, or an imported GLB — and nothing moves yet. This skill wires it end to end: inspect what actually arrived, build locomotion, fire gameplay events off animation frames, add poses and head tracking, key the face, and handle root motion. Then **prove it in a playtest** — a wired tree that was never played is a claim, not a result.
 
 Two lanes throughout:
 
@@ -85,7 +85,7 @@ Read the reports. Every later step quotes these exact strings. If the clip list 
 ```gdscript
 func run(ctx):
     var character = ctx.find("Goblin")
-    var tree := ctx.anim_state_machine(character, {
+    var tree = ctx.anim_state_machine(character, {
         "states": {"idle": "idle", "walk": "walk", "run": "run"},
         "transitions": [
             ["idle", "walk", {"blend_s": 0.2}],
@@ -150,7 +150,7 @@ func run(ctx):
 Head tracking — one call creates the owned `LookAtModifier3D` under the skeleton:
 
 ```gdscript
-    var mod := ctx.look_at_modifier(skel, ctx.find("Player"), {"bone_name": "Head"})
+    var mod = ctx.look_at_modifier(skel, ctx.find("Player"), {"bone_name": "Head"})
 ```
 
 Unknown props land in `prop_warnings` — read them. Angle limits, influence fade-out by distance, and spine-chain distribution are the difference between alive and possessed: tune per `procedural-animation` (A1/A2).
@@ -247,3 +247,27 @@ Method tracks raw: `anim.add_track(Animation.TYPE_METHOD)` + `track_set_path(idx
 
 - `scene-scripting` — the ctx stdlib contract, owner rules, budgets, undo/rollback.
 - `verifying-scenes` — snapshot/diff/screenshot/runtime-read discipline this skill leans on.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `assets.generate_3d` | `summer assets generate-3d` |
+| `assets.generate_motion` | `summer assets generate-motion` |
+| `summer_api_docs` | `summer docs engine-api` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+| `summer_play` | `summer engine play` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_stop` | `summer engine stop` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+<!-- /shell-commands -->

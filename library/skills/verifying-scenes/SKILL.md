@@ -1,6 +1,6 @@
 ---
 name: verifying-scenes
-description: "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms."
+description: "Prove scene work landed: snapshot, diff, screenshots, runtime reads, 3D audits, shot sheets and zooms."
 ---
 
 # Verifying Scenes
@@ -153,7 +153,7 @@ When the next step depends on the engine reaching a moment — the game booting 
 - NEVER describe an image you did not receive. A failed capture is a result — report it and climb down (scene → viewport) or ask the user.
 - Preset-framing scene renders are static (t=0), synthetic-camera, flat-environment: no claims about animation, particles, lighting, or mood from them.
 - Pass structured failures (`failure_reason`, `terminalState`) through verbatim — never soften them into "it didn't work".
-- After the result is verified, record the outcome with `summer_library_feedback` (worked / worked with fixes / wrong / outdated / incomplete + a short note). Optional and fire-and-forget; if telemetry is off, move on.
+- After the result is verified, record the outcome with `summer_call` `{"op":"docs.feedback"}` (worked / worked with fixes / wrong / outdated / incomplete + a short note). Optional and fire-and-forget; if telemetry is off, move on.
 
 ## Red Flags — STOP
 
@@ -170,3 +170,32 @@ When the next step depends on the engine reaching a moment — the game booting 
 | "Looks great!" with no capture in the transcript | Fabrication. Capture, look, then claim. |
 
 **Related skills:** `scene-scripting` carries the mutation loop and ctx API this discipline wraps; `playtesting-a-feature` and `verification-before-completion` carry the broader done-claiming rules.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `docs.feedback` | `summer docs feedback` |
+| `summer_debug_views` | `summer engine debug-views` |
+| `summer_frame_nodes` | `summer engine frame-nodes` |
+| `summer_frame_shot` | `summer engine frame-shot` |
+| `summer_get_runtime_tree` | `summer engine get-runtime-tree` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_asset` | `summer engine inspect-asset` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_is_running` | `summer engine is-running` |
+| `summer_camera_bookmark` | `summer engine list-camera-bookmarks`, `summer engine delete-camera-bookmark`, `summer engine save-camera-bookmark` |
+| `summer_play` | `summer engine play` |
+| `summer_recent_events` | `summer engine recent-events` |
+| `summer_scene_audit` | `summer engine scene-audit` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_shot_sheet` | `summer engine shot-sheet` |
+| `summer_snapshot_diff` | `summer engine snapshot-diff` |
+| `summer_wait_for_event` | `summer engine wait-for-event` |
+| `summer_world_snapshot` | `summer engine world-snapshot` |
+| `summer_zoom` | `summer engine zoom` |
+<!-- /shell-commands -->

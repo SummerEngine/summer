@@ -1,0 +1,46 @@
+id: tool/app-get
+kind: tool
+version: 1.0.0
+summary: Read a Summer App's manifest, current files (or layout) and shared data summary.
+use_when:
+  - before changing an existing app
+  - '"what does our loot table app do"'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_get
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_get
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

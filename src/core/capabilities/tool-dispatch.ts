@@ -16,10 +16,25 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
+import { setGameRemix } from "./game-remix.js";
+import { viewSetOp } from "./view-set.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { EngineApiClient } from "../api-client.js";
+import {
+  CLI_RECOVERY,
+  codedFailure,
+  codeForStatus,
+  describeNetworkError,
+  EngineNotRunningError,
+  engineNotRunningFromConnectError,
+  networkDetails,
+  NOT_SIGNED_IN,
+  type SummerErrorCode,
+} from "../error-codes.js";
+import { engineSelectionFromEnv } from "../engine.js";
 import {
   missingEngineEventsResult,
   missingEngineOpResult,
@@ -33,6 +48,7 @@ import {
   waitForEventArgsSchema,
 } from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
+import { importUrls, type ImportEntry } from "./video-ogv.js";
 import {
   executeSceneMutation,
   occurrenceCount,
@@ -51,7 +67,6 @@ import {
   generateSfxChoices,
   getChoices,
   getChoicesArgsSchema,
-  openInStudioTab,
   sfxChoicesArgsSchema,
   type GatewayReply,
   type SfxChoicesDeps,
@@ -102,8 +117,8 @@ import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
-  buildRunSceneScriptOp,
 } from "./scene-script.js";
+import { runSceneScriptOn } from "./scene-script-target.js";
 import {
   CAMERA_BOOKMARK_ACTIONS,
   CAMERA_BOOKMARK_FALLBACK,
@@ -142,7 +157,13 @@ import { shapeEngineLogResponse } from "../log-filters.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
+import { goLive } from "./go-live.js";
 import { publishBuild } from "./publish-build.js";
+import { DETAIL_SECTIONS, setStoreDetails } from "./store-details.js";
+import { syncItems } from "./sync-items.js";
+import { contentMake, contentMakeInput } from "./content-make/index.js";
+import { createLocalProject, LocalProjectError, localProjectFailure, openLocalProject } from "./projects-local.js";
+import { BuildToolError, buildToolFailure } from "./summer-bundle.js";
 import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
 import { buildGameTaskPlan, gameTaskPlanInputSchema } from "./game-task-plan.js";
@@ -179,6 +200,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+import { batchToolResult, cancelJob, checkBatch, createBatch, estimateJob, getBatch, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
 import {
@@ -208,7 +230,40 @@ import {
 import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
-import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
+import { runWithToolContext, summerRequestHeaders } from "../agent-host.js";
+import {
+  APP_DOCK_FALLBACK,
+  appCall,
+  appCallArgsSchema,
+  appCreate,
+  appCreateArgsSchema,
+  appData,
+  appDataArgsSchema,
+  appDockArgsSchema,
+  appDockOp,
+  appEvents,
+  appEventsArgsSchema,
+  appGet,
+  appGetArgsSchema,
+  appGuide,
+  appGuideArgsSchema,
+  appList,
+  appListArgsSchema,
+  appPage,
+  appPageArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
+  appUpdate,
+  appUpdateArgsSchema,
+  appPublish,
+  appPublishArgsSchema,
+  appReportGap,
+  appReportGapArgsSchema,
+  appsGateway,
+  appTools,
+  appToolsArgsSchema,
+} from "./apps.js";
+import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "./enable-plugin.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -233,8 +288,6 @@ export interface ToolDispatchEntry {
 /** Dispatch-level failure with a user-facing message (no stack needed). */
 export class ToolDispatchError extends Error {}
 
-/** The local engine is not reachable — a clean state, not a crash. */
-export class EngineUnavailableError extends ToolDispatchError {}
 
 /** A tool failed with a structured receipt that `summer tool` prints whole
  *  (JSON on stdout, exit 1) instead of flattening to `message`: every engine
@@ -252,6 +305,48 @@ export class ToolResultError extends ToolDispatchError {
   }
 }
 
+/** A shared failure (core/error-codes.ts) — not signed in, no credits,
+ *  network — printed as `{ok:false, code, error, recovery}` with the shell
+ *  wording of the next step. */
+export class CodedToolError extends ToolResultError {
+  constructor(code: SummerErrorCode, message: string, extra: Record<string, unknown> = {}, recovery: string = CLI_RECOVERY[code]) {
+    super(codedFailure(code, message, extra, recovery), message);
+  }
+}
+
+/** A creator tool's BuildToolError as a ToolResultError, so `summer tool` and
+ *  `summer <area> <action>` print its whole structured failure (code,
+ *  recovery and detail such as a manifest's problem list), as the MCP face does. */
+async function structuredBuildFailure<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof BuildToolError) throw new ToolResultError(buildToolFailure(error), error.message);
+    throw error;
+  }
+}
+
+/** projects.create_local / open_local: their coded failures, printed whole. */
+async function localProjectStep<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof LocalProjectError) throw new ToolResultError(localProjectFailure(error), error.message);
+    if (error instanceof EngineNotRunningError) throw new CodedToolError("engine_not_running", error.message, {}, error.recovery);
+    throw error;
+  }
+}
+
+/** The local engine is not reachable — a clean state, not a crash. Prints
+ *  `{ok:false, code:"engine_not_running", error, recovery, hint}`. */
+export class EngineUnavailableError extends CodedToolError {
+  constructor(message: string) {
+    super("engine_not_running", message, {
+      hint: "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it.",
+    });
+  }
+}
+
 export function createDefaultDispatchContext(): ToolDispatchContext {
   let cached: EngineApiClient | null = null;
   return {
@@ -263,12 +358,11 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
       } catch (error) {
         const reason =
           error instanceof Error ? error.message : String(error);
-        throw new EngineUnavailableError(
-          "Summer Engine is not running (or no project is open).\n" +
-            `${reason}\n` +
-            "Start it with 'summer run' or open the project in the Summer desktop app, then retry.\n" +
-            "Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it."
-        );
+        // Several editors open (or another selection problem) already says
+        // how to pick one; only "nothing reachable" is engine_not_running.
+        const notRunning = engineNotRunningFromConnectError(reason);
+        if (!notRunning) throw new ToolDispatchError(reason);
+        throw new EngineUnavailableError(notRunning.message);
       }
     },
   };
@@ -432,20 +526,23 @@ async function dispatchUiOp(ctx: ToolDispatchContext, built: BuiltUiOp): Promise
 // ---------------------------------------------------------------------------
 async function requireToken(): Promise<string> {
   const token = await getAuthToken();
-  if (!token) {
-    throw new ToolDispatchError(
-      "Not signed in. Run 'summer login' first — these tools require a Summer Engine account."
-    );
-  }
+  if (!token) throw new CodedToolError("not_signed_in", NOT_SIGNED_IN);
   return token;
+}
+
+/** A non-OK Summer web reply: 401 and 402 carry the shared codes. */
+function gatewayFailure(status: number, data: DispatchArgs): ToolDispatchError {
+  const message = String(data.message || data.error || `Request failed (${status})`);
+  const code = codeForStatus(status);
+  if (code === "not_signed_in") return new CodedToolError(code, message, { status }, "Run: summer login --force");
+  if (code) return new CodedToolError(code, message, { status });
+  return new ToolDispatchError(message);
 }
 
 function gatewayHeaders(token: string, endpoint: string): Record<string, string> {
   return {
+    ...summerRequestHeaders({ surface: "cli" }),
     Authorization: `Bearer ${token}`,
-    "X-Summer-Client": "summer-cli",
-    "X-Summer-Client-Version": CLI_VERSION,
-    "X-Summer-Client-Surface": "cli",
     "X-Summer-MCP-Endpoint": endpoint,
   };
 }
@@ -478,16 +575,10 @@ async function gatewayGet(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new ToolDispatchError(
-      `Request failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new CodedToolError("unavailable", `Request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
-  if (!res.ok) {
-    throw new ToolDispatchError(
-      String(data.message || data.error || `Request failed (${res.status})`)
-    );
-  }
+  if (!res.ok) throw gatewayFailure(res.status, data);
   return data;
 }
 
@@ -510,21 +601,10 @@ async function gatewayPost(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new ToolDispatchError(
-      `Generation request failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new CodedToolError("unavailable", `Generation request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
-  if (!res.ok) {
-    let message = String(data.message || data.error || `Request failed (${res.status})`);
-    if (res.status === 402) {
-      message = `${message} — insufficient credits; top up or upgrade on the Summer dashboard.`;
-    }
-    if (res.status === 401) {
-      message = `${message} — auth token expired; run 'summer login' again.`;
-    }
-    throw new ToolDispatchError(message);
-  }
+  if (!res.ok) throw gatewayFailure(res.status, data);
   return data;
 }
 
@@ -538,17 +618,20 @@ async function pollGenerationJob(
   const deadline = Date.now() + maxWaitMs;
   let interval = intervalMs;
   while (Date.now() < deadline) {
-    const res = await fetch(
-      `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
-      {
-        headers: gatewayHeaders(token, "/api/mcp/jobs"),
-        signal: AbortSignal.timeout(15_000),
-      }
-    );
-    const data = await readJsonBody(res);
-    if (!res.ok) {
-      throw new ToolDispatchError(String(data.message || "Job poll failed"));
+    let res: Response;
+    try {
+      res = await fetch(
+        `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+        {
+          headers: gatewayHeaders(token, "/api/mcp/jobs"),
+          signal: AbortSignal.timeout(15_000),
+        }
+      );
+    } catch (err) {
+      throw new CodedToolError("unavailable", `Job poll failed: ${describeNetworkError(err)}`, { jobId, ...networkDetails(err) });
     }
+    const data = await readJsonBody(res);
+    if (!res.ok) throw gatewayFailure(res.status, { message: "Job poll failed", ...data });
     if (data.status === "completed") return data;
     if (data.status === "failed") {
       throw new ToolDispatchError(String(data.error || "Job failed"));
@@ -557,8 +640,18 @@ async function pollGenerationJob(
     interval = Math.min(interval * 1.2, 15_000);
   }
   throw new ToolDispatchError(
-    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: summer tool check-job --json '{"jobId":"${jobId}"}'`
+    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: ${cliCheckJobCommand(jobId)}`
   );
+}
+
+function cliCheckJobCommand(jobId: string): string {
+  return `summer tool check-job --args '{"jobId":"${jobId}"}'`;
+}
+
+/** generate-3d / generate-motion return the job at once, like the MCP face;
+ *  `--args '{"wait":true,…}'` blocks instead. */
+function cliCheckJobNext(jobId: string): string {
+  return `The job runs on Summer's servers. Check it with: ${cliCheckJobCommand(jobId)}`;
 }
 
 async function searchAssetsGateway(params: {
@@ -599,15 +692,26 @@ async function gatewayReply(call: () => Promise<DispatchArgs>): Promise<GatewayR
     return { data: await call(), status: 200 };
   } catch (error) {
     if (!(error instanceof ToolDispatchError)) throw error;
+    if (error instanceof CodedToolError) {
+      const { code, recovery } = error.result as { code: SummerErrorCode; recovery: string };
+      return { error: error.message, status: 0, code, recovery };
+    }
     return { error: error.message, status: 0 };
   }
+}
+
+/** summer tool app-screenshot: the PNG goes to `out` (default ./summer-app-screenshot.png), not into the printed JSON. */
+async function cliScreenshot(args: z.output<typeof appScreenshotArgsSchema>, deps: { request: ReturnType<typeof appsGateway> }) {
+  const shot = await appScreenshot({ ...args, out: args.out ?? "summer-app-screenshot.png" }, deps);
+  if (shot.ok !== true || !("image" in shot)) return shot;
+  const { image: _image, ...report } = shot;
+  return report;
 }
 
 function sfxChoicesDeps(): SfxChoicesDeps {
   return {
     post: (endpoint, body, timeoutMs) => gatewayReply(() => gatewayPost(endpoint, body, timeoutMs)),
     get: (endpoint, params, timeoutMs) => gatewayReply(() => gatewayGet(endpoint, params, timeoutMs)),
-    studioOpen: (path, reviewUrl) => openInStudioTab(path, reviewUrl),
     openUrl: (url) => open(url),
     canOpenBrowser: () => defaultCanOpenBrowser(),
   };
@@ -943,6 +1047,60 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       face: "cli",
     })
   ),
+  entry("summer_go_live", "Take your store game live: release its Build and publish its page, then watch until players get it (confirm-gated)", false, (args) =>
+    structuredBuildFailure(() =>
+      goLive({
+        gameId: optStr(args, "gameId"),
+        publicationId: optStr(args, "publicationId"),
+        confirm: args.confirm === true,
+        ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
+        face: "cli",
+      })
+    )
+  ),
+  entry("summer_games_download_remix", "Download a verified Remix PCK", false, (args) => structuredBuildFailure(() => downloadRemix(args as unknown as DownloadRemixInput))),
+  entry("summer_games_set_remix", "Allow or disable Remix for one game", false, (args) =>
+    structuredBuildFailure(() => setGameRemix({ gameId: str(args, "gameId"), spinnable: args.spinnable as boolean }))
+  ),
+  entry("summer_store_set_details", "Fill store page sections: genres, features, credits, languages, requirements, content survey, AI disclosure", false, (args) =>
+    structuredBuildFailure(() =>
+      setStoreDetails({
+        gameId: optStr(args, "gameId"),
+        ...Object.fromEntries(DETAIL_SECTIONS.filter((section) => args[section] !== undefined).map((section) => [section, args[section]])),
+        face: "cli",
+      })
+    )
+  ),
+  entry("summer_sync_items", "Sync summer.items.json to your store game by slug; the owner approves (confirm-gated)", false, (args) =>
+    // The same structured failure the MCP face gives (a manifest's whole problem list), printed whole.
+    structuredBuildFailure(() =>
+      syncItems({
+        gameId: optStr(args, "gameId"),
+        project: optStr(args, "project"),
+        file: optStr(args, "file"),
+        ...(Array.isArray(args.slugs) ? { slugs: args.slugs.filter((slug): slug is string => typeof slug === "string") } : {}),
+        confirm: args.confirm === true,
+        face: "cli",
+      })
+    )
+  ),
+  entry("summer_projects_create_local", "Create a Summer project on this computer from a template (3d-basic by default)", false, (args) =>
+    localProjectStep(() => createLocalProject({ template: optStr(args, "template"), name: optStr(args, "name"), dir: optStr(args, "dir") }))
+  ),
+  entry("summer_projects_open_local", "Open a project in Summer Engine and wait until it connects; install:true installs a missing engine (only after the person's yes)", false, (args) =>
+    localProjectStep(() =>
+      openLocalProject(
+        { path: optStr(args, "path"), install: args.install === true },
+        engineSelectionFromEnv() ?? { cwd: process.cwd() },
+        // A shell command waits for the whole install and first open, like `summer dev`
+        // (the MCP answers "call again" instead, to stay within a tool call).
+        { waitMs: args.install === true ? 60 * 60_000 : 180_000 }
+      )
+    )
+  ),
+  entry("summer_content_make", "Make one finished piece of content for a game, beat for beat on a reference, from local footage, into the team's Review", false, (args) =>
+    structuredBuildFailure(() => contentMake({ ...contentMakeInput(args), face: "cli" }))
+  ),
 
   // --- debug ---
   entry("summer_get_diagnostics", "Overview of editor console and runtime debugger errors/warnings", true, async (args, ctx) =>
@@ -1182,6 +1340,46 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (result.ok !== true) throw new ToolResultError(result, String(result.error));
     return result;
   }),
+  // Summer Apps (core/capabilities/apps.ts): the same functions as the MCP face.
+  ...([
+    ["summer_app_guide", "Read the Summer Apps build guide (SDK, manifest, kit, layout, design, examples)", appGuideArgsSchema, appGuide],
+    ["summer_app_list", "List the Summer Apps in the person's workspaces", appListArgsSchema, appList],
+    ["summer_app_create", "Create a scratch Summer App and open it in Summer Studio", appCreateArgsSchema, appCreate],
+    ["summer_app_publish", "Publish a new version of a Summer App from a folder or files", appPublishArgsSchema, appPublish],
+    ["summer_app_get", "Read a Summer App's manifest, files and data summary", appGetArgsSchema, appGet],
+    ["summer_app_update", "Rename a Summer App or keep, archive or restore it", appUpdateArgsSchema, appUpdate],
+    ["summer_app_events", "Wait for events a Summer App sends to agents", appEventsArgsSchema, appEvents],
+    ["summer_app_page", "Read or use the open app's declared fields and buttons", appPageArgsSchema, appPage],
+    ["summer_app_data", "Read or write a Summer App's shared data", appDataArgsSchema, appData],
+    ["summer_app_screenshot", "See a Summer App rendered (read-only) with its console and errors; out saves the PNG", appScreenshotArgsSchema, cliScreenshot],
+    ["summer_app_tools", "List a Summer App's agent tools", appToolsArgsSchema, appTools],
+    ["summer_app_call", "Run a Summer App's agent tool in the person's open app", appCallArgsSchema, appCall],
+    ["summer_app_report_gap", "Report an SDK capability a Summer App needed", appReportGapArgsSchema, appReportGap],
+  ] as const).map(([name, summary, schema, run]) =>
+    entry(name, summary, false, async (args) => {
+      const result = await (run as (input: unknown, deps: { request: ReturnType<typeof appsGateway> }) => Promise<Record<string, unknown>>)(
+        parseToolArgs(schema as ZodTypeAny, args, name.replace(/^summer_/, "").replace(/_/g, "-")),
+        { request: appsGateway("cli", name) }
+      );
+      if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+      return result;
+    })
+  ),
+  entry("summer_enable_plugin", "Enable an editor plugin and report whether it really loaded", true, async (args, ctx) => {
+    const parsed = parseToolArgs(enablePluginArgsSchema, args, "enable-plugin");
+    const result = interpretEnablePluginResult(await (await ctx.engine()).executeOps([enablePluginOp(parsed)]));
+    if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+    return result;
+  }),
+  entry("summer_app_dock", "Dock a Summer App in the editor, close its dock, or list docks", true, async (args, ctx) => {
+    const parsed = parseToolArgs(appDockArgsSchema, args, "app-dock");
+    if (parsed.action !== "list" && !parsed.appId) throw new ToolDispatchError(`${parsed.action} needs appId`);
+    const op = appDockOp(parsed);
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, op.op, APP_DOCK_FALLBACK);
+    if (missing) throw new ToolResultError({ ...missing }, missing.error);
+    return requireEngineSuccess(await client.executeOps([op]));
+  }),
   entry("summer_generate_3d", "Generate a 3D model (optional auto-rig + animations)", false, async (args) => {
     const options = {
       ...((args.options as DispatchArgs) ?? {}),
@@ -1205,7 +1403,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       options,
     });
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (args.wait === false || !jobId) return result;
+    if (args.wait !== true || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId);
     return { ...final, jobId };
   }),
@@ -1228,7 +1426,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if ("error" in built) throw new ToolDispatchError(built.error);
     const result = await gatewayPost("/api/mcp/generate/motion", built.body);
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (!parsed.wait || !jobId) return result;
+    if (!parsed.wait || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId, 600_000);
     return { ...final, jobId };
   }),
@@ -1341,17 +1539,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
   }),
   entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
-    const op: DispatchArgs = { op: "ImportFromUrl", url: str(args, "url") };
-    if (optStr(args, "path")) op.path = args.path;
-    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    const path = optStr(args, "path");
+    return requireEngineSuccess(await importUrls(await ctx.engine(), [{ url: str(args, "url"), ...(path ? { path } : {}) }], { batch: false }));
   }),
   entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
     if (!Array.isArray(args.imports)) {
       throw new ToolDispatchError("imports must be an array of {url, path} objects");
     }
-    return requireEngineSuccess(
-      await (await ctx.engine()).executeOps([{ op: "ImportFromUrlBatch", imports: args.imports }])
-    );
+    return requireEngineSuccess(await importUrls(await ctx.engine(), args.imports as ImportEntry[], { batch: true }));
   }),
 
   // --- scene ---
@@ -1459,6 +1654,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
+  entry("summer_view_set", "Show the person a view, rail and focus in the editor", true, async (args, ctx) => {
+    const frame = Array.isArray(args.frame) ? args.frame.filter((entry): entry is string => typeof entry === "string") : undefined;
+    const op = viewSetOp({ view: str(args, "view"), rail: optStr(args, "rail"), focus: optStr(args, "focus"), frame });
+    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+  }),
   entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {
     // ONE implementation for both faces (core/capabilities/replace-node.ts):
     // persisted ops + read-back of the saved .tscn.
@@ -1512,19 +1712,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene scripting ---
-  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against the open scene", true, async (args, ctx) => {
+  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against scenePath (or the open scene)", true, async (args, ctx) => {
     const client = await ctx.engine();
     const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
     if (missing) refuseMissingOp(missing);
     const undo = optStr(args, "undo");
-    const { op, timeoutMs } = buildRunSceneScriptOp({
-      source: str(args, "source"),
-      max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
-      checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
-      undo: undo === "action" || undo === "none" ? undo : undefined,
-    });
     return requireSupportedOp(
-      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      await runSceneScriptOn(client, {
+        scenePath: optStr(args, "scenePath"),
+        source: str(args, "source"),
+        max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
+        checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
+        undo: undo === "action" || undo === "none" ? undo : undefined,
+      }),
       "RunSceneScript",
       RUN_SCRIPT_FALLBACK
     );
@@ -1998,6 +2198,45 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return result;
   }),
 
+  // --- account ---
+  entry("summer_api_models", "The Summer API's models with input and price", false, async (args) =>
+    summerApiToolAnswer(() => listModels({ ...(optStr(args, "model") ? { model: optStr(args, "model") } : {}), ...(optStr(args, "capability") ? { capability: optStr(args, "capability") } : {}) }))
+  ),
+  entry("summer_api_estimate", "The exact price of one Summer API job; charges nothing", false, async (args) =>
+    summerApiToolAnswer(() => estimateJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}))
+  ),
+  entry("summer_api_run", "Run one Summer API job with the Summer sign-in on this computer", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = args.wait === true || Boolean(out);
+      const job = await runJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}, {
+        ...(optStr(args, "quoteId") ? { quoteId: optStr(args, "quoteId") } : {}),
+        ...(optStr(args, "idempotencyKey") ? { idempotencyKey: optStr(args, "idempotencyKey") } : {}),
+        ...(follow ? { waitSeconds: 30 } : {}),
+      });
+      return jobToolResult(job, { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
+  entry("summer_api_batch", "Run up to 500 Summer API jobs at once (all or none), or read a batch", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = { wait: args.wait === true, ...(out ? { out } : {}) };
+      const batchId = optStr(args, "batchId");
+      if (batchId) return batchToolResult(await getBatch(batchId), follow);
+      const key = optStr(args, "idempotencyKey");
+      const batch = await createBatch(checkBatch(Array.isArray(args.jobs) ? args.jobs : []), key ? { idempotencyKey: key } : {});
+      return batchToolResult(batch, follow);
+    })
+  ),
+  entry("summer_api_job", "Read, follow, download or cancel a Summer API job", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const jobId = str(args, "jobId");
+      if (args.cancel === true) return { job: await cancelJob(jobId) };
+      const out = optStr(args, "out");
+      return jobToolResult(await getJob(jobId), { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
+
   // --- feedback ---
   entry("summer_library_feedback", "Report library entry outcomes so Summer can fix and re-rank them", false, async (args) => {
     if (!Array.isArray(args.reports) || args.reports.length === 0) {
@@ -2063,5 +2302,7 @@ export async function dispatchTool(
   // The one gate every result passes, mirroring withEngine on the MCP face:
   // whatever the MCP face would mark isError is a ToolResultError here, so the
   // CLI exit code says what the receipt says — for every tool, not per handler.
-  return requireEngineSuccess(await dispatchEntry.handler(args, ctx));
+  // Summer requests made for this call name the tool (core/agent-host.ts); the
+  // MCP face sets the same context in its call wrapper.
+  return requireEngineSuccess(await runWithToolContext(dispatchEntry.name, "cli", () => dispatchEntry.handler(args, ctx)));
 }

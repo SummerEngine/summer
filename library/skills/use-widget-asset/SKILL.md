@@ -1,6 +1,6 @@
 ---
 name: use-widget-asset
-description: "Wire a widget slice from a create-asset-sheet pack (panel, button, slider, bar, toggle) into NinePatchRect, TextureProgressBar, or TextureRect via sliceMeta."
+description: "Wire a widget slice from an asset pack (panel, button, bar, toggle) into NinePatchRect or TextureRect."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -217,3 +217,17 @@ Check `metadata.schemaVersion` on the pack: `null` (or absent) = legacy, `1` = c
 - Auto-tiling terrain (Wang / 47-tile). Different format entirely — see `tileable-texture`.
 - Animated UI (button press-down sprites, hover glow). The wizard captures static frames; for animation see `sprite-sheet`.
 - Non-AABB widgets in the 9-slice path. See the **Shape support** table at the top — for circles, hexagons, organic shapes, fall through to `TextureRect` and skip 9-slice entirely.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+<!-- /shell-commands -->

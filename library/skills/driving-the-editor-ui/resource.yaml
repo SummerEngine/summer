@@ -1,7 +1,7 @@
 id: skill/driving-the-editor-ui
 kind: skill
 version: 1.0.0
-summary: "Drive the editor UI by name: invoke actions, clear blocking dialogs, switch the main screen, read a dock — and route scene work to the scene tools instead."
+summary: "Drive the editor UI by name: run actions, clear blocking dialogs, switch screens, read a dock."
 use_when:
   - an editor-workflow step a human would do with the mouse — open the Import dock, switch the 2D/3D/Script main screen, toggle a bottom panel, open an editor dialog by name
   - a dialog or popup is blocking the editor and tool calls come back modal_open — see it (summer_ui_tree root dialogs) and clear it (summer_ui_activate action dismiss_dialog)

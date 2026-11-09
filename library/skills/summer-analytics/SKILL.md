@@ -5,11 +5,11 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
 user-invocable: true
-allowed-tools: Read Grep Edit Write summer_get_script_errors summer_play summer_stop summer_get_diagnostics summer_open
+allowed-tools: Read Grep Edit Write summer_get_script_errors summer_play summer_stop summer_get_diagnostics summer_call
 paths: ["**/*.gd"]
 ---
 
-# /summer-analytics — game events you can chart later
+# /summer-analytics — game events you read in Grow
 
 ## Overview
 
@@ -105,9 +105,11 @@ On the client, after a menu choice:
 
 ### 4. Read the results
 
-Open the game's analytics in Studio: `summer_open` with target `game` and
-params `gameId` (your game's id) and `section: "analytics"`. Events show up
-there after a short delay.
+`analytics.summary` (hosted, after `summer login`) returns the
+game's top custom events next to its store page views, launches and play
+time; the `grow-analytics` skill says how to read them. In Studio:
+`studio.open` with target `game`, params `gameId` (your game's id) and
+`section: "analytics"`. Events show up after a short delay.
 
 ## Result codes
 
@@ -145,3 +147,18 @@ Every failure is final: none of them asks you to capture again.
 - `multiplayer` — where the client and the authority run
 - `multiplayer-state` — the authority's Command handlers, where most events happen
 - `summer-match-results` — results and ratings, which Summer records itself
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `analytics.summary` | `summer analytics summary` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_play` | `summer engine play` |
+| `summer_stop` | `summer engine stop` |
+| `studio.open` | `summer studio open` |
+<!-- /shell-commands -->

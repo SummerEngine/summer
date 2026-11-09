@@ -47,6 +47,11 @@ input_schema:
       type: boolean
       default: false
       description: Bypass dedupe — return engine output verbatim
+    maxCharacters:
+      type: integer
+      minimum: 500
+      maximum: 1000000
+      description: Most characters of text to return (default 4000). A longer result is cut and says so.
   additionalProperties: false
 authority:
   filesystem: false

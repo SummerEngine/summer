@@ -82,8 +82,8 @@ input_schema:
       description: Stable retry key so the same logical request is not billed or queued twice
     wait:
       type: boolean
-      default: true
-      description: Wait for completion (default true, up to 10 min). Set false to get jobId immediately.
+      default: false
+      description: Block until the job finishes (up to 10 min) and return the result. Default false returns the jobId at once; poll summer_check_job.
     options:
       type: object
       additionalProperties: {}

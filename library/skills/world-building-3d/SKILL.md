@@ -1,6 +1,6 @@
 ---
 name: world-building-3d
-description: "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified."
+description: "Compose, ground and space 3D scenes with Summer's four spatial tools, one geometric decision at a time."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -110,3 +110,31 @@ unavailable physics, or missing bounds by guessing. Fix the scene structure or
 choose a clearly labeled manual fallback, then verify it.
 
 Do not retry a mutation after an oversized or ambiguous result unless the receipt explicitly says it is retry-safe; the first mutation may already have landed.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_align_distribute_3d` | `summer engine align-distribute-3d` |
+| `summer_attach_to_surface` | `summer engine attach-to-surface` |
+| `summer_connect_ports` | `summer engine connect-ports` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_asset` | `summer engine inspect-asset` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_instantiate_scene` | `summer engine instantiate-scene` |
+| `summer_measure` | `summer engine measure` |
+| `summer_navigation_probe` | `summer engine navigation-probe` |
+| `summer_open_scene` | `summer engine open-scene` |
+| `summer_place_adjacent` | `summer engine place-adjacent` |
+| `summer_play` | `summer engine play` |
+| `summer_raycast` | `summer engine raycast` |
+| `summer_repeat_along` | `summer engine repeat-along` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_snap_to_surface` | `summer engine snap-to-surface` |
+| `summer_starcast` | `summer engine starcast` |
+| `summer_test_placement` | `summer engine test-placement` |
+<!-- /shell-commands -->

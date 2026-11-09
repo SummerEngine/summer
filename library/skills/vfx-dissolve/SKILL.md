@@ -1,6 +1,6 @@
 ---
 name: vfx-dissolve
-description: "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material."
+description: "Dissolve effect: a mesh burns away with a glowing edge, from a noise-threshold ShaderMaterial."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -256,7 +256,7 @@ material, no play-mode round-trip:
 
 ```gdscript
 func run(ctx):
-    var mat := ctx.make_shader("<section 2 source>", {"threshold": 0.4})
+    var mat = ctx.make_shader("<section 2 source>", {"threshold": 0.4})
     ctx.apply_material(ctx.find("TestDummy"), mat)   # eyeball it with summer_screenshot
 ```
 
@@ -409,3 +409,22 @@ After firing this recipe, suggest:
 - `vfx-magic-glow` — for arrival/departure beams
 - `vfx-fire` — for the burn-up variant pairing
 - `gdscript-patterns` — for the static-API class pattern
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

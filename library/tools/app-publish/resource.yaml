@@ -1,0 +1,90 @@
+id: tool/app-publish
+kind: tool
+version: 1.0.0
+summary: Publish a new version of a Summer App from a local folder, files or a layout; the person's Studio tab boots it.
+use_when:
+  - after writing or changing an app's files
+  - fixing an app after a publish error or an app error event
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_publish
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_publish
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+    dir:
+      type: string
+      minLength: 1
+      description: A local folder holding the app (index.html at its root). Every file under it is published; dotfiles and node_modules are skipped
+    files:
+      type: array
+      items:
+        type: object
+        properties:
+          path:
+            type: string
+            minLength: 1
+            maxLength: 200
+          content:
+            type: string
+          encoding:
+            type: string
+            enum:
+              - utf8
+              - base64
+            default: utf8
+        required:
+          - path
+          - content
+        additionalProperties: false
+      maxItems: 300
+      description: "The files instead of dir: [{path, content, encoding}]"
+    layout:
+      type: object
+      additionalProperties: {}
+      description: "Layout apps: { version: 1, title, root }"
+    manifest:
+      type: object
+      additionalProperties: {}
+      description: The manifest {name, purpose, permissions, engineFiles, agentEvents, agentTools} (summer_app_guide section manifest)
+    note:
+      type: string
+      maxLength: 500
+      description: What changed, shown in the version list
+    idempotencyKey:
+      type: string
+      minLength: 8
+      maxLength: 128
+  required:
+    - appId
+    - manifest
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: "Run verification commands and confirm output before claiming work complete, fixed, or passing — evidence before assertions, always."
+description: "Run verification and read its output before claiming work done, fixed or passing: evidence first."
 ---
 
 # Verification Before Completion

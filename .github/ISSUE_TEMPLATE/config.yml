@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Summer Engine docs
+    url: https://docs.summerengine.com
+    about: How to install Summer Engine, make games and publish them.
+  - name: Summer Engine website
+    url: https://www.summerengine.com
+    about: Downloads, account and billing questions.
+  - name: Report a security problem
+    url: https://github.com/summerengine/summer/security/advisories/new
+    about: Report it privately, not in a public issue.

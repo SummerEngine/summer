@@ -16,6 +16,7 @@ import {
 import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { appendMcpLogEvent } from "../../core/mcp-log.js";
 import { withEngine } from "./with-engine.js";
+import { importUrls } from "../../core/capabilities/video-ogv.js";
 
 import { asRecord, stringFrom, type JsonRecord } from "../../core/util/json.js";
 
@@ -56,14 +57,21 @@ function getScenePathFromSceneState(sceneState: unknown): string | null {
  * share ONE implementation. The MCP surface contributes the boot drift notice
  * it owns. Exported for tests.
  */
-export function buildAgentPlaybook(): Record<string, unknown> {
+export function buildAgentPlaybook(options: ProjectToolsOptions = {}): Record<string, unknown> {
   return buildCoreAgentPlaybook({
     summerUpdateNotice: getCachedBootDriftNotice()?.text ?? null,
+    engine: options.engine,
   });
 }
 
-export function renderAgentPlaybook(): string {
-  return JSON.stringify(buildAgentPlaybook(), null, 2);
+export function renderAgentPlaybook(options: ProjectToolsOptions = {}): string {
+  return JSON.stringify(buildAgentPlaybook(options), null, 2);
+}
+
+/** What the session's profile serves. `engine: false` (the assets profile)
+ *  turns the playbook and the task plan into their no-engine versions. */
+export interface ProjectToolsOptions {
+  engine?: boolean;
 }
 
 /**
@@ -71,13 +79,15 @@ export function renderAgentPlaybook(): string {
  * prompts (prompt pickers, slash commands) get the operating guide natively
  * without knowing to call the tool. Same content, second doorway.
  */
-export function registerPlaybookPrompt(server: McpServer): void {
+export function registerPlaybookPrompt(server: McpServer, options: ProjectToolsOptions = {}): void {
   server.registerPrompt(
     "summer_agent_playbook",
     {
-      title: "Summer Engine agent playbook",
+      title: options.engine === false ? "Summer assets playbook" : "Summer Engine agent playbook",
       description:
-        "AI-first operating guide for the Summer Engine MCP tools: observe-first loop, screenshot before/after every mutation, content routing (reuse -> import -> generate -> script last), physical invariants, cost rules, verification ritual, honesty rules, and recovery steps.",
+        options.engine === false
+          ? "Operating guide for the Summer assets tools without Summer Engine: ask what the asset is for, reuse before generating, confirm spend, check the preview, hand over the file."
+          : "AI-first operating guide for the Summer Engine MCP tools: observe-first loop, screenshot before/after every mutation, content routing (reuse -> import -> generate -> script last), physical invariants, cost rules, verification ritual, honesty rules, and recovery steps.",
     },
     async () => ({
       messages: [
@@ -86,8 +96,10 @@ export function registerPlaybookPrompt(server: McpServer): void {
           content: {
             type: "text" as const,
             text:
-              "Operate Summer Engine by this playbook for the rest of the session:\n\n" +
-              renderAgentPlaybook(),
+              (options.engine === false
+                ? "Work with the Summer assets tools by this playbook for the rest of the session:\n\n"
+                : "Operate Summer Engine by this playbook for the rest of the session:\n\n") +
+              renderAgentPlaybook(options),
           },
         },
       ],
@@ -95,7 +107,7 @@ export function registerPlaybookPrompt(server: McpServer): void {
   );
 }
 
-export function registerProjectTools(server: McpServer): void {
+export function registerProjectTools(server: McpServer, options: ProjectToolsOptions = {}): void {
   server.tool(
     "summer_start_game_task",
     `Start here for any substantial AI game-building task.
@@ -134,6 +146,7 @@ mutating the project.`,
               target,
               assetPolicy,
               verification,
+              engine: options.engine,
             }),
             null,
             2
@@ -156,7 +169,7 @@ ladder, honesty rules, anti-patterns, and recovery steps.`,
       content: [
         {
           type: "text" as const,
-          text: renderAgentPlaybook(),
+          text: renderAgentPlaybook(options),
         },
       ],
     })
@@ -324,6 +337,7 @@ Use this for:
 - 3D models (.glb, .gltf, .obj)
 - Textures (.png, .jpg, .webp)
 - Audio (.ogg, .wav, .mp3)
+- Video (.mp4, .mov, .webm, .ogv): Summer Engine plays only Ogg Theora, so any other video is converted to .ogv first and lands at the path with .ogv; the answer names it.
 
 The path is auto-inferred from the URL filename if not specified. After import, the asset is immediately usable in scenes.`,
     {
@@ -331,16 +345,12 @@ The path is auto-inferred from the URL filename if not specified. After import, 
       path: z.string().optional().describe("Target path in project, e.g. 'res://assets/player.glb'. Auto-inferred from URL if omitted."),
     },
     async ({ url, path }) =>
-      withEngine(async (client) => {
-        const op: Record<string, unknown> = { op: "ImportFromUrl", url };
-        if (path) op.path = path;
-        return client.executeOps([op]);
-      })
+      withEngine(async (client) => importUrls(client, [{ url, ...(path ? { path } : {}) }], { batch: false }))
   );
 
   server.tool(
     "summer_import_from_url_batch",
-    "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time.",
+    "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time. A video (.mp4, .mov, .webm) is converted to Ogg Theora first and lands at its path with .ogv.",
     {
       imports: z.array(z.object({
         url: z.string().describe("URL to download"),
@@ -348,8 +358,6 @@ The path is auto-inferred from the URL filename if not specified. After import, 
       })).describe("Array of {url, path} objects"),
     },
     async ({ imports }) =>
-      withEngine(async (client) =>
-        client.executeOps([{ op: "ImportFromUrlBatch", imports }])
-      )
+      withEngine(async (client) => importUrls(client, imports, { batch: true }))
   );
 }

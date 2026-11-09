@@ -1,11 +1,11 @@
 ---
 name: animated-loop
-description: "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer."
+description: "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_assets_search summer_import_from_url summer_add_node summer_set_prop summer_call
 paths: ["assets/video/**", "menus/**", "ui/**"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["assets/video/**", "menus/**", "ui/**"]
 
 A loop is the only video format that has to *not have* a beginning or end. The viewer sees it on the title screen for 30 seconds; if the seam between loop iterations is visible, the whole thing reads as broken. This skill exists to force the constraints that make seams invisible: take the shortest duration available, keep the motion ambient (no narrative, no big camera moves), use the fast model (`ltx`), and prompt for a composition where the first and last frames are functionally identical.
 
-**Duration is not a dial here.** `summer_generate_video` accepts only `duration=5` or `duration=10`; the server coerces every other value to 5. So "drop to 3s to hide the seam" is not an option — 5s is the floor, and the seam has to be won in the prompt and the reference frame instead.
+**Duration is not a dial here.** On `ltx` and `kling`, `assets.generate_video` renders only `duration: 5` or `duration: 10`; every other value renders 5. So "drop to 3s to hide the seam" is not an option — 5s is the floor, and the seam has to be won in the prompt and the reference frame instead.
 
 If the user wants a 5s punchy marketing shot, that's `trailer-shot`. If they want a 10s narrative cutscene, that's `cinematic-cutscene`. This skill is the one for video that has to *disappear* — atmosphere behind a logo, mood behind a menu, ambience behind a splash card.
 
@@ -46,13 +46,12 @@ If the user wants narrative motion (a character walking, a door opening), this i
 
 For loops, `ltx` is almost always right. It takes ~30s, and short ambient motion is what it handles best. The premium models cost more credits and do not loop better.
 
-This skill always passes `imageUrl` (step 3), which puts every call on the image-to-video route — and that route accepts only `ltx`, `kling`, and `minimax`. `kling-turbo` and `veo3` are text-to-video only; pairing either with an `imageUrl` is a 400 `invalid_model`, not a silent downgrade.
+This skill always passes `imageUrl` (step 3), which puts every call on the image-to-video route. `kling-turbo` and `veo3` are text-to-video only; pairing either with an `imageUrl` is a 400 `invalid_model`, not a silent downgrade.
 
 | Model | i2v? | Speed | When |
 |---|---|---|---|
 | `ltx` | yes | ~30s | Default. Use this. |
 | `kling` | yes | 2-4 min | Only if the loop is the centerpiece of a premium splash and quality is visibly lacking on `ltx` |
-| `minimax` | yes | 2-3 min | Stylized / anime aesthetic loops |
 | `kling-turbo` | **no** | 1-2 min | Not reachable from this skill — text-to-video only |
 | `veo3` | **no** | 3-5 min | Not reachable from this skill, and pointless for ambient loops anyway |
 
@@ -61,15 +60,16 @@ This skill always passes `imageUrl` (step 3), which puts every call on the image
 The reference still doubles as the *target* loop frame. Generate it deliberately — the video model's first and last frames will gravitate toward the reference, which is exactly what you want for a closing seam.
 
 ```
-summer_generate_image(
-  prompt="<subject>, ambient atmospheric scene, cinematic lighting, painterly, wide 16:9 framing, balanced composition with no clear focal action",
-  model="nano-banana-2"
-)
+assets.generate_image({
+  prompt: "<subject>, ambient atmospheric scene, cinematic lighting, painterly, wide framing, balanced composition with no clear focal action",
+  model: "nano-banana-2",
+  aspectRatio: "16:9"
+})
 ```
 
-`summer_generate_image` has no size or aspect argument — `options.image_size` is dropped without an error and every MCP image comes back at the server's 1:1 default. Ask for the framing in the prompt, or generate the reference in the Summer dashboard (which exposes aspect ratio) and pass its URL.
+Set `aspectRatio` to the screen the loop fills (`16:9`, or `9:16` for a vertical mobile splash).
 
-On the image-to-video route `aspectRatio` is **not applied at all** — the clip inherits the reference image's framing. So a vertical mobile splash needs a 9:16 reference image, and setting `aspectRatio="9:16"` on the video call does nothing.
+On the image-to-video route `aspectRatio` is **not applied at all** — the clip inherits the reference image's framing. So a vertical mobile splash needs a 9:16 reference image, and setting `aspectRatio: "9:16"` on the video call does nothing.
 
 ### 4. Prompt for loopable motion only
 
@@ -80,20 +80,20 @@ Loopable verbs: `drift`, `flicker`, `swirl`, `shimmer`, `sway`, `pulse`, `glow`,
 Non-loopable verbs (avoid): `walks`, `enters`, `appears`, `emerges`, `transforms`, `attacks`, `falls down`, `opens`, `closes`.
 
 ```
-summer_generate_video(
-  prompt="<subject from reference>, <ambient loopable motion>, slow continuous, looping, seamless, cinematic",
-  model="ltx",
-  imageUrl="<reference URL from step 3>",
-  duration=5,
-  options={ negative_prompt: "sudden movement, character action, narrative event, fade to black" }
-)
+assets.generate_video({
+  prompt: "<subject from reference>, <ambient loopable motion>, slow continuous, looping, seamless, cinematic",
+  model: "ltx",
+  imageUrl: "<reference URL from step 3>",
+  duration: 5,
+  negativePrompt: "sudden movement, character action, narrative event, fade to black"
+})
 ```
 
-The phrase **"looping, seamless"** in the prompt biases the model toward stable first/last frames. `options.negative_prompt` is one of the few provider keys that does pass through on the video route (`prompt`, `image_url`, `num_frames`, `duration`, `resolution`, and `model` are stripped; everything else is forwarded), so the negative prompt does rule out narrative drift here — unlike on `summer_generate_image`, where no such argument exists.
+The phrase **"looping, seamless"** in the prompt biases the model toward stable first/last frames, and `negativePrompt` rules out narrative drift. Images have no negative prompt: put negations in the image prompt text.
 
 `aspectRatio` is omitted deliberately: it is applied on the text-to-video path only, and this call passes `imageUrl`.
 
-The call returns `{ success, queued: true, jobId, ... }` and **no URL** — video generation is asynchronous. Poll `summer_check_job(jobId="<jobId>")` until it reports `completed`, and only then treat the clip as existing.
+The call answers at once with `{ status: "running", job: { id } }` and **no URL**. Call `jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })` until `finished` is true; only a `done` job's `result` holds the clip.
 
 ### 5. Inspect the seam
 
@@ -107,37 +107,33 @@ If three regenerations don't seam-close, accept a small crossfade in the engine:
 
 ### 6. Import and wire as a looping VideoStreamPlayer
 
-**Transcode to Ogg Theora first.** The generated clip is an `.mp4`, and Summer Engine cannot load `.mp4`. `.ogv` is the only video container in the build — there is no bundled WebM or MP4 plugin, and nothing transcodes on your behalf. Measured against the shipped binary (4.6.1):
+**Import the `.mp4` as it is; the import converts it.** Summer Engine plays video only as Ogg Theora (`.ogv`) — there is no MP4 or WebM loader in the build — so every Summer import tool converts a video on the way in: `summer_import_from_url`, its batch, `summer_import_asset_by_id` and `summer_import_asset`. A clip Summer generated or stores converts on Summer's media host; any other video converts with ffmpeg on this computer when it has Theora, else on summerengine.com. The `.ogv` lands at the path you asked for with the extension swapped, and the answer names it in `videoConversions` and `note`:
 
 ```
-$ Summer --headless --path <proj> -s res://probe.gd
-VideoStream exts: ["ogv", "tres", "res"]
-ERROR: No loader found for resource: res://clip.mp4 (expected type: unknown)
+summer_import_asset_by_id(assetId="<the clip's asset id>", path="res://assets/video/loops/title_screen_bg.mp4")
+→ importedTo: res://assets/video/loops/title_screen_bg.ogv
 ```
 
-`summer_import_from_url` downloads the bytes, runs the engine's import pipeline, and *fails the import* if the file never becomes a loadable resource — so importing the `.mp4` does not quietly half-work, it is rejected and rolled back. Convert first:
+Load the `.ogv` path from the answer, never the `.mp4`.
+
+Then wire it in one script. `scenePath` is the exact scene to change:
 
 ```
-ffmpeg -i title_screen_bg.mp4 -c:v libtheora -q:v 8 -an title_screen_bg.ogv
+summer_run_script(scenePath="res://ui/title_screen.tscn", source="""
+func run(ctx):
+    var loop_player = ctx.add_node("VideoStreamPlayer", "BackgroundLoop", null, {
+        "stream": load("res://assets/video/loops/title_screen_bg.ogv"),
+        "autoplay": true,
+        "loop": true,
+        "expand": true,
+    })
+    loop_player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)   # the loop fills the menu
+    ctx.get_scene_root().move_child(loop_player, 0)   # drawn first: the menu draws on top
+    ctx.save_scene()
+""")
 ```
 
-```
-summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/loops/title_screen_bg.ogv")
-```
-
-Then wire it. Every scene-mutating tool takes an explicit `scenePath`, and `summer_set_prop`'s property argument is named `key`, not `property`:
-
-```
-summer_add_node(scenePath="res://ui/title_screen.tscn", parent=".", type="VideoStreamPlayer", name="BackgroundLoop")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="stream", value="res://assets/video/loops/title_screen_bg.ogv")
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="autoplay", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="loop", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="expand", value=true)
-summer_set_prop(scenePath="res://ui/title_screen.tscn", path="./BackgroundLoop", key="anchors_preset", value=15)
-summer_save_scene(scenePath="res://ui/title_screen.tscn")
-```
-
-Anchors preset 15 is "full rect" — the loop fills the menu. Place the logo and menu buttons as children *above* the `VideoStreamPlayer` in the tree (Controls draw in tree order; later siblings render on top).
+Controls draw in tree order and later siblings render on top, so the logo and menu buttons come after the `VideoStreamPlayer` in the tree.
 
 ### 7. Mute the audio track
 
@@ -161,7 +157,7 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 | Logo backdrop — magic runes | `ltx` | `dark surface with glowing blue runes pulsing softly in slow rhythm, faint shimmer, no narrative motion, looping, seamless` | 5s |
 | Menu — underwater | `ltx` | `underwater scene with caustic light dancing on a sandy floor, slow drifting bubbles, gentle current sway on kelp, looping, seamless` | 5s |
 | Pause screen — slow rain | `ltx` | `window pane with continuous gentle rain drops, blurred warm interior glow behind, looping, seamless, ambient` | 5s |
-| Title — anime sky | `minimax` | `anime style cumulus clouds drifting slowly across a pastel sunset sky, soft, painterly, looping, seamless, Ghibli` | 5s |
+| Title — anime sky | `ltx` | `anime style cumulus clouds drifting slowly across a pastel sunset sky, soft, painterly, looping, seamless, Ghibli` | 5s |
 | Premium splash centerpiece | `kling` | `dragon silhouette breathing in profile against a vast sunset sky, only the chest rising and falling and clouds drifting, looping, seamless` | 5s |
 
 ### Bad prompts and why
@@ -177,21 +173,26 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 ## Anti-patterns
 
 - **Asking the model for a 10s loop.** Past ~6s, identity drifts and the seam shows. `duration=5` is both the floor and the right answer; 10 is the only other value the API accepts.
-- **Treating `summer_generate_video` as synchronous.** It returns `{ queued: true, jobId }` and no URL. Poll `summer_check_job` before claiming a clip exists.
+- **Treating `assets.generate_video` as finished.** It answers `{ status: "running", job }` and no URL. Wait with `jobs.wait` before claiming a clip exists.
 - **Using `kling` for a loop.** `ltx` is almost always right; short ambient motion is what it does best.
 - **Prompting narrative motion.** "Hero draws sword" doesn't loop. Use ambient verbs.
 - **Forgetting `loop=true` on the `VideoStreamPlayer`.** The clip will play once and freeze on the last frame.
 - **Forgetting to mute baked audio.** If audio is on, the loop point becomes audible even if it's invisible.
 - **Expecting `aspectRatio` to reframe an image-to-video call.** It is applied on the text-to-video path only. A portrait splash needs a portrait *reference image* — the argument does nothing here.
-- **Importing the `.mp4` as-is.** `.ogv` is the only video container the engine can load; there is no bundled WebM or MP4 plugin. An un-transcoded import fails and is rolled back.
+- **Loading the `.mp4` path after an import.** The import converted the clip to `.ogv` and saved it under that name; `load()` the `.ogv` path the answer names.
+- **Converting by hand.** The import tools convert; a hand-made ffmpeg command also fails on builds without libtheora (Homebrew's default ffmpeg has none).
 
 ## Edge cases
 
-- **Splash loop must be tiny in build size.** Loops compress aggressively because of low motion. Target ≤2MB by exporting at 720p, low bitrate, in DaVinci. Studio's import doesn't re-encode by default.
+- **Splash loop must be tiny in build size.** Loops compress aggressively because of low motion. Target ≤2MB by exporting at 720p, low bitrate, in DaVinci. The import's conversion keeps quality high (Theora at quality 8, at most 1080p), so a small file starts from a 720p clip.
 - **Mobile portrait splash.** The reference image must be portrait — `aspectRatio` is ignored on the image-to-video path, and MCP image generation is square-only, so make the reference in the Summer dashboard or crop it. Anchors preset 15 still works.
 - **Loop must sync to a music beat.** The video model doesn't know your BPM. Generate at the duration matching one bar at the menu music tempo (e.g. 120 BPM × 4 beats = 2s, or 8 beats = 4s) and confirm visually.
 - **Loop is behind translucent UI.** Generate with extra contrast headroom — the model tends toward mid-grey, and translucent UI on mid-grey reads muddy. Push for `high contrast cinematic` in the prompt.
 - **Loop seam still visible after 3 regens.** Set up two `VideoStreamPlayer` siblings and crossfade between them with a `Tween` on a 0.5s overlap. Costs an extra GPU decode but hides the seam.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the seam passes. Skip steps 6-7 (the `VideoStreamPlayer` and its audio). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The file is MP4; tell the person to play it looped and muted.
 
 ## Fallback (no MCP)
 
@@ -200,7 +201,7 @@ If the MCP server isn't running, route the user to the Summer dashboard:
 1. Image tab → generate the reference still (the loop's "neutral frame").
 2. Video tab → image-to-video with `ltx`, duration 5s, aspect ratio per target.
 3. Prompt with the loopable-motion vocabulary above and `"looping, seamless"`.
-4. Download the result, transcode to `.ogv` if needed, place under `assets/video/loops/`.
+4. Import the clip's URL from a shell while Summer Engine runs: `summer tool import-from-url --args '{"url":"<clip url>","path":"res://assets/video/loops/<name>.ogv"}'`. It converts the clip to Ogg Theora (`.ogv`), the only video Summer Engine plays.
 
 Print the exact prompt + model + duration + aspect ratio so the user can paste it into the dashboard.
 
@@ -221,4 +222,25 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_assets_generate_image` | `summer assets generate-image` |
+| `assets.generate_video`, `summer_assets_generate_video` | `summer assets generate-video` |
+| `summer_assets_search` | `summer assets search` |
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_import_asset` | `summer engine import-asset` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
+| `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `jobs.wait`, `summer_jobs_wait` | `summer jobs wait` |
+| `summer_search` | `summer ops search "<what you want>"` |
+<!-- /shell-commands -->

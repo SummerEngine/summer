@@ -44,6 +44,10 @@ export interface SkillSetupOptions {
   /** Skip `status: preview` skills. By default they install like any other
    *  skill — preview is a label carried in the skill's guidance, not a gate. */
   stableOnly?: boolean;
+  /** Install only the asset skills (`setup --assets-only`). */
+  assetsOnly?: boolean;
+  /** false: no Claude Code slash commands (`setup --cli`; they start work through the MCP tools). */
+  commands?: boolean;
 }
 
 /**
@@ -86,11 +90,14 @@ export function setupSkills(
   const scope = options.scope ?? "user";
   const recommended = Boolean(options.recommended);
   const stableOnly = Boolean(options.stableOnly);
+  const assetsOnly = Boolean(options.assetsOnly);
   const invocation = skillInstallInvocation(agent, {
     force: options.force,
     scope,
     recommended,
     stableOnly,
+    assetsOnly,
+    commands: options.commands !== false,
   });
 
   if (!invocation) {
@@ -103,16 +110,17 @@ export function setupSkills(
 
   const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(
     getSkillRegistry(),
-    { recommended, stableOnly }
+    { recommended, stableOnly, assetsOnly }
   );
   const count = selected.length;
   const note = previewNote({ previewIncluded, previewSkipped });
   const destination = isAgentClient(agent)
     ? describeInstallLocation(resolveInstallLocation(agent, scope))
     : undefined;
-  const subset = recommended ? "recommended " : "";
+  const subset = assetsOnly ? "asset " : recommended ? "recommended " : "";
 
   if (options.dryRun || !options.yes) {
+    const where = destination ?? "the agent's skills directory";
     return {
       status: "planned",
       command: invocation.display,
@@ -120,7 +128,9 @@ export function setupSkills(
       previewIncluded,
       previewSkipped,
       destination,
-      message: `Would install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
+      message: options.dryRun
+        ? `Would install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${where} with: ${invocation.display.join(" ")}`
+        : `Not installed. Run the same setup command again with --yes to install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${where}.`,
     };
   }
 
@@ -190,7 +200,7 @@ export function tallyInstallOutput(stdout: string): {
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean; assetsOnly: boolean; commands: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -201,7 +211,7 @@ function skillInstallInvocation(
   const baseArgs = [
     "skills",
     "install",
-    opts.recommended ? "--recommended" : "--all",
+    opts.assetsOnly ? "--assets" : opts.recommended ? "--recommended" : "--all",
     "--agent",
     agent,
     "--scope",
@@ -209,6 +219,7 @@ function skillInstallInvocation(
   ];
   if (opts.force) baseArgs.push("--force");
   if (opts.stableOnly) baseArgs.push("--stable-only");
+  if (!opts.commands) baseArgs.push("--no-commands");
   return {
     command,
     args: [...prefix, ...baseArgs],

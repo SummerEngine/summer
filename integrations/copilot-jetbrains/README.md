@@ -6,7 +6,7 @@ is intentionally empty. Support is delivered at install time by
 
 - MCP config: `~/.config/github-copilot/intellij/mcp.json`; Windows `%APPDATA%/github-copilot/intellij/mcp.json` (user); user scope only (project requests fall back with a warning).
   Shape: `servers.summer-engine = { command, args }`.
-- Skills: none. Copilot in JetBrains documents no skills folder; the MCP server ships summer_get_agent_playbook for in-chat guidance.
+- Skills: none. Copilot in JetBrains documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.
 - After: Restart the JetBrains IDE and open Copilot Chat in Agent mode; summer-engine shows in the tools list.
 
 Source of truth: `src/installer/agent-table.ts` (one row per agent).

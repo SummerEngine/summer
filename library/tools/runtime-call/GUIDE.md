@@ -1,0 +1,7 @@
+# summer_runtime_call
+
+Call ONE method on a node in the RUNNING game and get its return value: 'take_damage' [25], 'get_velocity', 'has_method', 'start_wave' [3]. The direct way to trigger gameplay code and read its answer without wiring input or waiting for a timer.
+
+Returns {path, method, return, return_type, return_truncated, frame}; return is a Godot literal string for math values. Arguments are JSON scalars/arrays/objects or Godot literal strings ('Vector3(0, 1, 0)'); Object/RID arguments are refused (bad_args). failure_reason call_error carries call_error_detail (the method raised); method_not_found means check summer_api_docs / the node's script.
+
+Calling a method is an ACTION, not evidence: probe after it (summer_game_probe) to see what it did. Needs a RUNNING game: failure_reason game_not_running (summer_play first), request_failed (debug session still attaching — wait, retry), unknown_instance (summer_game_control action:'instances'), game_breaked (the game sits at a breakpoint — continue it first), timeout (game wedged, minimized or breaked — summer_get_debugger_errors, or summer_stop + summer_play), unsupported (the running game predates the summer capture; restart it after updating). All runtime paths are ABSOLUTE ('/root/Main/Player') and come from summer_game_probe tree / summer_get_runtime_tree. engine_lacks_op on an older build names the fallback; a game whose build predates the summer capture answers unsupported (no legacy fallback carries a return value).

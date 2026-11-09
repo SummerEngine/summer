@@ -1,7 +1,7 @@
 id: skill/sound-effect
 kind: skill
 version: 1.1.0
-summary: "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers."
+summary: "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them."
 use_when:
   - generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues
   - an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it

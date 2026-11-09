@@ -1,0 +1,28 @@
+id: skill/summer-friends
+kind: skill
+version: 1.0.0
+summary: "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only."
+use_when:
+  - "showing a friends list, who is online or which friends are playing this Summer game"
+  - "opening a player's Summer profile, friends list or chat screen from inside a game"
+  - "reading or writing a player's direct messages, or a friends call fails with permission_undeclared or permission_declined"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - ui
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-testing
+    - skill/summer-parties
+    - skill/summer-world-chat
+source: official
+license: MIT
+status: preview
+recommended: false

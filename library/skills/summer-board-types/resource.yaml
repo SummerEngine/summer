@@ -1,0 +1,24 @@
+id: skill/summer-board-types
+kind: skill
+version: 1.0.0
+summary: "Define and reuse types on a Summer Board (Character, Level, Item) so ideas become typed cards: read the board's types first, reuse before you define."
+use_when:
+  - "putting characters, levels, items, abilities, quests or any set of similar things on a Summer Board"
+  - "about to call board.types define, or a person asks for a type, a list of all X, or a cleanup of types"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - game-design
+  modalities:
+    - project
+related:
+  skills:
+    - skill/summer-board
+    - skill/summer-board-modeling
+    - skill/summer-board-to-game
+source: official
+license: MIT
+status: preview
+bundled: false

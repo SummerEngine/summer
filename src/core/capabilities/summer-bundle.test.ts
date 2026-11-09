@@ -100,6 +100,75 @@ describe("readSummerBundle", () => {
     expect(await code(readSummerBundle(path))).toBe("bundle_invalid");
   });
 
+  it("reads a summer.bundle.v2 hosted export with its fixed configuration files", async () => {
+    const path = join(root, "v2.zip");
+    await writeSummerBundle(path, {
+      schema: "summer.bundle.v2",
+      hosted: true,
+      extraFiles: [
+        { name: "config/world-definitions.json", data: Buffer.from('{"schema":"summer.world-definitions.v1","definitions":[]}') },
+        { name: "config/world-support.json", data: Buffer.from('{"schema":"summer.world-support.v1","files":{}}') },
+      ],
+    });
+    const bundle = await readSummerBundle(path);
+    expect(bundle.schema).toBe("summer.bundle.v2");
+    expect(bundle.hosted).toBe(true);
+    expect(bundle.files.map((file) => file.path).sort()).toEqual([
+      "client.pck",
+      "config/summer.build.json",
+      "config/world-definitions.json",
+      "config/world-support.json",
+      "server.pck",
+    ]);
+  });
+
+  it("reads a summer.bundle.v2 standalone export", async () => {
+    const path = join(root, "v2-standalone.zip");
+    await writeSummerBundle(path, { schema: "summer.bundle.v2", targetPlatforms: ["ios", "android"] });
+    const bundle = await readSummerBundle(path);
+    expect(bundle).toMatchObject({ schema: "summer.bundle.v2", hosted: false, targetPlatforms: ["ios", "android"] });
+  });
+
+  it("refuses a summer.bundle.v2 export with a path outside the fixed layout, naming it", async () => {
+    const path = join(root, "v2-extra.zip");
+    await writeSummerBundle(path, {
+      schema: "summer.bundle.v2",
+      hosted: true,
+      extraFiles: [{ name: "config/worlds/arena.json", data: Buffer.from('{"schema":"summer.world-definition.v1"}') }],
+    });
+    await expect(readSummerBundle(path)).rejects.toThrow(/config\/worlds\/arena\.json/);
+  });
+
+  it("still reads a v1 hosted export with a per-World config file", async () => {
+    const path = join(root, "v1-world.zip");
+    await writeSummerBundle(path, {
+      hosted: true,
+      extraFiles: [{ name: "config/worlds/arena.json", data: Buffer.from('{"schema":"summer.world-definition.v1"}') }],
+    });
+    expect((await readSummerBundle(path)).schema).toBe("summer.bundle.v1");
+  });
+
+  it("reads a summer.bundle.v2 export without a server and without config/summer.build.json, with all its platforms", async () => {
+    const path = join(root, "v2-no-build.zip");
+    await writeSummerBundle(path, { schema: "summer.bundle.v2", buildFile: false, targetPlatforms: ["ios", "android", "macos", "windows"] });
+    const bundle = await readSummerBundle(path);
+    expect(bundle).toMatchObject({ schema: "summer.bundle.v2", hosted: false, targetPlatforms: ["ios", "android", "macos", "windows"] });
+    expect(bundle.files.map((file) => file.path)).toEqual(["client.pck"]);
+    expect(bundle.hostedBuild).toBeUndefined();
+  });
+
+  it.each(["summer.bundle.v1", "summer.bundle.v2"])("still refuses a %s export with a server but no config/summer.build.json", async (schema) => {
+    const path = join(root, "hosted-no-build.zip");
+    await writeSummerBundle(path, { schema, hosted: true, buildFile: false });
+    await expect(readSummerBundle(path)).rejects.toThrow(/config\/summer\.build\.json is missing/);
+  });
+
+  it("asks for a newer package, not a newer engine, for a bundle schema it does not know yet", async () => {
+    const path = join(root, "v9.zip");
+    await writeSummerBundle(path, { manifest: (manifest) => (manifest.schema = "summer.bundle.v9") });
+    await expect(readSummerBundle(path)).rejects.toThrow(/newer than this summer-engine package reads.*update the summer-engine package/);
+  });
+
   it("hashes a whole file", async () => {
     const path = join(root, "h.bin");
     await writeFile(path, "abc");

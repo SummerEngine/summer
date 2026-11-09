@@ -2,15 +2,18 @@
 
 The npm package is `summer-engine`, its binary is `summer`, and its source is [summerengine/summer](https://github.com/summerengine/summer), this repository. Publish only from a fresh clone of this repository.
 
-For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`. A major release soaks on the `next` dist-tag before `latest` moves.
+For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`. A major release soaks on the `next` dist-tag before `latest` moves, unless its release PR says otherwise (4.0.0 went straight to `latest`).
 
 ## Release contract
 
 1. Reconcile all approved CLI work into the public repository without overwriting newer public changes.
-2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit.
+2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit. `npm run sync:catalog -- --check` must pass: the shipped operation catalog matches the hosted server's.
 3. Merge that commit to public `main` before publishing.
 4. Run the fresh-terminal procedure from a new clone of the public repository.
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
+6. Point the `next` dist-tag at the same version, so `next` is never older than `latest`.
+7. Create the `v<version>` tag and GitHub Release from that version's CHANGELOG section.
+8. Publishing the GitHub Release lists `server.json` in the official MCP Registry (`.github/workflows/publish-mcp-registry.yml`) and attaches the Gemini extension, `summer-gemini-extension.tar.gz`, as the release's only asset (`.github/workflows/gemini-extension.yml`). `plugins/claude/` (the plugin for Anthropic's directory) pins the new version once `npm run generate:registry` runs after the bump. Homebrew (`brew install summerengine/tap/summer`) follows npm `latest` by itself: SummerEngine/homebrew-tap checks every hour and bumps its formula.
 
 Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 

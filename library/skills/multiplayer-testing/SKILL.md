@@ -1,6 +1,6 @@
 ---
 name: multiplayer-testing
-description: "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows."
+description: "Test a Summer multiplayer game with Local Play: several players, bad network, bots, a passing run."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -247,3 +247,18 @@ gaps on the `.zip` you upload.
 ## Next
 
 `multiplayer-publish`: export the summer.games bundle and upload it as a Build.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_console` | `summer engine get-console` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_play` | `summer engine play` |
+| `summer_project_setting` | `summer engine project-setting` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

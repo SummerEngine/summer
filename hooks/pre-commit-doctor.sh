@@ -9,9 +9,10 @@
 # Status:   OPT-IN. The hook is always registered but exits 0 immediately
 #           unless one of these is set:
 #             CLAUDE_PLUGIN_OPTION_ENABLE_PRE_COMMIT_DOCTOR=true
-#               Claude Code exports every plugin userConfig value to hook
-#               processes as CLAUDE_PLUGIN_OPTION_<KEY>; this is the
-#               `enable_pre_commit_doctor` toggle from plugin.json.
+#               The `enable_pre_commit_doctor` plugin option of older
+#               plugin versions (Claude Code exports userConfig values to
+#               hooks as CLAUDE_PLUGIN_OPTION_<KEY>). The plugin no longer
+#               declares it: every option opens a dialog on enable.
 #             SUMMER_PRE_COMMIT_DOCTOR=1
 #               Manual / other-host opt-in (also the envVar Gemini's
 #               gemini-extension.json `settings` entry maps to).
@@ -111,7 +112,7 @@ if [ "$HAS_FAIL" -eq 1 ]; then
         echo "$FAIL_MSGS"
         echo ""
         echo "Fix the failures above, or run: summer doctor"
-        echo "To bypass: turn off the plugin option enable_pre_commit_doctor (or unset SUMMER_PRE_COMMIT_DOCTOR)."
+        echo "To bypass: unset SUMMER_PRE_COMMIT_DOCTOR (or turn off the enable_pre_commit_doctor option where your host has it)."
         echo "============================================"
     } >&2
     exit 2

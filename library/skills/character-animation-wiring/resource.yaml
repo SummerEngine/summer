@@ -1,7 +1,7 @@
 id: skill/character-animation-wiring
 kind: skill
 version: 1.0.1
-summary: Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion.
+summary: "Wire a rigged character end to end: real clips and bones, locomotion states, method tracks, root motion."
 use_when:
   - a rigged GLB or Meshy rig with generated clips is in the scene and needs idle/walk/run wiring with blend times
   - footstep or attack-frame events, head tracking, still poses, blend-shape facial keys, or root motion must be hooked up

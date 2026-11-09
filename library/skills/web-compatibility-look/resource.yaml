@@ -1,7 +1,7 @@
 id: skill/web-compatibility-look
 kind: skill
 version: 1.0.0
-summary: "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance."
+summary: "Make a browser game look high-end in the Compatibility renderer (WebGL 2): what works, recipes, speed."
 use_when:
   - the game plays in the browser or is exported for the web and must look finished
   - the look is flat, grey or default in the web preview, or a Forward+ feature does nothing there

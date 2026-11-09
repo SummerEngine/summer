@@ -1,0 +1,42 @@
+{
+  "contract": 1,
+  "name": "assets.generate_3d",
+  "title": "Generate a 3D model",
+  "summary": "Start a 3D model job from a prompt or images. Returns a job; the model lands in the person's assets. Spends their credits. Next: jobs.wait.",
+  "effect": "spend",
+  "approval": "none",
+  "provider": "cloud",
+  "auth": "account",
+  "input": {
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "prompt"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "assetId": {
+        "type": "string"
+      }
+    }
+  },
+  "job": {
+    "typicalSeconds": 120
+  },
+  "status": "preview",
+  "since": "4.0",
+  "examples": [
+    {
+      "input": {
+        "prompt": "a low-poly tree"
+      },
+      "note": "One tree for any engine."
+    }
+  ]
+}

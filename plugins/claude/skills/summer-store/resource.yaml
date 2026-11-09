@@ -1,0 +1,35 @@
+id: skill/summer-store
+kind: skill
+version: 1.2.0
+summary: "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync."
+use_when:
+  - "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game"
+  - "checking on the authority that a player really owns an item before letting them use or equip it"
+  - "checkout shows pending, manual_review, insufficient_funds, already_owned or unavailable, or bought items don't appear"
+  - "recognizing items in game code by slug (item key) so one build works in staging and production"
+  - "defining items in summer.items.json and syncing them to the store for the owner's approval"
+  - "store bundles, Save %, timed sales, bundle-only items, or Owned instead of Buy"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - gameplay
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/sync-items
+  skills:
+    - skill/in-game-purchases
+    - skill/multiplayer
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/summer-player-data
+    - skill/summer-analytics
+source: official
+license: MIT
+status: preview
+recommended: false

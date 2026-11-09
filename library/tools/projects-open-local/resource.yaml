@@ -1,0 +1,51 @@
+id: tool/projects-open-local
+kind: tool
+version: 1.0.0
+summary: 'Open a project in Summer Engine. Waits until it connects; installs the engine only with install: true (the person''s yes). Next: engine.get_project_context.'
+use_when:
+  - '"open my game in Summer"'
+  - '"open the editor"'
+  - engine_not_running and the session has a project, or after projects.create_local
+  - an agent with no shell (Claude Desktop, a chat app) needs the editor
+do_not_use_when:
+  - the person has not said yes to installing Summer Engine (about 660 MB) - call it without install; it says when the engine is missing
+  - another project is open in Summer Engine - it names it; switch the editor first
+  - download links for the person to install by hand - projects.open_in_engine
+facets:
+  lifecycle:
+    - build
+  domains:
+    - project
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_projects_open_local
+implementation:
+  module: src/core/capabilities/projects-local.ts
+  export: openLocalProject
+surfaces:
+  mcp:
+    tool_name: summer_projects_open_local
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: The project folder (holds project.godot), e.g. projectPath from summer_projects_create_local. Default this session's project.
+    install:
+      type: boolean
+      description: Install Summer Engine first when it is missing. Set true only after the person said yes.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

@@ -3,11 +3,14 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { EngineApiClient } from "./api-client.js";
+import { getSummerDir } from "./store.js";
 
 import {
   discoverRegistryConnection,
   engineNotRunningError,
   engineSelectionFromEnv,
+  getEngineDiscoveryDir,
   listEngineInstances,
   resolveEngineConnection,
   type EngineInstance,
@@ -84,6 +87,7 @@ function mockHealth(instances: EngineInstance[]): void {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   if (testRoot) {
     await rm(testRoot, { recursive: true, force: true });
     testRoot = null;
@@ -91,6 +95,43 @@ afterEach(async () => {
 });
 
 describe("per-instance Summer editor discovery", () => {
+  it("uses only the explicitly selected engine registry and refuses a different project", async () => {
+    const root = await setupRoot();
+    const projectA = await createProject("game-a");
+    const projectB = await createProject("game-b");
+    const a = await registerInstance(projectA, { port: 6550 });
+    const b = await registerInstance(projectB, { port: 6551 });
+    const isolated = join(root, "isolated-api");
+    await mkdir(join(isolated, "instances"), { recursive: true });
+    await writeFile(join(isolated, "instances", `${b.instanceId}.json`), JSON.stringify(b));
+    mockHealth([a, b]);
+
+    const accountStore = getSummerDir();
+    expect(getEngineDiscoveryDir({})).not.toBe(isolated);
+    expect(getEngineDiscoveryDir({ SUMMER_ENGINE_STATE_DIR: isolated })).toBe(isolated);
+    vi.stubEnv("SUMMER_ENGINE_STATE_DIR", isolated);
+    expect(getSummerDir()).toBe(accountStore);
+    await expect(resolveEngineConnection({ projectPath: projectB }))
+      .resolves.toMatchObject({ port: 6551, instance: { instanceId: b.instanceId } });
+    await expect(resolveEngineConnection({ projectPath: projectB }, { summerDir: isolated }))
+      .resolves.toMatchObject({ port: 6551, instance: { instanceId: b.instanceId } });
+    await expect(resolveEngineConnection({ projectPath: projectA }, { summerDir: isolated }))
+      .rejects.toThrow(/No running Summer editor matches project/);
+    await expect(resolveEngineConnection({ projectPath: projectA }, discoveryOptions()))
+      .resolves.toMatchObject({ port: 6550, instance: { instanceId: a.instanceId } });
+
+    const client = await EngineApiClient.connect({ projectPath: projectB });
+    expect(client.getPort()).toBe(6551);
+    expect(await client.credentialsChanged()).toBe(false);
+    await writeFile(join(isolated, "instances", `${b.instanceId}.json`), JSON.stringify({ ...b, token: "rotated" }));
+    expect(await client.credentialsChanged()).toBe(true);
+  });
+
+  it("rejects an invalid isolated directory rather than falling back to the account store", () => {
+    expect(() => getEngineDiscoveryDir({ SUMMER_ENGINE_STATE_DIR: "relative" })).toThrow(/absolute directory/);
+    expect(() => getEngineDiscoveryDir({ SUMMER_ENGINE_STATE_DIR: "" })).toThrow(/absolute directory/);
+  });
+
   it("automatically binds an agent to the editor for its current project", async () => {
     await setupRoot();
     const projectA = await createProject("game-a");

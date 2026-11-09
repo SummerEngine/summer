@@ -32,6 +32,7 @@ source: official
 license: MIT
 status: preview
 recommended: false
+bundled: false
 lint_exceptions:
   - url-allowlist
   - credential-pattern

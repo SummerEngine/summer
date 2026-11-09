@@ -1,6 +1,6 @@
 id: tool/generate-sfx-choices
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default."
 use_when:
   - the first sound effect in a chat, after the person said yes to three versions to pick from
@@ -55,7 +55,7 @@ input_schema:
       description: "2-4 model ids to compare. Default: eleven_text_to_sound_v2, sonilo-sfx-1.1, stable-audio-3-sfx"
     open:
       type: boolean
-      description: "Show the choices page to the person (their open Studio tab, else the browser). false: only return the URL"
+      description: "Show the choices page in the browser when no open Studio tab took it. false: no browser, only return the URL"
   required:
     - text
   additionalProperties: false

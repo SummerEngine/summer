@@ -1,0 +1,56 @@
+id: skill/spatial-placement
+kind: skill
+version: 1.1.0
+summary: "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves."
+use_when:
+  - positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance
+  - placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much
+  - repairing an overlap or a floating object after a placement
+  - post-placement checks on a rotated prop using its own local axes
+  - placing modular kit pieces — facade or wall modules edge to edge, storeys stacked, pipes, gutters and lamps on a wall, clamps along a pipe
+  - measuring a kit piece's size, origin and which way it faces before placing it
+  - checking that a facade line is flush, with no gaps and no module standing proud
+do_not_use_when:
+  - the scene is 2D — Starcast reads Node3D bounds, 3D physics, and visual AABBs
+  - you want the engine to seat or align for you — skill/world-building-3d (summer_snap_to_surface, summer_align_distribute_3d)
+  - "the engine build predates Starcast3D (Summer Engine 0.5.66 or newer): summer_starcast returns engine_lacks_op; judge placement from summer_test_placement and summer_inspect_node instead"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - level-design
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/starcast
+    - tool/inspect-asset
+    - tool/place-adjacent
+    - tool/attach-to-surface
+    - tool/repeat-along
+    - tool/connect-ports
+    - tool/raycast
+    - tool/measure
+    - tool/instantiate-scene
+    - tool/test-placement
+    - tool/snap-to-surface
+    - tool/align-distribute-3d
+    - tool/get-scene-tree
+    - tool/inspect-node
+    - tool/set-prop
+    - tool/batch
+  skills:
+    - skill/world-building-3d
+    - skill/scene-composition
+source: official
+license: MIT
+status: preview
+recommended: true
+aliases:
+  - skills/scene-and-project/spatial-placement

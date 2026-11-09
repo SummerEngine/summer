@@ -53,6 +53,8 @@ export interface EmbedProviderOptions {
   token?: string | null;
   timeoutMs: number;
   fetchImpl?: typeof fetch;
+  /** Extra request headers (the runtime's client and agent-host headers). */
+  headers?: Record<string, string>;
 }
 
 // ── Vector encoding ────────────────────────────────────────────────────────
@@ -177,7 +179,7 @@ export function createEmbedProvider(options: EmbedProviderOptions): EmbedProvide
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = { ...options.headers, "Content-Type": "application/json" };
       if (options.token) headers.Authorization = `Bearer ${options.token}`;
       const response = await fetchImpl(options.url, {
         method: "POST",

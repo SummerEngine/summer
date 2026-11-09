@@ -51,12 +51,18 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // engine's one-table op; the other three are the legacy
   // fallbacks on engines that predate it.
   "Navigate", "OpenResource", "FocusDock", "RevealInFileSystem",
+  // engine.view_set: the frame's view, rail, focus and frame (core/capabilities/view-set.ts)
+  "SetView",
+  // Summer Apps editor docks (summer_app_dock: core/capabilities/apps.ts)
+  "OpenAppDock", "CloseAppDock", "ListAppDocks",
+  // summer_enable_plugin (core/capabilities/enable-plugin.ts)
+  "EnableEditorPlugin",
   // Project + input
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
   // Files (summer_write_file / summer_replace_text / summer_create_scene)
   "WriteFile",
-  // Import
-  "ImportFromUrl", "ImportFromUrlBatch",
+  // Import (RenameFile registers a video converted on this computer: core/capabilities/video-ogv.ts)
+  "ImportFromUrl", "ImportFromUrlBatch", "RenameFile",
   // Diagnostics + runtime control
   "GetConsoleOutput", "ClearConsoleOutput", "GetDebuggerErrors", "IsGameRunning",
   // summer_play / summer_stop send these as ops for the instance-aware and
@@ -145,6 +151,9 @@ export interface EngineCapabilities {
    *  destination ids this build can open. Absent = engine predates the op;
    *  summer_open then falls back to the legacy per-surface ops it can map. */
   navigation?: EngineNavigationCapabilities;
+  /** The Studio page ops this app answers itself through its own Studio tab
+   *  (POST /api/studio). Absent = send them to Summer's server. */
+  studioPage?: EngineStudioPageCapabilities;
   /** Launch postures this build ENFORCES: "focus" (always), "background"
    *  (`--summer-background`), "offscreen" (`--summer-offscreen` /
    *  `--summer-verify`). Non-macOS builds advertise ["focus"] only. Absent =
@@ -152,6 +161,12 @@ export interface EngineCapabilities {
    *  the --help probe / version gate (core/launch-posture.ts). Accepts the
    *  snake_case spelling too. */
   launchPostures?: string[];
+}
+
+export interface EngineStudioPageCapabilities {
+  version?: number;
+  path: string;
+  ops: string[];
 }
 
 export interface EngineNavigationCapabilities {
@@ -245,10 +260,24 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (runtimeControl) out.runtimeControl = runtimeControl;
   const navigation = parseNavigation(record.navigation);
   if (navigation) out.navigation = navigation;
+  const studioPage = parseStudioPage(record.studioPage);
+  if (studioPage) out.studioPage = studioPage;
   const launchPostures = stringList(record.launchPostures) ?? stringList(record.launch_postures);
   if (launchPostures) out.launchPostures = launchPostures;
 
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parseStudioPage(raw: unknown): EngineStudioPageCapabilities | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const record = raw as Record<string, unknown>;
+  const ops = stringList(record.ops);
+  if (!ops?.length) return undefined;
+  return {
+    ...(typeof record.version === "number" ? { version: record.version } : {}),
+    path: typeof record.path === "string" && record.path.startsWith("/api/") ? record.path : "/api/studio",
+    ops,
+  };
 }
 
 function parseNavigation(raw: unknown): EngineNavigationCapabilities | undefined {

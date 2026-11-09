@@ -10,7 +10,7 @@ session: `alias summer="node $PWD/dist/bin/summer.js"`.
 
 ## a. Prerequisites
 
-- Node >= 20 (`node --version`). The registry/eval scripts run TypeScript
+- Node >= 22 (`node --version`). The registry/eval scripts run TypeScript
   natively and need >= 22.18.
 - git.
 - The Summer Engine app installed (`/Applications/Summer.app` on macOS —
@@ -68,7 +68,7 @@ node dist/bin/summer.js setup cursor --local-dev --yes    # ~/.cursor/mcp.json  
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first). While a release soaks on the `next` dist-tag, `npx -y summer-engine@next setup claude-code --yes --force --channel next` — without `--channel next` the entry would run `@latest`, i.e. the previous release.
+That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first). While a release soaks on the `next` dist-tag, `npx -y summer-engine@next setup claude-code --yes --force`: a CLI newer than npm `latest` writes `summer-engine@next` when `next` is its own version, and its exact version otherwise, never an older release.
 
 ## d. Quick verification, no agent involved
 
@@ -86,12 +86,17 @@ Run these from any directory with the engine open on a project.
 
 Engine not running, each `[engine]` command prints exactly this and exits 1:
 
+```json
+{
+  "ok": false,
+  "code": "engine_not_running",
+  "error": "Summer Engine is not running.",
+  "recovery": "Open the project in Summer Engine, or run: summer run <project-path> (the folder that holds project.godot).",
+  "hint": "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it."
+}
 ```
-Summer Engine is not running (or no project is open).
-Summer Engine is not running (no api-token found, no live editor registered in ~/.summer/instances). Open Summer Engine first.
-Start it with 'summer run' or open the project in the Summer desktop app, then retry.
-Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it.
-```
+
+The MCP face returns the same fields (`isError`), with the `npx -y summer-engine@latest run <project-path>` form of the command. Other shared failures carry their own `code` on both faces: `not_signed_in` (no sign-in, or the server refused the token), `no_credits`, `unavailable` (a Summer service could not be reached; the real cause, for example `connect ECONNREFUSED 127.0.0.1:443`, is in the message and in `details.cause`). Each has one next step in `recovery`. These are the codes the 4.0 tools use. The store sign-in keeps its own code, `store_login_required`.
 
 ## e. From Claude Code
 
@@ -100,7 +105,7 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 1. "Read the scene tree and describe the level." — expect `summer_get_project_context` then `summer_get_scene_tree`, and a description that matches what is open.
 2. "Add a MeshInstance3D cube at (0, 1, 0) and screenshot it." — expect `summer_add_node` (+ `summer_set_prop` / `summer_set_resource_property` for the BoxMesh), `summer_save_scene`, `summer_screenshot`; the cube is in the editor and the scene is saved.
 3. "Use the design-mechanic skill to plan a dash." — expect the skill to load (Claude names it) and a plan with the skill's structure, no engine mutation.
-4. "Report feedback on the skill you used." — expect `summer_library_feedback` with `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
+4. "Report feedback on the skill you used." — expect `summer_call` with `docs.feedback` (3.x: `summer_library_feedback`) and `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
 5. "Run an editor script that counts the nodes in the open scene and prints the total." — expect `summer_run_editor_script` and a printed count that matches `summer_get_scene_tree`.
 
 ## f. Expected to fail on older engines
@@ -161,6 +166,7 @@ An agent driving Summer must not take over the user's screen. Three launch postu
 | Command | Default when an agent drives | Opt in to focus |
 |---|---|---|
 | `summer run <path>` | **background** when stdout is not a TTY (Claude Code's Bash tool, MCP hosts, CI). Passes `--summer-background` only when the installed engine is known to honour it. Primary gate: `<binary> --help` lists the flag (exits headless before any window; cached per binary path + mtime in `~/.summer/launch-probe-cache.json`, so it runs once per install). The installed version (macOS Info.plist / Windows `sq.version`) is only the fallback when `--help` cannot run — never a pre-check, because dev and pre-release builds carry the flag while still stamped 0.5.65. Otherwise it launches with focus and prints one line saying this engine cannot launch without focus (or that it could not be probed — Linux has no version file). Always spawns the executable directly, never `open -a`, which would activate the app. Once up, `/api/health capabilities.launchPostures` is the authoritative advert. A human in a terminal gets **focus** by default. | `--focus` (and `--background` to force the other way) |
+| `summer dev [template] [dir]`, and the MCP opening the session's project when no editor runs (`core/engine-self-start.ts`; off with `SUMMER_AUTO_LAUNCH=0`) | the same launch as `summer run` (`core/engine-launch.ts`): **background** for an agent. `summer dev` waits up to 180 s for the local API; one MCP tool call waits up to 45 s, then answers `engine_not_running` with "call again in 30 seconds" and never launches a second editor for that project. | `summer dev --focus` |
 | `summer_play` / `summer tool play` | **quiet**: `PlayGame agent:true` — the editor does not switch to the Game tab, grab focus for the embedded game, or run the render-health self-check. The game still runs embedded and is visible to `summer_is_running`, `summer_screenshot target:'game'`, diagnostics. On background-posture engines (0.5.66+) the play child also gets `--summer-background`, so a separate-window game appears without focus too. The result echoes `agent_quiet:true`; an engine that predates quiet play (< 0.5.45) gets a `posture_note`. | `focus: true` |
 | `summer_screenshot` | never launches or focuses anything: `viewport` reads the editor viewport back, `scene` renders offscreen in a SubViewport, `game` reads the running game's frame. | n/a |
 | RunVerification probes (`summer_batch` / playbook `rawOpsViaBatch`) | the engine runs the probe child with the **offscreen** posture (`--summer-verify` implies it). | n/a |

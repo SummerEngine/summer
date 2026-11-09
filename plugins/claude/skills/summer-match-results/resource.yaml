@@ -1,0 +1,32 @@
+id: skill/summer-match-results
+kind: skill
+version: 1.0.0
+summary: "End a Summer match: report each player's win, loss or draw, show results on clients, then close the World."
+use_when:
+  - "a multiplayer Summer game needs a winner, a game-over screen or a match that ends"
+  - "reporting match outcomes, abandons or rating changes from the authority"
+  - "players disconnect, reconnect or leave mid-match and the authority must handle it"
+  - "the World should shut down after a match, or a persistent World runs several matches"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - gameplay
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-state
+    - skill/summer-matchmaking
+    - skill/summer-leaderboards
+    - skill/summer-world-saves
+    - skill/multiplayer-testing
+    - skill/summer-analytics
+source: official
+license: MIT
+status: stable
+recommended: false

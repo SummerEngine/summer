@@ -1,0 +1,68 @@
+id: tool/app-events
+kind: tool
+version: 1.0.0
+summary: "Wait for what a Summer App sends to agents: summer.agent.send events, app errors, feedback and tool calls."
+use_when:
+  - waiting for the person to act in an app you built
+  - checking an app for errors after publishing
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_events
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_events
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+    after:
+      type: integer
+      minimum: 0
+      default: 0
+      description: "Return events after this cursor (0: from the start). Pass the returned cursor next time"
+    timeoutSeconds:
+      type: integer
+      minimum: 0
+      maximum: 50
+      default: 25
+      description: Wait up to this long (max 50) for the first new event
+    kinds:
+      type: array
+      items:
+        type: string
+        enum:
+          - agent
+          - error
+          - feedback
+          - tool
+      maxItems: 4
+      description: "Default: agent, error, feedback"
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

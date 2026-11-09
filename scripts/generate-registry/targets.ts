@@ -23,11 +23,19 @@ export const MANIFEST_TARGETS: Record<string, ManifestTarget[]> = {
   claude: [
     { generated: "plugin.claude.json", destination: ".claude-plugin/plugin.json" },
     { generated: "marketplace.claude.json", destination: ".claude-plugin/marketplace.json" },
-    // Root .mcp.json is the MCP pointer shared by the claude, codex, cursor
-    // (and factory, via its mcp.json convention) manifests; owned here once.
+    // Root .mcp.json is the MCP pointer shared by the cursor (and factory, via
+    // its mcp.json convention) manifests; owned here once.
     { generated: "mcp.json", destination: ".mcp.json" },
+    // The same plugin for Anthropic's directory, from its own small folder (mirrors.ts).
+    { generated: "plugin.claude-directory.json", destination: "plugins/claude/.claude-plugin/plugin.json" },
   ],
-  codex: [{ generated: "plugin.codex.json", destination: ".codex-plugin/plugin.json" }],
+  codex: [
+    { generated: "plugin.codex.json", destination: ".codex-plugin/plugin.json" },
+    // The Codex plugin's servers: the desktop-app bridge and the hosted server.
+    { generated: "mcp.codex.json", destination: ".codex-plugin/mcp.json" },
+    // Codex's marketplace file (read before .claude-plugin/marketplace.json).
+    { generated: "marketplace.codex.json", destination: ".agents/plugins/marketplace.json" },
+  ],
   cursor: [{ generated: "plugin.cursor.json", destination: ".cursor-plugin/plugin.json" }],
   factory: [{ generated: "plugin.factory.json", destination: ".factory-plugin/plugin.json" }],
   gemini: [{ generated: "gemini-extension.json", destination: "gemini-extension.json" }],
@@ -73,6 +81,8 @@ export const MANIFEST_TARGETS: Record<string, ManifestTarget[]> = {
 export const DOC_TARGETS: ManifestTarget[] = [
   // The human index of the flat skills folder (see buildSkillsIndexMarkdown).
   { generated: "skills-index.md", destination: "library/skills/README.md" },
+  // The official MCP Registry entry (manifests.ts buildMcpRegistryServer).
+  { generated: "server.json", destination: "server.json" },
 ];
 
 export function allTargets(): ManifestTarget[] {

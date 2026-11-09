@@ -1,0 +1,36 @@
+id: skill/summer-apps
+kind: skill
+version: 0.1.0
+summary: "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker), data and tools."
+use_when:
+  - the person asks for a tool for their team ("build us a loot balance tool", "a board to track creatures")
+  - the person needs a UI to decide, rate or edit something they will come back to
+  - reading or changing the data of an existing Summer App
+  - calling an app's agent tools or waiting for what an app sends
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+    - agent-workflow
+  modalities:
+    - ui
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps-design
+  tools:
+    - tool/app-guide
+    - tool/app-create
+    - tool/app-publish
+    - tool/app-events
+    - tool/app-data
+    - tool/app-call
+    - tool/app-dock
+source: official
+license: MIT
+status: preview
+recommended: true

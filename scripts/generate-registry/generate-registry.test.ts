@@ -11,10 +11,12 @@ import {
   GENERATED_BANNER,
 } from "./index.ts";
 import { applyManifests } from "./apply.ts";
+import { applyMirrors, CLAUDE_DIRECTORY_MANIFEST, mirrorFiles, mirrorsOf } from "./mirrors.ts";
 import { manifestBanner } from "./shared.ts";
 import { checkRegistry } from "./check.ts";
 import { checkCountClaims, collectCountClaimFiles, CLAIM_PATTERN } from "./count-claims.ts";
 import { MANIFEST_TARGETS, allTargets } from "./targets.ts";
+import { MCP_REGISTRY_NAME } from "./manifests.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -55,11 +57,15 @@ describe("generateRegistry: catalog outputs", () => {
       "gemini-extension.json",
       "index.json",
       "marketplace.claude.json",
+      "marketplace.codex.json",
+      "mcp.codex.json",
       "mcp.json",
+      "plugin.claude-directory.json",
       "plugin.claude.json",
       "plugin.codex.json",
       "plugin.cursor.json",
       "plugin.factory.json",
+      "server.json",
       "skills-index.md",
       "skills-registry.json",
       "templates-registry.json",
@@ -219,6 +225,25 @@ describe("generateRegistry: catalog outputs", () => {
     ]);
   });
 
+  it("a library-only skill (bundled: false) stays in the index but leaves bulk installs and every manifest", () => {
+    const root = copyBasicFixture();
+    const yamlPath = path.join(root, "library", "skills", "beta-skill", "resource.yaml");
+    fs.writeFileSync(yamlPath, `${fs.readFileSync(yamlPath, "utf8").trimEnd()}\nbundled: false\n`);
+    const result = gen(root);
+    const index = parse(result.files, "index.json").resources as Array<{ id: string }>;
+    expect(index.map((entry) => entry.id)).toContain("skill/beta-skill");
+    const skills = parse(result.files, "skills-registry.json").skills as Array<Record<string, unknown>>;
+    expect(skills.find((skill) => skill.name === "beta-skill")?.bundled).toBe(false);
+    expect(skills.find((skill) => skill.name === "alpha-skill")).not.toHaveProperty("bundled");
+    expect(result.files.get("skills-index.md")).toMatch(/\| \[\*beta-skill\*\]\(\.\/beta-skill\/SKILL\.md\) \(preview\) \(library only\) \|/);
+    for (const name of ["plugin.claude.json", "plugin.codex.json", "gemini-extension.json"]) {
+      const manifest = JSON.parse(result.files.get(name)!) as { skills?: string[] };
+      if (!manifest.skills) continue;
+      expect(manifest.skills, name).toContain("./library/skills/alpha-skill/");
+      expect(manifest.skills, name).not.toContain("./library/skills/beta-skill/");
+    }
+  });
+
   it("every generated file ends with exactly one trailing newline", () => {
     const result = gen(basicRoot);
     for (const [, content] of result.files) {
@@ -229,13 +254,21 @@ describe("generateRegistry: catalog outputs", () => {
 });
 
 describe("generateRegistry: manifests (golden shapes)", () => {
-  it("plugin.claude.json keeps the current field order and stamps version + tool count", () => {
+  it("server.json names the server as package.json's mcpName, in the GitHub org's own case", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+    expect(pkg.mcpName).toBe(MCP_REGISTRY_NAME);
+    // The registry grants io.github.<org login>/* and compares case-sensitively; the login is SummerEngine.
+    expect(MCP_REGISTRY_NAME.startsWith("io.github.SummerEngine/")).toBe(true);
+    expect(parse(gen(basicRoot).files, "server.json").name).toBe(MCP_REGISTRY_NAME);
+  });
+
+  it("plugin.claude.json keeps the current field order, stamps the version and carries both MCP servers", () => {
     const result = gen(basicRoot);
     const manifest = parse(result.files, "plugin.claude.json");
     expect(Object.keys(manifest)).toEqual([
       "$schema",
-      "_generated",
       "name",
+      "displayName",
       "version",
       "description",
       "author",
@@ -243,19 +276,26 @@ describe("generateRegistry: manifests (golden shapes)", () => {
       "repository",
       "license",
       "keywords",
+      "icon",
+      "documentationUrl",
+      "supportUrl",
+      "privacyPolicyUrl",
+      "termsOfServiceUrl",
       "skills",
-      "hooks",
       "mcpServers",
-      "userConfig",
     ]);
     expect(manifest.version).toBe("9.9.9");
-    expect(manifest.description).toContain("a 1-tool MCP bridge");
+    expect(manifest.description).toContain("/summer:start");
     expect(manifest.skills).toEqual([
       "./library/skills/alpha-skill/",
       "./library/skills/beta-skill/",
     ]);
-    expect(manifest.hooks).toBe("./hooks/hooks.json");
-    expect(manifest.mcpServers).toBe("./.mcp.json");
+    // hooks/hooks.json is the default location; naming it too can register hooks twice.
+    expect(manifest.hooks).toBeUndefined();
+    expect(manifest.mcpServers).toEqual({
+      "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] },
+      "summer-cloud": { type: "http", url: "https://mcp.summerengine.com/mcp" },
+    });
   });
 
   it("all manifests carry the full skill list (codex/cursor/factory/gemini gaps are fixed)", () => {
@@ -273,17 +313,20 @@ describe("generateRegistry: manifests (golden shapes)", () => {
         "./library/skills/alpha-skill/",
         "./library/skills/beta-skill/",
       ]);
-      expect(manifest._generated, name).toBe(manifestBanner(agent));
+      // `claude plugin validate --strict` fails on unknown fields, so the Claude manifests carry no banner.
+      expect(manifest._generated, name).toBe(agent === "claude" ? undefined : manifestBanner(agent));
     }
   });
 
-  it("manifest banners name the integration they are built from", () => {
+  it("manifest banners name the integration they are built from; the Claude manifests carry only documented fields", () => {
     expect(manifestBanner("claude")).toBe(
       "GENERATED from integrations/claude — do not edit; npm run generate:registry",
     );
     const result = gen(basicRoot);
     const marketplace = parse(result.files, "marketplace.claude.json");
-    expect(marketplace._generated).toBe(manifestBanner("claude"));
+    expect(marketplace._generated).toBeUndefined();
+    const entry = (marketplace.plugins as Record<string, unknown>[])[0];
+    for (const field of ["brandColor", "capabilities", "defaultPrompt"]) expect(entry[field], field).toBeUndefined();
   });
 
   it("per-agent format differences survive: cursor hooks file, codex interface, gemini mcp block, marketplace wrapper", () => {
@@ -294,8 +337,39 @@ describe("generateRegistry: manifests (golden shapes)", () => {
 
     const codex = parse(result.files, "plugin.codex.json");
     const codexInterface = codex.interface as Record<string, unknown>;
-    expect(codexInterface.displayName).toBe("Summer");
+    expect(codexInterface.displayName).toBe("Summer Engine");
     expect(codexInterface.longDescription).toContain("a 1-tool MCP bridge");
+    // OpenAI's plugin directory: at most 30 characters, and a logo and composer icon.
+    expect((codexInterface.shortDescription as string).length).toBeLessThanOrEqual(30);
+    expect(codexInterface.logo).toBe("./assets/icon.png");
+    expect(codexInterface.composerIcon).toBe("./assets/icon.png");
+    // Codex gets both servers from its own file; the root .mcp.json stays local-only.
+    expect(codex.mcpServers).toBe("./.codex-plugin/mcp.json");
+    expect(parse(result.files, "mcp.codex.json").mcpServers).toEqual({
+      "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] },
+      "summer-cloud": { type: "http", url: "https://mcp.summerengine.com/mcp" },
+    });
+    expect(Object.keys(parse(result.files, "mcp.json").mcpServers as object)).toEqual(["summer-engine"]);
+    // Codex reads .agents/plugins/marketplace.json first: same marketplace name, so
+    // existing summer@summer-engine installs keep working; sign-in on first use.
+    const codexMarketplace = parse(result.files, "marketplace.codex.json");
+    expect(codexMarketplace.name).toBe(parse(result.files, "marketplace.claude.json").name);
+    expect(codexMarketplace.plugins).toEqual([
+      {
+        name: "summer",
+        source: { source: "local", path: "./" },
+        policy: { installation: "AVAILABLE", authentication: "ON_USE" },
+        category: "Developer Tools",
+      },
+    ]);
+    expect(cursor.logo).toBe("assets/icon.png");
+
+    // The MCP Registry caps the description at 100 characters; registry readers show the icon.
+    const server = parse(result.files, "server.json");
+    expect((server.description as string).length).toBeLessThanOrEqual(100);
+    expect(server.icons).toEqual([
+      { src: "https://www.summerengine.com/icon/web-app-manifest-512x512.png", mimeType: "image/png", sizes: ["512x512"] },
+    ]);
 
     const gemini = parse(result.files, "gemini-extension.json");
     expect(gemini.contextFileName).toBe("GEMINI.md");
@@ -360,6 +434,7 @@ describe("apply + check: the parity gate", () => {
     const result = gen(root);
     writeGenerated(path.join(root, "registry", "generated"), result);
     applyManifests(root);
+    applyMirrors(root, mirrorsOf(root, result.resources));
     return result;
   }
 
@@ -416,6 +491,46 @@ describe("apply + check: the parity gate", () => {
   });
 });
 
+describe("plugins/claude/: the Claude plugin for Anthropic's directory", () => {
+  it("check flags a hand edit and a stray file; apply puts both right", () => {
+    const root = copyBasicFixture();
+    const result = gen(root);
+    writeGenerated(path.join(root, "registry", "generated"), result);
+    applyManifests(root);
+    applyMirrors(root, mirrorsOf(root, result.resources));
+    expect(checkRegistry(root, { schemasDir }).drift).toEqual([]);
+    fs.appendFileSync(path.join(root, "plugins", "claude", "skills", "alpha-skill", "SKILL.md"), "\nhand edit\n");
+    fs.writeFileSync(path.join(root, "plugins", "claude", "skills", "stray.md"), "x");
+    const drift = checkRegistry(root, { schemasDir }).drift.join("\n");
+    expect(drift).toContain("plugins/claude/skills/alpha-skill/SKILL.md: stale copy");
+    expect(drift).toContain("plugins/claude/skills/stray.md: not a copy");
+    expect(applyMirrors(root, mirrorsOf(root, result.resources)).removed).toEqual(["plugins/claude/skills/stray.md"]);
+    expect(checkRegistry(root, { schemasDir }).drift).toEqual([]);
+  });
+
+  it("the repo's Claude directory plugin: under 512 files, none over 256 KiB, every launcher pinned", () => {
+    const version = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version as string;
+    const skills = fs.readdirSync(path.join(repoRoot, "plugins", "claude", "skills"));
+    const files = mirrorFiles(repoRoot, skills, version);
+    const plugin = [...files].filter(([rel]) => rel.startsWith("plugins/claude/"));
+    expect(plugin.length + 1).toBeLessThanOrEqual(512);
+    for (const [rel, content] of plugin) {
+      expect(content.length, rel).toBeLessThanOrEqual(256 * 1024);
+      if (!rel.endsWith(".png")) expect(content.toString("utf8"), rel).not.toContain("summer-engine@latest");
+    }
+    expect(files.has("plugins/claude/commands/start.md")).toBe(true);
+    expect(files.has("plugins/claude/commands/summer.md")).toBe(true);
+    // The directory blocks a plugin folder without a README of 40+ words.
+    const readme = files.get("plugins/claude/README.md")?.toString("utf8") ?? "";
+    expect(readme.replace(/```[\s\S]*?```/g, "").split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(40);
+    expect(readme).toContain(`summer-engine@${version}`);
+    expect(files.get("plugins/claude/skills/summer-cli/SKILL.md")?.toString("utf8")).toContain(`summer-engine@${version}`);
+    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, CLAUDE_DIRECTORY_MANIFEST), "utf8"));
+    expect(manifest.mcpServers["summer-engine"].args).toEqual(["-y", `summer-engine@${version}`, "mcp"]);
+    expect(manifest.skills).toContain("./skills/summer-cli/");
+  });
+});
+
 describe("count-claims guard", () => {
   it("accepts matching claims and ignores non-exact phrasings", () => {
     const counts = { byKind: { tool: 1, skill: 2 } };
@@ -439,6 +554,7 @@ describe("count-claims guard", () => {
       fs.writeFileSync(abs, text);
     };
     write("CLAUDE.md", "70 tools here\n");
+    write(".claude/CLAUDE.md", "70 tools here\n");
     write("library/references/mcp-tools-reference/mcp-tools-reference.md", "## Tool surface (70 tools)\n");
     write("_persona/summer/SOUL.md", "I know 70 tools\n");
     write(".opencode/INSTALL.md", "installs 83 skills\n");
@@ -447,6 +563,7 @@ describe("count-claims guard", () => {
     write("integrations/cursor/README.md", "a 5-skill gap\n");
     write("scripts/notes.md", "9 tools\n"); // NOT scanned
     expect(collectCountClaimFiles(root)).toEqual([
+      ".claude/CLAUDE.md",
       ".opencode/INSTALL.md",
       "CLAUDE.md",
       "_persona/summer/SOUL.md",
@@ -456,6 +573,7 @@ describe("count-claims guard", () => {
     ]);
     const violations = checkCountClaims(root, { byKind: { tool: 69, skill: 83 } });
     expect(violations.map((v) => `${v.file}:${v.line} ${v.claim}`)).toEqual([
+      ".claude/CLAUDE.md:1 70 tools",
       "CLAUDE.md:1 70 tools",
       "_persona/summer/SOUL.md:1 70 tools",
       "docs/OVERVIEW.md:1 70 tools",

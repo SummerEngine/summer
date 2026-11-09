@@ -6,7 +6,7 @@ import { saveAuthToken, saveUserInfo } from "../../core/auth.js";
 import { setConfigValue } from "../../core/config.js";
 import { setSummerDirForTests, writeStoreText } from "../../core/store.js";
 import { runLogout } from "./logout.js";
-import { runStatus } from "./status.js";
+import { readStatus, runStatus } from "./status.js";
 
 let root = "";
 const originalToken = process.env.SUMMER_TOKEN;
@@ -60,6 +60,19 @@ describe("summer status auth line", () => {
     expect(lines).toContain("        Run: npx -y summer-engine@latest login");
     expect(lines).toContain("        Or: https://staging.example/login");
     expect(lines.join("\n")).not.toContain("npx summer-engine");
+  });
+});
+
+describe("summer status --json", () => {
+  it("reports the same facts as the text, as one object", async () => {
+    await setConfigValue("gateway.url", "https://staging.example");
+    expect(await readStatus()).toEqual({
+      auth: { signedIn: false, loginUrl: "https://staging.example/login" },
+      engine: { state: "not_running" },
+    });
+    await saveAuthToken("file-token");
+    await saveUserInfo({ id: "user-1", email: "stored@example.com" });
+    expect((await readStatus()).auth).toEqual({ signedIn: true, source: "stored", email: "stored@example.com" });
   });
 });
 

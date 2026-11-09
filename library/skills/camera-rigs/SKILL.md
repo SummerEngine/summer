@@ -1,6 +1,6 @@
 ---
 name: camera-rigs
-description: "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance."
+description: "Camera rigs: Camera2D follow with limits, first-person head, SpringArm3D third-person, top-down, FOV."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
@@ -55,7 +55,7 @@ Same as above minus the platformer edge-lock urgency. Zoom out to show the field
 ## 3D first-person camera
 
 Camera is a child of a `Head` node on the player. Body yaws, Head pitches. See
-the `character-movement` skill (its `../character-movement/references/movement-3d.md`) or
+the `character-movement` skill (its 3D movement reference: `summer_docs_read` id `skill/character-movement/references/movement-3d.md`) or
 `fps-controller` for the look script. FOV 70-75, near 0.05.
 
 ```
@@ -126,3 +126,23 @@ camera, not the game's.
 | Shows past level edge | No 2D limits | Set `limit_*` to level bounds |
 | Wrong facing (3D) | rotation.y off | y: 0 = forward, 180 = backward |
 | Everything tiny/huge (ortho) | `size` wrong | Tune `size`, not `position.y` |
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_docs_read` | `summer docs read` |
+| `summer_add_node` | `summer engine add-node` |
+| `summer_batch` | `summer engine batch` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

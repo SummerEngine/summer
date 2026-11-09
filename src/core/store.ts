@@ -58,6 +58,23 @@ async function hardenMode(path: string, mode: number): Promise<void> {
   }
 }
 
+/**
+ * Windows refuses a rename for a moment while another process has the file
+ * open (antivirus scanning the new file, the engine or a second summer reading
+ * the token): retry briefly, the way npm's write-file-atomic does.
+ */
+async function renameIntoPlace(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await rename(from, to);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? "";
+      if (process.platform !== "win32" || attempt >= 10 || !["EPERM", "EACCES", "EBUSY"].includes(code)) throw error;
+      await new Promise((done) => setTimeout(done, 25 * attempt));
+    }
+  }
+}
+
 export async function ensureSummerStore(): Promise<string> {
   const dir = getSummerDir();
   try {
@@ -137,7 +154,7 @@ export async function writeStoreText(name: string, value: string): Promise<void>
       flag: "wx",
     });
     await hardenMode(temporary, 0o600);
-    await rename(temporary, destination);
+    await renameIntoPlace(temporary, destination);
     await hardenMode(destination, 0o600);
   } catch (error) {
     await rm(temporary, { force: true }).catch(() => undefined);

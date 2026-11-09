@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 /**
  * npm run generate:registry            — generate registry/generated/ + apply
- *                                        manifests to their root destinations.
+ *                                        manifests to their root destinations
+ *                                        and the plugins/claude/ copy
+ *                                        (mirrors.ts),
+ *                                        after rewriting each skill's "From a
+ *                                        shell" section from the operation
+ *                                        catalog (validate-library/shell-commands.ts).
  * npm run generate:registry -- --check — CI parity gate: regenerate, byte-compare
  *                                        against committed output AND applied root
  *                                        manifests, verify doc count claims.
@@ -29,8 +34,10 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { generateRegistry, writeGenerated, GenerateError } from "./index.ts";
 import { applyManifests } from "./apply.ts";
+import { applyMirrors, mirrorsOf } from "./mirrors.ts";
 import { checkRegistry } from "./check.ts";
 import { createProviderFromEnvironment, embedRegistry } from "./embed.ts";
+import { writeShellSections } from "../validate-library/shell-commands.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDir, "..", "..");
@@ -66,6 +73,10 @@ try {
   // --embed (no login, no endpoint) fails fast and writes nothing.
   const embed = flags.has("--embed") ? createProviderFromEnvironment() : null;
 
+  // Each skill's "From a shell" section comes from the operation catalog;
+  // write it first so validation and the content hashes see the current text.
+  for (const file of writeShellSections(rootDir)) console.log(`generate-registry: wrote the shell commands in ${file}`);
+
   const result = generateRegistry(rootDir, options);
 
   if (result.counts.total === 0 && !flags.has("--allow-empty")) {
@@ -90,6 +101,8 @@ try {
   if (!flags.has("--no-apply")) {
     const applied = applyManifests(rootDir, outDir);
     for (const { to } of applied.copied) console.log(`generate-registry: applied ${to}`);
+    const mirrored = applyMirrors(rootDir, mirrorsOf(rootDir, result.resources));
+    console.log(`generate-registry: mirrored plugins/claude/ (${mirrored.written} written, ${mirrored.removed.length} removed)`);
   }
 
   if (embed) {

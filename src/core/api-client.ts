@@ -7,6 +7,7 @@ import {
   discoverRegistryConnection,
   engineNotRunningError,
   engineSelectionFromEnv,
+  getEngineDiscoveryDir,
   getApiPort,
   getApiToken,
   resolveEngineConnection,
@@ -15,6 +16,7 @@ import {
   type EngineSelection,
 } from "./engine.js";
 import type { EngineCapabilities } from "./capability-skew.js";
+import { AGENT_HOST_HEADER, resolveAgentHost } from "./agent-host.js";
 import { asRecord, boolFrom, numberFrom, stringFrom } from "./util/json.js";
 import {
   classifyOpsResponse,
@@ -23,6 +25,7 @@ import {
 } from "./async-op-lifecycle.js";
 import { pickPlayDeterminism, type PlayDeterminism } from "./capabilities/play-determinism.js";
 import { honestSceneReceipt } from "./capabilities/engine-receipt.js";
+import { noteBoundProject } from "./usage-fields.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -67,6 +70,15 @@ export type EngineSnapshot = {
    *  health hash at capture time — the frame may be from the WRONG project
    *  (item 4, client-side drift check). */
   projectMismatch?: boolean;
+};
+
+/** Options for a viewport or game capture. */
+export type SnapshotOptions = {
+  /** Write the frame into the snapshots folder and return its localPath
+   *  (default true). The live preview (`summer preview`) passes false: it
+   *  sends each frame straight to the browser, so polling a few frames a
+   *  second never fills the temp folder. */
+  saveFile?: boolean;
 };
 
 type SnapshotPayload = Record<string, unknown> & {
@@ -173,6 +185,17 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
 }
 
 /** rebind() could not re-read engine health; the session identity is unchanged. */
+/**
+ * The agent app driving the engine (Claude Code, Codex, ...), so the person's
+ * editor can say who is working ("Claude Code · Placing 12 trees"). Local
+ * only: the engine on this computer reads it for its activity line; it never
+ * leaves the machine from here, so the telemetry opt-out does not apply.
+ */
+function engineAgentHeader(): Record<string, string> {
+  const host = resolveAgentHost().id;
+  return host && host !== "unknown" ? { [AGENT_HOST_HEADER]: host } : {};
+}
+
 export class EngineRebindError extends Error {
   constructor(message: string) {
     super(message);
@@ -218,6 +241,7 @@ export class EngineApiClient {
   // instance registry (no live pointer): credentialsChanged then re-runs the
   // registry lookup with the same options instead of reading the pointer.
   private registryDiscovery: DiscoverEngineOptions | null = null;
+  private discoveryDir: string | undefined;
   // The most recent /api/health seen at connect/rebind. Carries the engine's
   // capability advert (opKinds, singleOnlyOps) so tools can fail closed on a
   // provably missing op without a second health round trip per call.
@@ -254,11 +278,12 @@ export class EngineApiClient {
     selection?: EngineSelection,
     discovery: DiscoverEngineOptions = {}
   ): Promise<EngineApiClient> {
+    const summerDir = discovery.summerDir ?? getEngineDiscoveryDir(discovery.env);
     const envSelection = selection ? null : engineSelectionFromEnv(discovery.env);
     const effective = selection ?? envSelection;
     if (effective) {
       const connection = await resolveEngineConnection(effective, {
-        summerDir: discovery.summerDir,
+        summerDir,
         nowMs: discovery.nowMs,
       });
       const client = new EngineApiClient(
@@ -272,6 +297,8 @@ export class EngineApiClient {
         { ...effective }
       );
       client.lastHealth = connection.health;
+      client.discoveryDir = summerDir;
+      noteBoundProject(connection.health.projectIdHash);
       return client;
     }
 
@@ -280,8 +307,8 @@ export class EngineApiClient {
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
-    const port = await getApiPort(discovery.summerDir);
-    const token = await getApiToken(discovery.summerDir);
+    const port = await getApiPort(summerDir);
+    const token = await getApiToken(summerDir);
     if (token) {
       const health = await checkEngineHealth(port);
       if (health) {
@@ -291,19 +318,23 @@ export class EngineApiClient {
           projectIdHash: health.projectIdHash,
         });
         client.lastHealth = health;
+        client.discoveryDir = summerDir;
+        noteBoundProject(health.projectIdHash);
         return client;
       }
     }
 
-    const connection = await discoverRegistryConnection(discovery);
-    if (!connection) throw engineNotRunningError({ port, token }, discovery.summerDir);
+    const connection = await discoverRegistryConnection({ ...discovery, summerDir });
+    if (!connection) throw engineNotRunningError({ port, token }, summerDir);
     const client = new EngineApiClient(connection.port, connection.token, {
       instanceId: connection.health.instanceId,
       projectId: connection.health.projectId,
       projectIdHash: connection.health.projectIdHash,
     });
     client.lastHealth = connection.health;
-    client.registryDiscovery = { ...discovery };
+    noteBoundProject(connection.health.projectIdHash);
+    client.registryDiscovery = { ...discovery, summerDir };
+    client.discoveryDir = summerDir;
     return client;
   }
 
@@ -358,6 +389,7 @@ export class EngineApiClient {
       projectId: health.projectId,
       projectIdHash: health.projectIdHash,
     };
+    noteBoundProject(health.projectIdHash);
     return this.targetIdentity.projectIdHash;
   }
 
@@ -401,6 +433,7 @@ export class EngineApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
+      ...engineAgentHeader(),
     };
 
     const res = await fetch(url, {
@@ -439,6 +472,7 @@ export class EngineApiClient {
       headers: {
         Authorization: `Bearer ${this.token}`,
         "Content-Type": "application/json",
+        ...engineAgentHeader(),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),
@@ -581,6 +615,15 @@ export class EngineApiClient {
         lastKnownStatus: "unknown",
       };
     }
+  }
+
+  /**
+   * One Studio page op in the app's own Studio tab (capabilities.studioPage):
+   * POST /api/studio {op, input} -> 202, then its one terminal envelope.
+   */
+  async studioPage(op: string, input: Record<string, unknown>, timeoutMs = 90_000): Promise<unknown> {
+    const path = this.getEngineCapabilities()?.studioPage?.path ?? "/api/studio";
+    return this._requestQueued("POST", path, { op, input }, timeoutMs);
   }
 
   async health(): Promise<unknown> {
@@ -810,7 +853,7 @@ export class EngineApiClient {
     return localPath;
   }
 
-  private async snapshot(kind: "viewport" | "game"): Promise<EngineSnapshot> {
+  private async snapshot(kind: "viewport" | "game", options: SnapshotOptions = {}): Promise<EngineSnapshot> {
     // Block E: /api/snapshot/* is queued (GET -> 202 -> poll /api/ops/result).
     // The terminal result is the apply dict; the image rides as base64 inside it
     // (no raw-binary channel). Legacy/dormant engines answer 200 synchronously
@@ -835,14 +878,15 @@ export class EngineApiClient {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 
-    return this._parseSnapshotResponse(response, kind);
+    return this._parseSnapshotResponse(response, kind, options.saveFile !== false);
   }
 
   /** Shared: turn an ops/snapshot response envelope into an EngineSnapshot.
    *  Used by viewport/game snapshots and by scenePreview. */
   private async _parseSnapshotResponse(
     response: unknown,
-    kind: "viewport" | "game" | "scene"
+    kind: "viewport" | "game" | "scene",
+    saveFile = true
   ): Promise<EngineSnapshot> {
     const payload = findSnapshotPayload(response);
     if (!payload) {
@@ -867,7 +911,7 @@ export class EngineApiClient {
 
     const { format, mime, ext } = snapshotFormat(payload);
     const buffer = Buffer.from(base64, "base64");
-    const localPath = await this.writeSnapshotFile(kind, buffer, ext);
+    const localPath = saveFile ? await this.writeSnapshotFile(kind, buffer, ext) : undefined;
 
     // Client-side identity drift check (item 4). Current engines validate the
     // identity query on snapshot reads, but older builds may ignore it. Re-read
@@ -936,12 +980,12 @@ export class EngineApiClient {
     };
   }
 
-  async viewportSnapshot(): Promise<EngineSnapshot> {
-    return this.snapshot("viewport");
+  async viewportSnapshot(options?: SnapshotOptions): Promise<EngineSnapshot> {
+    return this.snapshot("viewport", options);
   }
 
-  async gameSnapshot(): Promise<EngineSnapshot> {
-    return this.snapshot("game");
+  async gameSnapshot(options?: SnapshotOptions): Promise<EngineSnapshot> {
+    return this.snapshot("game", options);
   }
 
   /**
@@ -1029,7 +1073,7 @@ export class EngineApiClient {
   async credentialsChanged(): Promise<boolean> {
     if (this.selection) {
       try {
-        const connection = await resolveEngineConnection(this.selection);
+        const connection = await resolveEngineConnection(this.selection, { summerDir: this.discoveryDir });
         return (
           connection.port !== this.port ||
           connection.token !== this.token ||
@@ -1061,7 +1105,7 @@ export class EngineApiClient {
     }
 
     try {
-      const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
+      const [port, token] = await Promise.all([getApiPort(this.discoveryDir), getApiToken(this.discoveryDir)]);
       if (!token) return false;
       return port !== this.port || token !== this.token;
     } catch {

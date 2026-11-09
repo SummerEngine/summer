@@ -1,0 +1,132 @@
+id: tool/content-make
+kind: tool
+version: 1.0.0
+summary: Make a piece of content for a game. Copies a library reference beat for beat with footage on this computer, checks it, saves it to Review.
+use_when:
+  - '"make a piece of content for this"'
+  - '"clip what we just built"'
+  - '"make today''s TikTok for my game"'
+  - '"copy this reference with our footage"'
+  - a daily run that puts one finished piece per game in Review (claim the queued make request)
+  - a Change the team pressed on Today (claim; it answers needs_changes)
+  - revising a piece after the team asked for changes (same workDir)
+do_not_use_when:
+  - posting - the team posts from Review; nothing is posted from here
+  - generating video or pictures - it cuts the game's real footage
+  - the game has no footage on this computer - record some first (capture mode, a screen recording)
+  - writing the words - the caller writes our lines; it never invents them and never reuses the reference's
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - video
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_content_make
+implementation:
+  module: src/core/capabilities/content-make/index.ts
+  export: contentMake
+surfaces:
+  mcp:
+    tool_name: summer_content_make
+    remote: true
+input_schema:
+  type: object
+  properties:
+    contentGameId:
+      type: string
+      description: The game's Content id, from content.list_games. Not needed with workDir.
+    teamId:
+      type: string
+      description: From team.list, when the person has more than one team.
+    referenceId:
+      type: string
+      description: The reference to copy, from content.list_references. Without it the best fit for today is picked (a format the game has not posted, what changed in the repo, its breakout).
+    footage:
+      type: array
+      items:
+        type: string
+      description: Folders (or files) of the game's footage on this computer - clips, stills, and the game's own music. Notes in a folder's shots.json or a clip's <clip>.json help match shots. Default ./content/footage.
+    lines:
+      type: array
+      items:
+        type: string
+      description: Our words, one per reference beat ("" for a beat without words), from the needs_words answer - the reference's pattern, true to the game, never its own words.
+    voiceFile:
+      type: string
+      description: The lines recorded in the team's own voice (wav, mp3, m4a), when the reference speaks (needs_voice).
+    title:
+      type: string
+      description: The piece's title in Review (also the YouTube title).
+    caption:
+      type: string
+      description: The post caption - one dry line and a question, no hashtags.
+    hashtags:
+      type: array
+      items:
+        type: string
+      description: 3-5 tags, the game's tag first. Default the kit's core tags.
+    note:
+      type: string
+      description: What to make it about ("the new boss", or commit lines like "3f2a1c9 Add waiting room"); weighs the reference pick and becomes the why.
+    claim:
+      type: boolean
+      description: Make a queued make request (the daily scheduler's, or a Change pressed on Today) and report every stage to it - the one named by requestId, else the team's oldest; nothing_queued when none, needs_changes for a revision.
+    requestId:
+      type: string
+      description: The make request to claim, from content.make.
+    learningIds:
+      type: array
+      items:
+        type: string
+      description: The kit learnings (content.get_kit learnings, listed in needs_words) the words and choices applied.
+    workDir:
+      type: string
+      description: The work folder an earlier call answered - continues that piece where it stopped.
+    out:
+      type: string
+      description: Where the work goes (pieces, the reference videos and footage measurements). Default ~/.summer/content.
+    music:
+      type: string
+      description: The game's own music for a reference with a song (never the reference's audio). Default the first song in the footage folders.
+    font:
+      type: string
+      description: The game's caption font file (.ttf or .otf).
+    referenceFile:
+      type: string
+      description: The reference video, when it cannot be fetched (yt-dlp).
+    repo:
+      type: string
+      description: The game's repo, for what changed today. Default the working directory.
+    stage:
+      type: string
+      enum:
+        - plan
+        - all
+      description: plan stops after the plan, to change shots in plan.json first.
+    upload:
+      type: boolean
+      description: false renders and checks only; nothing is uploaded.
+    replan:
+      type: boolean
+      description: Throw away the plan and map the shots again.
+    status:
+      type: string
+      enum:
+        - draft
+        - in_review
+      description: Override where it lands - in_review even with failed checks, or draft.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

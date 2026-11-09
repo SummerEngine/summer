@@ -1,0 +1,42 @@
+id: skill/make-game
+kind: skill
+version: 1.2.0
+summary: "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship."
+use_when:
+  - the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline
+  - the user wants a complete playable game end to end, from brainstorm through shipping
+  - the user names a genre — platformer, survivors, top-down RPG, FPS, third-person, horror — and the build needs its architecture and build order
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - project
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/export-and-ship
+    - skill/release-readiness
+    - skill/design-mechanic
+    - skill/tune-performance
+    - skill/art-direction
+    - skill/brainstorm-game
+    - skill/new-project
+    - skill/play
+    - skill/scene-composition
+    - skill/character-movement
+    - skill/camera-rigs
+    - skill/combat-basics
+    - skill/save-load
+    - skill/painted-25d-world
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scene-and-project/make-game

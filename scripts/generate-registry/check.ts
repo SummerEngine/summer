@@ -20,6 +20,7 @@ import path from "node:path";
 import { generateRegistry, type GenerateOptions } from "./index.ts";
 import { allTargets } from "./targets.ts";
 import { checkCountClaims } from "./count-claims.ts";
+import { checkMirrors, mirrorsOf } from "./mirrors.ts";
 import { EMBEDDINGS_FILE } from "../../src/core/embeddings.ts";
 import { checkEmbeddings } from "./embed.ts";
 
@@ -91,7 +92,10 @@ export function checkRegistry(rootDir: string, options?: GenerateOptions): Check
     }
   }
 
-  // 3. count claims in the docs
+  // 3. the plugins/claude/ copy of library files (mirrors.ts)
+  drift.push(...checkMirrors(rootDir, mirrorsOf(rootDir, result.resources)));
+
+  // 4. count claims in the docs
   for (const v of checkCountClaims(rootDir, result.counts)) {
     drift.push(
       `${v.file}:${v.line}: count claim "${v.claim}" says ${v.found} but counts.json has ${v.expected} ${v.noun}`,

@@ -1,0 +1,46 @@
+id: tool/app-tools
+kind: tool
+version: 1.0.0
+summary: List the agent tools a Summer App declares.
+use_when:
+  - before calling app logic with apps.call
+  - '"what can our balance app do for me"'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_tools
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_tools
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

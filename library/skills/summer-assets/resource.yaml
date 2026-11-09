@@ -1,0 +1,35 @@
+id: skill/summer-assets
+kind: skill
+version: 1.0.2
+summary: "Game assets for any engine, no Summer Engine: find, generate and download them."
+use_when:
+  - starting a session that has the Summer assets profile (generation tools, no engine tools)
+  - the person wants assets for their own engine or web app, not a game built in Summer Engine
+  - an asset skill ends with Summer Engine steps that this session cannot run
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - agent-workflow
+  modalities:
+    - 3d-models
+    - images
+    - audio
+    - video
+related:
+  tools:
+    - tool/search-assets
+    - tool/list-my-assets
+    - tool/check-job
+    - tool/get-asset
+    - tool/get-asset-download-url
+  skills:
+    - skill/asset-strategy
+    - skill/summer-api
+    - skill/sound-effect
+    - skill/prop-model
+    - skill/concept-art
+source: official
+license: MIT
+status: stable

@@ -40,12 +40,14 @@ import { registerDebugTools } from "./debug-tools.js";
 import { registerVisualTools } from "./visual-tools.js";
 import { registerSeeingTools } from "./seeing-tools.js";
 import { registerAuditTools } from "./audit-tools.js";
+import { registerLocalProjectTools } from "./local-project-tools.js";
 import { registerProjectTools } from "./project-tools.js";
 import { registerFileTools } from "./file-tools.js";
 import { registerAssetTools } from "./asset-tools.js";
 import { registerGenerateTools } from "./generate-tools.js";
 import { registerCreatorTools } from "./creator-tools.js";
 import { registerFeedbackTools } from "./feedback-tools.js";
+import { registerApiTools } from "./api-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
@@ -56,6 +58,8 @@ import { registerEventTools } from "./event-tools.js";
 import { registerFabricateTools } from "./fabricate-tools.js";
 import { registerUiTools } from "./ui-tools.js";
 import { registerRuntimeTools } from "./runtime-tools.js";
+import { registerAppTools } from "./app-tools.js";
+import { withMaxCharactersArg } from "../tool-surface.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const toolsDir = join(packageRoot, "library", "tools");
@@ -255,7 +259,8 @@ function collectRegisteredTools(): RegisteredTool[] {
       let shape: Shape;
       if (!raw) shape = { type: "object", properties: {}, required: [] };
       else if (isZod(raw)) shape = zodToShape(raw, name);
-      else shape = objectShape(raw, name);
+      // server.ts adds maxCharacters to capped tools at registration.
+      else shape = objectShape(withMaxCharactersArg(name, raw), name);
       registered.push({ name, shape });
       return { name };
     },
@@ -271,11 +276,13 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerSeeingTools,
     registerAuditTools,
     registerProjectTools,
+    registerLocalProjectTools,
     registerFileTools,
     registerAssetTools,
     registerGenerateTools,
     registerCreatorTools,
     registerFeedbackTools,
+    registerApiTools,
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,
@@ -286,6 +293,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerFabricateTools,
     registerUiTools,
     registerRuntimeTools,
+    registerAppTools,
   ]) {
     register(fakeServer);
   }

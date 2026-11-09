@@ -1,6 +1,6 @@
 ---
 name: vfx-water-ripple
-description: "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts."
+description: "Water-ripple effect: animated normal-distortion ripples on a water plane or Decal, set off by impacts."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -221,54 +221,35 @@ MeshInstance3D ("Water") [script: water_ripple_surface.gd]
 
 ### 5. Wire it in (MCP calls)
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`); `summer_set_resource_property` always needs a `subProperty` and is
-for reaching *into* a resource, not for assigning one.
+Write the two files, then wire the surface with ONE `summer_run_script` call
+with an explicit `scenePath` — transactional, and it builds the subdivided
+PlaneMesh directly, so no `plane.tres` sidecar is needed:
 
 ```
 summer_write_file(path="res://addons/vfx/water-ripple/water_ripple.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/water-ripple/water_ripple_surface.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="MeshInstance3D", name="Puddle")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="script", value="res://addons/vfx/water-ripple/water_ripple_surface.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="position", value="Vector3(0, 0.01, 0)")
-
-# Whole resources are assigned by path with summer_set_prop.
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="mesh", value="res://addons/vfx/water-ripple/plane.tres")
-# `normal_texture` is an exported script property on the controller, not a
-# MeshInstance3D property — MeshInstance3D has no `normal_texture`.
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="normal_texture", value="res://addons/vfx/water-ripple/water_normals.png")
-
-# subProperty is required — this is how you reach into the PlaneMesh itself.
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_width", value=32)
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_depth", value=32)
-
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-### 5a. One-script wiring (summer_run_script)
-
-On engines with `summer_run_script` (see `scene-scripting`), the node and
-resource wiring is ONE transactional ctx script — and it builds the subdivided
-PlaneMesh directly, so the `plane.tres` sidecar disappears:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var puddle := ctx.add_node("MeshInstance3D", "Puddle", null)
+    var puddle = ctx.add_node("MeshInstance3D", "Puddle", ctx.find("World"))
     var plane := PlaneMesh.new()
     plane.subdivide_width = 32
     plane.subdivide_depth = 32
     puddle.mesh = plane
     puddle.position = Vector3(0, 0.01, 0)
     puddle.set_script(load("res://addons/vfx/water-ripple/water_ripple_surface.gd"))
+    # normal_texture is an exported property of the controller script, not of MeshInstance3D
     puddle.set("normal_texture", load("res://addons/vfx/water-ripple/water_normals.png"))
     ctx.save_scene()
+""")
 ```
 
 Set the mesh BEFORE the script if the controller reads it in `_ready`; either way,
-`ctx.add_node` has already owned the node, so it survives the save.
+`ctx.add_node` has already owned the node, so it survives the save. Tuning one
+mesh value later is one `summer_set_resource_property` call (`resourceProperty="mesh"`,
+`subProperty="subdivide_width"`): it reaches into a resource, it never assigns one.
 
-### 5b. Verify
+### 5a. Verify
 
 The shader and the controller are compiled code, and the controller `preload`s the
 shader — a shader that failed to write takes the script down at parse time.
@@ -420,3 +401,26 @@ After firing this recipe, suggest:
 - `vfx-hit-spark` — sister recipe for the upward droplets
 - `vfx-smoke` — for steam over hot liquids
 - `gdscript-patterns` — for the controller idioms
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_resource` | `summer engine inspect-resource` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

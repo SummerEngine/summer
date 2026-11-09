@@ -1,11 +1,11 @@
 ---
 name: design-npc
-description: "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree."
+description: "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs
 user-invocable: true
-allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_input_map_bind
+allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_input_map_bind
 paths: ["**/*.gd", "**/*.tscn"]
 ---
 
@@ -179,31 +179,31 @@ Identify where the NPC will live (an `Enemies` parent, or directly under World).
 
 **Preferred (Summer MCP):**
 
-Every tool below takes a required `scenePath` naming the exact `res://` scene;
-it is written out on the first line and elided after for readability. Better
-still, send the whole block as one `summer_batch(scenePath=..., ops=[...])` so
-the user can undo the enemy with a single Ctrl+Z.
+One script builds the whole enemy; `scenePath` names the exact `res://` scene,
+and the run is one undo step, so one Ctrl+Z removes the enemy:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies", type="CharacterBody3D", name="Enemy")
-summer_add_node(parent="./World/Enemies/Enemy", type="CollisionShape3D", name="Body")
-summer_add_node(parent="./World/Enemies/Enemy", type="MeshInstance3D", name="Mesh")
-summer_add_node(parent="./World/Enemies/Enemy", type="Area3D", name="Vision")
-summer_add_node(parent="./World/Enemies/Enemy/Vision", type="CollisionShape3D", name="VisionShape")
-summer_add_node(parent="./World/Enemies/Enemy", type="RayCast3D", name="Sight")
-summer_set_prop(path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
-summer_set_prop(path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var enemy = ctx.add_node("CharacterBody3D", "Enemy", ctx.find("Enemies"))
+    ctx.add_node("CollisionShape3D", "Body", enemy, {"shape": CapsuleShape3D.new()})
+    ctx.add_node("MeshInstance3D", "Mesh", enemy, {"mesh": CapsuleMesh.new()})
+    var vision = ctx.add_node("Area3D", "Vision", enemy)
+    var sight_sphere = SphereShape3D.new()
+    sight_sphere.radius = 12.0
+    ctx.add_node("CollisionShape3D", "VisionShape", vision, {"shape": sight_sphere})
+    ctx.add_node("RayCast3D", "Sight", enemy, {"enabled": true, "target_position": Vector3(0, 0, -12)})
+    ctx.save_scene()
+""")
 ```
 
-Give the Vision area its sphere. Either form works — a class-name string embeds
-the resource in the scene, a `res://` path reuses a shared one. Prefer the shared
-`.tres` when several enemy archetypes want the same sight radius:
+The script embeds the sight sphere in the scene. When several enemy archetypes
+want the same sight radius, share one file instead:
+`{"shape": load("res://shapes/vision_sphere.tres")}`. Tuning one value later is
+one call:
 
 ```
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="res://shapes/vision_sphere.tres")
-# or, embedded, then tune it:
-summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="SphereShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enemies/Enemy/Vision/VisionShape", resourceProperty="shape", subProperty="radius", value="12.0")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enemies/Enemy/Vision/VisionShape", resourceProperty="shape", subProperty="radius", value="14.0")
 ```
 
 `summer_set_resource_property` works against scene-embedded (`[sub_resource]`)
@@ -224,9 +224,7 @@ summer_connect_signal(scenePath="res://main.tscn", emitter="./World/Enemies/Enem
 ```
 
 The parameters are `scenePath`, `emitter`, `signal`, `receiver`, `method`. There
-is no `from` / `to`; those spellings fail schema validation. The same required
-`scenePath` applies to `summer_add_node`, `summer_set_prop` and
-`summer_save_scene` in the block above.
+is no `from` / `to`; those spellings fail schema validation.
 
 **Fallback (no MCP):** write the scene as `.tscn` text. Ask the user to paste their existing scene first, then propose a unified diff.
 
@@ -495,8 +493,29 @@ For an animated NPC in a runnable project: `summer create 3d-fps-simple-animated
 ## See also
 
 - `animation-tree` — wire the action states to animation clips
-- `ai-characters-in-games` — NPCs that answer free-form player text
+- `summer-router` — NPCs that answer free-form player text in a game on Summer Games
 - `vfx-hit-spark` — hit flash recipe
 - `vfx-dissolve` — death dissolve recipe
 - `game-feel` — screen-feel discipline (camera shake, hit-stop)
 - `gdscript-patterns` — generic state machine and script patterns
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_connect_signal` | `summer engine connect-signal` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_input_map_bind` | `summer engine input-map-bind` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+<!-- /shell-commands -->

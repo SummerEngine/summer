@@ -1,6 +1,6 @@
 ---
 name: auto-fire-targeting
-description: "Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill."
+description: "Fix auto-fire targeting (survivors, ARPG, tower defense) with pending damage to stop overkill."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: gameplay-mechanics
@@ -194,3 +194,17 @@ Do **not** reach for `SimulateInput` here. It is only reachable from the
 in-editor chat bridge; an MCP or CLI caller gets
 `{ok: false, failure_reason: "unsupported_transport"}` back. Drive input from
 inside the probe with `press()` / `key()` instead.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_batch` | `summer engine batch` |
+| `summer_game_probe` | `summer engine game-probe` |
+| `summer_get_diagnostics` | `summer engine get-diagnostics` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_inspect_runtime_node` | `summer engine inspect-runtime-node` |
+<!-- /shell-commands -->

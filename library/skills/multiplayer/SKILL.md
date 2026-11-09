@@ -1,6 +1,6 @@
 ---
 name: multiplayer
-description: "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next."
+description: "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -150,3 +150,15 @@ Check what exists: `summer.build.json`, `world.json`, `network/`,
 - **The game already uses `@rpc` or `MultiplayerSynchronizer`:** tell the user
   it needs moving to Summer's networking. Then follow `multiplayer-project`
   and port one system at a time: movement first, then state.
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_project_setting` | `summer engine project-setting` |
+<!-- /shell-commands -->

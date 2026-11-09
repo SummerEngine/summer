@@ -1,0 +1,103 @@
+id: tool/app-screenshot
+kind: tool
+version: 1.0.0
+summary: See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.
+use_when:
+  - right after every apps.publish, to check the app renders with real data
+  - '"does my app look right on a phone / in dark mode"'
+  - finding why an app shows nothing (SDK not connected, script errors)
+do_not_use_when:
+  - "testing writes, sends or paid calls: they are refused in screenshots; they work in Studio"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+    - skill/summer-apps-design
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_screenshot
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_screenshot
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+    version:
+      type: integer
+      exclusiveMinimum: 0
+      description: "A published version. Default: the current one"
+    width:
+      type: integer
+      minimum: 320
+      maximum: 1920
+      default: 1280
+      description: "Viewport width in px: 390 for a phone"
+    height:
+      type: integer
+      minimum: 320
+      maximum: 1600
+      default: 800
+    theme:
+      type: string
+      enum:
+        - light
+        - dark
+      default: light
+    fullPage:
+      type: boolean
+      default: false
+      description: Capture the whole scroll height (up to 4000 px)
+    params:
+      type: object
+      additionalProperties:
+        type: string
+        maxLength: 500
+      description: Launch params, as in /studio/apps/<id>?key=value
+    steps:
+      type: array
+      maxItems: 5
+      items:
+        type: object
+        properties:
+          click:
+            type: string
+            maxLength: 300
+          press:
+            type: string
+            maxLength: 40
+          wait:
+            type: integer
+            minimum: 0
+            maximum: 3000
+        additionalProperties: false
+      description: "Before the capture, in order: click a CSS selector in the app (\">>>\" reaches inside kit components), press a declared action id, or wait ms. Use it to see a dialog or a second state"
+    out:
+      type: string
+      minLength: 1
+      description: Also save the PNG to this local path
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

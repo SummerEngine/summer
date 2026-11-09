@@ -1,6 +1,6 @@
 ---
 name: brainstorm-game
-description: "Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md."
+description: "Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -206,3 +206,16 @@ No template — this is a workflow that produces the brief that drives template 
 - `art-direction` — turn the one-phrase look into a full bible
 - `audio-direction` — sonic identity
 - `make-game` — scaffold the project once the brief is locked
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_get_project_context` | `summer engine get-project-context` |
+| `summer_get_scene_tree` | `summer engine get-scene-tree` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

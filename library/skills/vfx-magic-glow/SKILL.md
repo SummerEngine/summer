@@ -1,6 +1,6 @@
 ---
 name: vfx-magic-glow
-description: "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh."
+description: "Magic-glow effect: a pulsing OmniLight3D, drifting additive motes and an optional emission shader."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -195,42 +195,16 @@ Node3D ("MagicGlow") [script: magic_glow.gd]
 
 ### 4. Wire it in (MCP calls)
 
-For an enchanted sword:
-
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
+Write the script once, then wire each glow with ONE `summer_run_script` call
+with an explicit `scenePath` — one transactional run instead of a chain of
+`summer_set_prop` calls. For an enchanted sword:
 
 ```
 summer_write_file(path="res://addons/vfx/magic-glow/magic_glow.gd", content="<section 2>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./Player/Hand/Sword", type="Node3D", name="Glow")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="script", value="res://addons/vfx/magic-glow/magic_glow.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="glow_color", value="Color(0.55, 0.85, 1.0)")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="light_energy_base", value=1.2)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="light_energy_amplitude", value=0.6)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="mote_count", value=16)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="mote_radius", value=0.20)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="pulse_source_mesh", value="../Blade")
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-For a soul gem on a pedestal:
-
-```
-summer_add_node(scenePath="res://main.tscn", parent="./World/Pedestal/SoulGem", type="Node3D", name="Glow")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="glow_color", value="Color(0.85, 0.45, 1.0)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="pulse_hz", value=0.4)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_count", value=32)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_radius", value=0.30)
-```
-
-Either wiring block is also ONE ctx script on engines with `summer_run_script`
-(see `scene-scripting`) — the eight `summer_set_prop` calls become one
-transactional run, and computed placement (a glow per gem in a ring) becomes a loop:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var glow := ctx.add_node("Node3D", "Glow", ctx.find("Sword"))
+    var glow = ctx.add_node("Node3D", "Glow", ctx.find("Sword"))
     glow.set_script(load("res://addons/vfx/magic-glow/magic_glow.gd"))
     glow.set("glow_color", Color(0.55, 0.85, 1.0))
     glow.set("light_energy_base", 1.2)
@@ -239,6 +213,23 @@ func run(ctx):
     glow.set("mote_radius", 0.20)
     glow.set("pulse_source_mesh", NodePath("../Blade"))
     ctx.save_scene()
+""")
+```
+
+For a soul gem on a pedestal (computed placement, such as a glow per gem in a
+ring, is a loop in the same script):
+
+```
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var glow = ctx.add_node("Node3D", "Glow", ctx.find("SoulGem"))
+    glow.set_script(load("res://addons/vfx/magic-glow/magic_glow.gd"))
+    glow.set("glow_color", Color(0.85, 0.45, 1.0))
+    glow.set("pulse_hz", 0.4)
+    glow.set("mote_count", 32)
+    glow.set("mote_radius", 0.30)
+    ctx.save_scene()
+""")
 ```
 
 Judge the pulse with `summer_screenshot framing:"camera"` — emissive glow does not
@@ -428,3 +419,26 @@ After firing this recipe, suggest:
 - `vfx-dissolve` — for summon arrival pairing
 - `vfx-fire` — for the `magic-fire` variant
 - `gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)
+
+<!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
+## From a shell
+
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@latest` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+
+| In this skill | Command |
+|---|---|
+| `summer_add_node` | `summer engine add-node` |
+| `summer_create_scene` | `summer engine create-scene` |
+| `summer_get_debugger_errors` | `summer engine get-debugger-errors` |
+| `summer_get_script_errors` | `summer engine get-script-errors` |
+| `summer_inspect_node` | `summer engine inspect-node` |
+| `summer_play` | `summer engine play` |
+| `summer_read_file` | `summer engine read-file` |
+| `summer_run_script` | `summer engine run-script` |
+| `summer_save_scene` | `summer engine save-scene` |
+| `summer_screenshot` | `summer engine screenshot` |
+| `summer_set_prop` | `summer engine set-prop` |
+| `summer_set_resource_property` | `summer engine set-resource-property` |
+| `summer_stop` | `summer engine stop` |
+| `summer_write_file` | `summer engine write-file` |
+<!-- /shell-commands -->

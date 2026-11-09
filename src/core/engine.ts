@@ -1,5 +1,5 @@
 import { lstat, readFile, readdir, realpath, stat } from "fs/promises";
-import { dirname, join, resolve } from "path";
+import { dirname, isAbsolute, join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
 import { asRecord, numberFrom, stringFrom } from "./util/json.js";
 import { processIsAlive } from "./util/process.js";
@@ -11,6 +11,7 @@ import {
 const DEFAULT_PORT = 6550;
 const INSTANCE_SCHEMA_VERSION = 1;
 const INSTANCE_STALE_MS = 180_000;
+const BUSY_INSTANCE_STALE_MS = 30 * 60_000;
 const MAX_INSTANCE_FILE_BYTES = 64 * 1024;
 
 export interface EngineSelection {
@@ -38,6 +39,17 @@ export interface DiscoverEngineOptions extends EngineDiscoveryOptions {
  *  script can pin the editor without a per-command flag. */
 export const ENGINE_PROJECT_ENV = "SUMMER_ENGINE_PROJECT";
 export const ENGINE_INSTANCE_ENV = "SUMMER_ENGINE_INSTANCE_ID";
+export const ENGINE_STATE_DIR_ENV = "SUMMER_ENGINE_STATE_DIR";
+
+/** Engine discovery only. Account credentials continue to use getSummerDir(). */
+export function getEngineDiscoveryDir(env: NodeJS.ProcessEnv = process.env): string {
+  const value = env[ENGINE_STATE_DIR_ENV];
+  if (value === undefined) return getSummerDir();
+  if (!value || value !== value.trim() || !isAbsolute(value)) {
+    throw new Error(`${ENGINE_STATE_DIR_ENV} must be an absolute directory path.`);
+  }
+  return resolve(value);
+}
 
 /** An explicit editor selection from the environment, or null when neither
  *  variable is set. */
@@ -74,7 +86,7 @@ export interface EngineConnection {
 }
 
 export async function getApiToken(
-  summerDir = getSummerDir()
+  summerDir = getEngineDiscoveryDir()
 ): Promise<string | null> {
   try {
     const token = await readFile(join(summerDir, "api-token"), "utf-8");
@@ -85,7 +97,7 @@ export async function getApiToken(
 }
 
 export async function getApiPort(
-  summerDir = getSummerDir()
+  summerDir = getEngineDiscoveryDir()
 ): Promise<number> {
   try {
     const port = await readFile(join(summerDir, "api-port"), "utf-8");
@@ -180,7 +192,11 @@ function parseEngineInstance(value: unknown): EngineInstance | null {
 
 export async function listEngineInstances(
   nowMs = Date.now(),
-  summerDir = getSummerDir()
+  summerDir = getEngineDiscoveryDir(),
+  /** Keep entries whose heartbeat is old (up to 30 min): an editor that is
+   *  alive but busy (a long import) stops beating; the launcher must still
+   *  not start a second one. */
+  options: { anyHeartbeat?: boolean } = {}
 ): Promise<EngineInstance[]> {
   const instancesDir = join(summerDir, "instances");
   try {
@@ -209,7 +225,9 @@ export async function listEngineInstances(
         JSON.parse(await readFile(path, "utf-8"))
       );
       if (!parsed || !processIsAlive(parsed.pid)) continue;
-      if (nowMs - parsed.heartbeatAt * 1000 > INSTANCE_STALE_MS) continue;
+      // A busy editor's heartbeat may lag; one silent this long is gone (its pid reused).
+      const staleAfter = options.anyHeartbeat ? BUSY_INSTANCE_STALE_MS : INSTANCE_STALE_MS;
+      if (nowMs - parsed.heartbeatAt * 1000 > staleAfter) continue;
       parsed.resourceRoot = await canonicalPath(parsed.resourceRoot);
       instances.push(parsed);
     } catch {
@@ -273,7 +291,7 @@ export async function resolveEngineConnection(
   selection: EngineSelection = {},
   options: EngineDiscoveryOptions = {}
 ): Promise<EngineConnection> {
-  const summerDir = options.summerDir ?? getSummerDir();
+  const summerDir = options.summerDir ?? getEngineDiscoveryDir();
   const explicitInstanceId = stringFromUnknown(selection.instanceId);
   const explicitProjectPath = stringFromUnknown(selection.projectPath);
   const cwd = stringFromUnknown(selection.cwd);
@@ -386,7 +404,7 @@ export async function resolveEngineConnection(
 export async function discoverRegistryConnection(
   options: DiscoverEngineOptions = {}
 ): Promise<EngineConnection | null> {
-  const summerDir = options.summerDir ?? getSummerDir();
+  const summerDir = options.summerDir ?? getEngineDiscoveryDir(options.env);
   const registered = await listEngineInstances(
     options.nowMs ?? Date.now(),
     summerDir
@@ -426,7 +444,7 @@ export async function discoverRegistryConnection(
  *  "no api-token found" phrase is what headless/resolve.ts keys on. */
 export function engineNotRunningError(
   pointer: { port: number; token: string | null },
-  summerDir = getSummerDir()
+  summerDir = getEngineDiscoveryDir()
 ): Error {
   const instancesDir = join(summerDir, "instances");
   if (pointer.token) {

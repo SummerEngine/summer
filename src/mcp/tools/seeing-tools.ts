@@ -126,7 +126,7 @@ Use after a sheet or debug view shows something suspicious. view picks beauty or
 
   server.tool(
     "summer_frame_shot",
-    `Smart framing: find good camera poses for a shot type automatically, measured in-engine against the real geometry.
+    `Smart framing: find good camera poses for a shot type automatically, measured in-engine against the real geometry. It runs in the open editor; use it to look at the scene as a player would.
 
 shot: establishing (wide), eye_level (from a spawn node at player eye height), low_angle (hero, near the ground looking up: the camera moves closer and widens its FOV instead of sinking into the ground), detail (close-up), corridor (down a lane or corridor found inside the subject by a free-space scan, preferring the view in from its open end, walls on both sides).
 

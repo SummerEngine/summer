@@ -114,7 +114,9 @@ interface Clip {
 
 function hostOf(url: string): string | null {
   try {
-    return new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.hostname.toLowerCase();
   } catch {
     return null;
   }
@@ -213,17 +215,23 @@ export async function generateSfxChoices(
   }
 
   // The server queued the Studio-tab open already; that happens even with
-  // open:false, so report it rather than hide it.
+  // open:false, so report it rather than hide it. A review URL that is not an
+  // HTTP(S) Summer page is never opened or suggested.
+  const safeReviewUrl = canOpenReviewUrl(reviewUrl);
   const studioTab = studioTabAnswer(data.studioTab);
   const shown: { shown: ShownIn; studioTab?: string; browser?: string } = studioTab?.queued
     ? { shown: "studio_tab" }
-    : args.open
-      ? await showChoicesPage(reviewUrl, studioTab, deps)
-      : { shown: "not_opened", browser: "open_false" };
+    : !safeReviewUrl
+      ? { shown: "not_opened", studioTab: studioTab ? (studioTab.reason ?? "not_queued") : undefined, browser: "not_a_summer_url" }
+      : args.open
+        ? await showChoicesPage(reviewUrl, studioTab, deps)
+        : { shown: "not_opened", browser: "open_false" };
 
   const count = clips.length;
   const where =
-    shown.shown === "studio_tab"
+    shown.browser === "not_a_summer_url"
+      ? "I could not open the review page because its URL was not an HTTP(S) Summer page"
+      : shown.shown === "studio_tab"
       ? "I opened them in your Summer Studio tab"
       : shown.shown === "browser"
         ? "I opened them in your browser"
@@ -243,7 +251,7 @@ export async function generateSfxChoices(
     clips: clips.map(clipSummary),
     failed,
     say,
-    next: `Tell the person the "say" text (include reviewUrl when shown is "not_opened"). Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
+    next: `Tell the person the "say" text${safeReviewUrl ? ' (include reviewUrl when shown is "not_opened")' : '; the returned reviewUrl was rejected, so do not suggest opening it'}. Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
   };
 }
 

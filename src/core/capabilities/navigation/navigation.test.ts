@@ -8,6 +8,7 @@ import { renderProductMap } from "./render-product-map.js";
 import {
   buildLegacyOp,
   buildNavigateOp,
+  isAllowedNavigationOrigin,
   rankTargets,
   renderWebPath,
   resolveTarget,
@@ -410,6 +411,20 @@ describe("runOpen (editor, engine off)", () => {
 });
 
 describe("safety rails (release review 2026-09-11)", () => {
+  it("never launches a non-web Summer-host gateway or docs origin", async () => {
+    expect(isAllowedNavigationOrigin("https://www.summerengine.com")).toBe(true);
+    expect(isAllowedNavigationOrigin("http://localhost:3000")).toBe(true);
+    for (const gateway of ["file://summerengine.com", "summer-app://summerengine.com"]) {
+      expect(isAllowedNavigationOrigin(gateway)).toBe(false);
+      const { d, openUrl } = deps({ gatewayUrl: async () => gateway });
+      expect(await runOpen({ target: "pricing" }, d)).toMatchObject({ ok: false, action: "blocked_origin" });
+      expect(openUrl).not.toHaveBeenCalled();
+    }
+    const { d, openUrl } = deps({ docsOrigin: "file://docs.summerengine.com" });
+    expect(await runOpen({ target: "pricing" }, d)).toMatchObject({ ok: false, action: "blocked_origin" });
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+
   it("refuses to open a browser on a non-Summer gateway origin", async () => {
     const { d, openUrl } = deps({ gatewayUrl: async () => "https://summerengine.com.evil.com" });
     const res = await runOpen({ target: "billing" }, d);

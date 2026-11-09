@@ -100,17 +100,13 @@ Fall back to the editor session only when the repro genuinely needs a human (fee
 
 If you go this route, do not skip the "reproduce now" prompt. Auto-running and grabbing whatever's in the buffer leads you to chase ghosts from previous sessions.
 
-### 2c. MCP unavailable (engine not running, or no Summer install)
+### 2c. Missing MCP tools versus an unavailable engine
 
-If `summer_get_script_errors` returns "Summer Engine is not running" or the tool isn't available:
+If `summer_get_script_errors` is not listed in this session, use `summer engine get-script-errors` from the shell (see `summer-cli` for flags and the package-version fallback). Missing MCP tools alone do not mean Summer Engine is stopped. Continue the same diagnostic order through the shell equivalents below.
 
-1. Tell the user `summer run` starts it. One command restores every tool in this loop — try that before degrading to an interview.
-2. If they cannot or will not, ask the user to copy-paste the Output panel and
-   the Debugger panel from Summer Engine.
-3. Reason over the pasted text exactly as you would over MCP output.
-4. Continue with the rest of the loop unchanged.
+If the operation returns `engine_not_running` (or "Summer Engine is not running"), follow `summer-cli`'s "Start or reconnect to Summer Engine" sequence: open the existing project yourself, wait for readiness, verify project context, then retry the diagnostic. Use the project's exact path; bare `summer run` fails. Starting the engine does not reload the host's MCP tool list.
 
-Do NOT loop on MCP retry. Do NOT pretend the engine will come back. Use the fallback the moment it fails once.
+Only when neither MCP nor shell access can read the engine, ask the user for the Output and Debugger panel text. Reason over it and continue the diagnostic loop, explicitly noting anything you could not verify. Do not loop on unavailable MCP tools, recreate the project, or substitute stock Godot.
 
 ### 3. Hypothesize — one specific theory
 
@@ -252,7 +248,7 @@ Static analysis is necessary but never sufficient.
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
 
-No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.4.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.1` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
 
 | In this skill | Command |
 |---|---|

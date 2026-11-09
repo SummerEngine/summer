@@ -94,7 +94,9 @@ export function networkDetails(error: unknown): { details: { cause: string } } {
  *  registry paths) stays in the logs, not in the line the agent repeats. */
 export class EngineNotRunningError extends Error {
   readonly code = "engine_not_running" as const;
-  constructor(message: string, readonly reason: string) {
+  /** `recovery`: the one next step for this case (not installed, no project,
+   *  another project open, still starting); the general step by default. */
+  constructor(message: string, readonly reason: string, readonly recovery: string = RECOVERY.engine_not_running) {
     super(message);
     this.name = "EngineNotRunningError";
   }
@@ -115,5 +117,5 @@ export function engineNotRunningFromConnectError(reason: string): EngineNotRunni
 
 /** Engine-free tools keep working while the engine is down. */
 export const ENGINE_FREE_NOTE =
-  "Only tools that touch the local project need the engine. Library, generation and asset tools " +
-  "(summer_search_library, summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, summer_check_job) work now.";
+  "Only tools that touch the local project need the engine. Docs, generation and asset tools " +
+  "(summer_docs_search, summer_docs_read, summer_assets_generate_*, summer_assets_search, summer_assets_get, summer_jobs_get) work now.";

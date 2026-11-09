@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Answer } from "./contract.js";
-import { FileSaver, findGameProject, isPrivateAddress, withOutField, type FileSaverOptions } from "./save-files.js";
+import { FileSaver, findGameProject, inSummerStore, isPrivateAddress, withOutField, type FileSaverOptions } from "./save-files.js";
 
 let root = "";
 
@@ -101,6 +101,21 @@ describe("out", () => {
     expect(assetsOf(godot)[0].localPath).toBe(join(root, "ui", "icon.png"));
   });
 
+  it("saves a stored video as its .ogv rendition in a Godot project, and as is elsewhere", async () => {
+    const clip = "https://res.cloudinary.com/summer/video/upload/v1/summer_art/u_clip_1.mp4";
+    const video = { asset: { assetId: "v1", title: "Title loop", fileUrl: clip, fileName: "clip.mp4", mimeType: "video/mp4" } };
+    const elsewhere = saver({ fetch: fakeFetch({ [clip]: { type: "video/mp4" } }) });
+    const plain = await elsewhere.finish("assets.generate_video", done(video), "clips/");
+    expect((plain as { result: { asset: { localPath: string } } }).result.asset.localPath).toBe(join(root, "clips", "clip.mp4"));
+
+    await writeFile(join(root, "project.godot"), "");
+    const fetch = fakeFetch({ [clip]: { type: "video/mp4" } });
+    const godot = await saver({ fetch }).finish("assets.generate_video", done(video), "res://ui/title_bg.mp4");
+    expect((godot as { result: { asset: { localPath: string } } }).result.asset.localPath).toBe(join(root, "ui", "title_bg.ogv"));
+    expect(String(fetch.mock.calls[0]![0])).toBe("https://res.cloudinary.com/summer/video/upload/c_limit,h_1080,w_1920/v1/summer_art/u_clip_1.ogv");
+    expect(warningsOf(godot).join(" ")).toContain("Ogg Theora");
+  });
+
   it("reads assets.get's downloadUrl and file name", async () => {
     const fetch = fakeFetch();
     const answer = await saver({ fetch }).finish(
@@ -168,6 +183,21 @@ describe("safety", () => {
     expect(warningsOf(answer)[0]).toContain("is outside the Godot project");
     expect(fetch).not.toHaveBeenCalled();
     expect(await readdir(root)).toEqual(["game"]);
+  });
+
+  it("never saves into Summer's own folders: a game's .summer/local or ~/.summer", async () => {
+    const project = join(root, "game");
+    await mkdir(join(project, ".summer", "local"), { recursive: true });
+    await writeFile(join(project, "project.godot"), "");
+    const fetch = fakeFetch();
+    for (const out of ["res://.summer/local/x.png", "res://.Summer/Local/", join(project, ".summer", "local", "git"), "~/.summer/x.png"]) {
+      const answer = await saver({ cwd: () => project, fetch }).finish("assets.generate_image", done({ assets: [image("a1")] }), out);
+      expect(warningsOf(answer)[0]).toContain("is Summer's own folder");
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await readdir(join(project, ".summer", "local"))).toEqual([]);
+    // The game's memory beside the store is an ordinary folder.
+    expect(inSummerStore(join(project, ".summer", "memory", "x.png"))).toBe(false);
   });
 
   it("downloads only from public https hosts, follows redirects only there, and caps the size", async () => {

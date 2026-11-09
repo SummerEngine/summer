@@ -1,0 +1,40 @@
+id: skill/release-checklist
+kind: skill
+version: 1.0.0
+summary: "Pre-launch check for Summer Games: export, upload checks, store art, listing fields."
+use_when:
+  - "the user says 'is it ready to go live', 'check everything before launch' or 'what is missing from my store page'"
+  - "before summer_go_live, or when it answers blocked: checking the export, the upload's automated checks, the store art and the listing fields"
+  - "summer_publish_build reports a failed platform check, or store.get_listing says readyToPublish is false"
+  - "checking the export holds the fixed bundle layout, the right Summer version and a server pack for a hosted build"
+  - "filling the age rating, content questionnaire, AI disclosure, genres or support link before launch"
+do_not_use_when:
+  - "proving players can join, save and play the release on phones — skill/release-readiness"
+  - "exporting for Steam, itch.io or app stores — skill/export-and-ship"
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/launch-ready
+    - skill/release-readiness
+    - skill/publish-your-game
+    - skill/store-art
+    - skill/store-listing
+    - skill/multiplayer-publish
+  tools:
+    - tool/export-game
+    - tool/publish-build
+    - tool/go-live
+    - tool/store-set-details
+source: official
+license: MIT
+status: preview
+recommended: false

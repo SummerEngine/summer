@@ -149,7 +149,7 @@ export function registerVisualTools(server: McpServer): void {
     "summer_screenshot",
     `Capture a frame from Summer Engine and return it as an image you can look at directly.
 
-Use this to visually verify your work: scene layout, asset placement, scale, framing, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between. Lighting and materials are only truthfully shown by the "viewport" and "game" targets — see the note on "scene" below.
+Use this to visually verify your work (it reads the real open editor or game window; that is allowed and expected): scene layout, asset placement, scale, framing, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between. Lighting and materials are only truthfully shown by the "viewport" and "game" targets — see the note on "scene" below.
 
 target:
   "viewport" (default) — the editor's CURRENT view (whatever scene/tab is open). No game boot. Use for edit-time checks of how the scene looks right now.

@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "4.4.0",
+  "version": "4.9.1",
   "description": "MCP server, CLI and skills for Summer Engine, the game engine built for AI. Connect Claude Code, Cursor, Codex and other agents to build, test and publish full games to summer.games.",
   "mcpName": "io.github.SummerEngine/summer",
   "keywords": [
@@ -68,7 +68,7 @@
     "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
-    "test": "vitest run && npm run validate:library",
+    "test": "vitest run && npm run validate:library && node --test tests/character-model-contract.node-test.mjs",
     "validate:library": "node scripts/validate-library/cli.ts",
     "eval:routing": "node evals/routing/runner.ts",
     "eval:routing:heldout": "node evals/routing/runner.ts --heldout",
@@ -83,7 +83,7 @@
     "sync:catalog": "node scripts/sync-public-catalog.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -93,7 +93,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "typescript": "^5.5.0",
     "vitest": "^3.2.4"
   }

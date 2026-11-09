@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { loadLibraryIndex } from "../library-search.js";
 import { PACKAGE_ROOT } from "../package-root.js";
-import { CONTRACT_VERSION, isLocalOp, legacyNames, LOCAL_RUNNERS, mcpNameOf, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
+import { CONTRACT_VERSION, isLocalOp, legacyNames, LOCAL_RUNNERS, mcpNameOf, MIN_APPROVAL, opFromCli, resolveOpName, type Approval, type Effect, type Provider } from "./contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, splitInputSchema } from "./engine.js";
-import { shippedTitle } from "./public-catalog.js";
+import { shippedCloudEntries, shippedTitle } from "./public-catalog.js";
 
 /**
  * One searchable row per operation, the same shape the hosted server's
@@ -53,7 +53,15 @@ let entriesCache: CatalogEntry[] | null = null;
  * account and the store sign-in `summer login` makes; `summer login --store`
  * for the store sign-in alone). Every other local one works signed out.
  */
-const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "apps.publish_folder", "content.make"]);
+const SIGNED_IN_LOCAL_OPS: ReadonlySet<string> = new Set(["economy.sync_items", "store.upload_file", "store.go_live", "store.set_details", "games.set_remix", "apps.publish_folder", "content.make"]);
+
+/**
+ * Local operations that change Summer's records although their registry
+ * authority names no local file or publish: store.set_details saves the store
+ * page draft (players see nothing until it goes live); games.set_remix changes
+ * the game permission immediately.
+ */
+const REMOTE_WRITE_LOCAL_OPS: ReadonlySet<string> = new Set(["store.set_details", "games.set_remix"]);
 
 type IndexedTool = ReturnType<typeof loadLibraryIndex>[number];
 
@@ -61,7 +69,7 @@ function entryFor(op: string, toolName: string, tool: IndexedTool, legacy: strin
   // Engine operations carry their own title, summary and effect (engine.ts);
   // other local operations fall back to the descriptor.
   const def = engineOpDef(op);
-  const effect = def?.effect ?? effectOf(tool.authority as Authority | undefined);
+  const effect = def?.effect ?? (REMOTE_WRITE_LOCAL_OPS.has(op) ? "write" : effectOf(tool.authority as Authority | undefined));
   const summary = def?.summary ?? (tool.summary ?? "").slice(0, 300);
   return {
     name: op,
@@ -151,6 +159,49 @@ export function localInputSchema(op: string): Record<string, unknown> | null {
 export function knownOp(op: string | null | undefined): string | null {
   if (!op) return null;
   return localEntries().some((entry) => entry.name === op) || shippedTitle(op) !== undefined ? op : null;
+}
+
+/**
+ * The operation `summer <area> <action>` runs. Agents often type a 3.x tool
+ * name as the action (`summer engine summer_get_scene_tree`, `summer engine
+ * camera-bookmark`, `summer engine search_library`): those resolve through
+ * legacy-names.json, so a 3.x name runs instead of failing not_found.
+ */
+export function resolveCliOp(area: string, action: string): string {
+  const op = opFromCli(area, action);
+  if (knownOp(op)) return op;
+  const [cleanArea, word] = op.split(".") as [string, string];
+  const bare = word.replace(/^summer_/, "").replace(new RegExp(`^${cleanArea}_`), "");
+  for (const candidate of [`${cleanArea}.${bare}`, resolveOpName(`summer_${bare}`), resolveOpName(word)]) {
+    if (knownOp(candidate)) return candidate;
+  }
+  return op;
+}
+
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+/** The area's real actions nearest to what was typed, nearest first (kebab-case, as typed on the CLI). */
+export function closestActions(op: string, limit = 3): string[] {
+  const [area, action = ""] = op.split(".");
+  const typed = action.replace(/^summer_/, "");
+  const actions = new Set(
+    [...localEntries(), ...shippedCloudEntries()].filter((entry) => entry.name.startsWith(`${area}.`)).map((entry) => entry.name.slice(area.length + 1))
+  );
+  const score = (candidate: string) => (candidate.includes(typed) || typed.includes(candidate) ? 0 : editDistance(typed, candidate));
+  return [...actions]
+    .sort((a, b) => score(a) - score(b) || a.localeCompare(b))
+    .slice(0, limit)
+    .map((candidate) => candidate.replace(/_/g, "-"));
 }
 
 export function localWireForm(op: string): Record<string, unknown> | null {

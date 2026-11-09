@@ -1,10 +1,14 @@
+import { downloadRemix, downloadRemixInput } from "../../core/capabilities/download-remix.js";
+import { setGameRemix } from "../../core/capabilities/game-remix.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { captureGameplay, type CaptureGameplayInput } from "../../core/capabilities/capture-gameplay.js";
 import { exportGame } from "../../core/capabilities/export-game.js";
 import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
 import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
+import { goLive } from "../../core/capabilities/go-live.js";
 import { publishBuild } from "../../core/capabilities/publish-build.js";
+import { AI_USES, STORE_FEATURES, setStoreDetails, SURVEY_LEVELS } from "../../core/capabilities/store-details.js";
 import { BuildToolError, buildToolFailure } from "../../core/capabilities/summer-bundle.js";
 import { syncItems } from "../../core/capabilities/sync-items.js";
 import { contentMake, contentMakeInput } from "../../core/capabilities/content-make/index.js";
@@ -29,7 +33,7 @@ async function creatorResult<T>(operation: () => Promise<T>) {
 export function registerCreatorTools(server: McpServer): void {
   server.tool(
     "summer_export_game",
-    "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms (a game without a server: ios and android only); upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. A game with a server declares its platforms in summer.build.json; when they differ from the exported targets a warning says so (summer_publish_build would be refused), and alignDeclaration:true aligns them. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
+    "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms, with or without a server; upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. The store targets the platforms in the bundle; when a game with a server declares others in summer.build.json, targetPlatformChange names the difference (nothing is refused), and alignDeclaration:true updates summer.build.json to the targets. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
     {
       project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
       out: z.string().optional().describe("Output .zip path. Defaults to <project>/.summer/exports/."),
@@ -46,7 +50,7 @@ export function registerCreatorTools(server: McpServer): void {
       alignDeclaration: z
         .boolean()
         .optional()
-        .describe("A game with a server: set summer.build.json targetPlatforms to targets before exporting. The store refuses an upload whose declaration differs from the exported platforms (declaration_mismatch) and that spends the version."),
+        .describe("A game with a server: set summer.build.json targetPlatforms to targets before exporting, so the project declares what it exports. Optional: the store targets the bundle's platforms either way, and the answer's targetPlatformChange names any difference."),
     },
     async ({ project, out, targets, format, debug, timeoutSeconds, alignDeclaration }) =>
       creatorResult(() =>
@@ -117,12 +121,12 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_publish_build",
-    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Nothing here makes a game live: the owner approves publishing (store.publish).",
+    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack and wait for Summer's automated checks on each platform (checks: passed, or failed with the code and the fix). A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Going live is summer_go_live.",
     {
       gameId: z.string().optional().describe("The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
       file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
       clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
-      publish: z.boolean().default(false).describe("Bundles only: also approve the Build for players. A game that has not passed review keeps it as a preview; an agent needs the owner's approval."),
+      publish: z.boolean().default(false).describe("Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."),
       platform: z
         .enum(["web", "macos-universal", "windows-x64", "linux-x64"])
         .optional()
@@ -131,6 +135,80 @@ export function registerCreatorTools(server: McpServer): void {
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
     },
     async (args) => creatorResult(() => publishBuild({ ...args, face: "mcp" }))
+  );
+
+  server.tool(
+    "summer_go_live",
+    "Take a store game live for players: release its uploaded bundle Build (publicationId, or the newest upload) to every platform that passed Summer's automated checks, and publish its store page, through the same store routes Studio uses; then watch until players get it. It runs without an owner approval while the person's Agent permissions allow Publish (the default). First call with confirm=false: it reads the page, the Build and its per-platform checks and what players get now, and returns live, blocked (each failure with its fix), needs_changes (Summer's decision and feedback) or confirmation_required with the plan to show the user; set confirm only after they approve going live. With confirm=true it asks the platform and polls until live, or answers waiting with waitingOn (automated_checks, activation, or summer: a hold on Summer's side that needs nothing from the creator; never tell them to wait for a review). Call again with confirm=true to keep watching: nothing is asked twice. notIncluded lists the platforms a hosted release left out (its client is not qualified against the server Build), each with the line to tell the creator; notUsed lists newer clients it did not use (that platform stays live with its current client), with the platform's message. needs_permission: Publish is off in the person's Agent permissions. Web builds and downloads go live with the page. Needs \"summer login --store\".",
+    {
+      gameId: z.string().optional().describe("The store game id (from games.list). Without it the call fails with game_required and lists your store games."),
+      publicationId: z.string().optional().describe("The bundle Build to release: publicationId from summer_publish_build. Default: the newest uploaded export."),
+      confirm: z.boolean().default(false).describe("Set true only after the user approves taking this exact page and Build live."),
+      waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to watch before answering (default 600). On waiting, call again to keep watching."),
+    },
+    async (args) => creatorResult(() => goLive({ ...args, face: "mcp" }))
+  );
+
+  server.tool("summer_games_download_remix", "Download and verify a game PCK using the temporary grant from its Remix prompt. Only enabled games issue grants; expired grants need a fresh Remix click. Never overwrites an existing file.", downloadRemixInput, async (args) => creatorResult(() => downloadRemix(args)));
+
+  server.tool(
+    "summer_games_set_remix",
+    "Allow or disable Remix (spins) for one game immediately. Set spinnable=false to opt out; true to opt in. Summer Games checks the signed-in person's permission. Disabling blocks new remix downloads but cannot recall existing copies. Needs summer login --store.",
+    {
+      gameId: z.string().describe("The game id from games.list."),
+      spinnable: z.boolean().describe("False opts out of Remix; true allows Remix. No default."),
+    },
+    async (args) => creatorResult(() => setGameRemix(args))
+  );
+
+  server.tool(
+    "summer_store_set_details",
+    "Fill the store page sections store.update_listing does not edit, on the store page draft: genres (1-5 genre tag ids from store.get_listing tags), features, credits, languageSupport, systemRequirements, contentSurvey (the age questionnaire: every answer, none included) and aiDisclosure (how AI was used; an empty uses list means no AI). Each section given replaces that section, null clears it, an omitted one keeps its value. A published page gets a new draft first. Saving never publishes: take it live with summer_go_live. Needs \"summer login --store\".",
+    {
+      gameId: z.string().optional().describe("The store game id (from games.list)."),
+      genres: z.array(z.string()).min(1).max(5).nullable().optional().describe("Genre tag ids (category genre in store.get_listing tags), in the creator's order."),
+      features: z.array(z.enum(STORE_FEATURES)).min(1).nullable().optional().describe("What the game offers, from the store's closed list."),
+      credits: z
+        .object({ developer: z.string().min(1).max(120), publisher: z.string().min(1).max(120).optional(), franchise: z.string().min(1).max(120).optional() })
+        .nullable()
+        .optional()
+        .describe("Who made and published it; omit publisher or franchise when there is none."),
+      languageSupport: z
+        .array(z.object({ code: z.string(), interface: z.boolean(), fullAudio: z.boolean(), subtitles: z.boolean() }))
+        .min(1)
+        .max(30)
+        .nullable()
+        .optional()
+        .describe("One entry per language (BCP 47 code: en, pt-br, zh-hans), each with at least one kind of support."),
+      systemRequirements: z
+        .record(z.string(), z.unknown())
+        .nullable()
+        .optional()
+        .describe("Desktop hardware: { windows | macos | linux: { minimum: { os, processor, memory, graphics, storage, network, notes }, recommended? } }."),
+      contentSurvey: z
+        .object({
+          violence: z.enum(SURVEY_LEVELS.violence),
+          bloodGore: z.enum(SURVEY_LEVELS.bloodGore),
+          sexualContent: z.enum(SURVEY_LEVELS.sexualContent),
+          nudity: z.enum(SURVEY_LEVELS.nudity),
+          language: z.enum(SURVEY_LEVELS.language),
+          substances: z.enum(SURVEY_LEVELS.substances),
+          gambling: z.enum(SURVEY_LEVELS.gambling),
+          userGeneratedContent: z.boolean(),
+          onlineInteraction: z.boolean(),
+          inGamePurchases: z.boolean(),
+          notes: z.string().max(1000).optional(),
+        })
+        .nullable()
+        .optional()
+        .describe("The mature-content questionnaire; every answer is required, none is an answer."),
+      aiDisclosure: z
+        .object({ uses: z.array(z.enum(AI_USES)), description: z.string().max(2000).optional() })
+        .nullable()
+        .optional()
+        .describe("How AI was used to make the game; uses [] means no AI. generatedGameplay needs a description of what is generated and its guardrails."),
+    },
+    async (args) => creatorResult(() => setStoreDetails({ ...args, face: "mcp" }))
   );
 
   server.tool(

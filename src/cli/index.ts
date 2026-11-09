@@ -1,11 +1,13 @@
 import { Command } from "commander";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
+import { tokenCommand } from "./commands/token.js";
 import { statusCommand } from "./commands/status.js";
 import { runCommand } from "./commands/run.js";
 import { openCommand } from "./commands/open.js";
 import { installCommand } from "./commands/install.js";
 import { createCommand } from "./commands/create.js";
+import { devCommand } from "./commands/dev.js";
 import { listCommand } from "./commands/list.js";
 import { memoryCommand } from "./commands/memory.js";
 import { skillsCommand } from "./commands/skills.js";
@@ -15,7 +17,9 @@ import { planCommand } from "./commands/plan.js";
 import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { eventsCommand } from "./commands/events.js";
+import { previewCommand } from "./commands/preview.js";
 import { toolCommand } from "./commands/tool.js";
+import { apiCommand } from "./commands/api.js";
 import { opsCliCommands } from "./commands/ops.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
@@ -40,9 +44,11 @@ export function runCli(mcpCommand: Command): void {
       runRootAction(command.args, () => printIntro(version));
     });
 
+  program.addCommand(devCommand);
   program.addCommand(installCommand);
   program.addCommand(loginCommand);
   program.addCommand(logoutCommand);
+  program.addCommand(tokenCommand);
   program.addCommand(statusCommand);
   program.addCommand(runCommand);
   program.addCommand(openCommand);
@@ -57,7 +63,9 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(planCommand);
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
+  program.addCommand(previewCommand);
   program.addCommand(toolCommand);
+  program.addCommand(apiCommand);
   // The 4.0 operation catalog (`summer <area> <action>`); SUMMER_SURFACE=v3 leaves it out.
   if (resolveSurface(undefined) === "v4") {
     for (const command of opsCliCommands()) program.addCommand(command);
@@ -82,6 +90,7 @@ function printIntro(version: string): void {
   console.log(`     ${c.brand("\"Install Summer Engine and let's make a game.\"")}`);
   console.log("");
   console.log(`     ${c.bold("Manual commands")}`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest dev   ${c.dim("# install, create a starter project, open it")}`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest setup claude-code --yes`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest create 3d-basic my-game`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest plan make a small arena shooter`);

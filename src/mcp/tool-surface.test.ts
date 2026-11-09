@@ -12,6 +12,8 @@ import {
   SINGLE_EDIT_TOOLS,
   BATCH_EDIT_TOOLS,
   resolveToolSelection,
+  selectionIncludes,
+  SUPERSEDED_HOSTED_TOOLS,
   toolsetOf,
   type ToolSelection,
 } from "./tool-surface.js";
@@ -119,6 +121,17 @@ describe("profiles and toolsets", () => {
     expect(toolsetOf("summer_app_call", true)).toBe("apps");
   });
 
+  it("a limited profile leaves out the hosted status tools summer_go_live supersedes; the full profile keeps them", () => {
+    const engine = resolveToolSelection({ profile: "engine" }, {});
+    const full = resolveToolSelection({}, {});
+    for (const name of SUPERSEDED_HOSTED_TOOLS) {
+      expect(selectionIncludes(engine, name, false), name).toBe(false);
+      expect(selectionIncludes(full, name, false), name).toBe(true);
+    }
+    expect(selectionIncludes(engine, "summer_store_get_listing", false)).toBe(true);
+    expect(selectionIncludes(engine, "summer_go_live", true)).toBe(true);
+  });
+
   it("engine profile keeps every engine tool registered at start and leaves room for hosted store tools", async () => {
     const tools = await listTools(resolveToolSelection({ profile: "engine" }, {}));
     const names = new Set(tools.map((tool) => tool.name));
@@ -127,8 +140,9 @@ describe("profiles and toolsets", () => {
     }
     expect([...names].some((name) => name.startsWith("summer_app_"))).toBe(false);
     expect(names.has("summer_ui_activate")).toBe(false);
-    // Hosted store, account and asset tools mount on top; about 25 today.
-    expect(tools.length).toBeLessThanOrEqual(PROFILE_TOOL_LIMIT - 25);
+    // Hosted store, account and asset tools mount on top: 25 in this profile's
+    // toolsets, less the two status tools summer_go_live supersedes here.
+    expect(tools.length).toBeLessThanOrEqual(PROFILE_TOOL_LIMIT - 23);
   });
 
   it("assets profile has no tool that needs a running engine", async () => {

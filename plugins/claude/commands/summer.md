@@ -50,6 +50,7 @@ Skills are invoked by their bare slug, such as `brainstorm-game`. There is no `s
 | wire up a state machine for [character] | `animation-tree` |
 | the game feels mushy / add juice | `game-feel` |
 | is it ready to release / check before publishing / online joins fail with `world_start_timeout` | `release-readiness` |
+| get my game ready to launch / make my store page / publish my game to summer.games | `launch-ready` (library skill: `summer_docs_read` with id `skill/launch-ready`) |
 | ship a trailer | `trailer-shot` |
 | cutscene for [X] | `cinematic-cutscene` |
 | let me play it | `play` |

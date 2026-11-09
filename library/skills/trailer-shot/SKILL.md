@@ -114,11 +114,11 @@ If "regenerate", revise *one* axis (camera move, lighting, or framing) — don't
 
 Trailer footage usually lives on the user's local disk and goes straight into the NLE, where the generated `.mp4` is exactly what you want.
 
-For shots that double as **in-engine** splash content, transcode first — Summer Engine has no MP4 or WebM loader, and `.ogv` (Ogg Theora) is the only video container it can open. `summer_import_from_url` runs the engine's import pipeline and rejects the file if it never becomes a loadable resource, so importing the `.mp4` fails outright rather than half-working.
+For shots that double as **in-engine** splash content, import the `.mp4` as it is. Summer Engine plays video only as Ogg Theora (`.ogv`), so the import converts it and saves it at the path with `.ogv`; the answer names it in `videoConversions`:
 
 ```
-ffmpeg -i hero_boss_reveal.mp4 -c:v libtheora -q:v 8 -an hero_boss_reveal.ogv
-summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/trailers/hero_boss_reveal.ogv")
+summer_import_from_url(url="<the shot's fileUrl>", path="res://assets/video/trailers/hero_boss_reveal.mp4")
+→ res://assets/video/trailers/hero_boss_reveal.ogv
 ```
 
 For pure trailer use (DaVinci / Premiere), the user can grab the `fileUrl` and download directly.

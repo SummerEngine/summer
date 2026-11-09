@@ -1,0 +1,52 @@
+id: tool/api-estimate
+kind: tool
+version: 1.0.0
+summary: The exact USD price of one Summer API job before it runs, its breakdown and a quote id that holds the price for 15 minutes; charges nothing.
+use_when:
+  - before a Summer API run that spends the person's credits
+  - the person asks what a generation will cost
+do_not_use_when:
+  - an estimate inside Studio or the asset tools (their dryRun)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_api_estimate
+implementation:
+  module: src/mcp/tools/api-tools.ts
+  export: registerApiTools
+surfaces:
+  mcp:
+    tool_name: summer_api_estimate
+    remote: true
+  cli:
+    command: summer api estimate
+input_schema:
+  type: object
+  properties:
+    model:
+      type: string
+      minLength: 1
+      maxLength: 120
+      description: A Summer API model id or alias from summer_api_models, e.g. 3d/default.
+    input:
+      type: object
+      additionalProperties: {}
+      description: The model's input, matching its inputSchema from summer_api_models.
+  required:
+    - model
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

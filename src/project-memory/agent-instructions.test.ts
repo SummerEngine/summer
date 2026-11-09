@@ -19,9 +19,14 @@ describe("the Summer block of AGENTS.md", () => {
     expect(block.split("\n").length).toBeLessThan(60);
     expect(block.startsWith(SUMMER_BLOCK_START)).toBe(true);
     expect(block.endsWith(SUMMER_BLOCK_END)).toBe(true);
-    for (const words of ["Summer Engine, the game engine built for AI", "GDScript", "summer_get_project_context", "summer-cli", "using-summer", "owner approves"]) {
+    for (const words of ["Summer Engine, the game engine built for AI", "GDScript", "summer_get_project_context", "summer-cli", "using-summer", "owner's yes"]) {
       expect(block).toContain(words);
     }
+    // The first-game look rule sits before the how-to, and nothing says to wait for a staff review.
+    expect(block.indexOf("## First game: make it look finished")).toBeGreaterThan(-1);
+    expect(block.indexOf("## First game")).toBeLessThan(block.indexOf("## How to work on it"));
+    expect(block).toContain("screenshot of the running game");
+    expect(block).not.toMatch(/Nothing goes live until/);
     expect(block).not.toMatch(/\$\d|\bUSD\b|per credit/i);
   });
 

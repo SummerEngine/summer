@@ -2,7 +2,8 @@
  * plugins/claude/: the Claude plugin for Anthropic's plugin directory, from
  * its own small folder. The directory wants 512 files or fewer, no symlinks,
  * no lockfile and every npx launcher pinned to an exact version, so this is
- * a copy of the bundled skills, /summer:start and /summer, the icon and the license, with
+ * a copy of the bundled skills, /summer:start and /summer, the icon, the license and
+ * its README (integrations/claude/plugin-directory-README.md), with
  * `summer-engine@latest` pinned to this version in every text file. Its
  * manifest is generated with the others (manifests.ts, targets.ts).
  *
@@ -49,6 +50,8 @@ export function mirrorFiles(rootDir: string, skillSlugs: string[], version: stri
     ["commands/summer.md", "plugins/claude/commands/summer.md"],
     ["assets/icon.png", "plugins/claude/assets/icon.png"],
     ["LICENSE", "plugins/claude/LICENSE"],
+    // The directory wants a README in the plugin folder that says what the plugin runs and sends.
+    ["integrations/claude/plugin-directory-README.md", "plugins/claude/README.md"],
   ] as const) {
     // A fixture root may not have them.
     if (fs.existsSync(path.join(rootDir, from))) out.set(to, pin(to, fs.readFileSync(path.join(rootDir, from))));

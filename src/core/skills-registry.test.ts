@@ -104,6 +104,16 @@ describe("library-only skills", () => {
       "realtime-wet-surfaces",
       "psx-retro-rendering",
       "skintokens-auto-rigging",
+      // routed from make-game and new-project; the installed-description budget is full
+      "painted-25d-world",
+      // routed from release-checklist, publish-your-game and /summer; same budget
+      "launch-ready",
+      // routed from summer-board, which names them; same budget
+      "summer-board-types",
+      "summer-board-modeling",
+      "summer-board-to-game",
+      // routed from animated-loop, which points character splashes to it; same budget
+      "hero-art",
     ];
     const registry = getSkillRegistry();
     expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());

@@ -1,15 +1,16 @@
 import { Command } from "commander";
 import { CLI_AREAS } from "../../core/ops/areas.js";
-import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
+import { closestActions, localEntries, localInputSchema, localWireForm, missingInput, resolveCliOp } from "../../core/ops/catalog.js";
 import { shippedCloudEntries, shippedWireForm } from "../../core/ops/public-catalog.js";
 import { answerOfHosted, callHostedV4, describeFromShipped, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
+import { errorAnswer, isLocalOp, localToolsFor, OP_NAME, resolveOpName, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
-import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
+import { codedLocalFailure, engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
 import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { noteCliError, noteCliHosted } from "../../core/cli-usage.js";
+import { editorChatBlockedCall, editorChatRefusal, isEditorChat, isEditorNativeAssetJob } from "../../core/editor-chat.js";
 
 /**
  * The CLI view of the operation catalog (on by default; SUMMER_SURFACE=v3 leaves it out):
@@ -124,7 +125,12 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   const split = ENGINE_SPLIT_OPS[op];
   const entry = localEntries().find((candidate) => candidate.name === op);
   const tool = split?.tool ?? entry?.mcpTool ?? localToolsFor(op)[0];
-  if (!tool) return errorAnswer("not_found", `No operation is named "${op}".`, { next: { op: "ops.search", input: { query: op } } });
+  if (!tool) {
+    const [area] = op.split(".");
+    const closest = closestActions(op).map((action) => `summer ${area} ${action}`);
+    const hint = closest.length ? ` Closest: ${closest.join(", ")}. All of them: summer ${area} --help` : "";
+    return errorAnswer("not_found", `No operation is named "${op}".${hint}`, { next: { op: "ops.search", input: { query: op } } });
+  }
   // maxCharacters cuts the text an MCP client gets; the CLI prints the whole answer.
   const { maxCharacters, ...input } = call.input;
   const uncut = maxCharacters === undefined ? undefined : ["maxCharacters: the CLI prints the whole answer; cut it in the shell (for example | head -c 8000)."];
@@ -142,7 +148,8 @@ async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
   } catch (error) {
     if (error instanceof EngineUnavailableError) return engineNotRunning();
     if (error instanceof ToolResultError) {
-      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
+      if (def) return engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide });
+      return codedLocalFailure(error.result) ?? errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
     }
     return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
   }
@@ -175,6 +182,8 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   if (current.ok && current.status === "needs_approval") deps.printError(`Waiting for approval: ${current.approval.url}`);
   for (let round = 0; round < 120 && current.ok && (current.status === "running" || current.status === "needs_approval"); round++) {
     const job = current.job.id;
+    // An approval can hand off to a native asset job. Its delivery belongs to the editor.
+    if (isEditorChat() && isEditorNativeAssetJob(job)) return current;
     const waited = await runCloud("jobs.wait", { input: { jobId: job, timeoutSeconds: 50 }, json: true, dryRun: false, wait: false }, deps);
     // The job runs on whatever the wait answered: a failed wait names it, so the job is waited on, not started again.
     // One that did not get through says to wait again; any other keeps its own next step (sign in, slow down).
@@ -214,6 +223,7 @@ function problemLines(details: Record<string, unknown> | undefined): string {
 }
 
 export function formatAnswer(answer: Answer, out?: string): string {
+  const nativeJob = (id: string) => isEditorChat() && isEditorNativeAssetJob(id);
   const waitFlags = (id: string) => `summer jobs wait --job-id ${id}${out ? ` --out ${shellWord(out)}` : ""}`;
   if (!answer.ok) {
     const next = answer.error.next;
@@ -224,9 +234,10 @@ export function formatAnswer(answer: Answer, out?: string): string {
     case "done":
       return JSON.stringify(answer.result, null, 2);
     case "running":
-      return `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
+      // Only native asset deliveries omit the wait command.
+      return nativeJob(answer.job.id) ? `Started: job ${answer.job.id}. The editor will deliver its result in this conversation.` : `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
     case "needs_approval":
-      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: ${waitFlags(answer.job.id)}`;
+      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. ${nativeJob(answer.job.id) ? "The editor will deliver its result in this conversation." : `Follow it: ${waitFlags(answer.job.id)}`}`;
     case "dry_run":
       return `Dry run: ${String(answer.preview.summary ?? "")}\n${JSON.stringify(answer.preview, null, 2)}`;
   }
@@ -240,6 +251,17 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
   }
   let call: ParsedCall;
   try {
+    // Parse jobId before schema lookup so native jobs are refused without a
+    // network call. Ordinary jobs and --wait retain the usual execution path.
+    const refused = isEditorChat()
+      ? editorChatBlockedCall("summer_call", { op, input: parseCallFlags(argv, null).input })
+      : null;
+    if (refused) {
+      noteCliError("unsupported");
+      const answer = editorChatRefusal(refused);
+      deps.printError(argv.includes("--json") ? JSON.stringify(answer) : formatAnswer(answer));
+      return 1;
+    }
     const hasFields = argv.some((token) => token.startsWith("--") && !RESERVED_FLAGS.has(token.slice(2).split("=")[0]));
     call = parseCallFlags(argv, hasFields ? await schemaFor(op, deps) : null);
   } catch (error) {
@@ -390,9 +412,11 @@ function areaCommand(area: string): Command {
         return;
       }
       const argv = command.args.slice(1);
+      // A 3.x tool name as the action runs its operation (resolveCliOp).
+      const op = resolveCliOp(area, action);
       process.exitCode = argv.some((token) => HELP_WORDS.has(token) && token !== "help")
-        ? await operationHelpFromCli(opFromCli(area, action))
-        : await runOpFromCli(opFromCli(area, action), argv);
+        ? await operationHelpFromCli(op)
+        : await runOpFromCli(op, argv);
     });
 }
 

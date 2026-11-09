@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.4.2",
-      "content_hash": "780278ed5c212a095fca65af14861ee936acc75b69de7dd9b0d859e90c21e7c5",
+      "version": "1.4.3",
+      "content_hash": "2254b18d04de74838191dd0ec194a72868c630bf0a121632ba24c3b3cbfdeb74",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -390,43 +390,6 @@
       "recommended": true
     },
     {
-      "id": "skill/ai-characters-in-games",
-      "kind": "skill",
-      "version": "0.3.0",
-      "content_hash": "57b0fba8a2e4eb383f75ab8d3d1063c1e1aca178031328dab09cb17764049d7d",
-      "summary": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "use_when": [
-        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
-        "about to put a model name, a provider SDK or a provider key into a game project",
-        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
-        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "ai",
-          "npc"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/design-npc",
-          "skill/multiplayer-state"
-        ]
-      },
-      "status": "preview",
-      "recommended": false
-    },
-    {
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.3",
@@ -459,7 +422,7 @@
       "id": "skill/animated-loop",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "39addd45841aa873cb1b89c2a99010c7c3daaaefaf34191ed974197d9dcccdac",
+      "content_hash": "8ad21f9600f7fcc9fd2c984e7348aac7ed313c316a2be624ab28ce99bd190feb",
       "summary": "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -706,8 +669,8 @@
     {
       "id": "skill/bounded-engine-runs",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "72fce40636e955a537daa8497200d621b0402987c600b8a09bb1fc43d1bd3247",
+      "version": "1.0.1",
+      "content_hash": "db3626b41cae2e10fc12fae3975a1b9936efd384b56fbd52e79e808990de1b77",
       "summary": "Run Summer headless or offscreen safely: time limits, one engine per project, import passes, crash checks.",
       "use_when": [
         "running the engine from a shell or agent for tests, imports, captures or bots",
@@ -961,8 +924,8 @@
     {
       "id": "skill/character-model",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "0bfdf12bd54bc0d683228dd41325a96f64c32f8348e4640848d42f1158da0565",
+      "version": "1.0.3",
+      "content_hash": "15c1774c8e5f795282ea99b3262cf4176f08222ca83ec1d8971d5d900bcff8bc",
       "summary": "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",
@@ -1088,7 +1051,7 @@
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "ae5548277796e5feec36b997ad6fab7da25f5c5181c507721ba48cf6c1d3e9b8",
+      "content_hash": "3d7d48b3e15a4017599158accc46189f88bb02a9f297bb34390fd6b447d02ad4",
       "summary": "Generate a non-interactive cutscene: a reference-locked 5-10s video shot with optional voiced dialogue.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
@@ -1240,8 +1203,8 @@
       "id": "skill/concept-to-level",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "6168329f631eb0d9ffbc077ceaf92cb6e1bef041319443a647e260198f46d4c5",
-      "summary": "Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision.",
+      "content_hash": "a6769a0683168c4354fffd15f1113b1fc5bc35262fe7a3dbe612acf28defe8cf",
+      "summary": "3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision in step.",
       "use_when": [
         "polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects",
         "reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map",
@@ -1328,8 +1291,8 @@
     {
       "id": "skill/debug",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "7cbe19eb8e8b5292dce7c5fdf144614a4623b8cd5aee4fb189cb89c874596b2b",
+      "version": "1.0.5",
+      "content_hash": "5506e2e64770b083afa10e147350f3968769acc3b2d2fda2a6b7f91a8521bf1f",
       "summary": "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -1355,6 +1318,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-cli",
           "skill/make-game",
           "skill/scene-composition",
           "skill/gdscript-patterns"
@@ -1470,8 +1434,8 @@
     {
       "id": "skill/design-npc",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "feda92d30082eecf2bafc99fe9ed3f12a4d3c4641fd2790743bf93f9a01d3b57",
+      "version": "1.0.3",
+      "content_hash": "073069eb2348abb0b8b5652f79b2f4e90b7848485422232be86de98a9ec6f986",
       "summary": "Design enemy, NPC, boss or companion behavior: perception, state machine, telegraphs, script stub.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -1497,7 +1461,8 @@
         "skills": [
           "skill/game-feel",
           "skill/vfx-dissolve",
-          "skill/vfx-hit-spark"
+          "skill/vfx-hit-spark",
+          "skill/summer-router"
         ]
       },
       "status": "stable",
@@ -1650,7 +1615,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "cd80ecea8eb678c7dbeb9974593a437cf9a08cd4b70311160a346c3ed9c1cb42",
+      "content_hash": "08419e1e78fb05512db1f71b501cedc63d358f144e6afb94016aa5b1cd645d6b",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2023,7 +1988,7 @@
       "id": "skill/headless-scripting",
       "kind": "skill",
       "version": "1.1.3",
-      "content_hash": "c3b44387601015118a6d127267417c195437cc5ba5b9bc5b23ebb964e34075e0",
+      "content_hash": "5f4573a964c39168eed233e94f4959991709b352486bf7494a7300ba737adeda",
       "summary": "Run a GDScript file against Summer Engine from the shell for what no MCP tool does: navmesh, TileSets.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -2057,7 +2022,7 @@
       "id": "skill/hero-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "fba31a70a01701b6da0b23d71087f7eaee12b2e3e10adafd94be0981795e7db7",
+      "content_hash": "0f037f4c4881d16c6d7ff49295a22661d9f3d1c2b313874b02f90891d35af097",
       "summary": "Hero splash art, seamless splash loops and rigged animated heroes, gated.",
       "use_when": [
         "making splash art for a hero, champion or playable class: character select, hero page, loading screen",
@@ -2212,6 +2177,56 @@
       "recommended": true
     },
     {
+      "id": "skill/launch-ready",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "5bc452d4070b825ecfcd2f0e275f83088932d5d93d9466e2c62a1aee41920084",
+      "summary": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
+      "use_when": [
+        "the user says 'get my game ready to launch', 'make my store page', 'publish my game to summer.games' or 'do everything it needs to go live'",
+        "the release checklist fails and the agent should fix it: upload the game, capture gameplay screenshots, make key art and icons, write the store text",
+        "filling a whole store page from the project itself: GameSoul and project memory, README, real gameplay captures",
+        "drafting the content rating, content questionnaire and AI disclosure from the project, for the creator to confirm before launch"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "docs",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/store-art",
+          "skill/store-listing",
+          "skill/publish-your-game",
+          "skill/release-readiness"
+        ],
+        "tools": [
+          "tool/export-game",
+          "tool/publish-build",
+          "tool/capture-gameplay",
+          "tool/store-set-details",
+          "tool/go-live",
+          "tool/get-project-context"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/lumera-single-image-scene-reconstruction",
       "kind": "skill",
       "version": "0.1.1",
@@ -2291,8 +2306,8 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "9f1d027d1261e825598d4cf5bb438d8f59f82c2075ac0812c3dec7925bd71798",
+      "version": "1.2.0",
+      "content_hash": "b6078a16547b4d8e14ccc75125b1f3be70543e30f3fb6bc2ab508f5ddae8e069",
       "summary": "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -2330,7 +2345,8 @@
           "skill/character-movement",
           "skill/camera-rigs",
           "skill/combat-basics",
-          "skill/save-load"
+          "skill/save-load",
+          "skill/painted-25d-world"
         ]
       },
       "status": "stable",
@@ -2466,8 +2482,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "4c4cc828530cd8eca782ca72bc412ded78012ddf243698ebd170ca540e4680f5",
+      "version": "1.0.2",
+      "content_hash": "8ec73bbd2c0e4ddaad86a4204e143b10edc93f87058f51b3d67986a24185ef1b",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2632,13 +2648,14 @@
     {
       "id": "skill/navigate-summer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "028d1b0144df1610cc0a4e92701a42055f499f54e0627d8ad8f79090be8b3c81",
-      "summary": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open.",
+      "version": "1.0.1",
+      "content_hash": "5fb50f4ce2f00dd1d6db8a2373a539ed7027158e2ce6a99f4ea68d6959e0d5e8",
+      "summary": "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
-        "deciding whether to open a surface for the user or to do the work through Summer tools",
-        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser"
+        "deciding whether to open a surface (a page of the website) for the user or to do the work through Summer tools or an API",
+        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser",
+        "you drive Summer Engine from outside (Claude Code, Codex, Cursor, the summer CLI) and the editor should show what you work on: the view, rail and focus for editing, scripting, playtesting, review and the end result"
       ],
       "facets": {
         "lifecycle": [
@@ -2660,7 +2677,8 @@
       },
       "related": {
         "tools": [
-          "tool/open"
+          "tool/open",
+          "tool/view-set"
         ],
         "references": [
           "reference/product-map"
@@ -2675,9 +2693,9 @@
     {
       "id": "skill/new-project",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "87d9a80da3b43b1be391ebb1b6e5a69211bfe96783834a10f97facbf829a984c",
-      "summary": "Create a blank Summer Engine project: ask for the project name and run summer create empty.",
+      "version": "1.0.6",
+      "content_hash": "7a08acbf46f0a7f796ed11cf218f74e66ddbd3a2fe95d2f895655a6d7a5f46eb",
+      "summary": "Create and open a fresh Summer Engine project with summer dev; verify the project connection.",
       "use_when": [
         "the user wants a fresh blank Summer Engine project — from scratch, blank canvas",
         "starting a Summer Engine project with no template, only a name, ready for an empty main scene"
@@ -2699,7 +2717,9 @@
       },
       "related": {
         "skills": [
-          "skill/make-game"
+          "skill/summer-cli",
+          "skill/make-game",
+          "skill/painted-25d-world"
         ]
       },
       "status": "stable",
@@ -2742,6 +2762,50 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/painted-25d-world",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "9259815bfd06026ee206547218808e918d15b8572a5cad7d5747ded52b2900ac",
+      "summary": "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters.",
+      "use_when": [
+        "the user asks for a 2D game, a 2.5D game, a top-down RPG, a cozy village or farming game, a dungeon crawler look, or a side-scroller — build the world as a painted 2.5D world, not from a 2D template",
+        "the user wants a game that looks like a hand-painted illustration but can be walked around in, with buildings to enter",
+        "making a level from a concept image — rebuild the concept as blocks, paint over the blockout render, project the painting onto the blocks",
+        "adding sprite characters, interiors or weapons to a painted 2.5D world"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "2d",
+          "level-design",
+          "rendering",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "scenes",
+          "scripts",
+          "shaders"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/new-project",
+          "skill/concept-art",
+          "skill/sprite-sheet",
+          "skill/scene-composition"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -2974,11 +3038,11 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "65b76f7bd230f618288deb1e33f87059d531802d1fff91a79a5d46e560fbc241",
-      "summary": "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link.",
+      "content_hash": "91c133fc41a50f3998786c17d8ad73ed673ef7c40ae9d122e5b3a9f62eedc832",
+      "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
-        "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
-        "taking a built Summer game to a submitted store page: listing text, art, build upload, store.publish and the owner's approval link",
+        "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
+        "taking a built Summer game to live: listing text, art, build upload, the release checklist and summer_go_live",
         "an agent publishes for the owner end to end and needs the order of the store.* operations"
       ],
       "facets": {
@@ -2998,7 +3062,8 @@
           "skill/store-listing",
           "skill/store-art",
           "skill/grow-analytics",
-          "skill/export-and-ship"
+          "skill/export-and-ship",
+          "skill/release-checklist"
         ]
       },
       "status": "stable",
@@ -3043,11 +3108,58 @@
       "recommended": false
     },
     {
-      "id": "skill/release-readiness",
+      "id": "skill/release-checklist",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "7898fd68b42aac1b6d95ab4c466f44016d1d6718e8e341a2b34bda31b72c9d2b",
-      "summary": "Before releasing a Summer game version, prove players can play it: server, online join, progress, files.",
+      "content_hash": "f566887fc310bee81d1e76a1b3ae1b05c6deb447b3068f67f21b2e3ccf9487fb",
+      "summary": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
+      "use_when": [
+        "the user says 'is it ready to go live', 'check everything before launch' or 'what is missing from my store page'",
+        "before summer_go_live, or when it answers blocked: checking the export, the upload's automated checks, the store art and the listing fields",
+        "summer_publish_build reports a failed platform check, or store.get_listing says readyToPublish is false",
+        "checking the export holds the fixed bundle layout, the right Summer version and a server pack for a hosted build",
+        "filling the age rating, content questionnaire, AI disclosure, genres or support link before launch"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/launch-ready",
+          "skill/release-readiness",
+          "skill/publish-your-game",
+          "skill/store-art",
+          "skill/store-listing",
+          "skill/multiplayer-publish"
+        ],
+        "tools": [
+          "tool/export-game",
+          "tool/publish-build",
+          "tool/go-live",
+          "tool/store-set-details"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/release-readiness",
+      "kind": "skill",
+      "version": "1.0.1",
+      "content_hash": "3eddd242438bc5f373865cab006864efe8957024eab465dea86a2c18a744e974",
+      "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
         "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works",
@@ -3726,8 +3838,8 @@
       "id": "skill/store-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "45b646f2e8a79d9ac9304304bd61308c92fce5f07c3e8553688d04715fb962b5",
-      "summary": "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules.",
+      "content_hash": "9a18c2f57992bb611648d0cda988e4a6cf119ac3f64db09426cc84bc540c7b51",
+      "summary": "Make Summer Games store art per slot: key art, icons, screenshots, trailer, sizes.",
       "use_when": [
         "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
         "store.set_art rejects an image for its shape or size, or store.get_listing says an art slot is missing",
@@ -3765,8 +3877,8 @@
       "id": "skill/store-listing",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9b4f34c590bf0db3c7d20c5201e8c5990849bcb3bb543bc76b8546ad99c6384c",
-      "summary": "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write.",
+      "content_hash": "1e4f6bd9b8464f02e39d279b8bc0b60c0e9c290a9e06019088d002c409903d9c",
+      "summary": "Write a Summer Games store page: title, tagline, descriptions, tags, what never to write.",
       "use_when": [
         "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags",
         "store.update_listing or store.get_listing says a text field is missing or wrong",
@@ -3830,6 +3942,51 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-api",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "03c2f63c8601e78bf2b2eb3e566ec166461b8f9b33be0b06e6dc9bb29bf1d948",
+      "summary": "Summer API game assets: models, estimate, one job or a batch, download the files.",
+      "use_when": [
+        "generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine",
+        "making a set of assets in one go (a level's props, every UI icon, a sound pack) as one batch",
+        "choosing a generation model, pricing a job before it runs, or reading a job's state and files",
+        "a generation job answered no_credits, over_limit, not_signed_in or queued"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "3d-models",
+          "images",
+          "audio",
+          "video"
+        ]
+      },
+      "related": {
+        "tools": [
+          "tool/api-models",
+          "tool/api-estimate",
+          "tool/api-run",
+          "tool/api-batch",
+          "tool/api-job"
+        ],
+        "skills": [
+          "skill/summer-assets",
+          "skill/summer-cli",
+          "skill/asset-strategy",
+          "skill/summer-router"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -3912,9 +4069,9 @@
     {
       "id": "skill/summer-assets",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "1d6c1bde82da0ed0a28df6afafe91a1d265bfc842960b7f29178aaf6ce11589e",
-      "summary": "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video.",
+      "version": "1.0.2",
+      "content_hash": "2545cd7ef9e516f29b8883f0738735bcb5f97895422e76064eccc0ea2a007a11",
+      "summary": "Game assets for any engine, no Summer Engine: find, generate and download them.",
       "use_when": [
         "starting a session that has the Summer assets profile (generation tools, no engine tools)",
         "the person wants assets for their own engine or web app, not a game built in Summer Engine",
@@ -3945,6 +4102,7 @@
         ],
         "skills": [
           "skill/asset-strategy",
+          "skill/summer-api",
           "skill/sound-effect",
           "skill/prop-model",
           "skill/concept-art"
@@ -3954,15 +4112,145 @@
       "recommended": false
     },
     {
-      "id": "skill/summer-cli",
+      "id": "skill/summer-board",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "13ce5f864eaa9e209e1d841a0cd3b571c1518971e8029d88bbe36d3cad200673",
-      "summary": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
+      "content_hash": "33893a612082296e5e3aa53457da04866e2405ae232156b06df3818b8661df78",
+      "summary": "Summer Board co-op: tasks, claims, files, card frames.",
+      "use_when": [
+        "the person says board, co-op, team, work together or coordinate with a teammate's agent",
+        "picking up work on a game that has other members, or a board message, file or ping answer reached you",
+        "putting a set of ideas (10 character concepts, the levels) on the board as one frame with a numbered grid and a next-step note",
+        "showing the current local game as a private playable board preview"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "game-design"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/summer-board-types",
+          "skill/summer-board-modeling",
+          "skill/summer-board-to-game"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-board-modeling",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "1128d97bd4fc280336bb6e367dec5138b6bb7004a9a5291653652621769485b2",
+      "summary": "How granular to model a game on its Summer Board: what earns a type, what stays a note or a field, and starter type sets per genre.",
+      "use_when": [
+        "before defining the first types on a Summer Board, or when a board's types feel too many or too few",
+        "a person asks how to organise characters, levels or items on the board"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "game-design"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/summer-board",
+          "skill/summer-board-types"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-board-to-game",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "6b4257451c068f32feac3c23c259b1f29167a6dcb9ccb5dca4da711db5ceb775",
+      "summary": "Bring a Summer Board's typed cards into the game as Godot Resources, load them through BoardData, and keep board and game in step.",
+      "use_when": [
+        "gameplay code needs the stats, lists or links people put on the board as cards",
+        "a person says use the characters from the board or make the levels we planned, or cards the game uses changed"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "game-design",
+          "gameplay"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/summer-board",
+          "skill/summer-board-types"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-board-types",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "abbc3205be94737d08d9cb474812e1bb37df8048ae438b2d589e3ca67df42a37",
+      "summary": "Define and reuse types on a Summer Board (Character, Level, Item) so ideas become typed cards: read the board's types first, reuse before you define.",
+      "use_when": [
+        "putting characters, levels, items, abilities, quests or any set of similar things on a Summer Board",
+        "about to call board.types define, or a person asks for a type, a list of all X, or a cleanup of types"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "game-design"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/summer-board",
+          "skill/summer-board-modeling",
+          "skill/summer-board-to-game"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-cli",
+      "kind": "skill",
+      "version": "1.0.2",
+      "content_hash": "d3c8383943eba8c280298cb924205d014d6094343a61bc9bf575eb65ba4d0d5c",
+      "summary": "Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine.",
       "use_when": [
         "the session has no summer_* MCP tools, or Summer was set up with summer setup <agent> --cli",
         "running a Summer operation, a generation or an engine change from a shell, a script or CI",
-        "a skill names an MCP tool or an operation and you need the summer command that runs it"
+        "a skill names an MCP tool or an operation and you need the summer command that runs it",
+        "starting Summer Engine or reconnecting to an existing project"
       ],
       "facets": {
         "lifecycle": [
@@ -4228,11 +4516,51 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-router",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "dc25c719d31b25d53288780f53130389c34434a48ee5016d6adf9f5c24d22cd0",
+      "summary": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
+      "use_when": [
+        "a talking NPC (shopkeeper, guard, companion) players chat with, in a single-player or multiplayer game on Summer Games",
+        "a game should speak a line in a character's voice, or make an image, while people play",
+        "about to put a model name, a provider SDK or a provider key into a game project",
+        "choosing between Summer.client.router and Summer.authority.router in a single-player or multiplayer game",
+        "handling Summer Router refusals (limit_reached, credits_required, router_disabled, not_on_summer_games, unavailable) or changing its caps"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc",
+          "multiplayer"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-npc",
+          "skill/multiplayer-state",
+          "skill/summer-api"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.2.0",
-      "content_hash": "beb29b0d607373cf4b06255648da4a66c647fd082ae0c31686196550ea5bf65c",
-      "summary": "Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority.",
+      "content_hash": "43433f5c2471caf0f6006235c450beeb1ce31921f3317034836ae580616a14f1",
+      "summary": "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
         "checking on the authority that a player really owns an item before letting them use or equip it",
@@ -4435,7 +4763,7 @@
       "id": "skill/trailer-shot",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "209654629eb54452128b954e07273623a67ba06b425b5db56fe259d9324d3d54",
+      "content_hash": "dd2855fb1e8f28db398d72ffbd727da08ac8c9bd86fcdde43a87f9f209964d32",
       "summary": "Generate trailer footage: slow-mo combat, establishing shots, hero beats, splash screens, 5-10 seconds.",
       "use_when": [
         "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll",
@@ -4609,8 +4937,8 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.6",
-      "content_hash": "e9c422cd1f1589c622b4c5fd04786313351ca4e9c6eda0bfe87ffbb5b46431e7",
+      "version": "1.0.7",
+      "content_hash": "e4283912324b17a9f8142826ba3dff763c99d8c9f2989036d597f60359ac387f",
       "summary": "Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -5845,6 +6173,39 @@
       }
     },
     {
+      "id": "tool/api-batch",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8b30f8783781652a455ac3fff4191aece6e7f08b4e29444d999b520d5328589e",
+      "summary": "Run up to 500 Summer API jobs at once, all or none, with the Summer sign-in; follow every job and save the files.",
+      "use_when": [
+        "making many game assets through the Summer API in one go (a set of props, sounds or icons)",
+        "following or downloading a batch that summer_api_batch started"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_batch",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/api-docs",
       "kind": "tool",
       "version": "1.0.2",
@@ -5887,6 +6248,142 @@
         "editor_mutation": false,
         "network": false,
         "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-estimate",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c230c26f06934f118bfc3a582c1d7df38461478114e5ad21ad8126e6d6009dab",
+      "summary": "The exact USD price of one Summer API job before it runs, its breakdown and a quote id that holds the price for 15 minutes; charges nothing.",
+      "use_when": [
+        "before a Summer API run that spends the person's credits",
+        "the person asks what a generation will cost"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_estimate",
+      "remote": true,
+      "cli_command": "summer api estimate",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-job",
+      "kind": "tool",
+      "version": "1.0.1",
+      "content_hash": "1f1912adb84492c6602d636e90eb3fda450add3b15dda3e46d91a98f5d027677",
+      "summary": "Read a Summer API job (state, price, assets and file URLs); follow it until it finishes and save its files on this computer.",
+      "use_when": [
+        "a summer_api_run answered a running job",
+        "saving a finished Summer API job's files"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_job",
+      "remote": true,
+      "cli_command": "summer api jobs",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-models",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "73c3ac25cbe1a46f1e4584f081c9b0d06eee3f76f17cdf356b49d4b380e1638b",
+      "summary": "The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.",
+      "use_when": [
+        "choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API",
+        "checking what a Summer API model costs or takes as input"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_models",
+      "remote": true,
+      "cli_command": "summer api models",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/api-run",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f032bc0f2b3177f0897a3a3ca4a01ad5725b7f16ce648965cef2294aeeaa5d62",
+      "summary": "Run one Summer API job into the person's Summer assets with the Summer sign-in; spends paid credits within the app's limit, can wait and save the files.",
+      "use_when": [
+        "making a game asset through the Summer API after estimating it",
+        "a script or agent outside Summer Engine needs a generated model, image, sound or clip"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_api_run",
+      "remote": true,
+      "cli_command": "summer api run",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": true,
         "publish": false
       }
     },
@@ -6944,7 +7441,7 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "065d9069434d9eda25b7a69594371c52502320adf6cc4caa139fae56b9d9b480",
+      "content_hash": "fca4ee62044a9ead70a19b9f323c5d45c5d5fb63e163f0e79a129673c86167b2",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
@@ -7128,7 +7625,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "0698f5fe6cfcb89703b54caeaf06c39f649f6938f9d23be34bb3e975ea8c7bbf",
+      "content_hash": "0b2d2cffa90f20af9d9199fd4b9d7720c85d33d44663251867475f95a49e88e2",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
@@ -7330,6 +7827,73 @@
         "filesystem": true,
         "editor_mutation": false,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/games-download-remix",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f1a26adb84f379f1044f381b95a2eb87d1c4b7b376d75d2987c159bdb0979ec1",
+      "summary": "Download and verify a PCK using the temporary link from its Remix prompt. Only remix-enabled games issue new links. Saves locally without overwriting files.",
+      "use_when": [
+        "download a PCK to remix it",
+        "save the game pack from a Remix prompt"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_games_download_remix",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/games-set-remix",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "683020fb332402a9f8d1af7c85519859b20aae57a2fdd19ee9e2b450aa6c8e11",
+      "summary": "Allow or disable Remix (spins) for one game. Set spinnable=false to opt out immediately. Existing downloaded copies cannot be recalled.",
+      "use_when": [
+        "disable remixing or spins for my game",
+        "opt my game out of Remix",
+        "allow players to remix my game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_games_set_remix",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }
@@ -8038,6 +8602,49 @@
       }
     },
     {
+      "id": "tool/go-live",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "813f78551d698464e36057a229c5093ee763a64cc6e354ff5afc81ef9c882c2c",
+      "summary": "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated.",
+      "use_when": [
+        "\"make my game live\"",
+        "\"publish my game to players now\"",
+        "\"is my game live yet\"",
+        "\"release the build I uploaded\"",
+        "after summer_publish_build reports every automated check passed",
+        "watching a game until players get it, or finding which automated check failed"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/publish-your-game"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_go_live",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
+      }
+    },
+    {
       "id": "tool/grep",
       "kind": "tool",
       "version": "1.0.0",
@@ -8147,7 +8754,7 @@
       "id": "tool/import-from-url",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "bfdfd497aba3d2513e041391028294510d2959bed94a4ad379c9246b6e0ad663",
+      "content_hash": "c9df60fadce2263a91127d6bbbe3bcfb192d6b63d5822e331bd18e4f032e5d2b",
       "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
@@ -8181,7 +8788,7 @@
       "id": "tool/import-from-url-batch",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "f9537f4cc763cda04468622de95449b9eba54b54d7b06b600eed8c27e707ed53",
+      "content_hash": "0acf3a0be036c3b63793d907bdcf7cdf1fc86564f585a53b753ec70f24589968",
       "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
@@ -8872,7 +9479,7 @@
       "id": "tool/play",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "8907087f8f29d2324d92ed9d656c74dfc7530dd55743b0de7c4768c3d3c42753",
+      "content_hash": "4ce70b57668ab656480e294eefffe8e36ddee93f5d285a2ffa5217dd476dfe20",
       "summary": "Start the game quietly (editor keeps tab and focus) — main or a given scene, embedded or offscreen, with pins, or a local multiplayer session (players).",
       "use_when": [
         "runtime verification after edits",
@@ -8955,11 +9562,82 @@
       }
     },
     {
+      "id": "tool/projects-create-local",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "032118a011df8c638e47198fe8bac00564fe4f684e6b3cef87dc8b208192da1d",
+      "summary": "Create a project on this computer. Writes a template (3d-basic by default) to a folder, no shell needed. Returns projectPath. Next: projects.open_local.",
+      "use_when": [
+        "\"make me a game\"",
+        "\"start a new Summer project\"",
+        "\"create a 3d project on my computer\"",
+        "no editor is open and this session has no project (engine_not_running says so)",
+        "an agent with no shell (Claude Desktop, a chat app) starts a game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "project",
+          "editor"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_projects_create_local",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/projects-open-local",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "debdb45afee6723998960845ad1ba236bb20b37844b343427301704b07c7adbc",
+      "summary": "Open a project in Summer Engine. Waits until it connects; installs the engine only with install: true (the person's yes). Next: engine.get_project_context.",
+      "use_when": [
+        "\"open my game in Summer\"",
+        "\"open the editor\"",
+        "engine_not_running and the session has a project, or after projects.create_local",
+        "an agent with no shell (Claude Desktop, a chat app) needs the editor"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "project",
+          "editor"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_projects_open_local",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/publish-build",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "2f9c5ce45a996d922b2f51f66acfc6c67c99bbd82c2fd3c7babaee29e5d9f914",
-      "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
+      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",
         "\"publish this build to my store page\"",
@@ -9742,7 +10420,7 @@
       "id": "tool/screenshot",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "c421909fa8ea62c3be65cbbe2863ddffa1599be5b372b5b378a37e0eb435abe3",
+      "content_hash": "5aaad5b7a2c6236872653f24c6076a0f562ee71606f1fd045e00c82711cf3062",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
@@ -10283,6 +10961,49 @@
       }
     },
     {
+      "id": "tool/store-set-details",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "b7c0c8d03eb860940f157d099f8af42bae21fe19d6347a0f5b0b53645afe3005",
+      "summary": "Fill store page sections update_listing lacks: genres, features, credits, languages, requirements, content survey, AI disclosure. Never publishes.",
+      "use_when": [
+        "\"fill in the age rating questionnaire\"",
+        "\"add the AI disclosure to my store page\"",
+        "\"set my game's genres and features\"",
+        "\"list the languages my game supports\"",
+        "\"add system requirements to the store page\"",
+        "store.get_listing shows contentSurvey, aiDisclosure, genres or credits empty"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/release-checklist",
+          "skill/store-listing"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_store_set_details",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/sync-items",
       "kind": "tool",
       "version": "1.0.0",
@@ -10568,6 +11289,50 @@
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/view-set",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f8986edfdd42e5de7dc9d58f67ad4d67acc05b18db211cff935dbb27cf342a2f",
+      "summary": "Show the person what you work on: the editor view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame.",
+      "use_when": [
+        "you start editing a scene and want the person to watch it change (3D view, Scene rail, the edited node framed)",
+        "you edit a script and want it on screen (script view at that file)",
+        "you play the game or review the result (game view; a frame_shot for a review)",
+        "you finish and want to leave the person on the best view of the result"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "navigation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "tools": [
+          "tool/select-node",
+          "tool/frame-shot"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_view_set",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
         "network": false,
         "credentials": false,
         "publish": false

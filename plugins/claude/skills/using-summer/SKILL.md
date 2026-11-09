@@ -39,7 +39,7 @@ Three layers:
 - **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import (`summer_import_from_url`), and the rest of the `summer_*` set.
 - **Operations** — Summer's cloud work (generating images, 3D, audio, video and animation, editing assets, store pages, jobs) is named by operation: `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Long work (3D, video, animation) answers with a job: `jobs.wait({ jobId })` until it finishes. Spending operations accept `dryRun: true`, which returns the person's estimated credits and changes nothing.
 
-**No `summer_*` tools in this session?** Summer was set up without MCP (`summer setup <agent> --cli`). Every tool and operation is also a `summer` command in the shell: use the `summer-cli` skill. Each skill's **From a shell** table gives the command for each tool it names.
+**No `summer_*` tools in this session?** The host may not have loaded them yet, or Summer was set up without MCP (`summer setup <agent> --cli`). This does not tell you whether the engine is running. Every tool and operation is also a `summer` command in the shell: use the `summer-cli` skill and continue in this session. Each skill's **From a shell** table gives the command for each tool it names.
 
 **Scripting language:** The user is making a Summer game with the Summer SDK.
 GDScript is the default creator language. Summer Engine follows its upstream
@@ -56,7 +56,7 @@ engine's own version string. You can write game code in either:
 
 Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`. Drive the engine through `summer_*` tools — do not hand-edit `.tscn` files; the editor holds in-memory state that diverges from disk. 3 or more scene edits are one `summer_run_script` with `scenePath` (snapshot, script, diff, screenshot; see `scene-scripting`), not a chain of single calls.
 
-The engine must be running for MCP tools that touch scenes or diagnostics. If it isn't, the tool returns an error pointing the user at `summer run`.
+The engine must be running for operations that touch scenes or diagnostics, over either MCP or CLI. Use the startup sequence in `summer-cli` to open the intended project and verify its connection.
 
 `.summer/` is the project's durable memory. `summer_get_project_context` surfaces a lightweight `projectMemory` summary; use it to read only the relevant Markdown before creative, audio, dialogue, level, or character work. Facts marked `priority: locked` are stable project decisions and require explicit user confirmation before changing.
 
@@ -126,22 +126,22 @@ When multiple Summer skills could apply, run them in this order:
 
 The skill itself tells you which. Default to rigid when unsure.
 
-## When the Engine Isn't Running
+## When the Engine Isn't Running or MCP Tools Are Missing
 
-If an MCP tool returns "Summer Engine is not running":
+These are different failures:
 
-1. Tell the user: `summer run` to start it (or open Summer Engine and load the project).
-2. While waiting, do non-MCP work — read code, plan the next steps, draft GDScript.
-3. Retry the tool. The MCP server lazy-reconnects on the next call.
+1. **The tool is absent from this session:** use its shell equivalent from `summer-cli`. Do not ask the user to restart the editor just to make MCP tools appear.
+2. **The operation returns `engine_not_running`:** follow `summer-cli`'s "Start or reconnect to Summer Engine" sequence. With shell access, launch the selected project yourself using `summer run "<project-path>"` (or `summer run .` from its root). If installation is needed, the guide covers `summer dev` and consent. Do not hand the launch back to the user unless your environment cannot perform it.
+3. **The editor is still importing:** follow its readiness message, then verify the intended project with `summer_get_project_context` or `summer engine get-project-context` before retrying the original operation. While waiting, read code, plan, or draft GDScript.
 
-Do NOT fall back to editing `.tscn` files directly. The engine reads them on disk but holds in-memory state that diverges, and saving from the editor will overwrite your file edits.
+Do not bypass a connection failure by launching stock Godot or hand-editing a scene that is open in the editor. Report the specific blocker if Summer cannot start; saving from the editor can overwrite external scene edits.
 
 ## When the User Hasn't Set Up Summer
 
 If skills aren't found or the MCP server fails to start:
 
 1. Check whether `summer` is on PATH: `which summer` / `where summer`.
-2. If not, point them at: `npx -y summer-engine@4.4.0 setup <agent> --yes --force` (use `@next` and `--channel next` while a release is soaking on the `next` tag; `summer doctor` prints the right command).
+2. If not, point them at: `npx -y summer-engine@4.9.1 setup <agent> --yes --force` (use `@next` and `--channel next` while a release is soaking on the `next` tag; `summer doctor` prints the right command).
 3. If `summer doctor` is available, run it: `summer doctor` reports auth, engine, port, project memory, and skill state.
 
 ## When Summer Is Stale
@@ -149,7 +149,7 @@ If skills aren't found or the MCP server fails to start:
 Run `summer doctor` early in a fresh Summer session when setup, MCP tools, slash commands, or skills behave oddly. If doctor reports `cli-version-current` or `skills-version-stale` as warning/fail, refresh before continuing:
 
 ```
-npx clear-npx-cache && npx -y summer-engine@4.4.0 setup <agent> --yes --force
+npx clear-npx-cache && npx -y summer-engine@4.9.1 setup <agent> --yes --force
 ```
 
 Use the dist-tag `summer doctor` recommends: `@latest` normally, `@next` (with `--channel next`) when this CLI was installed from the soaking release, otherwise the MCP server silently drops back to the older `latest`. Use the real agent slug from doctor or the current environment (`claude-code`, `codex`, `cursor`, `antigravity`, `github-copilot`, `vscode-copilot`, `opencode`, etc.).
@@ -169,7 +169,7 @@ A direct user instruction ("skip the brainstorm", "just write the code", "don't 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->
 ## From a shell
 
-No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.4.0` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
+No Summer MCP tools in this session? Run each one as a command; when `summer --version` is missing or below 4.0, use `npx -y summer-engine@4.9.1` in place of `summer`. Fields are flags in kebab-case (`--scene-path res://main.tscn`) or one `--input '<json>'`, and `summer ops describe <op>` prints the exact input. The `summer-cli` skill has the rest.
 
 | In this skill | Command |
 |---|---|

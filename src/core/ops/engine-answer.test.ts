@@ -25,9 +25,9 @@ describe("an engine tool's result as the one answer shape", () => {
     expect(JSON.stringify(answer)).not.toContain("api-token");
   });
 
-  it("reads the coded 3.x shape too", () => {
+  it("reads the coded 3.x shape too, keeping its own next step", () => {
     const raw = text(JSON.stringify({ ok: false, code: "engine_not_running", error: "Summer Engine is not running.", recovery: "Open the project" }), true);
-    expect(answerOfEngineResult(raw, "engine.play", write)).toMatchObject({ ok: false, error: { code: "engine_not_running", retry: "safe" } });
+    expect(answerOfEngineResult(raw, "engine.play", write)).toMatchObject({ ok: false, error: { code: "engine_not_running", retry: "safe", next: { say: "Open the project" } } });
   });
 
   it("finds engine_not_running inside a coded failure, and names the sentence over the code", () => {
@@ -69,5 +69,20 @@ describe("an engine tool's result as the one answer shape", () => {
       expect(answer).toMatchObject({ ok: false, error: { code } });
       if (!answer.ok) expect(answer.error.next).toEqual(next);
     }
+  });
+});
+
+describe("a signed-out tool's sign-in link", () => {
+  it("keeps not_signed_in and makes the link the next step", () => {
+    const text = JSON.stringify({
+      ok: false,
+      code: "not_signed_in",
+      error: "Not signed in to Summer.",
+      signInUrl: "https://www.summerengine.com/login?cli_session=abc",
+      recovery: "Sign-in link for the person: https://www.summerengine.com/login?cli_session=abc",
+    });
+    const answer = engineFailure(text, "assets.search", { effect: "read" }) as { ok: false; error: { code: string; next?: { say?: string } } };
+    expect(answer.error.code).toBe("not_signed_in");
+    expect(answer.error.next?.say).toContain("https://www.summerengine.com/login?cli_session=abc");
   });
 });

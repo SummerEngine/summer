@@ -45,6 +45,49 @@ describe("summer create project settings", () => {
   });
 });
 
+describe("the 3d-basic starter scene looks like a game", () => {
+  const dir = mkdtempSync(join(tmpdir(), "summer-3d-basic-"));
+  BUILTIN_GENERATORS["3d-basic"](dir, "Starter");
+  const scene = readFileSync(join(dir, "main.tscn"), "utf8");
+  rmSync(dir, { recursive: true, force: true });
+  /** The properties under one [header] line, as written. */
+  const section = (header: string) => scene.split(header)[1]?.split(/\n\[/)[0] ?? "";
+
+  it("is valid text: every SubResource it uses is declared once, and load_steps counts them", () => {
+    const declared = [...scene.matchAll(/\[sub_resource type="\w+" id="(\w+)"\]/g)].map((m) => m[1]);
+    expect(new Set(declared).size).toBe(declared.length);
+    for (const used of scene.matchAll(/SubResource\("(\w+)"\)/g)) expect(declared).toContain(used[1]);
+    expect(scene).toMatch(new RegExp(`^\\[gd_scene load_steps=${declared.length + 1} format=3\\]`));
+  });
+
+  it("puts the procedural sky on a real Environment: ACES, sky ambient and reflections", () => {
+    expect(section('[sub_resource type="Sky" id="Sky_main"]')).toContain('sky_material = SubResource("ProceduralSkyMaterial_sky")');
+    const environment = section('[sub_resource type="Environment" id="Environment_main"]');
+    expect(environment).toContain("background_mode = 2");
+    expect(environment).toContain('sky = SubResource("Sky_main")');
+    expect(environment).toContain("ambient_light_source = 3");
+    expect(environment).toContain("tonemap_mode = 3");
+    expect(environment).not.toMatch(/glow|fog|ssao/);
+    expect(section('[node name="WorldEnvironment" type="WorldEnvironment" parent="."]')).toContain('environment = SubResource("Environment_main")');
+  });
+
+  it("has a sun with soft shadows, a tinted ground and one lit hero the camera frames", () => {
+    const sun = section('[node name="Sun" type="DirectionalLight3D" parent="."]');
+    expect(sun).toContain("shadow_enabled = true");
+    expect(sun).toContain("light_angular_distance");
+    expect(section('[node name="Ground" type="MeshInstance3D" parent="."]')).toContain("surface_material_override/0");
+    expect(section('[node name="Hero" type="MeshInstance3D" parent="."]')).toContain("surface_material_override/0");
+
+    // Transform3D lists the basis rows, then the origin; a camera looks down -Z.
+    const camera = section('[node name="Camera3D" type="Camera3D" parent="."]').match(/Transform3D\(([^)]*)\)/)![1].split(",").map(Number);
+    const forward = [-camera[2], -camera[5], -camera[8]];
+    const toHero = [0 - camera[9], 1 - camera[10], 0 - camera[11]];
+    const length = Math.hypot(...toHero);
+    const dot = forward.reduce((sum, value, index) => sum + (value * toHero[index]) / length, 0);
+    expect(dot).toBeGreaterThan(0.99);
+  });
+});
+
 describe("builtin templates agree between the library and the CLI", () => {
   it("every library template with builtin: true has a generator, and only those", () => {
     const dir = join(PACKAGE_ROOT, "library", "templates");

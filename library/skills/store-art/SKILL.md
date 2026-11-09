@@ -1,6 +1,6 @@
 ---
 name: store-art
-description: "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules."
+description: "Make Summer Games store art per slot: key art, icons, screenshots, trailer, sizes."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

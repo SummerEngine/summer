@@ -121,10 +121,12 @@ describe("local tool call reports", () => {
     expect(typeof calls[0].body.durationMs).toBe("number");
   });
 
-  it("sends one session line on the first tool call, with the host app name", async () => {
+  it("sends one session line on the first tool call, with the host app name and this machine's install id", async () => {
     const posts = await callAndCollect();
     const sessions = posts.filter((post) => post.body.event === "mcp_session_start");
-    expect(sessions.map((post) => post.body)).toEqual([{ client: "summer-cli", event: "mcp_session_start", mcpClient: "claude-code" }]);
+    expect(sessions.map((post) => post.body)).toEqual([
+      { client: "summer-cli", event: "mcp_session_start", mcpClient: "claude-code", installId: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+    ]);
   });
 
   it("sends nothing with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1", async () => {

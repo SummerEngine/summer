@@ -1,0 +1,70 @@
+id: tool/api-run
+kind: tool
+version: 1.0.0
+summary: Run one Summer API job into the person's Summer assets with the Summer sign-in; spends paid credits within the app's limit, can wait and save the files.
+use_when:
+  - making a game asset through the Summer API after estimating it
+  - a script or agent outside Summer Engine needs a generated model, image, sound or clip
+do_not_use_when:
+  - this computer is not signed in yet (the person runs summer login first)
+  - the person has not agreed to spend credits
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_api_run
+implementation:
+  module: src/mcp/tools/api-tools.ts
+  export: registerApiTools
+surfaces:
+  mcp:
+    tool_name: summer_api_run
+    remote: true
+  cli:
+    command: summer api run
+input_schema:
+  type: object
+  properties:
+    model:
+      type: string
+      minLength: 1
+      maxLength: 120
+      description: A Summer API model id or alias from summer_api_models, e.g. 3d/default.
+    input:
+      type: object
+      additionalProperties: {}
+      description: The model's input, matching its inputSchema from summer_api_models.
+    quoteId:
+      type: string
+      minLength: 1
+      maxLength: 600
+      description: "From summer_api_estimate: refuse to charge more than it quoted."
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: Reuse to retry the same run without running it twice.
+    wait:
+      type: boolean
+      description: Follow the job until it finishes (up to about a minute in this call).
+    out:
+      type: string
+      minLength: 1
+      description: "A folder on this computer: save the finished job's files there (implies wait)."
+  required:
+    - model
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: true
+  publish: false

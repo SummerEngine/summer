@@ -40,6 +40,7 @@ export function buildAgentPlaybook(
     // VISUAL VERIFICATION — pixels are the second signal.
     // ------------------------------------------------------------------
     visualVerification: [
+      "Opening the Summer editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot to see the result. Close what you opened when you are done (summer_stop); one editor at a time.",
       "Use summer_screenshot BEFORE making changes to see the current state, and AFTER every mutation batch or asset import to verify the result. Two signals, two jobs: summer_snapshot_diff proves exact structural facts; the screenshot proves appearance. Run both.",
       "For lighting, mood, environment, or emissive materials, use summer_screenshot target:'scene' framing:'camera' — it renders through the scene's OWN camera with its REAL WorldEnvironment. The preset framings (iso/top/...) substitute a flat preview environment and CANNOT verify lighting.",
       "When executing multiple batches, screenshot between them — catch the wrong turn at batch 2, not batch 7.",

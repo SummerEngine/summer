@@ -1,6 +1,6 @@
 ---
 name: summer-store
-description: "Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority."
+description: "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

@@ -40,12 +40,14 @@ import { registerDebugTools } from "./debug-tools.js";
 import { registerVisualTools } from "./visual-tools.js";
 import { registerSeeingTools } from "./seeing-tools.js";
 import { registerAuditTools } from "./audit-tools.js";
+import { registerLocalProjectTools } from "./local-project-tools.js";
 import { registerProjectTools } from "./project-tools.js";
 import { registerFileTools } from "./file-tools.js";
 import { registerAssetTools } from "./asset-tools.js";
 import { registerGenerateTools } from "./generate-tools.js";
 import { registerCreatorTools } from "./creator-tools.js";
 import { registerFeedbackTools } from "./feedback-tools.js";
+import { registerApiTools } from "./api-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
@@ -274,11 +276,13 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerSeeingTools,
     registerAuditTools,
     registerProjectTools,
+    registerLocalProjectTools,
     registerFileTools,
     registerAssetTools,
     registerGenerateTools,
     registerCreatorTools,
     registerFeedbackTools,
+    registerApiTools,
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,

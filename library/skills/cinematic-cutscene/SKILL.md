@@ -126,24 +126,11 @@ Lip-sync caveat: if the video shows the character clearly mouthing words and the
 
 ### 7. Import and wire as a VideoStreamPlayer
 
-**Transcode to Ogg Theora first.** The generated clip is an `.mp4`, and Summer Engine cannot load `.mp4` — the only video container in the build is `.ogv`. Measured against the shipped binary (4.6.1):
+**Import the `.mp4` as it is; the import converts it.** Summer Engine plays video only as Ogg Theora (`.ogv`), so every Summer import tool (`summer_import_from_url`, its batch, `summer_import_asset_by_id`, `summer_import_asset`) converts a video on the way in and saves it at the path you asked for with `.ogv`. The answer names the file in `videoConversions` and `note`:
 
 ```
-$ Summer --headless --path <proj> -s res://probe.gd
-VideoStream exts: ["ogv", "tres", "res"]
-ERROR: No loader found for resource: res://clip.mp4 (expected type: unknown)
-```
-
-Nothing transcodes for you — `summer_import_from_url` downloads the bytes, runs the engine's import pipeline, and *fails the import* if the file never becomes a loadable resource. Convert with ffmpeg or DaVinci before importing:
-
-```
-ffmpeg -i intro_shot_01.mp4 -c:v libtheora -q:v 8 -an intro_shot_01.ogv
-```
-
-Then:
-
-```
-summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/cinematics/intro_shot_01.ogv")
+summer_import_asset_by_id(assetId="<the shot's asset id>", path="res://assets/video/cinematics/intro_shot_01.mp4")
+→ importedTo: res://assets/video/cinematics/intro_shot_01.ogv
 ```
 
 Build a controller scene at `res://cinematics/Intro.tscn`: create it, then build its nodes in one script (`scenePath` names the new scene; the editor's open tab comes back afterwards):
@@ -204,7 +191,7 @@ Pattern: `<subject> + <action> + <camera move> + <lighting> + <stylistic anchor>
 - **Using `kling` for blocking iterations.** Validate framing and prompt on the cheaper `ltx` first; move to `kling` once the composition lands.
 - **Putting the cutscene on a `VideoStreamPlayer` without a fade.** Cuts straight from gameplay to video are jarring. Always wrap in a `ColorRect` fade in/out.
 - **Treating `assets.generate_video` as finished.** It answers `{ status: "running", job }` and no URL. Wait with `jobs.wait` until the job is done before there is anything to show or import.
-- **Importing the `.mp4` as-is.** The engine has no MP4 or WebM loader — only Ogg Theora (`.ogv`). Transcode first; an un-transcoded import fails and is rolled back.
+- **Loading the `.mp4` path after an import.** The engine has no MP4 or WebM loader; the import saved the shot as `.ogv`. `load()` the `.ogv` path the answer names.
 - **Asking `ltx` or `kling` for `duration: 3` or `duration: 8`.** On those two only 5 and 10 exist; anything else renders 5.
 - **Pairing `imageUrl` with `kling-turbo` or `veo3`.** Neither has an image-to-video endpoint — that combination is a 400.
 
@@ -227,7 +214,7 @@ If the MCP server isn't running, the user can do all of this in the Summer dashb
 1. Generate a reference image in the Image tab.
 2. Open the Video tab, paste the reference URL into the image-to-video field.
 3. Set model, duration, aspect ratio, and prompt as listed above.
-4. Download the `.mp4`, transcode it to Ogg Theora (`ffmpeg -i in.mp4 -c:v libtheora -q:v 8 -an out.ogv`), and drop the `.ogv` into `assets/video/cinematics/`. Summer Engine has no MP4 or WebM loader — `.ogv` is the only video container it can open.
+4. Import the shot's URL from a shell while Summer Engine runs: `summer tool import-from-url --args '{"url":"<shot url>","path":"res://assets/video/cinematics/<name>.ogv"}'`. It converts the `.mp4` to Ogg Theora (`.ogv`), the only video container Summer Engine can open.
 
 Print the exact prompt + model + duration + aspect ratio so the user can paste it into the dashboard verbatim.
 
@@ -265,6 +252,8 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_docs_read` | `summer docs read` |
 | `summer_add_node` | `summer engine add-node` |
 | `summer_create_scene` | `summer engine create-scene` |
+| `summer_import_asset` | `summer engine import-asset` |
+| `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
 | `summer_import_from_url` | `summer engine import-from-url` |
 | `summer_run_script` | `summer engine run-script` |
 | `summer_set_prop` | `summer engine set-prop` |

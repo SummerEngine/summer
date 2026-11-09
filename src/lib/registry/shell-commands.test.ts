@@ -18,7 +18,7 @@ import {
   writeShellSections,
 } from "../../../scripts/validate-library/shell-commands.ts";
 import { isLocalOp } from "../../core/ops/contract.js";
-import { TAKES_OUT } from "../../core/ops/save-files.js";
+import { shippedCloudEntries } from "../../core/ops/public-catalog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..", "..");
@@ -63,7 +63,8 @@ describe("shell commands: each MCP tool name to its summer command", () => {
   });
 
   it("the 4.0-only operations are ones this package knows", () => {
-    for (const op of V4_ONLY_OPS) expect(TAKES_OUT.has(op) || isLocalOp(op)).toBe(true);
+    const shippedCloud = new Set(shippedCloudEntries().map((entry) => entry.name));
+    for (const op of V4_ONLY_OPS) expect(shippedCloud.has(op) || isLocalOp(op)).toBe(true);
     expect(catalog.ops.has("jobs.wait")).toBe(true);
   });
 });

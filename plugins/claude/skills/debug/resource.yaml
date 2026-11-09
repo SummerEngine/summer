@@ -1,6 +1,6 @@
 id: skill/debug
 kind: skill
-version: 1.0.4
+version: 1.0.5
 summary: "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify."
 use_when:
   - the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes
@@ -20,6 +20,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/summer-cli
     - skill/make-game
     - skill/scene-composition
     - skill/gdscript-patterns

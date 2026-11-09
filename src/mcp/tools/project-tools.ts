@@ -16,6 +16,7 @@ import {
 import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { appendMcpLogEvent } from "../../core/mcp-log.js";
 import { withEngine } from "./with-engine.js";
+import { importUrls } from "../../core/capabilities/video-ogv.js";
 
 import { asRecord, stringFrom, type JsonRecord } from "../../core/util/json.js";
 
@@ -336,6 +337,7 @@ Use this for:
 - 3D models (.glb, .gltf, .obj)
 - Textures (.png, .jpg, .webp)
 - Audio (.ogg, .wav, .mp3)
+- Video (.mp4, .mov, .webm, .ogv): Summer Engine plays only Ogg Theora, so any other video is converted to .ogv first and lands at the path with .ogv; the answer names it.
 
 The path is auto-inferred from the URL filename if not specified. After import, the asset is immediately usable in scenes.`,
     {
@@ -343,16 +345,12 @@ The path is auto-inferred from the URL filename if not specified. After import, 
       path: z.string().optional().describe("Target path in project, e.g. 'res://assets/player.glb'. Auto-inferred from URL if omitted."),
     },
     async ({ url, path }) =>
-      withEngine(async (client) => {
-        const op: Record<string, unknown> = { op: "ImportFromUrl", url };
-        if (path) op.path = path;
-        return client.executeOps([op]);
-      })
+      withEngine(async (client) => importUrls(client, [{ url, ...(path ? { path } : {}) }], { batch: false }))
   );
 
   server.tool(
     "summer_import_from_url_batch",
-    "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time.",
+    "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time. A video (.mp4, .mov, .webm) is converted to Ogg Theora first and lands at its path with .ogv.",
     {
       imports: z.array(z.object({
         url: z.string().describe("URL to download"),
@@ -360,8 +358,6 @@ The path is auto-inferred from the URL filename if not specified. After import, 
       })).describe("Array of {url, path} objects"),
     },
     async ({ imports }) =>
-      withEngine(async (client) =>
-        client.executeOps([{ op: "ImportFromUrlBatch", imports }])
-      )
+      withEngine(async (client) => importUrls(client, imports, { batch: true }))
   );
 }

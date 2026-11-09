@@ -66,6 +66,7 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `assets.generate_motion`, `summer_assets_generate_motion` | `summer assets generate-motion` |
 | `assets.generate_video`, `summer_assets_generate_video` | `summer assets generate-video` |
 | `assets.get` | `summer assets get` |
+| `assets.rig` | `summer assets rig` |
 | `assets.upload_begin` | `summer assets upload-begin` |
 | `assets.upload_complete` | `summer assets upload-complete` |
 | `summer_docs_read` | `summer docs read` |

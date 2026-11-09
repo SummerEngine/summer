@@ -8,15 +8,21 @@ import {
   configureAgentMcp,
   configureSummerGamesMcp,
   resolveAgentSelection,
+  resolveBundledRuntime,
+  type AgentConfigResult,
+  type RemoteMcpResult,
   resolveConfigScope,
   supportedAgents,
 } from "../../installer/agent-config.js";
 import { SkillSetupResult, previewNote, setupSkills } from "../../installer/setup.js";
+import { detectAgents } from "../../installer/agent-detect.js";
+import { SetupError, toStepError, type SetupStepError } from "../../installer/setup-error.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilities/doctor.js";
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { listsSummerEngine, resolveDefaultChannel } from "../../installer/version-check.js";
+import { findShadowingSummer, shadowWarning } from "../../installer/path-shadow.js";
 import { agentLabel, agentSpec, cliSetupRefusal, defaultPathContext } from "../../installer/agent-table.js";
 import { addAllowRules, allowRulesPath, removeAllowRules, supportsAllowRules, type AllowRulesResult } from "../../installer/cli-permissions.js";
 import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
@@ -56,6 +62,12 @@ interface SetupCommandOptions {
   removeAllowRules?: boolean;
   /** false with --no-project-files: leave the project's AGENTS.md and CLAUDE.md alone. */
   projectFiles?: boolean;
+  /** --runtime <node>: the entry runs this node executable instead of npx (with --package-dir). */
+  runtime?: string;
+  /** --package-dir <dir>: the summer-engine package folder the bundled runtime runs. */
+  packageDir?: string;
+  /** --detect: list every agent, whether it is installed and linked; writes nothing. */
+  detect?: boolean;
 }
 
 /** The project's AGENTS.md and CLAUDE.md: what setup did, or would do without --yes. */
@@ -73,6 +85,8 @@ const MCP_ENTRY_FLAGS: ReadonlyArray<[keyof SetupCommandOptions, string]> = [
   ["localDev", "--local-dev"],
   ["channel", "--channel"],
   ["profile", "--profile"],
+  ["runtime", "--runtime"],
+  ["packageDir", "--package-dir"],
 ];
 
 export const setupCommand = new Command("setup")
@@ -87,6 +101,15 @@ export const setupCommand = new Command("setup")
   .option(
     "--local-dev",
     "Point the agent at this checkout's built CLI (node <repo>/dist/bin/summer.js mcp) instead of npx summer-engine@latest — for testing unpublished builds. SUMMER_DEV=1 does the same."
+  )
+  .option(
+    "--runtime <node>",
+    "Run the MCP server with this node executable instead of npx: <node> <package-dir>/dist/bin/summer.js mcp. Needs --package-dir. For installers that ship their own Node.js"
+  )
+  .option("--package-dir <dir>", "The summer-engine package folder (package.json and dist/bin/summer.js) that --runtime runs")
+  .option(
+    "--detect",
+    "List every supported agent: installed or not, its MCP config file, and whether it already lists summer-engine. Writes nothing; takes no agent. Use with --json"
   )
   .option(
     "--channel <dist-tag>",
@@ -135,22 +158,83 @@ export const setupCommand = new Command("setup")
   // Pre-reversal opt-in, kept one release as a hidden no-op so old scripts still parse.
   .addOption(new Option("--include-preview", "No-op: preview skills install by default").hideHelp())
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
-    const agent = resolveAgentSelection(agentArg, opts.agent);
-    const scope = resolveConfigScope(opts.scope);
-    if (opts.removeAllowRules) {
-      await removeCliAllowRules(agent, scope, opts);
+    if (opts.detect) {
+      runDetect(agentArg, opts);
       return;
     }
-    if (opts.cli || opts.mcp === false) {
-      await setupCliOnly(agent, scope, opts);
+    if (!opts.json) {
+      await setupAgent(agentArg, opts);
       return;
     }
-    // On stderr, so --json output stays one JSON document.
-    if (opts.allowRules) console.error(`  ${sym.warn()}  ${c.yellow("--allow-rules works with --cli only (the MCP server asks through the agent's own tool approvals); no rules were added.")}`);
-    const profile = resolveSetupProfile(opts);
+    // --json: one JSON document on stdout, also when setup cannot start.
+    try {
+      await setupAgent(agentArg, opts);
+    } catch (error) {
+      console.log(JSON.stringify({ ok: false, error: toStepError(error, "setup_failed"), steps: [] }, null, 2));
+      process.exit(1);
+    }
+  });
 
-    const defaultChannel = await resolveDefaultChannel(cliVersion);
-    const config = await configureAgentMcp({
+/** One setup step in --json: ok, what it did, and a coded error when it failed. */
+interface SetupStep {
+  step: "mcp_entry" | "summer_games" | "skills" | "project_files" | "doctor";
+  ok: boolean;
+  /** mcp_entry, summer_games: written | unchanged | planned | printed | exists | not_supported | skipped.
+   *  skills: installed | planned | skipped | failed. project_files: written | planned | not_in_project | skipped.
+   *  doctor: passed | failed. Every step that did not fail is ok, planned and skipped ones too. */
+  status: string;
+  path?: string;
+  error?: SetupStepError;
+  warnings?: string[];
+}
+
+/**
+ * Runs one step. With --json a throw becomes the step's coded error and the
+ * other steps still run; without it the throw ends setup as it always did.
+ */
+async function runStep<T>(json: boolean, fallbackCode: string, run: () => Promise<T> | T): Promise<{ value: T | null; error?: SetupStepError }> {
+  if (!json) return { value: await run() };
+  try {
+    return { value: await run() };
+  } catch (error) {
+    return { value: null, error: toStepError(error, fallbackCode) };
+  }
+}
+
+async function setupAgent(agentArg: string | undefined, opts: SetupCommandOptions): Promise<void> {
+  let agent: SupportedAgent;
+  try {
+    agent = resolveAgentSelection(agentArg, opts.agent);
+  } catch (error) {
+    throw new SetupError("unknown_agent", error instanceof Error ? error.message : String(error));
+  }
+  let scope: ConfigScope;
+  try {
+    scope = resolveConfigScope(opts.scope);
+  } catch (error) {
+    throw new SetupError("invalid_scope", error instanceof Error ? error.message : String(error));
+  }
+  if (opts.removeAllowRules) {
+    await removeCliAllowRules(agent, scope, opts);
+    return;
+  }
+  if (opts.cli || opts.mcp === false) {
+    await setupCliOnly(agent, scope, opts);
+    return;
+  }
+  // On stderr, so --json output stays one JSON document.
+  if (opts.allowRules) console.error(`  ${sym.warn()}  ${c.yellow("--allow-rules works with --cli only (the MCP server asks through the agent's own tool approvals); no rules were added.")}`);
+  const profile = resolveSetupProfile(opts);
+  const runtime = resolveBundledRuntime(opts.runtime, opts.packageDir);
+  if (runtime && (opts.localDev || opts.channel)) {
+    throw new SetupError("invalid_option", `--runtime runs a bundled summer-engine; leave out ${opts.localDev ? "--local-dev" : "--channel"}.`);
+  }
+  const json = Boolean(opts.json);
+
+  // A bundled runtime runs the package beside it, so npm's tags do not matter (and no network call is made).
+  const defaultChannel: { channel: string; note?: string } = runtime ? { channel: "latest" } : await resolveDefaultChannel(cliVersion);
+  const mcp = await runStep(json, "mcp_entry_failed", () =>
+    configureAgentMcp({
       agent,
       scope,
       dryRun: opts.dryRun,
@@ -158,16 +242,22 @@ export const setupCommand = new Command("setup")
       localDev: Boolean(opts.localDev) || process.env.SUMMER_DEV === "1",
       channel: opts.channel ?? process.env.SUMMER_CHANNEL ?? defaultChannel.channel,
       profile,
-    });
-    const games =
-      opts.games === false || opts.assetsOnly || opts.print
-        ? null
-        : await configureSummerGamesMcp({ agent, scope, dryRun: opts.dryRun });
-    if (!opts.channel && !process.env.SUMMER_CHANNEL && defaultChannel.note && !opts.print) {
-      console.log(`  ${c.dim(defaultChannel.note)}`);
-    }
+      runtime: runtime ?? undefined,
+    })
+  );
+  const config = mcp.value;
+  const gamesSkipped = opts.games === false || opts.assetsOnly || opts.print;
+  const gamesStep = gamesSkipped
+    ? { value: null }
+    : await runStep(json, "summer_games_failed", () => configureSummerGamesMcp({ agent, scope, dryRun: opts.dryRun }));
+  const games = gamesStep.value;
+  if (!runtime && !opts.channel && !process.env.SUMMER_CHANNEL && defaultChannel.note && !opts.print) {
+    // On stderr with --json, so stdout stays one JSON document.
+    (json ? console.error : console.log)(`  ${c.dim(defaultChannel.note)}`);
+  }
 
-    const skills = setupSkills(agent, {
+  const skillsStep = await runStep(json, "skills_install_failed", () =>
+    setupSkills(agent, {
       dryRun: Boolean(opts.dryRun || opts.print),
       yes: Boolean(opts.yes),
       force: Boolean(opts.force),
@@ -175,34 +265,112 @@ export const setupCommand = new Command("setup")
       recommended: Boolean(opts.recommended),
       stableOnly: Boolean(opts.stableOnly),
       assetsOnly: Boolean(opts.assetsOnly),
-    });
-    const projectFiles = setupProjectInstructions(opts);
+    })
+  );
+  const skills: SkillSetupResult = skillsStep.value ?? { status: "failed", message: skillsStep.error?.message ?? "Skill install failed." };
+  const projectStep = await runStep(json, "project_files_failed", () => setupProjectInstructions(opts));
+  const projectFiles = projectStep.value;
 
-    const doctor = await runDoctor({ quiet: true });
+  const doctor = await runDoctor({ quiet: true });
+  const shadow = opts.print ? null : staleSummerOnPath();
 
-    if (opts.json) {
-      console.log(
-        JSON.stringify(
-          {
-            ok: doctor.ok && skills.status !== "failed",
-            config,
-            games,
-            skills,
-            projectFiles,
-            doctor,
-          },
-          null,
-          2
-        )
-      );
-    } else {
-      printSetupResult(config, games, skills, doctor, projectFiles);
-    }
+  if (json) {
+    const steps: SetupStep[] = [
+      mcpEntryStep(config, mcp.error),
+      summerGamesStep(agent, games, gamesSkipped ? "skipped" : null, gamesStep.error, Boolean(opts.dryRun)),
+      skillsStepResult(skills, skillsStep.error),
+      projectFilesStep(projectFiles, projectStep.error, opts),
+      doctorStep(doctor),
+    ];
+    const ok = steps.every((step) => step.ok);
+    console.log(JSON.stringify({ ok, agent, scope, steps, config, games, skills, projectFiles, doctor, ...(shadow ? { warnings: [shadow] } : {}) }, null, 2));
+    if (!ok) process.exit(1);
+    return;
+  }
 
-    if (!doctor.ok || skills.status === "failed") {
-      process.exit(1);
-    }
-  });
+  printSetupResult(config!, games, skills, doctor, projectFiles, shadow);
+  if (!doctor.ok || skills.status === "failed") {
+    process.exit(1);
+  }
+}
+
+function mcpEntryStep(config: AgentConfigResult | null, error: SetupStepError | undefined): SetupStep {
+  if (!config) return { step: "mcp_entry", ok: false, status: "failed", error: error ?? { code: "mcp_entry_failed", message: "The MCP entry was not written." } };
+  const status = config.print ? "printed" : config.dryRun ? (config.changed ? "planned" : "unchanged") : config.wrote ? "written" : "unchanged";
+  return { step: "mcp_entry", ok: true, status, path: config.path, ...(config.warnings.length ? { warnings: config.warnings } : {}) };
+}
+
+function summerGamesStep(
+  agent: SupportedAgent,
+  games: RemoteMcpResult | null,
+  skipped: "skipped" | null,
+  error: SetupStepError | undefined,
+  dryRun: boolean
+): SetupStep {
+  if (error) return { step: "summer_games", ok: false, status: "failed", error };
+  if (skipped) return { step: "summer_games", ok: true, status: "skipped" };
+  // configureSummerGamesMcp returns null only for agents without a Summer Games entry shape.
+  if (!games) return { step: "summer_games", ok: true, status: "not_supported", warnings: [`${agentLabel(agent)} gets no Summer Games entry from setup.`] };
+  const status = games.existingName ? "exists" : dryRun ? (games.changed ? "planned" : "unchanged") : games.wrote ? "written" : "unchanged";
+  return { step: "summer_games", ok: true, status, path: games.path };
+}
+
+function skillsStepResult(skills: SkillSetupResult, error: SetupStepError | undefined): SetupStep {
+  if (skills.status === "failed") {
+    return {
+      step: "skills",
+      ok: false,
+      status: "failed",
+      error: error ?? { code: "skills_install_failed", message: [skills.message, skills.stderr].filter(Boolean).join(" ") },
+    };
+  }
+  return { step: "skills", ok: true, status: skills.status, ...(skills.destination ? { path: skills.destination } : {}) };
+}
+
+function projectFilesStep(project: ProjectFiles | null, error: SetupStepError | undefined, opts: SetupCommandOptions): SetupStep {
+  if (error) return { step: "project_files", ok: false, status: "failed", error };
+  if (!project) {
+    const skipped = opts.projectFiles === false || opts.print || opts.assetsOnly;
+    return { step: "project_files", ok: true, status: skipped ? "skipped" : "not_in_project" };
+  }
+  // A file setup leaves alone (a link out of the project, a broken Summer block) is a warning, as in the human output.
+  const warnings = project.files.filter((file) => file.reason).map((file) => `${file.path}: ${file.reason}`);
+  return { step: "project_files", ok: true, status: project.written ? "written" : "planned", path: project.root, ...(warnings.length ? { warnings } : {}) };
+}
+
+function doctorStep(doctor: DoctorResult): SetupStep {
+  if (doctor.ok) return { step: "doctor", ok: true, status: "passed" };
+  const failed = doctor.checks.filter((check) => check.status === "fail");
+  return {
+    step: "doctor",
+    ok: false,
+    status: "failed",
+    error: { code: "doctor_failed", message: failed.map((check) => `${check.label}: ${check.message}`).join("; ") || "Doctor found a problem." },
+  };
+}
+
+/** `summer setup --detect`: every agent, installed or not, and whether it is linked. Writes nothing. */
+function runDetect(agentArg: string | undefined, opts: SetupCommandOptions): void {
+  if (agentArg || opts.agent) {
+    const message = "--detect lists every agent; leave out the agent name.";
+    if (!opts.json) throw new Error(message);
+    console.log(JSON.stringify({ ok: false, error: { code: "invalid_option", message }, agents: [] }, null, 2));
+    process.exit(1);
+    return;
+  }
+  const agents = detectAgents();
+  if (opts.json) {
+    console.log(JSON.stringify({ ok: true, os: process.platform, agents }, null, 2));
+    return;
+  }
+  console.log("");
+  for (const agent of agents) {
+    if (agent.status === "legacy" && !agent.installed) continue;
+    const mark = agent.installed ? sym.ok() : c.dim("-");
+    const linked = agent.mcpEntry ? c.dim(`linked  ${tildeify(agent.configPath)}`) : agent.installed ? c.dim(`not linked: summer setup ${agent.id}`) : c.dim("not found");
+    console.log(`  ${mark}  ${agent.label}  ${linked}`);
+  }
+}
 
 /**
  * `summer setup <agent> --cli`: the skills (the asset skills with --assets-only)
@@ -214,7 +382,7 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
   const spec = agentSpec(agent);
   const mcpFlags = MCP_ENTRY_FLAGS.filter(([key]) => opts[key] !== undefined && opts[key] !== false).map(([, flag]) => flag);
   if (mcpFlags.length > 0) {
-    throw new Error(`${mcpFlags.join(", ")} sets up the MCP entry, and --cli writes none. Leave ${mcpFlags.length === 1 ? "it" : "them"} out, or leave out --cli.`);
+    throw new SetupError("invalid_option", `${mcpFlags.join(", ")} sets up the MCP entry, and --cli writes none. Leave ${mcpFlags.length === 1 ? "it" : "them"} out, or leave out --cli.`);
   }
   const refusal = cliSetupRefusal(spec);
   if (refusal) throw new Error(refusal);
@@ -224,6 +392,8 @@ async function setupCliOnly(agent: SupportedAgent, scope: ConfigScope, opts: Set
   if (existing) {
     warnings.push(`${tildeify(existing)} still lists the summer-engine MCP server from an earlier setup. Remove that entry to use the CLI only.`);
   }
+  const shadow = staleSummerOnPath();
+  if (shadow) warnings.push(shadow);
 
   const dryRun = Boolean(opts.dryRun);
   const skills = setupSkills(agent, {
@@ -345,6 +515,16 @@ function printProjectFiles(project: ProjectFiles | null): void {
   }
 }
 
+/** An older summer-engine first on PATH would run instead of this one after setup (`summer login`). */
+function staleSummerOnPath(): string | null {
+  try {
+    const found = findShadowingSummer(cliVersion);
+    return found ? shadowWarning(found, cliVersion) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The config file that already lists summer-engine for this agent and scope, or null. */
 async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Promise<string | null> {
   try {
@@ -360,10 +540,10 @@ async function recordedMcpEntry(agent: SupportedAgent, scope: ConfigScope): Prom
 function resolveSetupProfile(opts: SetupCommandOptions): Profile | undefined {
   const profile = opts.profile === undefined ? undefined : parseProfile(opts.profile);
   if (profile === null) {
-    throw new Error(`Unknown --profile "${opts.profile}". Use one of: ${Object.keys(PROFILES).join(", ")}.`);
+    throw new SetupError("invalid_option", `Unknown --profile "${opts.profile}". Use one of: ${Object.keys(PROFILES).join(", ")}.`);
   }
   if (opts.assetsOnly) {
-    if (profile && profile !== "assets") throw new Error("--assets-only uses the assets profile; leave out --profile.");
+    if (profile && profile !== "assets") throw new SetupError("invalid_option", "--assets-only uses the assets profile; leave out --profile.");
     return "assets";
   }
   return profile;
@@ -374,7 +554,8 @@ function printSetupResult(
   games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
   doctor: DoctorResult,
-  projectFiles: ProjectFiles | null
+  projectFiles: ProjectFiles | null,
+  shadow: string | null = null
 ): void {
   if (config.print) {
     console.log(config.snippet.trimEnd());
@@ -394,7 +575,11 @@ function printSetupResult(
   } else {
     console.log(`  ${sym.ok()}  Already linked to ${c.bold(label)}  ${c.dim(tildeify(config.path))}`);
   }
-  if (config.localDev) {
+  if (config.runtime) {
+    console.log(
+      `  ${c.dim("(bundled runtime)")}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
+    );
+  } else if (config.localDev) {
     console.log(
       `  ${c.dim("(local dev)")}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
     );
@@ -423,7 +608,7 @@ function printSetupResult(
   printSkillsLine(skills, config.dryRun);
   printProjectFiles(projectFiles);
 
-  for (const warning of config.warnings) {
+  for (const warning of shadow ? [...config.warnings, shadow] : config.warnings) {
     console.log(`  ${sym.warn()}  ${c.yellow(warning)}`);
   }
 

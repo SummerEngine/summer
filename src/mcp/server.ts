@@ -1,4 +1,5 @@
 import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../core/api-client.js";
 import type { EngineSelection } from "../core/engine.js";
@@ -13,6 +14,7 @@ import {
   registerProjectTools,
 } from "./tools/project-tools.js";
 import { registerPerceptionTools } from "./tools/perception-tools.js";
+import { registerLocalProjectTools } from "./tools/local-project-tools.js";
 import { registerSpatialTools } from "./tools/spatial-tools.js";
 import { registerPlacementTools } from "./tools/placement-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
@@ -31,6 +33,7 @@ import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
+import { registerApiTools } from "./tools/api-tools.js";
 import { registerNavigationTools } from "./tools/navigation-tools.js";
 import { registerLibraryTools } from "./tools/library-tools.js";
 import {
@@ -41,7 +44,9 @@ import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
 import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
+import { runInAppStudio } from "../core/ops/studio-page.js";
 import { opForToolCall } from "../core/ops/contract.js";
+import { editorChatBlockedCall, editorChatInstructions, editorChatRefusal, isEditorChat } from "../core/editor-chat.js";
 import { knownOp } from "../core/ops/catalog.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
@@ -59,8 +64,10 @@ import {
   withMaxCharactersArg,
   type ToolSelection,
 } from "./tool-surface.js";
-import { shapeToolResult, singleEditCounter } from "./tool-results.js";
+import { shapeToolResult, singleEditCounter, withSignInLink } from "./tool-results.js";
+import { SignInLinks } from "../core/sign-in-link.js";
 import { recordLocalToolCall, recordMcpSession, toolErrorCode } from "../core/telemetry.js";
+import { boundProject, type UsageFields } from "../core/usage-fields.js";
 import { currentToolContext, registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
@@ -69,6 +76,7 @@ import {
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
+import { selfStartEngine } from "../core/engine-self-start.js";
 import { resolveSurface, type SurfaceVersion } from "../core/tool-profiles.js";
 import { OAuthError } from "../core/oauth.js";
 
@@ -84,10 +92,11 @@ export const getCachedBootDriftNotice = getCachedNotice;
  * session, before any tool call — the place for the habits end-to-end runs
  * showed an agent needs on the first turn and would otherwise learn the hard
  * way, including scripting a run of scene edits instead of hundreds of single
- * calls. Kept under 600 characters so it costs a few hundred tokens once; the
+ * calls. Kept under 800 characters so it costs a few hundred tokens once; the
  * full operating guide stays in the summer_agent_playbook prompt /
- * summer_get_agent_playbook tool. The last sentence names the publishing path,
- * the owner-approval rule and where review feedback is read.
+ * summer_get_agent_playbook tool. The publish sentence names the publishing
+ * path, the user's confirmation and that going live has no staff wait; the last
+ * says an agent may open the editor and play the game in a window.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
   "Summer Engine MCP. Call summer_get_project_context first: it binds the open project. " +
@@ -96,7 +105,8 @@ export const SUMMER_MCP_INSTRUCTIONS =
   "After play: summer_get_diagnostics, not only summer_get_console. " +
   "All-black screenshot: no redraw yet, recapture. " +
   "Report verified entries via summer_library_feedback. " +
-  "Publish: summer_export_game, summer_publish_build, summer_store_*; never alone: summer_store_submit returns the owner's approval link, summer_store_review the feedback.";
+  "Publish: summer_export_game, summer_publish_build, skill/release-checklist, summer_go_live, each confirmed. Live once automated checks pass: never say wait for review. " +
+  "Opening the editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot; close what you opened, one editor at a time.";
 
 /** The same first-turn habits for a profile without engine tools (`--profile assets`). */
 export const SUMMER_MCP_ASSETS_INSTRUCTIONS =
@@ -129,7 +139,25 @@ export function configureMcpEngineSelection(
   cachedClient = null;
 }
 
-export async function getClient(): Promise<EngineApiClient> {
+/** The session's editor selection (projects.open_local opens its project). */
+export function currentMcpEngineSelection(): EngineSelection | undefined {
+  return engineSelection ? { ...engineSelection } : undefined;
+}
+
+/** Bind the session to the project projects.open_local opened, with the client it connected. */
+export function bindMcpProject(projectRoot: string, client: EngineApiClient): void {
+  engineSelection = { cwd: projectRoot };
+  cachedClient = client;
+}
+
+/** The step's log lines go to the MCP log and stderr, never stdout (the protocol). */
+export function logEngineSelfStart(line: string): void {
+  appendMcpLogEvent("mcp:engine_self_start", { line });
+  writeMcpStderr("mcp:engine_self_start", { line });
+}
+
+/** `launch: false`: connect only, never open the editor (summer_open lists and prints with no side effects). */
+export async function getClient(options: { launch?: boolean } = {}): Promise<EngineApiClient> {
   // Opt-in per-project routing (editor -> live worker -> spawned worker).
   // OFF by default: with the flag unset this block is skipped entirely and
   // src/core/headless/ is never even loaded (dynamic import). With the flag
@@ -170,7 +198,13 @@ export async function getClient(): Promise<EngineApiClient> {
     // (engine_not_running). Anything else (several editors open, …) already
     // says how to pick one.
     const notRunning = engineNotRunningFromConnectError(reason);
-    if (notRunning) throw notRunning;
+    if (notRunning && options.launch === false) throw notRunning;
+    if (notRunning) {
+      // Open the session's project ourselves when we can, else a coded
+      // error with the one command that gets there (core/engine-self-start.ts).
+      cachedClient = await selfStartEngine(engineSelection, notRunning, { log: logEngineSelfStart });
+      return cachedClient;
+    }
     throw new Error(
       reason + "\n" +
         "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>\n" +
@@ -264,7 +298,7 @@ interface SurfaceMeta {
   profile: string;
 }
 
-function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): () => number {
+function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta, signInLinks = new SignInLinks()): () => number {
   const target = server as unknown as { tool: (...args: unknown[]) => unknown };
   const original = target.tool.bind(server);
   const singleEdits = singleEditCounter();
@@ -298,13 +332,20 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
       // A tool another tool runs (summer_call, a v4 operation over its 3.x
       // tool) is part of that call: only the outer call sends a usage line.
       const nested = currentToolContext() !== undefined;
+      // What the call notes for its line (core/usage-fields.ts), shared with any tool it runs.
+      let noted: UsageFields = {};
       const recordUsage = (ok: boolean, durationMs: number, error?: string | null) => {
-        if (!nested) recordLocalToolCall({ tool: name, op: knownOp(opForToolCall(name, handlerArgs[0])), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error });
+        const bound = boundProject();
+        const usage = { ...(bound ? { projectIdHash: bound } : {}), ...noted };
+        if (!nested) recordLocalToolCall({ tool: name, op: knownOp(opForToolCall(name, handlerArgs[0])), ...surfaceMeta, ok, durationMs, mcpClient: hostApp(), error, usage });
       };
       let result: unknown;
       try {
         // Every Summer request the tool makes names it (core/agent-host.ts).
-        result = await runWithToolContext(name, "mcp", () => (handler as (...a: unknown[]) => unknown)(...handlerArgs));
+        result = await runWithToolContext(name, "mcp", () => {
+          noted = currentToolContext()?.usage ?? {};
+          return (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+        });
       } catch (error) {
         // A handler THROW never produced a result to classify; record it as
         // ok:false / exception so the stream does not silently skip failures,
@@ -331,6 +372,11 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
         result = shapeToolResult(result, { maxCharacters, hint });
       } catch {
         // Shaping must never break the tool call; the raw result goes out.
+      }
+      if (isError && !nested) {
+        // A cloud tool that needs a sign-in answers with a link the agent can
+        // show; the sign-in it starts turns the tool on without a restart.
+        result = await withSignInLink(result, toolErrorCode(result, meta?.failureReason ?? meta?.errorClass), signInLinks);
       }
       try {
         recordMcpSession();
@@ -447,6 +493,11 @@ export function createMcpServer(
   // A profile without engine tools (assets) gets the no-engine instructions,
   // playbook and task plan, so nothing points the agent at a tool it lacks.
   const engine = !selection.toolsets || selection.toolsets.has("engine");
+  const editorChat = isEditorChat();
+  const instructions =
+    surface === "v4"
+      ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
+      : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS;
   const server = new McpServer(
     {
       name: "summer-engine",
@@ -454,9 +505,8 @@ export function createMcpServer(
     },
     {
       instructions:
-        (surface === "v4"
-          ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
-          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS) +
+        // Native asset jobs deliver to editor chat; other jobs retain normal tracking.
+        (editorChat ? editorChatInstructions(instructions) : instructions) +
         (options.notice ? ` ${options.notice} Tell the person once.` : ""),
     }
   );
@@ -471,11 +521,13 @@ export function createMcpServer(
   registerSeeingTools(server);
   registerAuditTools(server);
   registerProjectTools(server, { engine });
+  registerLocalProjectTools(server);
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
+  registerApiTools(server);
   registerScriptTools(server);
   registerPerceptionTools(server);
   registerSpatialTools(server);
@@ -510,9 +562,43 @@ export function createMcpServer(
 
   // Without engine tools nothing imports a file into a project, so files save into it by default.
   const files = new FileSaver({ saveByDefault: !engine });
-  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files });
+  if (surface === "v4") {
+    // Studio page ops go to the running app's own Studio tab when it offers them (no engine launch).
+    const studio = (op: string, input: Record<string, unknown>) => runInAppStudio(op, input, () => getClient({ launch: false }));
+    applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files, studio });
+  }
+  if (editorChat) gateEditorChat(server);
 
   return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed, files };
+}
+
+/**
+ * The Summer editor chat (SUMMER_EDITOR_CHAT=1): no tool call waits on,
+ * checks a native asset job or starts an operation with a native equivalent.
+ * tools/call answers those at once with
+ * the refusal, before any handler or hosted call runs, local and hosted tools
+ * alike (the hosted mount's own handlers wrap these); tools/list leaves their
+ * generation tools out. Job tools stay listed because other jobs need them.
+ */
+function gateEditorChat(server: McpServer): void {
+  const handlers = (server.server as unknown as { _requestHandlers: Map<string, (request: unknown, extra: unknown) => Promise<unknown>> })._requestHandlers;
+  const listTools = handlers.get("tools/list") as ((request: unknown, extra: unknown) => Promise<{ tools: Tool[] }>) | undefined;
+  if (listTools) {
+    server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+      const result = await listTools(request, extra);
+      return { ...result, tools: result.tools.filter((tool) => !editorChatBlockedCall(tool.name, {})) };
+    });
+  }
+  const callTool = handlers.get("tools/call");
+  if (callTool) {
+    server.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+      const { name, arguments: args } = request.params;
+      const op = editorChatBlockedCall(name, args ?? {});
+      if (!op) return (await callTool(request, extra)) as never;
+      const answer = editorChatRefusal(op);
+      return { content: [{ type: "text" as const, text: JSON.stringify(answer) }], structuredContent: answer as unknown as Record<string, unknown>, isError: true };
+    });
+  }
 }
 
 /** What the hosted tools a profile mounts are, for summer_store_tools. */

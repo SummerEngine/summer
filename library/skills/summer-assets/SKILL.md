@@ -1,6 +1,6 @@
 ---
 name: summer-assets
-description: "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video."
+description: "Game assets for any engine, no Summer Engine: find, generate and download them."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta

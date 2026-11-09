@@ -1,0 +1,114 @@
+id: tool/store-set-details
+kind: tool
+version: 1.0.0
+summary: "Fill store page sections update_listing lacks: genres, features, credits, languages, requirements, content survey, AI disclosure. Never publishes."
+use_when:
+  - '"fill in the age rating questionnaire"'
+  - '"add the AI disclosure to my store page"'
+  - '"set my game''s genres and features"'
+  - '"list the languages my game supports"'
+  - '"add system requirements to the store page"'
+  - store.get_listing shows contentSurvey, aiDisclosure, genres or credits empty
+do_not_use_when:
+  - title, tagline, descriptions, tags, platforms, content rating, release stage or support link - store.update_listing
+  - store art, trailer or sound - store.set_art, store.set_trailer, store.set_sound
+  - taking the page live - summer_go_live
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/release-checklist
+    - skill/store-listing
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_store_set_details
+implementation:
+  module: src/core/capabilities/store-details.ts
+  export: setStoreDetails
+surfaces:
+  mcp:
+    tool_name: summer_store_set_details
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: The store game id (from games.list).
+    genres:
+      type: array
+      items:
+        type: string
+      description: Genre tag ids (category genre in store.get_listing tags), 1 to 5, in the creator's order; null clears them.
+    features:
+      type: array
+      items:
+        type: string
+        enum: [single_player, online_multiplayer, local_multiplayer, online_coop, local_coop, cross_platform, controller_full, controller_partial, cloud_saves, plays_in_browser, level_editor, achievements, in_game_purchases]
+      description: What the game offers, from the store's closed list; null clears them.
+    credits:
+      type: object
+      properties:
+        developer: {type: string}
+        publisher: {type: string}
+        franchise: {type: string}
+      required: [developer]
+      description: Who made and published it, each 1 to 120 characters; omit publisher or franchise when there is none.
+    languageSupport:
+      type: array
+      items:
+        type: object
+        properties:
+          code: {type: string}
+          interface: {type: boolean}
+          fullAudio: {type: boolean}
+          subtitles: {type: boolean}
+        required: [code, interface, fullAudio, subtitles]
+      description: One entry per language (BCP 47 code such as en, pt-br, zh-hans), up to 30, each with at least one kind of support.
+    systemRequirements:
+      type: object
+      description: "Desktop hardware: { windows | macos | linux: { minimum: { os, processor, memory, graphics, storage, network, notes }, recommended? } }."
+    contentSurvey:
+      type: object
+      properties:
+        violence: {type: string, enum: [none, fantasy, realistic]}
+        bloodGore: {type: string, enum: [none, mild, intense]}
+        sexualContent: {type: string, enum: [none, suggestive, explicit]}
+        nudity: {type: string, enum: [none, partial, full]}
+        language: {type: string, enum: [none, mild, strong]}
+        substances: {type: string, enum: [none, referenced, used]}
+        gambling: {type: string, enum: [none, simulated, realMoney]}
+        userGeneratedContent: {type: boolean}
+        onlineInteraction: {type: boolean}
+        inGamePurchases: {type: boolean}
+        notes: {type: string}
+      required: [violence, bloodGore, sexualContent, nudity, language, substances, gambling, userGeneratedContent, onlineInteraction, inGamePurchases]
+      description: The mature-content questionnaire; every answer is required and none is an answer.
+    aiDisclosure:
+      type: object
+      properties:
+        uses:
+          type: array
+          items:
+            type: string
+            enum: [assets, code, generatedGameplay]
+        description: {type: string}
+      required: [uses]
+      description: How AI was used to make the game; uses [] means no AI. generatedGameplay needs a description of what is generated and its guardrails.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

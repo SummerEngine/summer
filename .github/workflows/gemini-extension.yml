@@ -67,7 +67,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.release.outputs.skip != 'true'
         with:
-          node-version: 22
+          node-version: 22.23.4
 
       - name: Build the extension
         if: steps.release.outputs.skip != 'true'

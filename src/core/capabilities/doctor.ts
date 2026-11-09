@@ -93,7 +93,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 }
 
 /** The oldest Node major the package supports: `engines.node` in package.json. */
-export const MIN_NODE_MAJOR = 20;
+export const MIN_NODE_MAJOR = 22;
 
 export function checkNodeVersion(nodeVersion: string = process.versions.node): DoctorCheck {
   const major = Number(nodeVersion.split(".")[0]);

@@ -1,0 +1,17 @@
+{
+  "_generated": "GENERATED from integrations/codex — do not edit; npm run generate:registry",
+  "mcpServers": {
+    "summer-engine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "summer-engine@latest",
+        "mcp"
+      ]
+    },
+    "summer-cloud": {
+      "type": "http",
+      "url": "https://mcp.summerengine.com/mcp"
+    }
+  }
+}

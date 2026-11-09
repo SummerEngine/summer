@@ -1,0 +1,45 @@
+id: skill/launch-ready
+kind: skill
+version: 1.0.0
+summary: "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in."
+use_when:
+  - "the user says 'get my game ready to launch', 'make my store page', 'publish my game to summer.games' or 'do everything it needs to go live'"
+  - "the release checklist fails and the agent should fix it: upload the game, capture gameplay screenshots, make key art and icons, write the store text"
+  - "filling a whole store page from the project itself: GameSoul and project memory, README, real gameplay captures"
+  - "drafting the content rating, content questionnaire and AI disclosure from the project, for the creator to confirm before launch"
+do_not_use_when:
+  - "only checking what is missing, without changing anything — skill/release-checklist"
+  - "proving players can join, save and play the release on phones — skill/release-readiness"
+  - "exporting for Steam, itch.io or app stores — skill/export-and-ship"
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+    - assets
+  modalities:
+    - images
+    - docs
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/release-checklist
+    - skill/store-art
+    - skill/store-listing
+    - skill/publish-your-game
+    - skill/release-readiness
+  tools:
+    - tool/export-game
+    - tool/publish-build
+    - tool/capture-gameplay
+    - tool/store-set-details
+    - tool/go-live
+    - tool/get-project-context
+source: official
+license: MIT
+status: preview
+recommended: false
+bundled: false

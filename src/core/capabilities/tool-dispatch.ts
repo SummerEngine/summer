@@ -16,6 +16,9 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
+import { setGameRemix } from "./game-remix.js";
+import { viewSetOp } from "./view-set.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
@@ -25,11 +28,13 @@ import {
   codedFailure,
   codeForStatus,
   describeNetworkError,
+  EngineNotRunningError,
   engineNotRunningFromConnectError,
   networkDetails,
   NOT_SIGNED_IN,
   type SummerErrorCode,
 } from "../error-codes.js";
+import { engineSelectionFromEnv } from "../engine.js";
 import {
   missingEngineEventsResult,
   missingEngineOpResult,
@@ -43,6 +48,7 @@ import {
   waitForEventArgsSchema,
 } from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
+import { importUrls, type ImportEntry } from "./video-ogv.js";
 import {
   executeSceneMutation,
   occurrenceCount,
@@ -151,9 +157,12 @@ import { shapeEngineLogResponse } from "../log-filters.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
+import { goLive } from "./go-live.js";
 import { publishBuild } from "./publish-build.js";
+import { DETAIL_SECTIONS, setStoreDetails } from "./store-details.js";
 import { syncItems } from "./sync-items.js";
 import { contentMake, contentMakeInput } from "./content-make/index.js";
+import { createLocalProject, LocalProjectError, localProjectFailure, openLocalProject } from "./projects-local.js";
 import { BuildToolError, buildToolFailure } from "./summer-bundle.js";
 import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
@@ -191,6 +200,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+import { batchToolResult, cancelJob, checkBatch, createBatch, estimateJob, getBatch, getJob, jobToolResult, listModels, runJob, summerApiToolAnswer } from "../summer-api.js";
 // One copy of the batch op classification and the instantiate/batch engine
 // path, shared with the MCP face.
 import {
@@ -312,6 +322,17 @@ async function structuredBuildFailure<T>(run: () => Promise<T>): Promise<T> {
     return await run();
   } catch (error) {
     if (error instanceof BuildToolError) throw new ToolResultError(buildToolFailure(error), error.message);
+    throw error;
+  }
+}
+
+/** projects.create_local / open_local: their coded failures, printed whole. */
+async function localProjectStep<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof LocalProjectError) throw new ToolResultError(localProjectFailure(error), error.message);
+    if (error instanceof EngineNotRunningError) throw new CodedToolError("engine_not_running", error.message, {}, error.recovery);
     throw error;
   }
 }
@@ -1026,6 +1047,30 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       face: "cli",
     })
   ),
+  entry("summer_go_live", "Take your store game live: release its Build and publish its page, then watch until players get it (confirm-gated)", false, (args) =>
+    structuredBuildFailure(() =>
+      goLive({
+        gameId: optStr(args, "gameId"),
+        publicationId: optStr(args, "publicationId"),
+        confirm: args.confirm === true,
+        ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
+        face: "cli",
+      })
+    )
+  ),
+  entry("summer_games_download_remix", "Download a verified Remix PCK", false, (args) => structuredBuildFailure(() => downloadRemix(args as unknown as DownloadRemixInput))),
+  entry("summer_games_set_remix", "Allow or disable Remix for one game", false, (args) =>
+    structuredBuildFailure(() => setGameRemix({ gameId: str(args, "gameId"), spinnable: args.spinnable as boolean }))
+  ),
+  entry("summer_store_set_details", "Fill store page sections: genres, features, credits, languages, requirements, content survey, AI disclosure", false, (args) =>
+    structuredBuildFailure(() =>
+      setStoreDetails({
+        gameId: optStr(args, "gameId"),
+        ...Object.fromEntries(DETAIL_SECTIONS.filter((section) => args[section] !== undefined).map((section) => [section, args[section]])),
+        face: "cli",
+      })
+    )
+  ),
   entry("summer_sync_items", "Sync summer.items.json to your store game by slug; the owner approves (confirm-gated)", false, (args) =>
     // The same structured failure the MCP face gives (a manifest's whole problem list), printed whole.
     structuredBuildFailure(() =>
@@ -1037,6 +1082,20 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         confirm: args.confirm === true,
         face: "cli",
       })
+    )
+  ),
+  entry("summer_projects_create_local", "Create a Summer project on this computer from a template (3d-basic by default)", false, (args) =>
+    localProjectStep(() => createLocalProject({ template: optStr(args, "template"), name: optStr(args, "name"), dir: optStr(args, "dir") }))
+  ),
+  entry("summer_projects_open_local", "Open a project in Summer Engine and wait until it connects; install:true installs a missing engine (only after the person's yes)", false, (args) =>
+    localProjectStep(() =>
+      openLocalProject(
+        { path: optStr(args, "path"), install: args.install === true },
+        engineSelectionFromEnv() ?? { cwd: process.cwd() },
+        // A shell command waits for the whole install and first open, like `summer dev`
+        // (the MCP answers "call again" instead, to stay within a tool call).
+        { waitMs: args.install === true ? 60 * 60_000 : 180_000 }
+      )
     )
   ),
   entry("summer_content_make", "Make one finished piece of content for a game, beat for beat on a reference, from local footage, into the team's Review", false, (args) =>
@@ -1480,17 +1539,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
   }),
   entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
-    const op: DispatchArgs = { op: "ImportFromUrl", url: str(args, "url") };
-    if (optStr(args, "path")) op.path = args.path;
-    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    const path = optStr(args, "path");
+    return requireEngineSuccess(await importUrls(await ctx.engine(), [{ url: str(args, "url"), ...(path ? { path } : {}) }], { batch: false }));
   }),
   entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
     if (!Array.isArray(args.imports)) {
       throw new ToolDispatchError("imports must be an array of {url, path} objects");
     }
-    return requireEngineSuccess(
-      await (await ctx.engine()).executeOps([{ op: "ImportFromUrlBatch", imports: args.imports }])
-    );
+    return requireEngineSuccess(await importUrls(await ctx.engine(), args.imports as ImportEntry[], { batch: true }));
   }),
 
   // --- scene ---
@@ -1596,6 +1652,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
     const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
+    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+  }),
+  entry("summer_view_set", "Show the person a view, rail and focus in the editor", true, async (args, ctx) => {
+    const frame = Array.isArray(args.frame) ? args.frame.filter((entry): entry is string => typeof entry === "string") : undefined;
+    const op = viewSetOp({ view: str(args, "view"), rail: optStr(args, "rail"), focus: optStr(args, "focus"), frame });
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
   entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {
@@ -2136,6 +2197,45 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (!result.ok) throw new ToolResultError(result as unknown as Record<string, unknown>, result.hint);
     return result;
   }),
+
+  // --- account ---
+  entry("summer_api_models", "The Summer API's models with input and price", false, async (args) =>
+    summerApiToolAnswer(() => listModels({ ...(optStr(args, "model") ? { model: optStr(args, "model") } : {}), ...(optStr(args, "capability") ? { capability: optStr(args, "capability") } : {}) }))
+  ),
+  entry("summer_api_estimate", "The exact price of one Summer API job; charges nothing", false, async (args) =>
+    summerApiToolAnswer(() => estimateJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}))
+  ),
+  entry("summer_api_run", "Run one Summer API job with the Summer sign-in on this computer", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = args.wait === true || Boolean(out);
+      const job = await runJob(str(args, "model"), (args.input as Record<string, unknown> | undefined) ?? {}, {
+        ...(optStr(args, "quoteId") ? { quoteId: optStr(args, "quoteId") } : {}),
+        ...(optStr(args, "idempotencyKey") ? { idempotencyKey: optStr(args, "idempotencyKey") } : {}),
+        ...(follow ? { waitSeconds: 30 } : {}),
+      });
+      return jobToolResult(job, { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
+  entry("summer_api_batch", "Run up to 500 Summer API jobs at once (all or none), or read a batch", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const out = optStr(args, "out");
+      const follow = { wait: args.wait === true, ...(out ? { out } : {}) };
+      const batchId = optStr(args, "batchId");
+      if (batchId) return batchToolResult(await getBatch(batchId), follow);
+      const key = optStr(args, "idempotencyKey");
+      const batch = await createBatch(checkBatch(Array.isArray(args.jobs) ? args.jobs : []), key ? { idempotencyKey: key } : {});
+      return batchToolResult(batch, follow);
+    })
+  ),
+  entry("summer_api_job", "Read, follow, download or cancel a Summer API job", false, async (args) =>
+    summerApiToolAnswer(async () => {
+      const jobId = str(args, "jobId");
+      if (args.cancel === true) return { job: await cancelJob(jobId) };
+      const out = optStr(args, "out");
+      return jobToolResult(await getJob(jobId), { wait: args.wait === true, ...(out ? { out } : {}) });
+    })
+  ),
 
   // --- feedback ---
   entry("summer_library_feedback", "Report library entry outcomes so Summer can fix and re-rank them", false, async (args) => {

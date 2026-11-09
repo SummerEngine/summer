@@ -5,7 +5,7 @@ import { localEntries, localInputSchema, localWireForm, missingInput, type Catal
 import { answerOfHosted, describeFromShipped, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
-import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
+import { answerOfEngineResult, codedLocalFailure, engineFailure, textsOf } from "../core/ops/engine-answer.js";
 import { TAKES_OUT, withOutField, type FileSaver } from "../core/ops/save-files.js";
 import { loadLibraryIndex } from "../core/library-search.js";
 import { FOOTER_SUFFIX } from "../core/library-read.js";
@@ -34,11 +34,25 @@ import type { HostedLocalHook } from "./hosted-mount.js";
 export const SUMMER_SEARCH = "summer_search";
 export const SUMMER_CALL = "summer_call";
 
+/**
+ * The first-game look rule. It opens the engine instructions because clients
+ * keep only the start of long server instructions (Codex: the first 512
+ * characters), and a project's first frame decides whether the person keeps
+ * going. The same rule is in the AGENTS.md block (project-memory/agent-instructions.ts).
+ */
+export const FIRST_GAME_LOOK_RULE =
+  "First game in a new project: make it look finished, even if they asked for a quick prototype, because the first frame decides if they keep going. " +
+  "Keep their features and raise the look: sky and sun with shadows, fog, a texture on every surface, real models for player, characters and props (starter project and summer_assets_search first, never capsules or boxes as final art), one palette, a styled UI font. " +
+  "Before you say it is ready, play it and check a screenshot of the running game.";
+
 export const OPS_MCP_INSTRUCTIONS =
-  "Summer Engine MCP, operation catalog. Call summer_get_project_context first when Summer Engine is open. " +
+  "Summer Engine MCP. " +
+  FIRST_GAME_LOOK_RULE +
+  " Write GDScript files directly; create scenes and import assets through Summer while the project is open. summer_get_project_context tells you which project you are connected to. " +
   "Listed tools are the common jobs; for anything else, summer_search describes the job in words and returns the operation and its exact input, then summer_call runs it. " +
   "More than 3 scene edits: one summer_run_script with scenePath. Each engine tool's full guide: summer_docs_read. Long work answers with a job: jobs.wait. " +
-  "Publishing, prices and other live changes answer needs_approval with a link: give it to the person; nothing changes until they approve.";
+  "Going live: skill/release-checklist, then store.go_live with the person's yes; a game is live once Summer's automated checks pass, so never tell anyone to wait for a review. Prices and other live changes may answer needs_approval with a link: give it to the person. " +
+  "Opening the Summer editor and playing the game in a window is allowed and expected: summer_play, then summer_screenshot or summer_frame_shot to see it; close what you opened, one editor at a time.";
 
 /** The assets profile's version: no engine tools, so it names none. */
 export const OPS_MCP_ASSETS_INSTRUCTIONS =
@@ -61,6 +75,8 @@ export interface OpsSurfaceOptions {
   legacy?: boolean;
   /** Saves generated files on this machine (`out`, localPath); shared with the mounted hosted tools. */
   files: FileSaver;
+  /** A Studio page op in the running app's own Studio tab (core/ops/studio-page.ts); null sends it to Summer's server. */
+  studio?: (op: string, input: Record<string, unknown>) => Promise<Answer | null>;
 }
 
 type Handler = (...args: unknown[]) => Promise<unknown>;
@@ -71,6 +87,9 @@ const DOCS_ALIASES: ReadonlyArray<[string, string]> = [
   ["summer_docs_search", "summer_search_library"],
   ["summer_docs_read", "summer_read_library"],
 ];
+
+/** Local operations listed with the engine tools: they create and open the project the engine tools need, with no shell. */
+const LOCAL_PROJECT_TOOLS = ["summer_projects_create_local", "summer_projects_open_local"];
 
 /** Listed with the engine tools although its operation is docs.engine_api: the offline engine class reference. */
 const ENGINE_REFERENCE = "summer_api_docs";
@@ -124,6 +143,8 @@ function answerOfLocal(result: unknown, op: string, effect: "read" | "write"): A
   }
   if (record.isError) {
     const body = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+    const coded = codedLocalFailure(body);
+    if (coded) return coded;
     const message = typeof body.message === "string" ? body.message : typeof body.error === "string" ? body.error : first.slice(0, 500) || "The tool failed.";
     const details = { tool: payload };
     if (/not found|does not exist|no such/i.test(message)) return errorAnswer("not_found", message, { details });
@@ -265,6 +286,26 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       callback: (async (...args: unknown[]) => {
         const raw = await handler(...args);
         return toolResult(answerOfEngineResult(raw, op, answerOptions), raw);
+      }) as never,
+    });
+  }
+
+  // projects.create_local and projects.open_local: the one answer shape, like the engine tools.
+  const localProjectTools = options.engine ? LOCAL_PROJECT_TOOLS.filter((name) => tools[name] && entries.has(names[name]?.op ?? "")) : [];
+  for (const name of localProjectTools) listed.add(name);
+  for (const name of localProjectTools) {
+    const tool = tools[name];
+    const op = names[name].op;
+    const entry = entries.get(op)!;
+    const handler = tool.handler as Handler;
+    rawHandlers.set(name, handler);
+    tool.update({
+      title: entry.title,
+      description: renderOpRefs(entry.summary, toolOf),
+      annotations: annotationsForEffect(entry.effect === "read" ? "read" : "write", Boolean(facts.get(name)?.network), entry.title),
+      callback: (async (...args: unknown[]) => {
+        const raw = await handler(...args);
+        return toolResult(answerOfLocal(raw, op, "write"), raw);
       }) as never,
     });
   }
@@ -439,6 +480,11 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         const call = localCall(name, resolved, args);
         if (!call) return toolResult(errorAnswer("not_in_profile", `${resolved} is not served by this profile.`, { next: { say: "Run the MCP with --profile engine." } }));
         return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
+      }
+      // The running Summer app answers its own Studio tab's ops itself; else Summer's server does.
+      if (options.studio && dryRun !== true) {
+        const inApp = await options.studio(resolved, args);
+        if (inApp) return toolResult(inApp);
       }
       // `out` stays here: this package saves the files (core/ops/save-files.ts).
       const { input: sent, out } = options.files.take(resolved, args);

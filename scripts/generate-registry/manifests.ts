@@ -33,8 +33,8 @@ function skillPaths(slugs: string[]): string[] {
 /**
  * The ONE MCP server entry every manifest points at. Plugin hosts spawn it
  * from the plugin root, where the npm package is not installed, so it goes
- * through npx. Gemini inlines it; Claude / Codex / Cursor / Factory read it
- * from the generated root `.mcp.json`.
+ * through npx. Gemini and Claude inline it; Codex reads .codex-plugin/mcp.json;
+ * Cursor / Factory read the generated root `.mcp.json`.
  */
 export function bundledMcpServer(): { command: string; args: string[] } {
   // `-y` so a non-TTY host never hangs on npx's install prompt, `@latest` so a
@@ -56,6 +56,43 @@ const ICON_URL = "https://www.summerengine.com/icon/web-app-manifest-512x512.png
 
 /** The same icon in the repo, for plugin manifests that take a relative path. */
 const ICON_PATH = "assets/icon.png";
+
+/**
+ * .codex-plugin/mcp.json: the Codex plugin's own server list. The root
+ * .mcp.json stays local-only for Cursor / Factory; Codex gets the hosted
+ * server too, like the Claude plugin, for people without the desktop app.
+ */
+function buildCodexMcpJson(): string {
+  return stableJson({
+    _generated: manifestBanner("codex"),
+    mcpServers: {
+      "summer-engine": bundledMcpServer(),
+      "summer-cloud": { type: "http", url: HOSTED_MCP_URL },
+    },
+  });
+}
+
+/**
+ * .agents/plugins/marketplace.json: Codex's own marketplace file. Codex reads
+ * it before the legacy .claude-plugin/marketplace.json, so it keeps that
+ * file's name (summer-engine): existing `summer@summer-engine` installs keep
+ * working. ON_USE: the hosted server asks for sign-in on first use, not on
+ * install, so engine-only use never opens a browser.
+ */
+function buildCodexMarketplace(): string {
+  return stableJson({
+    name: "summer-engine",
+    interface: { displayName: "Summer Engine" },
+    plugins: [
+      {
+        name: "summer",
+        source: { source: "local", path: "./" },
+        policy: { installation: "AVAILABLE", authentication: "ON_USE" },
+        category: "Developer Tools",
+      },
+    ],
+  });
+}
 
 function buildMcpJson(): string {
   return stableJson({
@@ -110,8 +147,8 @@ function buildClaudePlugin(i: ManifestInputs): string {
     skills: skillPaths(i.skillSlugs),
     // hooks/hooks.json is the default plugin hooks file, so it is not named here
     // (naming it as well can register every hook twice).
-    // Inline, not ./.mcp.json: that pointer is shared with Codex / Cursor / Factory,
-    // which do not get the hosted server. summer-engine needs Node and drives the
+    // Inline, not ./.mcp.json: that pointer is shared with Cursor / Factory,
+    // which do not get the hosted server (Codex has its own, .codex-plugin/mcp.json). summer-engine needs Node and drives the
     // desktop app; summer-cloud needs only a browser sign-in (/mcp).
     mcpServers: {
       "summer-engine": bundledMcpServer(),
@@ -178,7 +215,7 @@ function buildCodexPlugin(i: ManifestInputs): string {
     _generated: manifestBanner("codex"),
     name: "summer",
     version: i.version,
-    description: `${PRODUCT_LINE} Game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app.`,
+    description: `${PRODUCT_LINE} Game-dev skills, lifecycle hooks, and two MCP servers: a ${i.toolCount}-tool bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.`,
     author: author(),
     homepage: "https://summerengine.com",
     repository: "https://github.com/summerengine/summer",
@@ -194,12 +231,12 @@ function buildCodexPlugin(i: ManifestInputs): string {
       "multiplayer",
     ],
     skills: skillPaths(i.skillSlugs),
-    mcpServers: "./.mcp.json",
+    mcpServers: "./.codex-plugin/mcp.json",
     hooks: "./hooks/hooks.json",
     interface: {
       displayName: "Summer Engine",
       shortDescription: "Make games with AI",
-      longDescription: `Summer Engine is the game engine built for AI. Codex builds a full multiplayer game in it, plays and tests it, and publishes it on summer.games. The plugin adds game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app: project files, scenes, asset import, play mode, screenshots, diagnostics, asset generation and the store. Git, shell, and grep stay with Codex. Session-start orients each session. The pre-commit doctor (opt-in) blocks bad commits.`,
+      longDescription: `Summer Engine is the game engine built for AI. Codex builds a full multiplayer game in it, plays and tests it, and publishes it on summer.games. The plugin adds game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the Summer Engine desktop app: project files, scenes, asset import, play mode, screenshots, diagnostics, asset generation and the store. Without the desktop app, Summer's hosted server (sign in once) makes assets, plans games and runs the store, publishing and analytics. Git, shell, and grep stay with Codex. Session-start orients each session. The pre-commit doctor (opt-in) blocks bad commits.`,
       developerName: "Summer Labs, Inc.",
       category: "Developer Tools",
       capabilities: ["Interactive", "Read", "Write"],
@@ -337,6 +374,8 @@ export function buildManifests(i: ManifestInputs): Map<string, string> {
   out.set("plugin.claude-directory.json", buildClaudeDirectoryPlugin(i));
   out.set("marketplace.claude.json", buildClaudeMarketplace(i));
   out.set("plugin.codex.json", buildCodexPlugin(i));
+  out.set("mcp.codex.json", buildCodexMcpJson());
+  out.set("marketplace.codex.json", buildCodexMarketplace());
   out.set("plugin.cursor.json", buildCursorPlugin(i));
   out.set("plugin.factory.json", buildFactoryPlugin(i));
   out.set("gemini-extension.json", buildGeminiExtension(i));

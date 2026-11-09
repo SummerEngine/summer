@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
 import { configureAgentMcp, type SupportedAgent } from "../../installer/agent-config.js";
 import { resolveInstallLocation } from "../../installer/skill-locations.js";
+import { AGENT_IDS } from "../../installer/agent-table.js";
 import { readRecordedMcpServer } from "../../installer/version-check.js";
 import { notGitIgnored, setupCommand } from "./setup.js";
 import { skillsCommand } from "./skills.js";
@@ -268,5 +269,112 @@ describe("summer setup inside a Summer project", () => {
       expect((await setup(["amp", "--cli", "--yes", "--json"])).json.projectFiles).toBeNull();
       expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
     }, { gitAt: "scenes" });
+  });
+});
+
+describe("summer setup for the desktop installer: --detect, coded --json steps, a bundled runtime", () => {
+  /** Runs setup with process.exit stubbed; returns the exit code it asked for (0 when none). */
+  async function setupExit(args: string[]): Promise<{ json: Record<string, unknown>; lines: string[]; exitCode: number }> {
+    let exitCode = 0;
+    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      exitCode = code ?? 0;
+    }) as never);
+    try {
+      return { ...(await setup(args)), exitCode };
+    } finally {
+      exit.mockRestore();
+    }
+  }
+
+  type Step = { step: string; ok: boolean; status: string; error?: { code: string; message: string } };
+  const steps = (json: Record<string, unknown>) => json.steps as Step[];
+  const step = (json: Record<string, unknown>, name: string) => steps(json).find((s) => s.step === name)!;
+
+  function bundle(): { node: string; packageDir: string } {
+    const root = mkdtempSync(join(tmpdir(), "summer-bundle-"));
+    const node = join(root, "node", "bin", "node");
+    const packageDir = join(root, "summer-engine");
+    mkdirSync(join(node, ".."), { recursive: true });
+    writeFileSync(node, "#!/bin/sh\n", { mode: 0o755 });
+    mkdirSync(join(packageDir, "dist", "bin"), { recursive: true });
+    writeFileSync(join(packageDir, "package.json"), JSON.stringify({ name: "summer-engine" }));
+    writeFileSync(join(packageDir, "dist", "bin", "summer.js"), "");
+    return { node, packageDir };
+  }
+
+  it("--detect --json lists every agent and writes nothing", async () => {
+    const files = () => readdirSync(homedir(), { recursive: true }).map(String).sort();
+    const before = files();
+    const { json, exitCode } = await setupExit(["--detect", "--json"]);
+    expect(files()).toEqual(before);
+    expect(exitCode).toBe(0);
+    expect(json.ok).toBe(true);
+    const agents = json.agents as Array<Record<string, unknown>>;
+    expect(agents.map((agent) => agent.id)).toEqual([...AGENT_IDS]);
+    expect(agents[0]).toEqual(
+      expect.objectContaining({ id: "claude-code", label: "Claude Code", installed: expect.any(Boolean), configPath: expect.any(String), mcpEntry: expect.any(Boolean) })
+    );
+  });
+
+  it("--detect takes no agent", async () => {
+    const { json, exitCode } = await setupExit(["claude-code", "--detect", "--json"]);
+    expect(json).toMatchObject({ ok: false, error: { code: "invalid_option" } });
+    expect(exitCode).toBe(1);
+  });
+
+  it("--json reports each step ok", async () => {
+    const { json, exitCode } = await setupExit(["lm-studio", "--yes", "--json"]);
+    expect(exitCode).toBe(0);
+    expect(json.ok).toBe(true);
+    expect(steps(json).map((s) => [s.step, s.ok, s.status])).toEqual([
+      ["mcp_entry", true, expect.stringMatching(/^(written|unchanged)$/)],
+      ["summer_games", true, "not_supported"],
+      ["skills", true, "skipped"],
+      ["project_files", true, "not_in_project"],
+      ["doctor", true, "passed"],
+    ]);
+  });
+
+  it("--json gives a broken config file a coded error, runs the other steps and exits 1", async () => {
+    const path = (await mcpConfig("junie")).path;
+    mkdirSync(join(path, ".."), { recursive: true });
+    writeFileSync(path, "{ not json");
+    try {
+      const { json, exitCode } = await setupExit(["junie", "--yes", "--json"]);
+      expect(exitCode).toBe(1);
+      expect(json.ok).toBe(false);
+      expect(step(json, "mcp_entry")).toMatchObject({ ok: false, status: "failed", error: { code: "config_invalid" } });
+      expect(step(json, "summer_games")).toMatchObject({ ok: false, error: { code: "config_invalid" } });
+      expect(step(json, "doctor")).toMatchObject({ ok: true });
+      expect(json.config).toBeNull();
+    } finally {
+      rmSync(path);
+    }
+  });
+
+  it("--runtime and --package-dir write the bundled node instead of npx", async () => {
+    const { node, packageDir } = bundle();
+    const { json, exitCode } = await setupExit(["lm-studio", "--runtime", node, "--package-dir", packageDir, "--yes", "--json"]);
+    expect(exitCode).toBe(0);
+    expect(json.config).toMatchObject({ runtime: { node, packageDir }, server: { command: node, args: [join(packageDir, "dist", "bin", "summer.js"), "mcp"] } });
+    const recorded = readRecordedMcpServer((await mcpConfig("lm-studio")).text, "json");
+    expect(recorded).toEqual({ command: node, args: [join(packageDir, "dist", "bin", "summer.js"), "mcp"] });
+
+    const { lines } = await setupExit(["lm-studio", "--runtime", node, "--package-dir", packageDir, "--yes"]);
+    expect(lines.join("\n")).toContain("(bundled runtime)");
+  });
+
+  it("refuses a missing runtime, a lone flag and a conflicting flag with a code", async () => {
+    const { node, packageDir } = bundle();
+    const code = async (args: string[]) => {
+      const { json, exitCode } = await setupExit([...args, "--json"]);
+      expect(exitCode).toBe(1);
+      return (json.error as { code: string }).code;
+    };
+    expect(await code(["lm-studio", "--runtime", join(packageDir, "nope"), "--package-dir", packageDir])).toBe("runtime_not_found");
+    expect(await code(["lm-studio", "--runtime", node])).toBe("runtime_incomplete");
+    expect(await code(["lm-studio", "--runtime", node, "--package-dir", packageDir, "--local-dev"])).toBe("invalid_option");
+    expect(await code(["claude-code", "--cli", "--runtime", node, "--package-dir", packageDir])).toBe("invalid_option");
+    expect(await code(["no-such-agent"])).toBe("unknown_agent");
   });
 });

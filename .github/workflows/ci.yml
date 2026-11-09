@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
 
       - name: Install
@@ -28,6 +28,9 @@ jobs:
 
       - name: Unit tests
         run: npx vitest run
+
+      - name: Character model operation contract
+        run: node --test tests/character-model-contract.node-test.mjs
 
       # Schemas, identity/link integrity, host cross-checks (module exists,
       # MCP registrations == descriptors, input_schema shape, evidence dates,
@@ -61,8 +64,8 @@ jobs:
       - name: Registry parity (regenerate == committed, count claims == counts.json)
         run: npm run generate:registry -- --check
 
-  # The CLI on the other platforms and on the oldest Node the package supports
-  # (engines.node). The full suite needs Node 22 and runs once, above.
+  # The CLI on every platform, on the Node line the package supports
+  # (engines.node >=22). The full suite runs once, above.
   smoke:
     name: CLI smoke (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
@@ -78,13 +81,14 @@ jobs:
           - os: windows-latest
             node: 22
           - os: ubuntu-latest
-            node: 20
+            node: 22
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          # The 22.x security release of 2026-10-21; matrix.node names the line.
+          node-version: 22.23.4
           cache: npm
 
       - name: Install
@@ -107,6 +111,12 @@ jobs:
       # documented fields, valid --json output, sender gone within 4 s.
       - name: Usage line
         run: node scripts/usage-line-smoke.mjs
+
+      # The Summer API and the Summer sign-in on every platform: ~/.summer
+      # under the home folder, the token file, the loopback sign-in, CRLF and
+      # UTF-16 batch files, saved file names Windows accepts.
+      - name: Summer API and sign-in tests
+        run: npx vitest run src/cli/commands/api.test.ts src/cli/commands/api-batch.test.ts src/cli/commands/api-windows.test.ts src/cli/commands/login.test.ts src/core/oauth.test.ts src/core/store-auth-config.test.ts
 
       # macOS only: these tests expect a POSIX host (Windows writes
       # `cmd.exe /c npx` entries and backslash paths on purpose).

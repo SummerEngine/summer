@@ -1,0 +1,38 @@
+id: skill/summer-api
+kind: skill
+version: 1.0.0
+summary: "Summer API game assets: models, estimate, one job or a batch, download the files."
+use_when:
+  - generating asset files (3D models, images, sounds, voice, music, video) from a script, a pipeline or a coding agent outside Summer Engine
+  - making a set of assets in one go (a level's props, every UI icon, a sound pack) as one batch
+  - choosing a generation model, pricing a job before it runs, or reading a job's state and files
+  - a generation job answered no_credits, over_limit, not_signed_in or queued
+do_not_use_when:
+  - generating inside a running Summer Engine project, where the asset skills import into the scene (asset-strategy)
+  - AI that a shipped game calls while people play (summer-router)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - agent-workflow
+  modalities:
+    - 3d-models
+    - images
+    - audio
+    - video
+related:
+  tools:
+    - tool/api-models
+    - tool/api-estimate
+    - tool/api-run
+    - tool/api-batch
+    - tool/api-job
+  skills:
+    - skill/summer-assets
+    - skill/summer-cli
+    - skill/asset-strategy
+    - skill/summer-router
+source: official
+license: MIT
+status: preview

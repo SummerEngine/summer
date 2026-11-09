@@ -1,6 +1,6 @@
 ---
 name: store-listing
-description: "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write."
+description: "Write a Summer Games store page: title, tagline, descriptions, tags, what never to write."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

@@ -184,13 +184,16 @@ export function resolveAgentHost(env: Env = process.env, client: McpClientInfo |
 interface ToolContext {
   tool: string;
   surface: ClientSurface;
+  /** Usage fields the call noted for its usage line (telemetry.ts noteToolUsage);
+   *  one object shared with any tool it runs, so the outer call's line has them. */
+  usage: Record<string, unknown>;
 }
 
 const toolContext = new AsyncLocalStorage<ToolContext>();
 
 /** Run one tool call so every Summer request it makes names the tool and surface. */
 export function runWithToolContext<T>(tool: string, surface: ClientSurface, fn: () => T): T {
-  return toolContext.run({ tool, surface }, fn);
+  return toolContext.run({ tool, surface, usage: toolContext.getStore()?.usage ?? {} }, fn);
 }
 
 /** The tool call running now, if any (a tool that runs inside another one sees the outer call). */

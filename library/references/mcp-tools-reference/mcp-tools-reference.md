@@ -19,7 +19,16 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (121 tools)
+## Tool surface (133 tools)
+
+### Local projects (2)
+
+No shell needed (Claude Desktop, chat apps); the `summer dev` command does both in one step from a shell.
+
+| Tool | Use |
+|---|---|
+| `summer_projects_create_local` | Write a new project from a template to this computer (`3d-basic` by default: sky, sun, ground and a hero). `dir`, or `name` next to the session's project, in the session's folder, or in `~/Documents/Summer`; never inside another project. A folder that already holds `project.godot` is left as it is. Returns `projectPath`. |
+| `summer_projects_open_local` | Open a project in Summer Engine in the background and wait until it connects; the session's engine tools then work on it. Engine missing: answers `engine_not_running`; ask the person, and only with their yes call again with `install: true` (about 660 MB, free). A slow first open answers "call again in 30 seconds". It registers `summer preview` in the session folder's `.claude/launch.json`; `preview.url` is where the game shows. |
 
 ### Project files (4)
 
@@ -84,7 +93,7 @@
 |---|---|
 | `summer_fabricate_3d` | Run a Blender Python (bpy) script in the user's OWN installed Blender — headless, engine-supervised — then import the exported `.glb` into `res://` and optionally instantiate it with `target_size`. For modular kits with exact dimensions, VFX meshes (shatter, sweeps, LOD chains), and post-processing generated models (decimate/UV/bake); generic props go to the library and characters to generation. Requires Blender on the machine (never bundled); `blender_not_found` carries the fix. The `fabricating-assets` skill has the bpy rules that survive glTF export. |
 
-### Editor UI control (4)
+### Editor UI control (5)
 
 Preview: needs Summer Engine 0.5.66 or newer; older engines return `engine_lacks_op`. Scene work never goes through the editor UI (use the scene, scripting, and perception tools). UI ops are for editor-workflow steps a human does with the mouse — open Project Settings, switch the main screen, clear a blocking dialog, read a dock. Ladder: dedicated tool → named action → tree + activate → screenshot (pixels last, never for coordinates). Quit / project-reload / delete-without-confirm actions are denied by the engine. The `driving-the-editor-ui` skill carries the patterns.
 
@@ -94,6 +103,7 @@ Preview: needs Summer Engine 0.5.66 or newer; older engines return `engine_lacks
 | `summer_ui_tree` | Structured Control tree of the live editor UI (class, path, rect, text/tooltip, `checked`/`enabled`/`tabs`/`current_tab`/`value`) from `root:"main" \| "window" \| "dock:<title\|id>" \| "dialog:<title>" \| "path:<node path>"`; `root:"dialogs"` lists every visible dialog/popup with `blocking`, `blocking_dialog`, and its `buttons`. The token-cheap alternative to a screenshot; its paths are what `summer_ui_activate` takes. |
 | `summer_ui_activate` | Activate one control by tree path through its own input path — `press`, `toggle`, `focus`, `select_tab` (incl. `path:"main_screen" value:"3D"`), `set_text` (+`submit`), `set_value` — and `action:"dismiss_dialog"` (by `path` or `title`, `button` cancel/ok/text) to clear a blocking dialog. `state` / `visible_after` are read back after the action, never echoed. |
 | `summer_ui_screenshot` | PNG of the editor window or one dock/dialog/control (`root`, `max_size`) returned as an image — the pixels-last fallback for LOOKING at the editor UI. Not for scene verification (`summer_screenshot`) and never for picking click coordinates. Honest `no_renderer` under a headless editor. |
+| `summer_view_set` (`engine.view_set`) | Show the person what you work on: the frame's view (home, chat, 3D, 2D, script, game, Studio), the right rail, the focus and the nodes to frame. Use it when you start editing a scene or script, play the game, or finish on the best view of the result; not for reading a node (`summer_inspect_node`) or opening a web page (`studio.open`). Needs Summer Engine 4.6 or newer. |
 
 ### Perception (4)
 
@@ -253,13 +263,16 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 | `summer_call` `{"op":"summer_get_agent_playbook"}` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — read at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 | `plans.get` (3.x `summer_get_board`) | Read the person's game plan (look, characters, place, storyboard, picks): every item with its id, picture URL and revision, to compare screenshots against. `projects.get({ projectId })` gives the project's `planId` from the project id in the build brief; works without the engine. |
 
-### Creator platform (6)
+### Creator platform (8)
 
 | Tool | Use |
 |---|---|
-| `summer_export_game` | Export the game in the file the Summer Games store takes, headless (no window), no running editor needed. `format:"bundle"` (default): the `summer.games` `.zip` the Summer apps run; `targets` picks `ios`, `android`, `macos`, `windows` (a game without a server: phones only) through a named `summer.games <targets>` preset in `export_presets.cfg`. `format:"download"` with one target: `web` (HTML5 `.zip` on Summer's WebGPU Forward+ template; refuses Compatibility projects), `macos` (ad hoc signed `.app` zip, `macos-universal`) or `windows` (`.exe` with embedded pack, zipped, `windows-x64`). Returns path, sha256, size, bundle manifest or store platform, warnings. |
+| `summer_export_game` | Export the game in the file the Summer Games store takes, headless (no window), no running editor needed. `format:"bundle"` (default): the `summer.games` `.zip` the Summer apps run; `targets` picks `ios`, `android`, `macos`, `windows` (with or without a server) through a named `summer.games <targets>` preset in `export_presets.cfg`. `format:"download"` with one target: `web` (HTML5 `.zip` on Summer's WebGPU Forward+ template; refuses Compatibility projects), `macos` (ad hoc signed `.app` zip, `macos-universal`) or `windows` (`.exe` with embedded pack, zipped, `windows-x64`). Returns path, sha256, size, bundle manifest or store platform, warnings. |
 | `summer_export_templates` | `list` or `install` export templates from Summer's CDN (`downloads.summer.games/engine-templates/<summerVersion>/manifest.json`) into the engine's user template folder (`<data>/Godot/export_templates/<FULL_CONFIG>/`), sha256-checked. Only download exports need them; store bundles need none. `summerVersion` is read on macOS, passed elsewhere. |
-| `store.upload_file` (3.x `summer_publish_build`; through `summer_call`) | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. Without a shell, `store.upload_begin`, `store.upload_sign_parts` and `store.upload_complete` take the bytes in parts. |
+| `store.upload_file` (3.x `summer_publish_build`; through `summer_call`) | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build and for Summer's automated checks on each platform (`checks`: passed, or failed with `code`, `owner` and `fix`); `publish:true` also makes the Build available to players. Needs `summer login --store`; a retry with the same file and version continues the same upload. Without a shell, `store.upload_begin`, `store.upload_sign_parts` and `store.upload_complete` take the bytes in parts. |
+| `store.go_live` (`summer_go_live`; through `summer_call`) | Take the store game live: release the uploaded bundle Build to the platforms that passed their checks and publish the store page, through the same store routes Studio uses, then watch until players get it. Confirm-gated: the plan first (or `live`, `blocked` with each failure's fix, `needs_changes` with Summer's feedback). It needs no owner approval link while the person's Agent permissions allow Publish (the default; otherwise `needs_permission`). `waiting` names what it waits on (`automated_checks`, `activation`, or `summer`: a hold on Summer's side that needs nothing from the creator). Call again to keep watching; nothing is asked twice. Run the `release-checklist` skill first. |
+| `games.set_remix` (`summer_games_set_remix`; through `summer_call`) | Set `spinnable: false` to opt one game out of Remix, or `true` to allow it. Requires `gameId` and an explicit boolean; Summer Games enforces permission. Takes effect immediately. Existing downloaded copies cannot be recalled. CLI: `summer games set-remix --game-id <id> --spinnable false`. |
+| `store.set_details` (`summer_store_set_details`; through `summer_call`) | The store page sections `store.update_listing` does not edit, on the draft: `genres`, `features`, `credits`, `languageSupport`, `systemRequirements`, `contentSurvey` (the age questionnaire) and `aiDisclosure`. A section given replaces it, `null` clears it. Never publishes. |
 | `economy.sync_items` (`summer_sync_items`; through `summer_call`) | Bring the store game's items in line with `summer.items.json` in the project root, matched by slug, so staging and production carry the same items. Confirm-gated: the plan first (create, update with the changed fields, unchanged, blocked), then the changed images are uploaded and the plan goes to the owner, who approves it in Studio; the items are then created or revised, priced in Sparks and submitted for review. One approval takes at most 50 changed items (a larger plan lists `batches`; confirm each with `slugs`); a new item needs at least one image. Never activates or releases an item. Needs `summer login --store`. Staging or production is the gateway setting: switching takes `SUMMER_GATEWAY_URL` and `SUMMER_MCP_RESOURCE_URL`, then `summer login --store --force` (one store sign-in per machine). |
 | `content.make` (`summer_content_make`; through `summer_call`) | Make one finished piece of content for a game on this computer and put it in the team's Review: picks the reference that fits today (a format the game has not posted, what changed in the repo), studies its cuts and caption look, maps each reference shot to a footage window with motion, cuts to its timings, draws its captions, puts a song on the beat, mixes at -14 LUFS, checks hook, motion per shot, safe zones, length and loudness, renders the reference side by side and saves the piece (failed checks: a draft). It never writes words: `needs_words` lists the beats, call again with `workDir` and `lines`; a reference that speaks also needs `voiceFile` in the team's voice (`needs_voice`). Same `workDir` continues where it stopped. Needs ffmpeg and ImageMagick (Whisper for a voice-over). |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
@@ -269,9 +282,9 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 These come from the hosted Summer server (the one ChatGPT and Claude connect to) and are mounted into the local MCP after `summer login`; `summer tool <name>` reaches them too.
 
 - **Store page:** `summer_store_list_games`, `summer_store_create_game`, `summer_store_get_listing` (the page, the checklist and `availableTags`), `summer_store_update_listing` (text, tags, long description, support contact, release date, content rating), `summer_store_set_art`, `summer_store_set_trailer`, `summer_store_set_sound`, `summer_store_preview_link`, `summer_store_jams` and `summer_store_enter_jam`.
-- **Builds and release:** `summer_build_begin_upload` / `_sign_parts` / `_complete_upload` / `_status` (the local `summer_publish_build` does these from disk), `summer_store_version_*` for web and native downloads, `summer_store_submit` (one approval link for the owner), `summer_store_cancel_submission`, `summer_store_review`, `summer_store_releases`, `summer_build_release`.
+- **Builds and release:** `summer_build_begin_upload` / `_sign_parts` / `_complete_upload` / `_status` (the local `summer_publish_build` does these from disk), `summer_store_version_*` for web and native downloads, `summer_store_submit` (one approval link for the owner, for a person whose Agent permissions have Publish off; otherwise the local `summer_go_live` takes the game live), `summer_store_cancel_submission`, `summer_store_review`, `summer_store_releases`, `summer_build_release`. The engine profile leaves out `summer_store_releases` and `summer_store_version_status`: `summer_go_live` reports what players get and each download's state.
 - **Grow:** `summer_grow_overview` and `summer_grow_analytics` (store page views, launches, play sessions, play time, custom events), `summer_grow_event_catalog`, `summer_grow_event_trend`, `summer_grow_event_funnel`, `summer_grow_members`, `summer_grow_ab_tests`, `summer_grow_prices`, `summer_grow_event_limit`, `summer_grow_apply` and `summer_grow_applications`.
-- **Guides:** the `publish-your-game`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_docs_read`).
+- **Guides:** the `publish-your-game`, `release-checklist`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_docs_read`).
 
 ### Library search (2)
 
@@ -279,6 +292,18 @@ These come from the hosted Summer server (the one ChatGPT and Claude connect to)
 |---|---|
 | `summer_docs_search` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
 | `summer_docs_read` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `docs.feedback`. |
+
+### Summer API (5)
+
+Signed in with `summer login` (one browser sign-in on this computer, renewed by itself; `summer token` prints a one-hour token for the person's own HTTP code). Each app spends the person's paid credits up to the limit they set in Connected apps. No rate limits on paid usage: jobs past the account's running slots (10 at once, up to 40 as it buys credits) answer `queued` and start in order. Money is the only refusal: `no_credits` (the paid balance) or `over_limit` (the app's own limit). The `summer-api` skill has the workflow.
+
+| Tool | Use |
+|---|---|
+| `summer_api_models` (`models.list`) | The Summer API's curated game-dev models: id, capability, input schema, output formats, typical time and USD price; `model` for one, `capability` to filter. No sign-in. Shell: `summer api models`. |
+| `summer_api_estimate` (`models.estimate`) | The exact USD price of one job, its breakdown and a `quoteId` that holds it 15 minutes. Charges nothing. Shell: `summer api estimate`. |
+| `summer_api_run` (`models.run`) | Run one job into the person's Summer assets with the Summer sign-in on this computer; spends paid credits within the app's limit. `wait` follows it, `out` saves its files, `quoteId` caps the charge. Shell: `summer api run --wait --download`. |
+| `summer_api_batch` (`POST /v1/batches`) | Run up to 500 jobs at once, all or none: queued at held prices when paid credits and the app's limit cover them all; otherwise nothing runs and the error says how many fit. `batchId` reads a batch; `wait` and `out` as for one job. Shell: `summer api run --batch jobs.jsonl --wait --download`. |
+| `summer_api_job` (`jobs.get`, `jobs.cancel`) | Read a job (state, price, assets and file URLs); `wait`, `out` or `cancel`. Shell: `summer api jobs`. |
 
 ### Library feedback (1)
 

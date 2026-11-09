@@ -43,19 +43,6 @@
       ]
     },
     {
-      "id": "skill/ai-characters-in-games",
-      "name": "ai-characters-in-games",
-      "description": "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps.",
-      "clients": "all",
-      "recommended": false,
-      "status": "preview",
-      "path": "library/skills/ai-characters-in-games/",
-      "domains": [
-        "ai",
-        "npc"
-      ]
-    },
-    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus.",
@@ -338,7 +325,7 @@
     {
       "id": "skill/concept-to-level",
       "name": "concept-to-level",
-      "description": "Take a 3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision.",
+      "description": "3D map from concept art to a shippable level: user questions, owned lanes, render checks, collision in step.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -642,7 +629,8 @@
         "video",
         "pipeline",
         "assets"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/in-game-purchases",
@@ -683,6 +671,21 @@
         "agent-workflow",
         "debug"
       ]
+    },
+    {
+      "id": "skill/launch-ready",
+      "name": "launch-ready",
+      "description": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/launch-ready/",
+      "domains": [
+        "creator",
+        "deployment",
+        "assets"
+      ],
+      "bundled": false
     },
     {
       "id": "skill/lumera-single-image-scene-reconstruction",
@@ -824,7 +827,7 @@
     {
       "id": "skill/navigate-summer",
       "name": "navigate-summer",
-      "description": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open.",
+      "description": "Open a Summer page or editor view for the person: studio.open, and engine.view_set while you work.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -838,7 +841,7 @@
     {
       "id": "skill/new-project",
       "name": "new-project",
-      "description": "Create a blank Summer Engine project: ask for the project name and run summer create empty.",
+      "description": "Create and open a fresh Summer Engine project with summer dev; verify the project connection.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -860,6 +863,22 @@
         "3d",
         "assets"
       ]
+    },
+    {
+      "id": "skill/painted-25d-world",
+      "name": "painted-25d-world",
+      "description": "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/painted-25d-world/",
+      "domains": [
+        "2d",
+        "level-design",
+        "rendering",
+        "assets"
+      ],
+      "bundled": false
     },
     {
       "id": "skill/pixel-art",
@@ -943,7 +962,7 @@
     {
       "id": "skill/publish-your-game",
       "name": "publish-your-game",
-      "description": "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link.",
+      "description": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -968,9 +987,22 @@
       "bundled": false
     },
     {
+      "id": "skill/release-checklist",
+      "name": "release-checklist",
+      "description": "Pre-launch check for Summer Games: export, upload checks, store art, listing fields.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/release-checklist/",
+      "domains": [
+        "creator",
+        "deployment"
+      ]
+    },
+    {
       "id": "skill/release-readiness",
       "name": "release-readiness",
-      "description": "Before releasing a Summer game version, prove players can play it: server, online join, progress, files.",
+      "description": "Prove players can play a Summer release: server, online join, progress, files.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1205,7 +1237,7 @@
     {
       "id": "skill/store-art",
       "name": "store-art",
-      "description": "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules.",
+      "description": "Make Summer Games store art per slot: key art, icons, screenshots, trailer, sizes.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1218,7 +1250,7 @@
     {
       "id": "skill/store-listing",
       "name": "store-listing",
-      "description": "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write.",
+      "description": "Write a Summer Games store page: title, tagline, descriptions, tags, what never to write.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1239,6 +1271,19 @@
       "domains": [
         "multiplayer",
         "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-api",
+      "name": "summer-api",
+      "description": "Summer API game assets: models, estimate, one job or a batch, download the files.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-api/",
+      "domains": [
+        "assets",
+        "agent-workflow"
       ]
     },
     {
@@ -1271,7 +1316,7 @@
     {
       "id": "skill/summer-assets",
       "name": "summer-assets",
-      "description": "Make game assets with Summer, no engine needed: find, generate and download models, images, audio and video.",
+      "description": "Game assets for any engine, no Summer Engine: find, generate and download them.",
       "clients": "all",
       "recommended": false,
       "status": "stable",
@@ -1282,9 +1327,65 @@
       ]
     },
     {
+      "id": "skill/summer-board",
+      "name": "summer-board",
+      "description": "Summer Board co-op: tasks, claims, files, card frames.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ]
+    },
+    {
+      "id": "skill/summer-board-modeling",
+      "name": "summer-board-modeling",
+      "description": "How granular to model a game on its Summer Board: what earns a type, what stays a note or a field, and starter type sets per genre.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-modeling/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ],
+      "bundled": false
+    },
+    {
+      "id": "skill/summer-board-to-game",
+      "name": "summer-board-to-game",
+      "description": "Bring a Summer Board's typed cards into the game as Godot Resources, load them through BoardData, and keep board and game in step.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-to-game/",
+      "domains": [
+        "agent-workflow",
+        "game-design",
+        "gameplay"
+      ],
+      "bundled": false
+    },
+    {
+      "id": "skill/summer-board-types",
+      "name": "summer-board-types",
+      "description": "Define and reuse types on a Summer Board (Character, Level, Item) so ideas become typed cards: read the board's types first, reuse before you define.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-board-types/",
+      "domains": [
+        "agent-workflow",
+        "game-design"
+      ],
+      "bundled": false
+    },
+    {
       "id": "skill/summer-cli",
       "name": "summer-cli",
-      "description": "Summer as shell commands, no MCP: sign in, find and run operations, follow jobs, save files, drive the engine.",
+      "description": "Summer as shell commands, no MCP: sign in, run operations, follow jobs, save files, drive the engine.",
       "clients": "all",
       "recommended": true,
       "status": "preview",
@@ -1374,9 +1475,23 @@
       ]
     },
     {
+      "id": "skill/summer-router",
+      "name": "summer-router",
+      "description": "AI characters for games on Summer Games: Summer Router replies, tools, speech, images.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-router/",
+      "domains": [
+        "ai",
+        "npc",
+        "multiplayer"
+      ]
+    },
+    {
       "id": "skill/summer-store",
       "name": "summer-store",
-      "description": "Sell items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json, authority.",
+      "description": "Sell Summer items for Sparks: shop, checkout, slugs, bundles, sales, owned items, summer.items.json sync.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

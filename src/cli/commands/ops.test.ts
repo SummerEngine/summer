@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { areaHelp, describeFromCli, formatAnswer, operationHelpFromCli, opsCliCommands, parseCallFlags, runOpFromCli, searchFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
+import { closestActions, resolveCliOp } from "../../core/ops/catalog.js";
 import { callHostedV4 } from "../../core/ops/cloud.js";
 import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
 import { OAuthError } from "../../core/oauth.js";
@@ -189,6 +190,44 @@ describe("summer engine <action>", () => {
   });
 });
 
+describe("summer engine with a 3.x tool name or a typo", () => {
+  it("runs the operation a 3.x tool name stands for", () => {
+    expect(resolveCliOp("engine", "summer_get_scene_tree")).toBe("engine.get_scene_tree");
+    expect(resolveCliOp("engine", "get-scene-tree")).toBe("engine.get_scene_tree");
+    expect(resolveCliOp("engine", "camera-bookmark")).toBe("engine.list_camera_bookmarks");
+    expect(resolveCliOp("engine", "engine_play")).toBe("engine.play");
+    expect(resolveCliOp("engine", "search_library")).toBe("docs.search");
+    expect(resolveCliOp("engine", "no-such-thing")).toBe("engine.no_such_thing");
+  });
+
+  it("a miss names the closest actions as commands", async () => {
+    const d = deps();
+    expect(await runOpFromCli("engine.get_scene_tre", ["--json"], d)).toBe(1);
+    const answer = JSON.parse(d.err[0]);
+    expect(answer).toMatchObject({ ok: false, error: { code: "not_found", next: { op: "ops.search" } } });
+    expect(answer.error.message).toContain("Closest: summer engine get-scene-tree");
+    expect(answer.error.message).toContain("summer engine --help");
+    expect(closestActions("engine.screenshoot")[0]).toBe("screenshot");
+  });
+});
+
+describe("summer projects create-local / open-local", () => {
+  it("creates a project on this computer from the shell too, and names the step when there is no project to open", async () => {
+    const scratch = await mkdtemp(join(tmpdir(), "summer-ops-projects-"));
+    try {
+      const d = { ...deps(), dispatch: dispatchTool };
+      const dir = join(scratch, "game");
+      expect(await runOpFromCli("projects.create_local", ["--dir", dir, "--json"], d)).toBe(0);
+      expect(JSON.parse(d.out[0])).toMatchObject({ ok: true, result: { projectPath: dir, template: "3d-basic", created: true } });
+
+      expect(await runOpFromCli("projects.open_local", ["--path", join(scratch, "nowhere"), "--json"], d)).toBe(1);
+      expect(JSON.parse(d.err[0])).toMatchObject({ ok: false, error: { code: "not_found", next: { say: expect.stringContaining("projects.create_local") } } });
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("human output", () => {
   it("says how to follow a running job", () => {
     expect(formatAnswer({ ok: true, status: "running", job: { id: "gen:1", state: "queued" } })).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1");
@@ -250,7 +289,7 @@ describe("summer ops search and describe signed out", () => {
   it("lists cloud operations from the shipped catalog, marked needs sign-in", async () => {
     const d = signedOut();
     await searchFromCli("publish my game", { limit: 3, json: false }, d);
-    expect(d.out[0]).toMatch(/^store\.publish\s+publish\s+Ask the owner to publish {2}\(needs sign-in\)$/);
+    expect(d.out[0]).toMatch(/^store\.publish\s+publish\s+Publish the game {2}\(needs sign-in\)$/);
     expect(d.err[0]).toMatch(/^Not signed in/);
   });
 

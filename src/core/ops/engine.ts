@@ -266,6 +266,13 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
     effect: "write",
     example: { input: { nodePath: "Player" }, note: "Show the person the player node." },
   },
+  "engine.view_set": {
+    title: "Show the person a view",
+    summary:
+      "Switch what the person sees while you work: the view (3d, 2d, script, game, chat, home, studio), the right rail, the node or file in focus and the nodes to frame. Only the screen changes. Which view when: the navigate-summer skill.",
+    effect: "write",
+    example: { input: { view: "3d", rail: "scene", focus: "Track/Trees", frame: ["Track/Trees"] }, note: "Watch the level while you place trees." },
+  },
   "engine.batch": {
     title: "Run engine ops in one call",
     summary:
@@ -321,7 +328,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.play": {
     title: "Play the game",
     summary:
-      "Start the game quietly (the editor keeps its tab and focus): the main scene or a given one, embedded or as a hidden offscreen instance, with an optional seed and fixed frame rate, or a local multiplayer session (players). Next: engine.is_running, then engine.get_diagnostics.",
+      "Play the game in the editor's real window (agents may; quiet: the editor keeps its tab and focus): main scene or a given one, embedded or a hidden offscreen instance, optional seed and fixed frame rate, or local multiplayer (players). Next: engine.is_running, engine.get_diagnostics.",
     effect: "write",
     example: { input: { instance: "a", mode: "offscreen", deterministic: true, seed: 7 }, note: "A hidden, repeatable test run." },
   },
@@ -416,7 +423,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.screenshot": {
     title: "Take a screenshot",
     summary:
-      "Return a frame as an image you see: the editor viewport, an offscreen render of a scene (preset, camera, bookmark or free pose, numbered marks) or the running game. A blank viewport frame means no redraw yet: capture again.",
+      "Return a frame as an image you see, to check your work by eye: the editor viewport, an offscreen render of a scene (preset, camera, bookmark or free pose, numbered marks) or the running game. A blank viewport frame means no redraw yet: capture again.",
     effect: "read",
     example: { input: { target: "scene", scenePath: MAIN, framing: "camera" }, note: "The level through its own camera and lights." },
   },
@@ -453,7 +460,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.frame_shot": {
     title: "Find camera poses for a shot",
     summary:
-      "Find, score and save camera poses for a shot type (establishing, eye level, low angle, detail, corridor), tested against the real geometry. Returns the best 3 poses and a sheet, and saves the best as a bookmark.",
+      "Find, score and save camera poses for a shot type (establishing, eye level, low angle, detail, corridor), tested against the real geometry in the open editor. Returns the best 3 poses and a sheet to look at, and saves the best as a bookmark.",
     effect: "write",
     example: { input: { scenePath: MAIN, shot: "establishing", subject: ["Town"] }, note: "A wide shot of the town." },
   },
@@ -740,7 +747,7 @@ export function splitInputSchema(def: EngineSplitDef, toolSchema: Record<string,
   };
 }
 
-const OP_REF = /\b(engine|docs|store)\.[a-z][a-z0-9_]*\b/g;
+const OP_REF = /\b(engine|docs|store|projects)\.[a-z][a-z0-9_]*\b/g;
 
 /** Every operation a summary names (`engine.snapshot_diff`, `docs.read`). */
 export function opsNamedIn(text: string): string[] {

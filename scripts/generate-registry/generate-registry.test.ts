@@ -57,6 +57,8 @@ describe("generateRegistry: catalog outputs", () => {
       "gemini-extension.json",
       "index.json",
       "marketplace.claude.json",
+      "marketplace.codex.json",
+      "mcp.codex.json",
       "mcp.json",
       "plugin.claude-directory.json",
       "plugin.claude.json",
@@ -341,6 +343,25 @@ describe("generateRegistry: manifests (golden shapes)", () => {
     expect((codexInterface.shortDescription as string).length).toBeLessThanOrEqual(30);
     expect(codexInterface.logo).toBe("./assets/icon.png");
     expect(codexInterface.composerIcon).toBe("./assets/icon.png");
+    // Codex gets both servers from its own file; the root .mcp.json stays local-only.
+    expect(codex.mcpServers).toBe("./.codex-plugin/mcp.json");
+    expect(parse(result.files, "mcp.codex.json").mcpServers).toEqual({
+      "summer-engine": { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] },
+      "summer-cloud": { type: "http", url: "https://mcp.summerengine.com/mcp" },
+    });
+    expect(Object.keys(parse(result.files, "mcp.json").mcpServers as object)).toEqual(["summer-engine"]);
+    // Codex reads .agents/plugins/marketplace.json first: same marketplace name, so
+    // existing summer@summer-engine installs keep working; sign-in on first use.
+    const codexMarketplace = parse(result.files, "marketplace.codex.json");
+    expect(codexMarketplace.name).toBe(parse(result.files, "marketplace.claude.json").name);
+    expect(codexMarketplace.plugins).toEqual([
+      {
+        name: "summer",
+        source: { source: "local", path: "./" },
+        policy: { installation: "AVAILABLE", authentication: "ON_USE" },
+        category: "Developer Tools",
+      },
+    ]);
     expect(cursor.logo).toBe("assets/icon.png");
 
     // The MCP Registry caps the description at 100 characters; registry readers show the icon.
@@ -499,6 +520,10 @@ describe("plugins/claude/: the Claude plugin for Anthropic's directory", () => {
     }
     expect(files.has("plugins/claude/commands/start.md")).toBe(true);
     expect(files.has("plugins/claude/commands/summer.md")).toBe(true);
+    // The directory blocks a plugin folder without a README of 40+ words.
+    const readme = files.get("plugins/claude/README.md")?.toString("utf8") ?? "";
+    expect(readme.replace(/```[\s\S]*?```/g, "").split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(40);
+    expect(readme).toContain(`summer-engine@${version}`);
     expect(files.get("plugins/claude/skills/summer-cli/SKILL.md")?.toString("utf8")).toContain(`summer-engine@${version}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, CLAUDE_DIRECTORY_MANIFEST), "utf8"));
     expect(manifest.mcpServers["summer-engine"].args).toEqual(["-y", `summer-engine@${version}`, "mcp"]);

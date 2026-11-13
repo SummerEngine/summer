@@ -1,7 +1,7 @@
 id: tool/publish-build
 kind: tool
-version: 1.0.1
-summary: "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download."
+version: 1.2.0
+summary: "Upload to the creator's store game, confirm-gated: an export as a Build, a store download, or the server and clients of a game made without Summer Engine."
 use_when:
   - '"upload my game to summer.games"'
   - '"publish this build to my store page"'
@@ -10,11 +10,12 @@ use_when:
   - '"ship this exported build to the live channel"'
   - uploading the .zip from summer_export_game as a new Build
   - uploading a web build or a macOS or Windows download from summer_export_game format download
+  - uploading the server bundle of a game not made with Summer Engine, then its macOS, Windows and web clients to that Build (buildId, platform, entry)
 do_not_use_when:
   - the user has not approved the exact game, file, digest, version and publish choice
-  - the game is not exported yet — summer_export_game first
+  - a Summer Engine game is not exported yet — summer_export_game first (a game not made with Summer Engine is not exported; its own tools write the server bundle and the client archives)
   - store page text, art or price — store.update_listing, store.set_art (hosted, after summer login --store)
-  - making the build live — summer_go_live
+  - making the build live — summer_go_live (with clients for a game not made with Summer Engine)
   - what players get now — store.status
 facets:
   lifecycle:
@@ -44,14 +45,20 @@ input_schema:
       description: The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them.
     file:
       type: string
-      description: Exported .zip. Defaults to the last summer_export_game result.
+      description: "The file to upload. A Summer Engine export (.zip; defaults to the last summer_export_game result). For a game not made with Summer Engine: first its server, a summer.bundle.v2 bundle whose server is a program (Summer's bundle tool for such games writes it; the answer carries buildId), then with buildId one client archive (.zip) per platform."
     clientVersion:
       type: string
-      description: Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version.
+      description: "Version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version. Required for a Summer Engine export, a store download and a client of a Build (with buildId: the client's version; the macOS and Windows archives of one release share it). Leave it out for a bundle whose server is a program: its summer.build.json names the version, and another value is refused."
     publish:
       type: boolean
       default: false
-      description: "Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."
+      description: "Summer Engine bundles only: also make the Build available to players once its checks pass (summer_go_live does this, the release and the store page in one step). It does nothing for a bundle whose server is a program, and the answer says so: Summer publishes that Build by its own checks, and summer_go_live releases it with its clients."
+    buildId:
+      type: string
+      description: "Upload the file as a client of this Build instead of a bundle or a store download. For a Build whose server is a program (a game not made with Summer Engine): buildId comes from the answer to that server bundle's upload. Needs platform, clientVersion and entry (web defaults to index.html). The Build says which kind of client it takes; a Build with a Summer Engine server takes none this way. The answer carries clientPackageId: pass it to summer_go_live in clients to release the client. An agent sign-in can finish this upload only while the person's Agent permissions allow Publish; the preview warns when it is off."
+    entry:
+      type: string
+      description: 'With buildId: what starts the client, as a path inside the archive. macOS: an application bundle ("MyGame.app") or a bare executable; Windows: a .exe ("MyGame.exe"); web: index.html (the default).'
     platform:
       type: string
       enum:
@@ -59,7 +66,9 @@ input_schema:
         - macos-universal
         - windows-x64
         - linux-x64
-      description: "Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."
+        - macos
+        - windows
+      description: "Without buildId, for web builds and native downloads: the store platform (web, macos-universal, windows-x64, linux-x64). Defaults to the last export's platform; omit for a bundle. With buildId: the platform of that Build's client (macos, windows or web)."
     confirm:
       type: boolean
       default: false
@@ -69,8 +78,6 @@ input_schema:
       minimum: 0
       maximum: 1800
       description: How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting.
-  required:
-    - clientVersion
   additionalProperties: false
 authority:
   filesystem: true

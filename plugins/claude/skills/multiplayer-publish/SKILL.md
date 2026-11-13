@@ -31,6 +31,10 @@ gives one file, the bundle, which becomes one Build:
 Players get `client.pck` on iOS, macOS or Windows (`targetPlatforms` in
 `summer.build.json`). Summer runs `server.pck` on Linux for every World.
 
+Browser clients always use Compatibility (WebGL 2). Verify the actual browser
+startup log and first playable scene with `release-readiness` check 14; a
+working native client does not prove browser play.
+
 ## 2. The two export presets
 
 Every project has a built-in **summer.games** preset. The server needs a

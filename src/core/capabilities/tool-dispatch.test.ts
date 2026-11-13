@@ -1211,18 +1211,18 @@ describe("runtime control dispatch entries (runtime control)", () => {
   it("play: plain focus uses /api/play; quiet, seed/fixed_fps and instances travel as the PlayGame op; stop {instance} sends StopGame", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool("play", { scene: "res://a.tscn", focus: true }, ctx);
-    expect(calls).toEqual([{ method: "play", args: ["res://a.tscn"] }]);
+    expect(calls).toEqual([{ method: "stop", args: [] }, { method: "play", args: ["res://a.tscn"] }]);
 
     await dispatchTool("play", { seed: 7, fixed_fps: 60 }, ctx);
-    expect(calls[1]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 }], undefined, 60_000] });
+    expect(calls[3]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 }], undefined, 60_000] });
 
     await dispatchTool("play", { instance: "a", mode: "offscreen", deterministic: true }, ctx);
-    expect(calls[2]!.args[0]).toEqual([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }]);
+    expect(calls[4]!.args[0]).toEqual([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }]);
 
     await dispatchTool("stop", {}, ctx);
-    expect(calls[3]!.method).toBe("stop");
+    expect(calls[5]!.method).toBe("stop");
     await dispatchTool("stop", { instance: "a" }, ctx);
-    expect(calls[4]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
+    expect(calls[6]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
   });
 
   it("play refuses an offscreen instance before sending on an engine that provably lacks the runtime-control wave", async () => {
@@ -1235,7 +1235,7 @@ describe("runtime control dispatch entries (runtime control)", () => {
     expect((failure as ToolResultError).result).toMatchObject({ op: "ListGameInstances", failure_reason: "engine_lacks_op" });
     // seed alone is fine on such an engine: PlayGame itself is advertised.
     await dispatchTool("play", { seed: 7 }, ctx);
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     await expect(dispatchTool("play", { mode: "offscreen" }, ctx)).rejects.toThrow(/other than 'main'/);
   });
 });

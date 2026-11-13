@@ -328,7 +328,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.play": {
     title: "Play the game",
     summary:
-      "Play the game in the editor's real window (agents may; quiet: the editor keeps its tab and focus): main scene or a given one, embedded or a hidden offscreen instance, optional seed and fixed frame rate, or local multiplayer (players). Next: engine.is_running, engine.get_diagnostics.",
+      "Start a fresh game from saved files, stopping the main run and resetting progress so edits take effect. Quiet by default; optional scene, seed or local multiplayer. Named offscreen instances are separate. Inspect an existing run with engine.is_running. Next: engine.get_diagnostics.",
     effect: "write",
     example: { input: { instance: "a", mode: "offscreen", deterministic: true, seed: 7 }, note: "A hidden, repeatable test run." },
   },

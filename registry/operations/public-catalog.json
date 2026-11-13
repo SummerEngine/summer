@@ -7015,6 +7015,11 @@
             "type": "string",
             "maxLength": 2048
           },
+          "endImageUrl": {
+            "description": "With imageUrl: the last frame. The same image as imageUrl makes a seamless loop. Models with an end frame: Seedance, Kling 3, Wan, Vidu, LTX 2.5, Luma, MiniMax.",
+            "type": "string",
+            "maxLength": 2048
+          },
           "referenceImageUrls": {
             "description": "Reference to video: public images of the characters, props or style to keep (with a reference model, e.g. kling-4-ref). Motion transfer: the character to move.",
             "minItems": 1,
@@ -7246,6 +7251,16 @@
             "prompt": "the hero turns and smiles"
           },
           "note": "Animate a picture."
+        },
+        {
+          "input": {
+            "imageUrl": "https://example.com/splash.png",
+            "endImageUrl": "https://example.com/splash.png",
+            "model": "seedance-2",
+            "duration": 15,
+            "prompt": "hair and cloth sway gently, the camera stays still"
+          },
+          "note": "A seamless loop: the same first and last frame."
         }
       ]
     },
@@ -10908,7 +10923,7 @@
     {
       "name": "assets.search",
       "title": "Search assets",
-      "summary": "Search game assets: the Summer library (130k+), the person's own assets (scope mine; an empty query lists recent), or both. Returns asset ids and file URLs. Free. Next: assets.get.",
+      "summary": "Search game assets: the Summer library (239,000+), the person's own assets (scope mine; an empty query lists recent), or both. Returns asset ids and file URLs. Free. Next: assets.get.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -11874,7 +11889,7 @@
             "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
           },
           "kind": {
-            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
+            "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region), card (one thing of a board type; board.types), or game (this board’s public released game, if supported). update with kind card turns a note or title into a card.",
             "type": "string",
             "enum": [
               "note",
@@ -11884,7 +11899,8 @@
               "model",
               "connector",
               "frame",
-              "card"
+              "card",
+              "game"
             ]
           },
           "type": {
@@ -12088,7 +12104,7 @@
                   "pattern": "^[A-Za-z0-9_.:-]{1,80}$"
                 },
                 "kind": {
-                  "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region; what is inside it is in it) or card (one thing of a board type; board.types). update with kind card turns a note or title into a card.",
+                  "description": "add (or update of an item that is not there yet): note, text (a title), image, stroke, model (.glb), connector (an arrow between items), frame (a named region), card (one thing of a board type; board.types), or game (this board’s public released game, if supported). update with kind card turns a note or title into a card.",
                   "type": "string",
                   "enum": [
                     "note",
@@ -12098,7 +12114,8 @@
                     "model",
                     "connector",
                     "frame",
-                    "card"
+                    "card",
+                    "game"
                   ]
                 },
                 "type": {
@@ -12336,7 +12353,7 @@
             "url": "https://board.summer.games/files/g_123/0f8fad5b-d9cb-469f-a165-70867728950e.glb",
             "name": "Level 1"
           },
-          "note": "Show (or refresh) the live scene."
+          "note": "Show or refresh a 3D model snapshot of the scene."
         },
         {
           "input": {
@@ -12537,6 +12554,165 @@
             "release": true
           },
           "note": "Release everything you hold."
+        }
+      ]
+    },
+    {
+      "name": "board.clip_upload",
+      "title": "Upload a native game clip",
+      "summary": "Get an upload address for one MP4 clip of the active native game. Verify the game and project in the running engine first. Convert native AVI to H.264 MP4 before upload. PUT the exact bytes with the returned headers; team clips appear in game chat, owner clips are visible only to this account. Reuse captureId and the same metadata on retry.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_clip_upload",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "agent": {
+            "description": "The agent id board.join returned. Keep it for every board call of this chat.",
+            "type": "string",
+            "pattern": "^ag_[A-Za-z0-9_-]{8,80}$"
+          },
+          "captureId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,80}$"
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "team",
+              "owner"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "size": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "agent",
+          "captureId",
+          "projectId",
+          "visibility",
+          "title",
+          "size",
+          "sha256"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "clip",
+        "video",
+        "native",
+        "playtest",
+        "upload"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "agent": "ag_0123456789abcdef",
+            "captureId": "12345678-1234-4123-8123-123456789abc",
+            "projectId": "local-game",
+            "visibility": "owner",
+            "title": "Playtest",
+            "size": 1024,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "note": "Upload a converted native playtest clip."
+        }
+      ]
+    },
+    {
+      "name": "board.clips",
+      "title": "Read your Board clips",
+      "summary": "List this account’s private clips for a game. With clipId, get a short-lived read-only address for that clip if this account may view it. Team clips are in the game chat. The address reads only that one clip and expires in two minutes.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_clips",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "The game on Summer Games (games.list).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "clipId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,80}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "clip",
+        "video",
+        "playtest",
+        "download"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X"
+          },
+          "note": "List your private clips."
         }
       ]
     },
@@ -12987,6 +13163,379 @@
             ]
           },
           "note": "Ask another agent about a canvas item."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_begin",
+      "title": "Start a private game preview",
+      "summary": "Start an experimental private preview from a compatible local web export. First check the project renderer, Web template and browser; never silently downgrade a Forward+ or Mobile preview to Compatibility, and keep native settings unchanged. Standard WebGL uses Compatibility; the opt-in Summer WebGPU/JSPI profile uses Forward+ or Mobile with a matching template and capable browser. C# and native GDExtensions are unsupported. If unavailable, explain and use native Play or screenshots. Read the summer-board skill. Files stay private to game members. Reuse requestId on retry; next: board.preview_upload for each file.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_begin",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "manifest": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "files": {
+                "minItems": 4,
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 181
+                    },
+                    "size": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 67108864
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "size",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "source",
+              "files"
+            ],
+            "additionalProperties": false
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "requestId",
+          "manifest"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "web export",
+        "playtest"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "requestId": "12345678-1234-4123-8123-123456789abc",
+            "manifest": {
+              "source": "Local game export",
+              "files": [
+                {
+                  "path": "index.html",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.js",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.wasm",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "path": "index.pck",
+                  "size": 10,
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ]
+            }
+          },
+          "note": "Reserve the exact exported files."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_delete",
+      "title": "Remove one private game preview",
+      "summary": "Ask the person to remove one exact private preview. A game manager must confirm; pending file deletion keeps its storage reservation until it succeeds. The project and other Board files stay.",
+      "effect": "destructive",
+      "approval": "confirm",
+      "permission": "ask",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_delete",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "delete",
+        "storage"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc"
+          },
+          "note": "Ask to remove this preview."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_finish",
+      "title": "Select a private game preview",
+      "summary": "Check every uploaded file and select this exact local export on the game board. Only the newest started preview can be selected. Then open the game item and press Play.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_finish",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "playtest"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc"
+          },
+          "note": "Select the uploaded game."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_list",
+      "title": "List private game previews",
+      "summary": "List the local exports reserved for this game and their pending, ready or removing state. Next: board.preview_delete for one exact preview.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_list",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "list",
+        "storage"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X"
+          },
+          "note": "List this game’s previews."
+        }
+      ]
+    },
+    {
+      "name": "board.preview_upload",
+      "title": "Upload a private preview file",
+      "summary": "Get a short-lived PUT address for one file in the reserved web export. Send the exact bytes and Content-Length directly; the address cannot access the board. Next: board.preview_finish after every file.",
+      "effect": "write",
+      "approval": "none",
+      "permission": "make",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "preview",
+      "since": "4.9",
+      "mcpTool": "summer_board_preview_upload",
+      "direct": [],
+      "idempotencyKey": "optional",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "pattern": "^game_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 181
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. Reuse it only to retry the identical request, so it never happens twice.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "previewId",
+          "path"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
+      },
+      "tags": [
+        "board",
+        "preview",
+        "upload"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "game_01M6HVWWJ20Y00TPZJCQ5V588X",
+            "previewId": "12345678-1234-4123-8123-123456789abc",
+            "path": "index.wasm"
+          },
+          "note": "Upload a reserved file."
         }
       ]
     },
@@ -24517,6 +25066,11 @@
             "minLength": 1,
             "maxLength": 60
           },
+          "remixOfGameId": {
+            "description": "Source game ID when creating a remix. Recorded permanently for attribution; omit for an original game.",
+            "type": "string",
+            "pattern": "^game_[A-Za-z0-9]+$"
+          },
           "targets": {
             "description": "web, macos-universal, windows-x64 and linux-x64 open the desktop store; ios and android the mobile store.",
             "minItems": 1,
@@ -24636,6 +25190,17 @@
           "gameId": {
             "type": "string"
           },
+          "remixOfGameId": {
+            "description": "Immediate source game for attribution; null for an original game.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -24687,6 +25252,7 @@
         },
         "required": [
           "gameId",
+          "remixOfGameId",
           "name",
           "slug",
           "status",
@@ -24974,6 +25540,17 @@
                 "gameId": {
                   "type": "string"
                 },
+                "remixOfGameId": {
+                  "description": "Immediate source game for attribution; null for an original game.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -25005,6 +25582,7 @@
               },
               "required": [
                 "gameId",
+                "remixOfGameId",
                 "name",
                 "slug",
                 "status",
@@ -39150,6 +39728,305 @@
       ]
     },
     {
+      "name": "projects.get_template",
+      "title": "Download a project template",
+      "summary": "Get a direct ZIP URL and setup notes. Pin type, version and checksum from projects.list_templates. Reads only; no files change. Verify SHA-256 before extracting into a new empty project, then open it in a compatible editor. Never replace existing work implicitly.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.0",
+      "mcpTool": "summer_projects_get_template",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "type": {
+            "description": "The destination project type. Bevy and Godot projects cannot be interchanged.",
+            "type": "string",
+            "enum": [
+              "web",
+              "crossplatform"
+            ]
+          },
+          "version": {
+            "description": "Exact version returned by projects.list_templates.",
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "sha256": {
+            "description": "Exact checksum returned by projects.list_templates.",
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "version",
+          "sha256"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "template": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 80,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              },
+              "tags": {
+                "default": [],
+                "maxItems": 24,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              },
+              "media": {
+                "default": {
+                  "coverImage": null,
+                  "screenshots": [],
+                  "previewVideo": null
+                },
+                "type": "object",
+                "properties": {
+                  "coverImage": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "alt": {
+                            "description": "Describe the image for people who cannot see it.",
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "alt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "screenshots": {
+                    "default": [],
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                          "type": "string",
+                          "maxLength": 2048
+                        },
+                        "alt": {
+                          "description": "Describe the image for people who cannot see it.",
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "alt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "previewVideo": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "description": "A directly playable MP4 or WebM, not a video-provider watch page.",
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "mimeType": {
+                            "type": "string",
+                            "enum": [
+                              "video/mp4",
+                              "video/webm"
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "posterUrl": {
+                            "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "durationSeconds": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "mimeType",
+                          "title"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "coverImage",
+                  "screenshots",
+                  "previewVideo"
+                ],
+                "additionalProperties": false
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "web",
+                  "crossplatform"
+                ]
+              },
+              "engine": {
+                "type": "string",
+                "enum": [
+                  "bevy",
+                  "godot"
+                ]
+              },
+              "version": {
+                "type": "string",
+                "maxLength": 32,
+                "pattern": "^\\d+\\.\\d+\\.\\d+$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sizeBytes": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 134217728
+              },
+              "projectFile": {
+                "type": "string"
+              },
+              "setupNotes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "description",
+              "tags",
+              "media",
+              "type",
+              "engine",
+              "version",
+              "sha256",
+              "sizeBytes",
+              "projectFile",
+              "setupNotes"
+            ],
+            "additionalProperties": false
+          },
+          "download": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sizeBytes": {
+                "type": "number"
+              },
+              "expiresAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "sha256",
+              "sizeBytes",
+              "expiresAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "template",
+          "download"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "template",
+        "starter",
+        "bevy",
+        "godot",
+        "download",
+        "zip",
+        "setup"
+      ],
+      "examples": [
+        {
+          "input": {
+            "id": "platformer",
+            "type": "crossplatform",
+            "version": "1.0.0",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "note": "Resolve the exact starter selected from projects.list_templates."
+        }
+      ]
+    },
+    {
       "name": "projects.list",
       "title": "List my projects",
       "summary": "List the person's Summer projects, newest edit first: project id, name, kind (browser, cloud or desktop), share state and where it opens. A project is not a store game (games.list). Next: projects.get.",
@@ -39285,6 +40162,279 @@
             "limit": 10
           },
           "note": "What has this person been making?"
+        }
+      ]
+    },
+    {
+      "name": "projects.list_templates",
+      "title": "Find project templates",
+      "summary": "Search starter projects by name, description or tags; filter web (Bevy) or crossplatform (Godot). All query words must match. Returns image/video previews, version and checksum. Free. Next: projects.get_template.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.0",
+      "mcpTool": "summer_projects_list_templates",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "web",
+              "crossplatform"
+            ]
+          },
+          "query": {
+            "description": "Keywords matched against the ID, name, description and tags. Every word must match; case is ignored.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "limit": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 80,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                },
+                "tags": {
+                  "default": [],
+                  "maxItems": 24,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "media": {
+                  "default": {
+                    "coverImage": null,
+                    "screenshots": [],
+                    "previewVideo": null
+                  },
+                  "type": "object",
+                  "properties": {
+                    "coverImage": {
+                      "default": null,
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            "alt": {
+                              "description": "Describe the image for people who cannot see it.",
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "alt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "screenshots": {
+                      "default": [],
+                      "maxItems": 12,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "alt": {
+                            "description": "Describe the image for people who cannot see it.",
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "alt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "previewVideo": {
+                      "default": null,
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "description": "A directly playable MP4 or WebM, not a video-provider watch page.",
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            "mimeType": {
+                              "type": "string",
+                              "enum": [
+                                "video/mp4",
+                                "video/webm"
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "posterUrl": {
+                              "description": "Stable public HTTPS media URL, not an expiring signed download URL.",
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            "durationSeconds": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "mimeType",
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "coverImage",
+                    "screenshots",
+                    "previewVideo"
+                  ],
+                  "additionalProperties": false
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "web",
+                    "crossplatform"
+                  ]
+                },
+                "engine": {
+                  "type": "string",
+                  "enum": [
+                    "bevy",
+                    "godot"
+                  ]
+                },
+                "version": {
+                  "type": "string",
+                  "maxLength": 32,
+                  "pattern": "^\\d+\\.\\d+\\.\\d+$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 134217728
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "tags",
+                "media",
+                "type",
+                "engine",
+                "version",
+                "sha256",
+                "sizeBytes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextOffset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextOffset"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "template",
+        "starter",
+        "bevy",
+        "godot",
+        "web",
+        "crossplatform",
+        "download",
+        "new project"
+      ],
+      "examples": [
+        {
+          "input": {
+            "type": "web"
+          },
+          "note": "Find a Bevy starter."
         }
       ]
     },
@@ -39912,7 +41062,7 @@
     {
       "name": "router.models",
       "title": "List Summer Router models and voices",
-      "summary": "Summer Router's models, voices, kinds with their GDScript call and status (replies, speech, images now; transcription, live voice soon), character schema, error fixes. Next: router.save_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
+      "summary": "Summer Router's models, voices, kinds with their GDScript call and current registry status, character schema, error fixes. Next: router.save_character. Summer Router works on games published on Summer Games. Coming soon for all platforms and storefronts.",
       "effect": "read",
       "approval": "none",
       "permission": "free",
@@ -40012,6 +41162,12 @@
                 },
                 "status": {
                   "type": "string"
+                },
+                "supportedPlatforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "gdscript": {
                   "anyOf": [
@@ -40222,6 +41378,10 @@
                     "type": "number",
                     "minimum": 0.5,
                     "maximum": 2
+                  },
+                  "model": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
                   }
                 },
                 "additionalProperties": {}
@@ -40349,7 +41509,7 @@
                 }
               },
               "provider_options": {
-                "description": "Provider fields Summer has not normalized yet, by provider (vercel-ai-gateway, elevenlabs); checked against that provider's schema.",
+                "description": "Provider fields Summer has not normalized yet, keyed by provider; checked against the platform registry.",
                 "type": "object",
                 "additionalProperties": {
                   "type": "object",
@@ -40673,6 +41833,12 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 6000
+              },
+              "playerHourTokens": {
+                "description": "Text tokens one player's character replies may use in any hour; over it a reply answers 429 until the hour frees up.",
+                "type": "integer",
+                "minimum": 10000,
+                "maximum": 50000000
               }
             }
           },
@@ -40779,6 +41945,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -40854,6 +42025,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -41092,6 +42268,11 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -41167,6 +42348,11 @@
                 "maximum": 9007199254740991
               },
               "gameCallsPerMinute": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "playerHourTokens": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -41433,6 +42619,10 @@
                     "type": "number",
                     "minimum": 0.5,
                     "maximum": 2
+                  },
+                  "model": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
                   }
                 },
                 "additionalProperties": {}
@@ -41560,7 +42750,7 @@
                 }
               },
               "provider_options": {
-                "description": "Provider fields Summer has not normalized yet, by provider (vercel-ai-gateway, elevenlabs); checked against that provider's schema.",
+                "description": "Provider fields Summer has not normalized yet, keyed by provider; checked against the platform registry.",
                 "type": "object",
                 "additionalProperties": {
                   "type": "object",
@@ -42594,7 +43784,7 @@
             "pattern": "^[A-Za-z0-9_-]{1,128}$"
           },
           "uploadId": {
-            "description": "The bundle build to publish (a b. upload id from store.status); the newest ready one when omitted. A ready web build or download counts on its own.",
+            "description": "The bundle build to publish (a b. upload id from store.status); the newest ready one when omitted. A ready web candidate or download can count for page publication; select the web version separately.",
             "type": "string",
             "minLength": 3,
             "maxLength": 140
@@ -42624,7 +43814,7 @@
             "maxLength": 500
           },
           "webBuild": {
-            "description": "include: a ready web build is listed, adding web to the targets. skip: the owner chose no browser play.",
+            "description": "include: add web to the targets when a web candidate is ready. Select the version separately with store.web_release_promote. skip: the owner chose no browser play.",
             "default": "include",
             "type": "string",
             "enum": [
@@ -42693,7 +43883,7 @@
     {
       "name": "store.release",
       "title": "Release a build",
-      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. Never waits on staff, except a build asking for internet access. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds and downloads need no release.",
+      "summary": "Release a ready bundle build: uploadId, else the one the owner approved, else the newest ready one. Never waits on staff, except a build asking for internet access. Answers a job (jobs.wait). Needs an idempotencyKey. Web builds need store.web_release_promote; downloads need no separate release.",
       "effect": "publish",
       "approval": "owner",
       "permission": "publish",
@@ -45018,7 +46208,7 @@
     {
       "name": "store.upload_complete",
       "title": "Finish a store upload",
-      "summary": "Finish a store upload after every part is PUT: Summer seals it and checks it. Answers a job while it checks (jobs.wait), or the finished status. Safe to call again. On a live game only the owner may finish a web build or download.",
+      "summary": "Finish a store upload after every part is PUT: Summer seals it and checks it. Answers a job while it checks (jobs.wait), or the finished status. Safe to call again. A web upload becomes a candidate; promotion is a separate step.",
       "effect": "write",
       "approval": "none",
       "permission": "make",
@@ -45311,6 +46501,276 @@
             ]
           },
           "note": "The URL for the one part of a small web build."
+        }
+      ]
+    },
+    {
+      "name": "store.web_release_get",
+      "title": "Read the web release",
+      "summary": "Read the selected web version and its revision. Use the revision with store.web_release_promote.",
+      "effect": "read",
+      "approval": "none",
+      "permission": "free",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.0",
+      "mcpTool": "summer_store_web_release_get",
+      "direct": [],
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "gameId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "versionId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "markdown": {
+                    "type": "string"
+                  },
+                  "promotedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "gameId",
+                  "revision",
+                  "versionId",
+                  "label",
+                  "fileName",
+                  "title",
+                  "markdown",
+                  "promotedAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "gameId",
+          "revision",
+          "release",
+          "available"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "web",
+        "release",
+        "revision",
+        "browser"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123"
+          },
+          "note": "Read the current web release."
+        }
+      ]
+    },
+    {
+      "name": "store.web_release_promote",
+      "title": "Promote a web version",
+      "summary": "Select an exact ready web version for players. Read store.web_release_get first; pass its revision and a stable idempotencyKey. A completed upload is only a candidate.",
+      "effect": "publish",
+      "approval": "owner",
+      "permission": "publish",
+      "provider": "cloud",
+      "auth": "account",
+      "status": "stable",
+      "since": "4.0",
+      "mcpTool": "summer_store_web_release_promote",
+      "direct": [],
+      "idempotencyKey": "required",
+      "input": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "description": "From games.list.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "versionId": {
+            "description": "The exact ready web version ID, without the v. upload prefix.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "expectedRevision": {
+            "description": "Revision from store.web_release_get. Do not change it on a retry.",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "dryRun": {
+            "description": "Check and describe the call without doing it: nothing changes, nothing is spent.",
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "description": "Retry key, required: a new one for each new request; reuse it only to retry the identical request.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "gameId",
+          "versionId",
+          "expectedRevision",
+          "title",
+          "markdown",
+          "idempotencyKey"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "versionId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "markdown": {
+                    "type": "string"
+                  },
+                  "promotedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "gameId",
+                  "revision",
+                  "versionId",
+                  "label",
+                  "fileName",
+                  "title",
+                  "markdown",
+                  "promotedAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "gameId",
+          "revision",
+          "release",
+          "available"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "web",
+        "release",
+        "promote",
+        "browser",
+        "publish"
+      ],
+      "examples": [
+        {
+          "input": {
+            "gameId": "g_123",
+            "versionId": "sv_123",
+            "expectedRevision": 0,
+            "title": "First release",
+            "markdown": "Play in your browser."
+          },
+          "note": "Promote a checked web version."
         }
       ]
     },
@@ -48736,6 +50196,17 @@
               "topUp"
             ],
             "additionalProperties": false
+          },
+          "emailConfirmed": {
+            "description": "False: the person confirms their email (the link Summer sent) before free credits pay for generation. Null: not known right now.",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "generationUnlocked": {
             "type": "boolean"

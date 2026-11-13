@@ -21,7 +21,7 @@ Then run `/summer:start`.
 
 ## What this plugin runs and connects to
 
-- **`summer-engine`** runs `npx -y summer-engine@4.9.1 mcp`, the open-source `summer-engine` npm package (source: [github.com/summerengine/summer](https://github.com/summerengine/summer)). npx downloads it from the npm registry on first use. It talks to the Summer Engine app on your computer over localhost. When you sign in (`summer login`), it also calls Summer's API at `www.summerengine.com` for cloud work: assets, your games, the store, publishing and analytics.
+- **`summer-engine`** runs `npx -y summer-engine@4.9.2 mcp`, the open-source `summer-engine` npm package (source: [github.com/summerengine/summer](https://github.com/summerengine/summer)). npx downloads it from the npm registry on first use. It talks to the Summer Engine app on your computer over localhost. When you sign in (`summer login`), it also calls Summer's API at `www.summerengine.com` for cloud work: assets, your games, the store, publishing and analytics.
 - **`summer-cloud`** connects to `https://mcp.summerengine.com/mcp`. You sign in to your Summer account once in the browser (OAuth). It has no engine tools.
 - **Credits:** asset generation (images, 3D models, sound effects, music, voices) spends the credits on your Summer account. The skills tell Claude to say what it will generate before it spends them.
 - **Approvals:** publishing a game and changing prices wait for your approval in Summer Studio. Deleting for good and contacting people ask you first. Summer Studio > Settings > Agent permissions sets what Claude may do on its own.

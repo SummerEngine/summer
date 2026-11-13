@@ -11,7 +11,7 @@ allowed-tools: Bash Read
 
 Use this skill when the session has no `summer_*` MCP tools (including after setup, before the host loads them), when Summer Engine needs starting, or when a script or CI job runs Summer. Every Summer capability is an operation named `area.action`, and every operation is one command: `summer <area> <action>`. The commands run the same code as the MCP tools and give the same answers. Missing MCP tools do not mean the engine is stopped: continue through the Summer CLI in this session.
 
-First run `summer --version`. If the shell does not find `summer`, or the version is below 4.0 (an old global install, which has no `summer <area> <action>` commands), put `npx -y summer-engine@4.9.1` in place of `summer`, with the same arguments. In Windows PowerShell, write `npx.cmd`.
+First run `summer --version`. If the shell does not find `summer`, or the version is below 4.0 (an old global install, which has no `summer <area> <action>` commands), put `npx -y summer-engine@4.9.2` in place of `summer`, with the same arguments. In Windows PowerShell, write `npx.cmd`.
 
 ## The five commands in a game project
 

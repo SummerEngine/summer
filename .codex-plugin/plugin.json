@@ -1,7 +1,7 @@
 {
   "_generated": "GENERATED from integrations/codex — do not edit; npm run generate:registry",
   "name": "summer",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it. Game-dev skills, lifecycle hooks, and two MCP servers: a 133-tool bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.",
   "author": {
     "name": "Summer Engine",

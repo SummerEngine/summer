@@ -121,16 +121,33 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_publish_build",
-    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack and wait for Summer's automated checks on each platform (checks: passed, or failed with the code and the fix). A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Going live is summer_go_live.",
+    "Upload a game file to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. What the file is decides the upload. A store bundle from summer_export_game (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack and wait for Summer's automated checks on each platform (checks: passed, or failed with the code and the fix). A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. A game not made with Summer Engine takes two kinds of upload. Its server: a summer.bundle.v2 bundle whose server is a program (file; no clientVersion, the bundle's summer.build.json names the version) becomes a Build without a client; the answer carries buildId. Its clients: one archive per platform, each uploaded to that Build with buildId, platform (macos, windows or web), entry and clientVersion; the answer carries clientPackageId once Summer admitted it, or the store's own code and message when it did not. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and version continues the same upload. Going live is summer_go_live.",
     {
       gameId: z.string().optional().describe("The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
-      file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
-      clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
-      publish: z.boolean().default(false).describe("Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."),
-      platform: z
-        .enum(["web", "macos-universal", "windows-x64", "linux-x64"])
+      file: z.string().optional().describe("The file to upload. A Summer Engine export (.zip; defaults to the last summer_export_game result). For a game not made with Summer Engine: first its server, a summer.bundle.v2 bundle whose server is a program (the answer carries buildId), then with buildId one client archive (.zip) per platform."),
+      clientVersion: z
+        .string()
         .optional()
-        .describe("Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."),
+        .describe(
+          "Version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version. Required for a Summer Engine export, a store download and a client of a Build (with buildId: the client's version; the macOS and Windows archives of one release share it). Leave it out for a bundle whose server is a program: its summer.build.json names the version, and another value is refused."
+        ),
+      publish: z.boolean().default(false).describe("Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."),
+      buildId: z
+        .string()
+        .optional()
+        .describe(
+          "Upload the file as a client of this Build instead of a bundle or a store download. For a Build whose server is a program (a game not made with Summer Engine): buildId comes from the answer to that server bundle's upload. Needs platform, clientVersion and entry (web defaults to index.html). The Build says which kind of client it takes; a Build with a Summer Engine server takes none this way."
+        ),
+      entry: z
+        .string()
+        .optional()
+        .describe('With buildId: what starts the client, as a path inside the archive. macOS: an application bundle ("MyGame.app") or a bare executable; Windows: a .exe ("MyGame.exe"); web: index.html (the default).'),
+      platform: z
+        .enum(["web", "macos-universal", "windows-x64", "linux-x64", "macos", "windows"])
+        .optional()
+        .describe(
+          "Without buildId, for web builds and native downloads: the store platform (web, macos-universal, windows-x64, linux-x64). Defaults to the last export's platform; omit for a bundle. With buildId: the platform of that Build's client (macos, windows or web)."
+        ),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the exact upload."),
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
     },
@@ -139,10 +156,10 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_go_live",
-    "Take a store game live for players: release its uploaded bundle Build (publicationId, or the newest upload) to every platform that passed Summer's automated checks, and publish its store page, through the same store routes Studio uses; then watch until players get it. It runs without an owner approval while the person's Agent permissions allow Publish (the default). First call with confirm=false: it reads the page, the Build and its per-platform checks and what players get now, and returns live, blocked (each failure with its fix), needs_changes (Summer's decision and feedback) or confirmation_required with the plan to show the user; set confirm only after they approve going live. With confirm=true it asks the platform and polls until live, or answers waiting with waitingOn (automated_checks, activation, or summer: a hold on Summer's side that needs nothing from the creator; never tell them to wait for a review). Call again with confirm=true to keep watching: nothing is asked twice. notIncluded lists the platforms a hosted release left out (its client is not qualified against the server Build), each with the line to tell the creator; notUsed lists newer clients it did not use (that platform stays live with its current client), with the platform's message. needs_permission: Publish is off in the person's Agent permissions. Web builds and downloads go live with the page. Needs \"summer login --store\".",
+    "Take a store game live for players: release its uploaded bundle Build (publicationId, or the newest upload) to every platform that passed Summer's automated checks, and publish its store page, through the same store routes Studio uses; then watch until players get it. It runs without an owner approval while the person's Agent permissions allow Publish (the default). First call with confirm=false: it reads the page, the Build and its per-platform checks and what players get now, and returns live, blocked (each failure with its fix), needs_changes (Summer's decision and feedback) or confirmation_required with the plan to show the user; set confirm only after they approve going live. With confirm=true it asks the platform and polls until live, or answers waiting with waitingOn (automated_checks, activation, or summer: a hold on Summer's side that needs nothing from the creator; never tell them to wait for a review). Call again with confirm=true to keep watching: nothing is asked twice. notIncluded lists the platforms a hosted release left out (its client is not qualified against the server Build), each with the line to tell the creator; notUsed lists newer clients it did not use (that platform stays live with its current client), with the platform's message. needs_permission: Publish is off in the person's Agent permissions. Web builds and downloads go live with the page. A Build whose server is a program (a game not made with Summer Engine) is released with the clients uploaded to it from this computer (macOS, Windows, web; summer_publish_build with buildId), each once Summer admitted it; with none, it answers blocked with client_required. It never changes who can find the store page: a Private page stays Private. Needs \"summer login --store\".",
     {
       gameId: z.string().optional().describe("The store game id (from games.list). Without it the call fails with game_required and lists your store games."),
-      publicationId: z.string().optional().describe("The bundle Build to release: publicationId from summer_publish_build. Default: the newest uploaded export."),
+      publicationId: z.string().optional().describe("The bundle Build to release: publicationId from summer_publish_build (for a game not made with Summer Engine, the one its server bundle's upload answered with). Default: the newest uploaded bundle."),
       confirm: z.boolean().default(false).describe("Set true only after the user approves taking this exact page and Build live."),
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to watch before answering (default 600). On waiting, call again to keep watching."),
     },

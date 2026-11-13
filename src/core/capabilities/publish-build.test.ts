@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getSummerDir, setSummerDirForTests, writeStoreJson } from "../store.js";
-import { writeSummerBundle } from "../../test-helpers/summer-bundle-fixture.js";
+import { buildZip, PROGRAM_DECLARATION, writeProgramBundle, writeSummerBundle } from "../../test-helpers/summer-bundle-fixture.js";
 import { LAST_EXPORT_FILE } from "./export-game.js";
 import { normalizeClientVersion, publishBuild, uploadParts, type Grant, type PublishBuildDependencies } from "./publish-build.js";
 import { BuildToolError } from "./summer-bundle.js";
@@ -26,6 +26,8 @@ function fakeStore(options: {
   startPhase?: "upload" | "inspecting";
   finalState?: string;
   errorCode?: string;
+  /** The store's own reason on a failed publication. */
+  errorMessage?: string;
   publishStatus?: number;
   refuseAll?: number;
   refusePartOnce?: number;
@@ -84,6 +86,7 @@ function fakeStore(options: {
         buildId: "build-1",
         state: options.finalState ?? "preview_ready",
         errorCode: options.errorCode ?? null,
+        ...(options.errorMessage ? { errorMessage: options.errorMessage } : {}),
         // The pack appears once the upload named it.
         ...(named ? { clientPackage: { id: "pack-1", state: "uploaded", verifications } } : {}),
       });
@@ -478,6 +481,26 @@ describe("publishBuild", () => {
     expect(create.body.exportedClient).toEqual({ entryPoint: "res://main.tscn" });
   });
 
+  it("still asks a Summer Engine export for its clientVersion, with the same words, before any call", async () => {
+    const store = fakeStore();
+    const error = await failure(publishBuild({ gameId: "game-1", file: bundle, confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("client_version_invalid");
+    expect(error.message).toContain('clientVersion "" is not a Summer client version.');
+    expect(error.recovery).toContain("vMAJOR.MINOR.PATCH");
+    expect(store.calls).toEqual([]);
+  });
+
+  it("still refuses a Summer Engine export without client.pck, before any call", async () => {
+    const file = join(root, "no-client.zip");
+    const manifest = { schema: "summer.bundle.v2", export: { summerVersion: "0.7.4", engineSha: "abc123" }, client: { path: "client.pck", mainScene: "res://main.tscn", targetPlatforms: ["ios"] }, server: null, files: [] };
+    await writeFile(file, buildZip([{ name: "summer-bundle.json", data: Buffer.from(JSON.stringify(manifest)) }]));
+    const store = fakeStore();
+    const error = await failure(publishBuild({ gameId: "game-1", file, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("bundle_invalid");
+    expect(error.message).toContain("has no client.pck");
+    expect(store.calls).toEqual([]);
+  });
+
   it("accepts Summer client versions only", () => {
     expect(normalizeClientVersion("v1.0.0")).toBe("v1.0.0");
     expect(normalizeClientVersion("1.0.0-r2")).toBe("v1.0.0-r2");
@@ -573,5 +596,109 @@ describe("uploadParts", () => {
     const started = signals.length;
     await wait(20);
     expect(signals.length).toBe(started);
+  });
+});
+
+describe("publishBuild: a bundle whose server is a program", () => {
+  let program = "";
+  let written: Buffer;
+
+  beforeEach(async () => {
+    program = join(root, "server.bundle.zip");
+    written = await writeProgramBundle(program);
+    (globalThis as any).__bundleSize = written.length;
+  });
+
+  const create = (calls: Call[]) => calls.find((call) => call.method === "POST" && call.url === PUBLICATIONS)!;
+
+  it("previews it without a clientVersion: the declaration names the version", async () => {
+    const store = fakeStore();
+    const result = await publishBuild({ gameId: "game-1", file: program, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({
+      ok: true,
+      status: "confirmation_required",
+      target: { gameId: "game-1", file: program, sha256: sha(written), sizeBytes: written.length, serverKind: "program", version: "0.3.0", publish: false },
+      game: { gameId: "game-1", name: "Star Weavers" },
+    });
+    expect(result.warnings).toBeUndefined();
+    expect(store.calls.map((call) => `${call.method} ${call.url}`)).toEqual([`GET ${STORE}/games/game-1`]);
+  });
+
+  it("declares the packaged summer.build.json as the Build and the bytes as the source, with no client field", async () => {
+    const store = fakeStore({ partSizeBytes: 2048, finalState: "published" });
+    const result = await publishBuild({ gameId: "game-1", file: program, confirm: true, face: "mcp" }, deps(store.fetch));
+
+    // The whole request: what the bundle's writer names as the body that publishes these bytes.
+    expect(create(store.calls).body).toEqual({
+      source: { kind: "exported-game", format: "summer-bundle", archiveSha256: sha(written), sizeBytes: written.length },
+      build: PROGRAM_DECLARATION,
+    });
+    expect(create(store.calls).body).not.toHaveProperty("clientVersion");
+    expect(create(store.calls).body).not.toHaveProperty("exportedClient");
+    expect(create(store.calls).body.build).not.toHaveProperty("targetPlatforms");
+    expect(create(store.calls).headers["idempotency-key"]).toMatch(/^[0-9a-f]{64}$/);
+
+    // The same multipart calls as any export: every part from disk, bound to its digest, then sealed.
+    expect(Buffer.concat([...store.parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => part)).equals(written)).toBe(true);
+    const signed = store.calls.filter((call) => call.url.endsWith(":signParts")).flatMap((call) => call.body.parts);
+    expect(signed.find((part: any) => part.partNumber === 1).sha256).toBe(sha(written.subarray(0, 2048)));
+    expect(store.calls.filter((call) => call.url.endsWith(":source-complete")).length).toBe(1);
+
+    // The Build has no client: none is named, and nothing is published by this call.
+    expect(store.calls.some((call) => call.url.includes("/client-packages"))).toBe(false);
+    expect(store.calls.some((call) => call.url.endsWith(":publish"))).toBe(false);
+    expect(result).toMatchObject({ ok: true, status: "uploaded", gameId: "game-1", publicationId: "pub-1", buildId: "build-1", serverKind: "program", state: "published", version: "0.3.0", published: false });
+    expect(result).not.toHaveProperty("clientPackageId");
+    expect(String(result.next)).toContain("buildId build-1");
+    expect(String(result.next)).toMatch(/platform macos, windows or web/);
+  });
+
+  it("accepts a clientVersion that says what the declaration says, and sends none", async () => {
+    for (const clientVersion of ["0.3.0", "v0.3.0"]) {
+      const store = fakeStore({ finalState: "published" });
+      const result = await publishBuild({ gameId: "game-1", file: program, clientVersion, confirm: true, face: "cli" }, deps(store.fetch));
+      expect(result).toMatchObject({ status: "uploaded", version: "0.3.0" });
+      expect(create(store.calls).body).not.toHaveProperty("clientVersion");
+      expect(create(store.calls).body.build.version).toBe("0.3.0");
+    }
+  });
+
+  it("refuses another clientVersion before any call, naming both versions and that the declaration decides", async () => {
+    const store = fakeStore();
+    for (const confirm of [false, true]) {
+      const error = await failure(publishBuild({ gameId: "game-1", file: program, clientVersion: "v1.2.0", confirm, face: "mcp" }, deps(store.fetch)));
+      expect(error.code).toBe("client_version_mismatch");
+      expect(error.message).toContain('clientVersion "v1.2.0"');
+      expect(error.message).toContain('version "0.3.0"');
+      expect(error.message).toContain("the declaration decides");
+      expect(error.recovery).toContain("without clientVersion");
+    }
+    expect(store.calls).toEqual([]);
+  });
+
+  it("answers a failed publication with the store's own code and message", async () => {
+    const reason = "server/program is not an executable the server image can load: it needs a newer C library";
+    const store = fakeStore({ finalState: "failed", errorCode: "bundle_invalid", errorMessage: reason });
+    const error = await failure(publishBuild({ gameId: "game-1", file: program, confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("bundle_invalid");
+    expect(error.message).toContain(reason);
+    expect(error.recovery).toContain("write the bundle again");
+    expect(error.detail).toMatchObject({ publicationId: "pub-1", failedCheck: { code: "bundle_invalid", owner: "creator" } });
+  });
+
+  it("answers processing, with how to continue, while Summer still builds the server", async () => {
+    const store = fakeStore({ neverDone: true });
+    let clock = 0;
+    const result = await publishBuild({ gameId: "game-1", file: program, confirm: true, waitSeconds: 5, face: "mcp" }, deps(store.fetch, { now: () => clock, sleep: async () => void (clock += 3000) }));
+    expect(result).toMatchObject({ ok: true, status: "processing", publicationId: "pub-1", buildId: "build-1", serverKind: "program" });
+  });
+
+  it("continues the same publication on a retry: the same key, and nothing uploaded twice", async () => {
+    const first = fakeStore({ finalState: "published" });
+    await publishBuild({ gameId: "game-1", file: program, confirm: true, face: "mcp" }, deps(first.fetch));
+    const second = fakeStore({ startPhase: "inspecting", finalState: "published" });
+    await publishBuild({ gameId: "game-1", file: program, confirm: true, face: "mcp" }, deps(second.fetch));
+    expect(create(second.calls).headers["idempotency-key"]).toBe(create(first.calls).headers["idempotency-key"]);
+    expect(second.calls.some((call) => call.url.endsWith(":source-upload") || call.url.startsWith("https://r2.test/"))).toBe(false);
   });
 });

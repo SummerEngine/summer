@@ -90,7 +90,7 @@ type StoreVersion = { id: string; platform: string; label?: string; fileName?: s
 export async function publishDownload(input: PublishDownloadInput, deps: PublishBuildDependencies): Promise<Record<string, unknown> & { ok: true; status: string }> {
   const { gameId, file, clientVersion } = input;
   if (!isDownloadPlatform(input.platform)) {
-    throw new BuildToolError("platform_invalid", `"${input.platform}" is not a store download platform.`, `Recovery: pass platform as one of ${DOWNLOAD_PLATFORMS.join(", ")}.`);
+    throw new BuildToolError("platform_invalid", `"${input.platform}" is not a store download platform.`, `Recovery: pass platform as one of ${DOWNLOAD_PLATFORMS.join(", ")}. A client of a Build whose server is a program (macos, windows, web) needs buildId as well.`);
   }
   const platform = input.platform;
   const sizeBytes = (await stat(file)).size;

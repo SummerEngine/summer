@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildZip, writeSummerBundle } from "../../test-helpers/summer-bundle-fixture.js";
+import { buildSummerBundle, buildZip, PROGRAM_DECLARATION, writeProgramBundle, writeSummerBundle } from "../../test-helpers/summer-bundle-fixture.js";
 import { readZipEntries, readZipEntry } from "../util/zip.js";
-import { BuildToolError, hashFile, readSummerBundle } from "./summer-bundle.js";
+import { BuildToolError, hashFile, readBundle, readSummerBundle } from "./summer-bundle.js";
 
 let root = "";
 beforeEach(async () => {
@@ -169,6 +169,20 @@ describe("readSummerBundle", () => {
     await expect(readSummerBundle(path)).rejects.toThrow(/newer than this summer-engine package reads.*update the summer-engine package/);
   });
 
+  it("still refuses a Summer Engine export without client.pck, naming it", async () => {
+    // The manifest of a hosted Engine export, with every file it lists except the client pack.
+    const whole = join(root, "whole.zip");
+    await writeFile(whole, buildSummerBundle({ schema: "summer.bundle.v2", hosted: true }));
+    const entries = await readZipEntries(whole);
+    const kept = await Promise.all(entries.filter((entry) => entry.name !== "client.pck").map(async (entry) => ({ name: entry.name, data: await readZipEntry(whole, entry) })));
+    const path = join(root, "no-client.zip");
+    await writeFile(path, buildZip(kept));
+    for (const read of [readSummerBundle, readBundle]) {
+      expect(await code(read(path))).toBe("bundle_invalid");
+      await expect(read(path)).rejects.toThrow(/has no client\.pck/);
+    }
+  });
+
   it("hashes a whole file", async () => {
     const path = join(root, "h.bin");
     await writeFile(path, "abc");
@@ -176,5 +190,40 @@ describe("readSummerBundle", () => {
       sha256: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
       sizeBytes: 3,
     });
+  });
+});
+
+describe("readBundle: a bundle whose server is a program", () => {
+  it("reads the packaged Build declaration, and needs no client.pck and no server.pck", async () => {
+    const path = join(root, "program.zip");
+    await writeProgramBundle(path);
+    expect((await readZipEntries(path)).map((entry) => entry.name)).toEqual(["summer-bundle.json", "config/summer.build.json", "config/world-definitions.json", "server/program"]);
+    expect(await readBundle(path)).toEqual({ schema: "summer.bundle.v2", serverKind: "program", hosted: true, hostedBuild: PROGRAM_DECLARATION, version: "0.3.0" });
+  });
+
+  it("reports no version when the declaration names none, and leaves the judgement to the store", async () => {
+    const path = join(root, "no-version.zip");
+    const { version: _version, ...declaration } = PROGRAM_DECLARATION;
+    await writeProgramBundle(path, { declaration });
+    expect(await readBundle(path)).toMatchObject({ serverKind: "program", version: null, hostedBuild: declaration });
+  });
+
+  it("refuses one without its Build declaration in plain words: there is nothing to declare", async () => {
+    const path = join(root, "no-declaration.zip");
+    await writeProgramBundle(path, { declaration: null });
+    expect(await code(readBundle(path))).toBe("bundle_invalid");
+    await expect(readBundle(path)).rejects.toThrow(/config\/summer\.build\.json is missing or is not a JSON object.*write the bundle again/);
+  });
+
+  it("asks for a newer package when the bundle's schema is one it does not know yet", async () => {
+    const path = join(root, "program-v9.zip");
+    await writeProgramBundle(path, { manifest: (manifest) => (manifest.schema = "summer.bundle.v9") });
+    await expect(readBundle(path)).rejects.toThrow(/newer than this summer-engine package reads/);
+  });
+
+  it("is not taken for a Summer Engine export by the export reader", async () => {
+    const path = join(root, "program-as-export.zip");
+    await writeProgramBundle(path);
+    expect(await code(readSummerBundle(path))).toBe("bundle_invalid");
   });
 });

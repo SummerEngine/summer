@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "2254b18d04de74838191dd0ec194a72868c630bf0a121632ba24c3b3cbfdeb74",
+      "content_hash": "2bc546dca3216100c9fdc60a83ec0362d1779abfe6a2a0be3a7a75f53a04f25a",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -8604,8 +8604,8 @@
     {
       "id": "tool/go-live",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "813f78551d698464e36057a229c5093ee763a64cc6e354ff5afc81ef9c882c2c",
+      "version": "1.0.1",
+      "content_hash": "ad992ec78c35eec21e647c0ff7a85bedb4f440ddccb288fc4d52738af8e76ec3",
       "summary": "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated.",
       "use_when": [
         "\"make my game live\"",
@@ -9635,8 +9635,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "version": "1.1.0",
+      "content_hash": "2784c4716b45ee49a208a1700dcbe5d5c54e78e47fa1463203ca779eaac2f3f1",
       "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",

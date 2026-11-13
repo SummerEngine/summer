@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Publish a game that was not made with Summer Engine.** `summer store upload-file` (`store.upload_file`, MCP `summer_publish_build`) now takes the two kinds of file such a game has, and `summer_go_live` releases them together.
+  - **The server.** A `summer.bundle.v2` bundle whose server is a program uploads as a Build without a client. The request is the bundle's own `summer.build.json` and nothing about a client; the command follows the publication until Summer has made the Build, or answers with the store's own code and message. `clientVersion` is no longer required for this kind of bundle: its `summer.build.json` names the version. The same version is accepted; a different one is refused before anything is sent, naming both. A Summer Engine export and a store download still need `clientVersion`, and an export without `client.pck` is still refused.
+  - **The clients.** New inputs `buildId` and `entry`: with `buildId`, the file is uploaded as a client of that Build, for `platform` `macos`, `windows` or `web`, with `entry` (what starts it; `index.html` for web) and `clientVersion`. The Build says which kind of client it takes. The answer carries `clientPackageId` once Summer admitted the archive, or the store's code and message when it did not (a game with a price takes no browser build, for example). Without `buildId` nothing changes: `web`, `macos-universal`, `windows-x64` and `linux-x64` are store downloads as before.
+  - **Going live.** `summer_go_live` releases such a Build with the clients uploaded to it from this computer, each once Summer admitted it, and publishes the store page. With no client it answers `blocked` with `client_required` and the upload to make. It never changes who can find the store page: a Private page stays Private.
+  - Needs Summer Games to let an agent sign-in finish a client upload; until that is live, the client step answers `owner_approval_required`. The hosted `store.status`, `store.publish` and `store.release` do not read these Builds yet.
+
 ## [4.9.2] - 2026-11-12
 
 - **Cloud operation discovery matches the hosted server.** The CLI and MCP catalog includes board previews and clips, project templates, web release operations, and the latest video and character inputs.

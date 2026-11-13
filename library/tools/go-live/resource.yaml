@@ -1,6 +1,6 @@
 id: tool/go-live
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated."
 use_when:
   - '"make my game live"'
@@ -46,7 +46,7 @@ input_schema:
       description: The store game id (from games.list). Without it the call fails with game_required and lists your store games.
     publicationId:
       type: string
-      description: "The bundle Build to release: publicationId from summer_publish_build. Default: the newest uploaded export."
+      description: "The bundle Build to release: publicationId from summer_publish_build (for a game not made with Summer Engine, the one its server bundle's upload answered with). Default: the newest uploaded bundle."
     confirm:
       type: boolean
       default: false

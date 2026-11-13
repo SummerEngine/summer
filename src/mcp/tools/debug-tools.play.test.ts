@@ -61,7 +61,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
       ok: true,
       results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true, local_play: { applied: true, port: 7787, players: 2 } }],
     });
-    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), play, executeOps } as never);
     const result = (await tool("summer_play").handler({ players: 2 })) as { isError?: boolean; content: Array<{ text: string }> };
     expect(result.isError).toBeUndefined();
     expect(play).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
   it("plain focus:true play still takes the legacy /api/play route byte-for-byte", async () => {
     const play = vi.fn().mockResolvedValue({ ok: true, playing: true });
     const executeOps = vi.fn();
-    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), play, executeOps } as never);
 
     const result = (await tool("summer_play").handler({ scene: "res://a.tscn", focus: true })) as { isError?: boolean };
     expect(result.isError).toBeUndefined();
@@ -90,7 +90,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
       ok: true,
       results: [{ ok: true, op: "PlayGame", playing: true, determinism: { seed: 7, fixed_fps: 60, seed_scope: "global RNG only" } }],
     });
-    vi.mocked(getClient).mockResolvedValue({
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }),
       play,
       executeOps,
       // An engine without the runtime-control wave still supports seed/fixed_fps on the main game.
@@ -107,7 +107,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
 
   it("an offscreen instance is refused BEFORE sending on an engine that provably lacks the runtime-control wave", async () => {
     const executeOps = vi.fn();
-    vi.mocked(getClient).mockResolvedValue({
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }),
       executeOps,
       getEngineCapabilities: () => ({ opKinds: ["PlayGame", "StopGame"] }),
       getEngineVersion: () => "0.5.66",
@@ -126,7 +126,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
       ok: true,
       results: [{ ok: true, op: "PlayGame", instance: "a", mode: "offscreen", pid: 4242, session_attached: true, seed: 20260725, fixed_fps: 60 }],
     });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const attached = (await tool("summer_play").handler({ instance: "a", mode: "offscreen", deterministic: true })) as { isError?: boolean };
     expect(attached.isError).toBeUndefined();
@@ -144,7 +144,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
       ok: false,
       results: [{ ok: false, op: "PlayGame", failure_reason: "too_many_instances", error: "3 live" }],
     });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const result = (await tool("summer_play").handler({ instance: "d", mode: "offscreen" })) as { isError?: boolean };
     expect(result.isError).toBe(true);
@@ -154,7 +154,7 @@ describe("summer_play — instance-aware / deterministic variants", () => {
 
   it("refuses impossible combinations pre-apply (nothing sent)", async () => {
     const executeOps = vi.fn();
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const result = (await tool("summer_play").handler({ mode: "offscreen" })) as { isError?: boolean };
     expect(result.isError).toBe(true);

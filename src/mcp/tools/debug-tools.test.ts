@@ -284,7 +284,7 @@ describe("summer_play — determinism params", () => {
   it("focus:true without pins calls play(scene) and returns the plain receipt (v1 launch)", async () => {
     const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
     const executeOps = vi.fn();
-    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), play, executeOps } as never);
 
     const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn", focus: true });
     expect(play).toHaveBeenCalledWith("res://main.tscn");
@@ -296,7 +296,7 @@ describe("summer_play — determinism params", () => {
   it("defaults to QUIET play: the PlayGame op with agent:true, and trusts the engine's agent_quiet echo", async () => {
     const play = vi.fn();
     const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] });
-    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), play, executeOps } as never);
 
     const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn" });
     expect(play).not.toHaveBeenCalled();
@@ -308,7 +308,7 @@ describe("summer_play — determinism params", () => {
 
   it("flags an engine that predates quiet play (no agent_quiet echo on a launch)", async () => {
     const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "main_scene" }] });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const body = JSON.parse(text(await tool(tools(), "summer_play").handler({})));
     expect(body.posture_note).toContain("predates quiet play");
@@ -333,7 +333,7 @@ describe("summer_play — determinism params", () => {
         },
       ],
     });
-    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), play, executeOps } as never);
 
     const result = await tool(tools(), "summer_play").handler({ seed: 42, fixed_fps: 60 });
     // The /api/play rung copies only `scene`, so a pinned launch is the explicit op.
@@ -357,7 +357,7 @@ describe("summer_play — determinism params", () => {
         },
       ],
     });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const body = text(await tool(tools(), "summer_play").handler({ seed: 7 }));
     expect(body).toContain("Determinism (seed=7): NOT applied — reason: already_running.");
@@ -366,7 +366,7 @@ describe("summer_play — determinism params", () => {
 
   it("says 'not applied (engine predates determinism params)' when pins were sent but no determinism block came back", async () => {
     const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const body = text(await tool(tools(), "summer_play").handler({ seed: 1, time_scale: 2 }));
     expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", agent: true, seed: 1, time_scale: 2 }], undefined, 60_000);
@@ -379,7 +379,7 @@ describe("summer_play — determinism params", () => {
       ok: false,
       results: [{ ok: false, op: "PlayGame", failure_reason: "bad_args", error: "PlayGame `fixed_fps` must be an integer > 0" }],
     });
-    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    vi.mocked(getClient).mockResolvedValue({ stop: vi.fn().mockResolvedValue({ ok: true, playing: false }), executeOps } as never);
 
     const result = (await tool(tools(), "summer_play").handler({ fixed_fps: 30 })) as { isError?: boolean };
     expect(result.isError).toBe(true);

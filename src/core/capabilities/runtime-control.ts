@@ -32,6 +32,7 @@ import { ToolInputError } from "../tool-errors.js";
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { extractOpError, getFailureReason, withOldEngineHint } from "./engine-receipt.js";
 import { noteToolUsage } from "../usage-fields.js";
+import { asRecord } from "../util/json.js";
 
 // ---------------------------------------------------------------------------
 // Op kinds
@@ -1206,6 +1207,7 @@ export function withPlayPostureEcho(result: unknown, args: PlayGameArgs): unknow
  *  pass bare fakes; the capability getters come from CapabilityAdvertisingClient. */
 export interface PlayGameClient extends CapabilityAdvertisingClient {
   play(scene?: string): Promise<unknown>;
+  stop(): Promise<unknown>;
   executeOps(ops: Array<Record<string, unknown>>, options?: undefined, timeoutMs?: number): Promise<unknown>;
 }
 
@@ -1216,13 +1218,31 @@ export interface PlayGameClient extends CapabilityAdvertisingClient {
  * pre-flight result, or the envelope with the old-engine / posture / instance
  * annotations. Each face only decides how to RENDER failures.
  *
- * Routing: focus:true with no other parameter is the legacy /api/play route,
- * byte-for-byte the v1 call. Everything else — including the quiet default —
+ * Main-game play validates, stops the previous run, then launches from disk.
+ * stop() resolves only after the engine's queued operation completes. A failed
+ * stop must not fall through to PlayGame, which would reuse the stale process.
+ * Named offscreen instances retain their separate create/instance_exists contract.
+ * Routing: focus:true with no other parameter uses the legacy /api/play route.
+ * Everything else — including the quiet default —
  * travels as the explicit PlayGame op, because the /api/play rung copies only
  * `scene` into the op and would drop agent/seed/instance.
  */
 export async function playGame(client: PlayGameClient, args: PlayGameArgs): Promise<unknown> {
   const result = await playGameOnce(client, args);
+  if (!playTargetsInstance(args) && !extractOpError(result)) {
+    const envelope = asRecord(result);
+    const payload = asRecord(Array.isArray(envelope?.results) ? envelope.results[0] : result);
+    // Another client can start a run between our stop and launch. Never report
+    // that reused process as a fresh run, or repeatedly stop competing clients.
+    if (payload?.reuseExistingInstance === true || payload?.state === "already_running") {
+      return {
+        ok: false,
+        failure_reason: "game_not_restarted",
+        error: "The engine reused an existing game after the stop. Its scripts may be stale; wait for other play requests to finish before retrying.",
+        play_result: result,
+      };
+    }
+  }
   const instanceCount = playClientCount(result);
   if (instanceCount !== null) noteToolUsage({ instanceCount });
   return result;
@@ -1246,7 +1266,6 @@ export function playClientCount(result: unknown): number | null {
 }
 
 async function playGameOnce(client: PlayGameClient, args: PlayGameArgs): Promise<unknown> {
-  if (!playNeedsOp(args)) return client.play(args.scene);
   // Validate the combination first (nothing sent); then, because an engine
   // without the runtime-control wave would start the MAIN game and silently
   // ignore instance/mode, the pre-flight keys on a runtime-control kind.
@@ -1254,7 +1273,23 @@ async function playGameOnce(client: PlayGameClient, args: PlayGameArgs): Promise
   if (playTargetsInstance(args)) {
     const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
     if (missing) return missing;
+  } else {
+    const stopped = await client.stop();
+    if (extractOpError(stopped)) return stopped;
+    const envelope = asRecord(stopped);
+    const payload = asRecord(Array.isArray(envelope?.results) ? envelope.results[0] : stopped);
+    // Older engines omit playing but acknowledge StopGame with ok:true.
+    // Missing acknowledgements or an explicitly still-running game are unsafe.
+    if (payload?.playing === true || (payload?.ok !== true && envelope?.status !== "ok")) {
+      return {
+        ok: false,
+        failure_reason: "stop_not_confirmed",
+        error: "The engine did not confirm that the previous game stopped. No new play was requested.",
+        stop_result: stopped,
+      };
+    }
   }
+  if (!playNeedsOp(args)) return client.play(args.scene);
   const result = await client.executeOps([op], undefined, timeoutMs);
   return withLocalPlayEcho(
     withPlayPostureEcho(

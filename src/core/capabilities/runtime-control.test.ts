@@ -393,7 +393,7 @@ describe("summer_play posture — quiet by default, focus:true opts in", () => {
   it("playGame: focus:true with nothing else is the legacy /api/play call; the quiet default is the op", async () => {
     const play = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
     const executeOps = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] }));
-    const client = { play, executeOps };
+    const client = { play, executeOps, stop: vi.fn(async () => ({ ok: true, playing: false })) };
 
     await playGame(client, { scene: "res://a.tscn", focus: true });
     expect(play).toHaveBeenCalledWith("res://a.tscn");
@@ -406,7 +406,7 @@ describe("summer_play posture — quiet by default, focus:true opts in", () => {
 
   it("playGame validates before sending and pre-flights the runtime-control advert for instances", async () => {
     const executeOps = vi.fn();
-    const client = { play: vi.fn(), executeOps, getEngineCapabilities: () => ({ opKinds: ["PlayGame"] }), getEngineVersion: () => "0.5.65" };
+    const client = { play: vi.fn(), stop: vi.fn(), executeOps, getEngineCapabilities: () => ({ opKinds: ["PlayGame"] }), getEngineVersion: () => "0.5.65" };
     await expect(playGame(client, { mode: "offscreen" })).rejects.toThrow(ToolInputError);
     const missing = (await playGame(client, { instance: "a", mode: "offscreen" })) as Record<string, unknown>;
     expect(missing).toMatchObject({ ok: false, failure_reason: "engine_lacks_op", op: "ListGameInstances" });

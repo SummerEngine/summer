@@ -28,6 +28,8 @@ function fakeStore(options: {
   errorCode?: string;
   /** The store's own reason on a failed publication. */
   errorMessage?: string;
+  /** The store refuses the declaration itself. */
+  create?: { status: number; code: string; message: string };
   publishStatus?: number;
   refuseAll?: number;
   refusePartOnce?: number;
@@ -71,6 +73,7 @@ function fakeStore(options: {
     if (options.refuseAll) return json(options.refuseAll, { error: { code: "unauthorized", message: "Agent sign-in to the Summer store is not available yet.", requestId: "req-1" } });
     if (method === "GET" && url === `${STORE}/games`) return json(200, { items: [{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", supportedPlatforms: ["ios"] }] });
     if (method === "GET" && url === `${STORE}/games/game-1`) return json(200, { id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", supportedPlatforms: options.gameTargets ?? ["ios", "android"] });
+    if (method === "POST" && url === PUBLICATIONS && options.create) return json(options.create.status, { error: { code: options.create.code, message: options.create.message } });
     if (method === "POST" && url === PUBLICATIONS) return json(202, { operationId: "op-1", publicationId: "pub-1", buildId: "build-1", state: "uploading" });
     if (method === "GET" && url === `${PUBLICATIONS}/pub-1`) {
       if (!sealed) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "upload" } });
@@ -651,6 +654,7 @@ describe("publishBuild: a bundle whose server is a program", () => {
     expect(result).not.toHaveProperty("clientPackageId");
     expect(String(result.next)).toContain("buildId build-1");
     expect(String(result.next)).toMatch(/platform macos, windows or web/);
+    expect(String(result.next)).toContain("summer_go_live (gameId game-1, publicationId pub-1, clients)");
   });
 
   it("accepts a clientVersion that says what the declaration says, and sends none", async () => {
@@ -684,6 +688,25 @@ describe("publishBuild: a bundle whose server is a program", () => {
     expect(error.message).toContain(reason);
     expect(error.recovery).toContain("write the bundle again");
     expect(error.detail).toMatchObject({ publicationId: "pub-1", failedCheck: { code: "bundle_invalid", owner: "creator" } });
+  });
+
+  it("does not claim to publish: for this kind of bundle publish sends nothing and the answer says why", async () => {
+    const store = fakeStore({ finalState: "published" });
+    const preview = await publishBuild({ gameId: "game-1", file: program, publish: true, face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", target: { publish: false, publishNote: expect.stringContaining("publish does nothing for a bundle whose server is a program") } });
+    const result = await publishBuild({ gameId: "game-1", file: program, publish: true, confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", published: false, publishNote: expect.stringContaining("summer_go_live releases it with its clients") });
+    expect(store.calls.some((call) => call.url.endsWith(":publish"))).toBe(false);
+  });
+
+  it("says where to find the Build when these exact bytes were uploaded before", async () => {
+    const store = fakeStore({ create: { status: 409, code: "artifact_exists", message: "these exact bytes are already known" } });
+    const error = await failure(publishBuild({ gameId: "game-1", file: program, confirm: true, face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("artifact_exists");
+    expect(error.status).toBe(409);
+    expect(error.message).toContain("already a Build of this game");
+    expect(error.recovery).toContain("summer_go_live with gameId game-1");
+    expect(error.recovery).not.toMatch(/export/i);
   });
 
   it("answers processing, with how to continue, while Summer still builds the server", async () => {

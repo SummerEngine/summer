@@ -148,8 +148,8 @@ export interface ProgramBundle {
   hosted: true;
   /** config/summer.build.json as packaged: the Build declaration, sent as it is. */
   hostedBuild: Record<string, unknown>;
-  /** The declaration's version, which is the Build's; null when it names none. */
-  version: string | null;
+  /** The declaration's version, which is the Build's. */
+  version: string;
 }
 
 export function isProgramBundle(bundle: SummerBundle | ProgramBundle): bundle is ProgramBundle {
@@ -330,20 +330,35 @@ export async function readBundle(path: string): Promise<SummerBundle | ProgramBu
 
 /**
  * The one thing the upload of a program bundle sends from inside it: the Build
- * declaration. A bundle without a readable one cannot be declared at all.
+ * declaration. It is read whole, so what would make the request meaningless
+ * is said here in plain words instead of coming back as a bare refusal: no
+ * declaration, one that names no version, or one that does not say what the
+ * manifest says about the server. Everything else is the store's to judge.
  */
+const MAX_DECLARATION_BYTES = 64 * 1024;
+
 async function readProgramBundle(path: string, schema: BundleSchema, config: ZipEntry | undefined): Promise<ProgramBundle> {
+  const refuse = (message: string) => new BuildToolError("bundle_invalid", message, AS_WRITTEN);
+  if (config && config.uncompressedSize > MAX_DECLARATION_BYTES) {
+    throw refuse(`${BUNDLE_BUILD} is ${config.uncompressedSize} bytes; a Build declaration is at most ${MAX_DECLARATION_BYTES} bytes.`);
+  }
   let build: unknown;
   try {
-    build = config ? JSON.parse((await readZipEntry(path, config, 64 * 1024)).toString("utf8")) : undefined;
+    build = config ? JSON.parse((await readZipEntry(path, config, MAX_DECLARATION_BYTES)).toString("utf8")) : undefined;
   } catch {
     build = undefined;
   }
   if (!build || typeof build !== "object" || Array.isArray(build)) {
-    throw new BuildToolError("bundle_invalid", `${BUNDLE_BUILD} is missing or is not a JSON object: it is the Build declaration this upload sends.`, AS_WRITTEN);
+    throw refuse(`${BUNDLE_BUILD} is missing or is not a JSON object: it is the Build declaration this upload sends.`);
   }
-  const declaration = build as Record<string, unknown>;
-  return { schema, serverKind: "program", hosted: true, hostedBuild: declaration, version: typeof declaration.version === "string" ? declaration.version : null };
+  const declaration = build as Record<string, any>;
+  if (declaration.server?.kind !== "program") {
+    throw refuse(`${BUNDLE_MANIFEST} says the server is a program, but ${BUNDLE_BUILD} does not declare server.kind "program". The two must say the same.`);
+  }
+  if (typeof declaration.version !== "string" || !declaration.version.trim()) {
+    throw refuse(`${BUNDLE_BUILD} names no version. The Build takes its version from there.`);
+  }
+  return { schema, serverKind: "program", hosted: true, hostedBuild: declaration, version: declaration.version };
 }
 
 /** "sha256:<hex>" and size of a whole file, streamed. */

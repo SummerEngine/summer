@@ -46,6 +46,8 @@ function fakeStore(options: {
   notUsed?: Array<Record<string, unknown>>;
   /** The platform's message with that refusal; absent, it sends none. */
   serverOnlyMessage?: string;
+  /** The finished publication has no client pack attached yet. */
+  noPack?: boolean;
 } = {}) {
   const calls: Call[] = [];
   const page: Record<string, any> = {
@@ -74,7 +76,7 @@ function fakeStore(options: {
     source: { kind: "exported-game" },
     build: { executionMode: options.hosted ? "hosted" : "standalone" },
     createdAt: "2026-10-19T10:00:00Z",
-    clientPackage: { id: "pack-1", state: "uploaded", verifications: checks },
+    ...(options.noPack ? {} : { clientPackage: { id: "pack-1", state: "uploaded", verifications: checks } }),
   };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   const fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
@@ -157,6 +159,15 @@ function deps(fetch: typeof globalThis.fetch): Partial<PublishBuildDependencies>
 const writes = (calls: Call[]) => calls.filter((call) => call.method !== "GET");
 
 describe("goLive", () => {
+  it("asks the store nothing new about a Summer Engine Build: a finished export whose client pack is not attached yet still answers waiting", async () => {
+    const store = fakeStore({ noPack: true });
+    const result = await goLive({ gameId: "game-1", confirm: true, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "waiting", waitingOn: "automated_checks", build: { publicationId: "pub-1", checksState: "checking" } });
+    // The Build is never read to learn what its server is: an export names a client version, and that says it.
+    expect(store.calls.some((call) => call.url === `${GAME}/builds/build-1`)).toBe(false);
+    expect(writes(store.calls)).toEqual([]);
+  });
+
   it("shows the plan and changes nothing until confirmed", async () => {
     const store = fakeStore();
     const result = await goLive({ gameId: "game-1", face: "mcp" }, deps(store.fetch));

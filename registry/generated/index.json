@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "2bc546dca3216100c9fdc60a83ec0362d1779abfe6a2a0be3a7a75f53a04f25a",
+      "content_hash": "02a735eb1a6dd1d9c68330f62fdd6a3ddac2bb4c1be4d4ad0d636dd52aa4fe9c",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -8604,16 +8604,18 @@
     {
       "id": "tool/go-live",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "ad992ec78c35eec21e647c0ff7a85bedb4f440ddccb288fc4d52738af8e76ec3",
-      "summary": "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated.",
+      "version": "1.1.0",
+      "content_hash": "eb2613152e1dd40d4b65c6bd1fc212b7f6b276420b2a3b8a1b4e9ca2f62c6b64",
+      "summary": "Take a store game live: release its checked Build, or a server with the clients you name, publish its page, then answer live or blocked. Confirm-gated.",
       "use_when": [
         "\"make my game live\"",
         "\"publish my game to players now\"",
         "\"is my game live yet\"",
         "\"release the build I uploaded\"",
         "after summer_publish_build reports every automated check passed",
-        "watching a game until players get it, or finding which automated check failed"
+        "watching a game until players get it, or finding which automated check failed",
+        "releasing the server of a game not made with Summer Engine with its macOS, Windows and web clients (clients)",
+        "\"release the new Mac client I uploaded\""
       ],
       "facets": {
         "lifecycle": [
@@ -9635,9 +9637,9 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "2784c4716b45ee49a208a1700dcbe5d5c54e78e47fa1463203ca779eaac2f3f1",
-      "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
+      "version": "1.2.0",
+      "content_hash": "cfaf43491c9bbf22552854f4e8ea5a2418e3ca979d71f445f59293281681e450",
+      "summary": "Upload to the creator's store game, confirm-gated: an export as a Build, a store download, or the server and clients of a game made without Summer Engine.",
       "use_when": [
         "\"upload my game to summer.games\"",
         "\"publish this build to my store page\"",
@@ -9645,7 +9647,8 @@
         "\"release version 1.2.0 of my game\"",
         "\"ship this exported build to the live channel\"",
         "uploading the .zip from summer_export_game as a new Build",
-        "uploading a web build or a macOS or Windows download from summer_export_game format download"
+        "uploading a web build or a macOS or Windows download from summer_export_game format download",
+        "uploading the server bundle of a game not made with Summer Engine, then its macOS, Windows and web clients to that Build (buildId, platform, entry)"
       ],
       "facets": {
         "lifecycle": [

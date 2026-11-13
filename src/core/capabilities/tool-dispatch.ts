@@ -1054,6 +1054,8 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       goLive({
         gameId: optStr(args, "gameId"),
         publicationId: optStr(args, "publicationId"),
+        ...(Array.isArray(args.clients) ? { clients: args.clients.map(String) } : {}),
+        ...(Array.isArray(args.remove) ? { remove: args.remove.map(String) } : {}),
         confirm: args.confirm === true,
         ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
         face: "cli",

@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getSummerDir, setSummerDirForTests } from "../store.js";
-import { readBuildClients, recordBuildClient } from "./build-clients.js";
 import { publishBuild, type PublishBuildDependencies } from "./publish-build.js";
 import { BuildToolError } from "./summer-bundle.js";
 
@@ -37,6 +36,12 @@ function fakeStore(options: {
   complete?: { status: number; code: string; message: string };
   /** :complete answers 409 upload_expired this many times first. */
   expired?: number;
+  /** The first storage session is gone: storage answers its part PUTs 404, and the store forgets it only when asked to complete it. */
+  deadSession?: boolean;
+  /** Storage refuses every part while the session is alive (a broken connection, not an ended session). */
+  brokenStorage?: boolean;
+  /** The person's Agent permissions (GET me/agent-permissions); absent answers 404. */
+  agentPermissions?: Record<string, unknown>;
   /** Reads that answer verifying before the outcome (default 1); Infinity never settles. */
   verifyingReads?: number;
   /** Summer rejects the archive after reading it. */
@@ -50,6 +55,8 @@ function fakeStore(options: {
   let state = options.sealed ? "verifying" : "awaiting_upload";
   let reads = 0;
   let expired = 0;
+  // Each declaration of a client that still awaits its bytes hands out the current storage session.
+  let session = 1;
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   const refuse = (refusal: { status: number; code: string; message: string }) => json(refusal.status, { error: { code: refusal.code, message: refusal.message } });
   const client = () => ({
@@ -69,9 +76,13 @@ function fakeStore(options: {
     const body = typeof raw === "string" ? JSON.parse(raw) : raw;
     calls.push({ method, url, headers, body });
     if (url.startsWith("https://r2.test/")) {
+      const of = Number(url.split("/")[3]!.slice(1));
+      if (options.brokenStorage || (options.deadSession && of === 1)) return new Response("NoSuchUpload", { status: 404 });
+      if (of !== session) return new Response("NoSuchUpload", { status: 404 });
       parts.set(Number(url.split("/").pop()), Buffer.from(raw as Uint8Array));
       return new Response(null, { status: 200 });
     }
+    if (method === "GET" && url === `${STORE}/me/agent-permissions`) return options.agentPermissions ? json(200, options.agentPermissions) : json(404, { error: { code: "not_found" } });
     if (method === "GET" && url === `${STORE}/games`) return json(200, { items: [{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", supportedPlatforms: ["macos"] }] });
     if (method === "GET" && url === `${STORE}/games/game-1`) return json(200, { id: "game-1", name: "Star Weavers", status: "draft", supportedPlatforms: ["macos", "windows", "web"] });
     if (method === "GET" && url === BUILD) {
@@ -89,7 +100,7 @@ function fakeStore(options: {
         parts: body.parts.map((part: { partNumber: number; sha256: string }) => ({
           partNumber: part.partNumber,
           method: "PUT",
-          url: `https://r2.test/part/${part.partNumber}`,
+          url: `https://r2.test/s${session}/part/${part.partNumber}`,
           headers: { "x-amz-checksum-sha256": part.sha256 },
           expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         })),
@@ -97,10 +108,15 @@ function fakeStore(options: {
     }
     if (method === "POST" && url === `${CLIENTS}/client-1:complete`) {
       if (options.complete) return refuse(options.complete);
-      if (expired < (options.expired ?? 0)) {
+      if (expired < (options.expired ?? 0) || (options.deadSession && session === 1)) {
         expired += 1;
+        // Only now does the store forget the ended session: the next declaration opens a new one.
+        session += 1;
+        parts.clear();
         return json(409, { error: { code: "upload_expired", message: "the storage session of this upload ended" } });
       }
+      const size = Number(declaration?.clientSize ?? 0);
+      if (parts.size !== Math.max(1, Math.ceil(size / PART))) return json(409, { error: { code: "upload_incomplete", message: "storage does not hold every part" } });
       state = "verifying";
       return json(200, client());
     }
@@ -186,10 +202,14 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     expect(store.calls.filter((call) => call.url === `${CLIENTS}/client-1:complete`).map((call) => call.body)).toEqual([{}]);
 
     expect(result).toMatchObject({ ok: true, status: "uploaded", gameId: "game-1", buildId: "build-1", clientPackageId: "client-1", kind: "program", platform: "macos", entry: "Game.app", clientVersion: "v1.0.0", qualificationId: "qual-1", uploaded: true });
-    expect(String(result.next)).toContain("summer_go_live");
+    // The answer carries what releases this client: go-live's own input, with the id.
+    expect(result.goLive).toEqual({ gameId: "game-1", clients: ["client-1"] });
+    expect(String(result.next)).toContain('summer_go_live with gameId game-1 and clients ["client-1"]');
+    expect(String(result.next)).toContain("summer store go-live --game-id game-1 --clients client-1");
+    expect(String(result.next)).toContain("Nothing is released yet");
 
-    // What go-live releases for this platform is remembered on this computer.
-    expect(await readBuildClients("game-1", "build-1")).toMatchObject({ macos: { clientPackageId: "client-1", clientVersion: "v1.0.0", sha256: sha(bytes) } });
+    // Nothing is kept on this computer about the client but the audit line of the call.
+    expect((await readdir(getSummerDir())).sort()).toEqual(["creator-audit.jsonl"]);
     const audit = (await readFile(join(getSummerDir(), "creator-audit.jsonl"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
     expect(audit.map((row) => [row.operation, row.outcome])).toEqual([["publish_client", "started"], ["publish_client", "succeeded"]]);
   });
@@ -206,15 +226,34 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     const result = await publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch));
     expect(result).toMatchObject({ status: "uploaded", clientPackageId: "client-1", qualificationId: "qual-1", uploaded: false });
     expect(writes(store.calls).map((call) => call.url)).toEqual([CLIENTS]);
-    expect(await readBuildClients("game-1", "build-1")).toMatchObject({ macos: { clientPackageId: "client-1" } });
   });
 
-  it("opens the upload again and resends every part when its storage session expired", async () => {
+  it("starts the upload again when its storage session ended: storage refuses the parts, the store forgets the session, a new one takes every part", async () => {
+    const store = fakeStore({ deadSession: true });
+    const result = await publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "uploaded", clientPackageId: "client-1", qualificationId: "qual-1" });
+    // Declared, refused by storage, asked to complete (which is what makes the store forget the session), declared again.
+    expect(writes(store.calls).filter((call) => !call.url.startsWith("https://r2.test/") && !call.url.endsWith(":signParts")).map((call) => call.url)).toEqual([CLIENTS, `${CLIENTS}/client-1:complete`, CLIENTS, `${CLIENTS}/client-1:complete`]);
+    expect(store.calls.some((call) => call.url.startsWith("https://r2.test/s1/"))).toBe(true);
+    expect(Buffer.concat([...store.parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => part)).equals(bytes)).toBe(true);
+  });
+
+  it("starts again too when the session ends between the last part and the seal", async () => {
     const store = fakeStore({ expired: 1 });
     const result = await publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch));
     expect(result).toMatchObject({ status: "uploaded", clientPackageId: "client-1" });
     expect(store.calls.filter((call) => call.method === "POST" && call.url === CLIENTS).length).toBe(2);
-    expect(store.calls.filter((call) => call.url === "https://r2.test/part/1").length).toBe(2);
+    expect(Buffer.concat([...store.parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => part)).equals(bytes)).toBe(true);
+  });
+
+  it("answers the part's own failure when storage refuses parts of a session that is alive, and says every part is sent again", async () => {
+    const store = fakeStore({ brokenStorage: true });
+    const error = await failure(publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch)));
+    expect(error.code).toBe("store_part_upload_failed");
+    expect(error.recovery).toContain("parts are all sent again");
+    expect(error.recovery).not.toContain("continues where it stopped");
+    // The session was alive, so nothing was declared a second time.
+    expect(store.calls.filter((call) => call.method === "POST" && call.url === CLIENTS).length).toBe(1);
   });
 
   it("answers processing, with how to continue, while Summer still reads the archive", async () => {
@@ -223,8 +262,6 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     const result = await publishBuild({ ...mac, file: archive, confirm: true, waitSeconds: 5 }, deps(store.fetch, { now: () => clock, sleep: async (ms) => void (clock += ms) }));
     expect(result).toMatchObject({ ok: true, status: "processing", clientPackageId: "client-1", state: "verifying" });
     expect(String(result.next)).toMatch(/nothing is uploaded twice/);
-    // Known to go-live already, which reports it as still being checked.
-    expect(await readBuildClients("game-1", "build-1")).toMatchObject({ macos: { clientPackageId: "client-1" } });
   });
 
   it("answers a rejected archive with the store's own code and message", async () => {
@@ -247,12 +284,40 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     expect(store.calls.some((call) => call.url.startsWith("https://r2.test/"))).toBe(false);
   });
 
-  it("passes the store's refusal through when it does not let this sign-in finish the upload", async () => {
+  it("says what the person can do when the store does not let an agent sign-in finish the upload: Publish, or Summer Studio", async () => {
     const store = fakeStore({ complete: { status: 403, code: "owner_approval_required", message: "This sign-in cannot finish a client upload; the game's owner can." } });
     const error = await failure(publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch)));
     expect(error.code).toBe("owner_approval_required");
     expect(error.status).toBe(403);
     expect(error.message).toContain("This sign-in cannot finish a client upload");
+    expect(error.recovery).toContain("Turn on Publish in Summer Studio (Agent permissions)");
+    expect(error.recovery).toContain("upload this client from Summer Studio");
+    // No approval link is promised: the store returns none for this call.
+    expect(error.recovery).not.toMatch(/approval link/i);
+  });
+
+  it("warns in the preview, before any byte is sent, when Publish is off for agents", async () => {
+    const off = fakeStore({ agentPermissions: { publish: false, makeAndBuild: true } });
+    const preview = await publishBuild({ ...mac, file: archive }, deps(off.fetch));
+    expect(preview.status).toBe("confirmation_required");
+    expect(String((preview.warnings as string[])[0])).toMatch(/Publish is off.*Turn on Publish in Summer Studio/);
+    expect(writes(off.calls)).toEqual([]);
+
+    // On, or not told: no warning, and the store decides at the upload.
+    for (const store of [fakeStore({ agentPermissions: { publish: true } }), fakeStore()]) {
+      expect((await publishBuild({ ...mac, file: archive }, deps(store.fetch))).warnings).toBeUndefined();
+    }
+  });
+
+  it("says a missing file or a folder is not a file, before any call", async () => {
+    const store = fakeStore();
+    await mkdir(join(root, "folder.zip"));
+    for (const file of [join(root, "nothing.zip"), join(root, "folder.zip")]) {
+      const error = await failure(publishBuild({ ...mac, file, confirm: true }, deps(store.fetch)));
+      expect(error.code).toBe("file_not_found");
+      expect(error.message).toContain("is not a file on this computer");
+    }
+    expect(store.calls).toEqual([]);
   });
 
   it("uploads no separate client to a Build with a Summer Engine server, and says what to upload instead", async () => {
@@ -303,21 +368,5 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     const error = await failure(publishBuild({ buildId: "build-1", platform: "macos", entry: "Game.app", clientVersion: "v1.0.0", file: archive, face: "mcp" }, deps(store.fetch)));
     expect(error.code).toBe("game_required");
     expect(writes(store.calls)).toEqual([]);
-  });
-});
-
-describe("the clients this computer uploaded to a Build", () => {
-  const client = (clientPackageId: string) => ({ clientPackageId, clientVersion: "v1.0.0", sha256: `sha256:${"b".repeat(64)}`, recordedAt: "2026-11-12T10:00:00Z" });
-
-  it("keeps every platform's client when they are uploaded at the same time, and the newest of each", async () => {
-    await Promise.all([
-      recordBuildClient("game-1", "build-1", "macos", client("client-mac")),
-      recordBuildClient("game-1", "build-1", "windows", client("client-win")),
-      recordBuildClient("game-1", "build-1", "web", client("client-web")),
-    ]);
-    await recordBuildClient("game-1", "build-1", "macos", client("client-mac-2"));
-    await recordBuildClient("game-1", "build-2", "macos", client("client-other-build"));
-    expect(await readBuildClients("game-1", "build-1")).toEqual({ macos: client("client-mac-2"), windows: client("client-win"), web: client("client-web") });
-    expect(await readBuildClients("game-2", "build-1")).toEqual({});
   });
 });

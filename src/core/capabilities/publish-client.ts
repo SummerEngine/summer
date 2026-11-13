@@ -1,6 +1,6 @@
+import { stat } from "node:fs/promises";
 import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
-import { recordBuildClient } from "./build-clients.js";
 import { checkStoreGame, createStore, hashParts, listGamesOrThrow, normalizeClientVersion, readGrants, storeToken, uploadParts, type PublishBuildDependencies, type Store } from "./publish-build.js";
 import { describeFailure } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
@@ -21,8 +21,12 @@ import { BuildToolError } from "./summer-bundle.js";
  * The Build decides the kind of client. Summer reads the archive and never
  * runs it; what it admits is the store's rule, so nothing about the archive is
  * judged here and a refusal carries the store's own code and message. A
- * client reaches players only when a release of its Build includes it
- * (summer_go_live).
+ * client reaches players only when a release of its Build includes it:
+ * summer_go_live takes the clientPackageId this answers with.
+ *
+ * An agent sign-in may declare a client and send its parts freely; the store
+ * lets it finish the upload (:complete) only while the person's Agent
+ * permissions allow Publish. The preview says so before any byte is sent.
  */
 
 /** The platforms a program client is uploaded for. */
@@ -77,6 +81,30 @@ async function readBuild(store: Store, gameId: string, buildId: string): Promise
   };
 }
 
+const PUBLISH_OFF =
+  "An agent sign-in can finish a client upload only while the person's Agent permissions allow Publish. Turn on Publish in Summer Studio (Agent permissions) and run the same command again, or upload this client from Summer Studio.";
+
+/** The store's refusal to let this sign-in act, with what the person can do about it for a client upload. */
+function withClientRecovery(error: unknown): unknown {
+  if (error instanceof BuildToolError && error.code === "owner_approval_required") {
+    return new BuildToolError("owner_approval_required", error.message.replace(` ${error.recovery}`, ""), `Recovery: nothing was published. ${PUBLISH_OFF}`, error.status, error.detail);
+  }
+  if (error instanceof BuildToolError && error.code === "store_part_upload_failed") {
+    return new BuildToolError(error.code, error.message.replace(` ${error.recovery}`, ""), "Recovery: run the same command again; a client's parts are all sent again.", error.status, error.detail);
+  }
+  return error;
+}
+
+/** Whether the person's Agent permissions allow Publish; null when the store does not say. */
+async function agentMayPublish(store: Store): Promise<boolean | null> {
+  try {
+    const grants = await store.call<Record<string, unknown>>("GET", "me/agent-permissions");
+    return typeof grants.publish === "boolean" ? grants.publish : null;
+  } catch {
+    return null; // The preview goes on without it; the store decides at the upload.
+  }
+}
+
 /** Why Summer did not admit a client, with the store's own code and message. */
 function rejected(client: Record<string, any>, clientPackageId: string): BuildToolError {
   const code = typeof client.verificationError === "string" && client.verificationError ? client.verificationError : "client_rejected";
@@ -107,6 +135,10 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
     );
   }
   const clientVersion = normalizeClientVersion(input.clientVersion);
+  const found = await stat(file).catch(() => null);
+  if (!found?.isFile()) {
+    throw new BuildToolError("file_not_found", `${file} is not a file on this computer.`, "Recovery: pass file as the path of the client archive (.zip).");
+  }
   if (!gameId) return listGamesOrThrow(deps);
 
   const digest = await hashParts(file, PART_BYTES);
@@ -126,12 +158,15 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
   const declaration = { kind: "program", platform, clientSha256: digest.sha256, clientSize: digest.sizeBytes, version: clientVersion, entry, host: { interface: HOST_INTERFACE } };
 
   if (input.confirm !== true) {
+    // Said before the bytes are sent: a large archive would upload in full and be refused at its last step.
+    const publish = await agentMayPublish(store);
     return {
       ok: true,
       status: "confirmation_required",
       target: { ...target, kind: "program" },
       build,
       game,
+      ...(publish === false ? { warnings: [`Publish is off in this person's Agent permissions, so the store would refuse the last step of this upload after every byte was sent. ${PUBLISH_OFF}`] } : {}),
       next: "Show the user this exact game, Build, file, platform, entry, digest, size and version. Only after they approve, call again with confirm=true. Nothing was uploaded.",
     };
   }
@@ -144,7 +179,7 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
   try {
     let client: Record<string, any> = {};
     let uploaded = false;
-    // A storage session that expired is opened again once, and every part resent.
+    // A storage session that ended is opened again once, and every part resent.
     for (let attempt = 0; ; attempt++) {
       // Repeating the declaration answers with the same client, so a retry continues it.
       const declared = await store.call<Record<string, any>>("POST", clients, { body: declaration });
@@ -158,17 +193,27 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
       }
       const clientPath = `${clients}/${seg(clientPackageId)}`;
       const partHashes = plan.partSizeBytes === PART_BYTES ? digest.parts : (await hashParts(file, plan.partSizeBytes)).parts;
-      await uploadParts(
-        async (numbers) => readGrants(await store.call("POST", `${clientPath}:signParts`, { body: { parts: numbers.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })),
-        file,
-        digest.sizeBytes,
-        plan,
-        deps
-      );
+      // An ended session shows first at storage, which refuses the parts. The store forgets such a
+      // session only when asked to complete it, so a failed part still asks, and that answer decides.
+      let partsFailed: unknown = null;
+      try {
+        await uploadParts(
+          async (numbers) => readGrants(await store.call("POST", `${clientPath}:signParts`, { body: { parts: numbers.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })),
+          file,
+          digest.sizeBytes,
+          plan,
+          deps
+        );
+      } catch (error) {
+        if (!(error instanceof BuildToolError && error.code === "store_part_upload_failed")) throw error;
+        partsFailed = error;
+      }
       try {
         client = await store.call<Record<string, any>>("POST", `${clientPath}:complete`, { body: {} });
       } catch (error) {
         if (error instanceof BuildToolError && error.code === "upload_expired" && attempt === 0) continue;
+        // The session is alive and a part is missing: the part's own failure is the answer.
+        if (partsFailed && error instanceof BuildToolError && error.code === "upload_incomplete") throw partsFailed;
         throw error;
       }
       uploaded = true;
@@ -177,8 +222,6 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
 
     const clientPackageId = String(client.id);
     const clientPath = `${clients}/${seg(clientPackageId)}`;
-    // What go-live releases for this platform, kept even while Summer still reads the bytes.
-    await recordBuildClient(gameId, buildId, platform, { clientPackageId, clientVersion, sha256: digest.sha256, recordedAt: new Date(deps.now()).toISOString() });
 
     // Summer scans the stored bytes and reads the archive; that ends as uploaded or rejected.
     while (client.state !== "uploaded" && client.state !== "rejected" && deps.now() < deadline) {
@@ -206,11 +249,15 @@ export async function publishClient(input: PublishClientInput, deps: PublishBuil
       // A wait the store explains, such as a game that is not active right now.
       ...(!done && typeof client.verificationMessage === "string" && client.verificationMessage ? { message: client.verificationMessage } : {}),
       uploaded,
+      // What releases it: go-live takes the clients to release by id, this one and the other platforms'.
+      goLive: { gameId, clients: [clientPackageId] },
       next: done
-        ? `Summer admitted this ${platform} client of Build ${buildId}. Players get it when a release of that Build includes it: upload the other platforms' clients the same way, then call summer_go_live (gameId ${gameId}).`
+        ? `Summer admitted this ${platform} client of Build ${buildId}. Nothing is released yet. To release it, call summer_go_live with gameId ${gameId} and clients ["${clientPackageId}"] ` +
+          `(from a shell: summer store go-live --game-id ${gameId} --clients ${clientPackageId}); add the clientPackageId of each other platform's client to release them together.`
         : "Summer is still checking this client. Call summer_publish_build again with the same file, buildId, platform, entry and clientVersion to keep waiting; nothing is uploaded twice.",
     };
-  } catch (error) {
+  } catch (caught) {
+    const error = withClientRecovery(caught);
     await appendStoreJsonLine("creator-audit.jsonl", {
       ...audit,
       outcome: "failed",

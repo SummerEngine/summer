@@ -197,15 +197,28 @@ describe("readBundle: a bundle whose server is a program", () => {
   it("reads the packaged Build declaration, and needs no client.pck and no server.pck", async () => {
     const path = join(root, "program.zip");
     await writeProgramBundle(path);
-    expect((await readZipEntries(path)).map((entry) => entry.name)).toEqual(["summer-bundle.json", "config/summer.build.json", "config/world-definitions.json", "server/program"]);
     expect(await readBundle(path)).toEqual({ schema: "summer.bundle.v2", serverKind: "program", hosted: true, hostedBuild: PROGRAM_DECLARATION, version: "0.3.0" });
   });
 
-  it("reports no version when the declaration names none, and leaves the judgement to the store", async () => {
+  it("refuses a declaration that names no version, in plain words, instead of sending a request the store answers bare", async () => {
     const path = join(root, "no-version.zip");
     const { version: _version, ...declaration } = PROGRAM_DECLARATION;
     await writeProgramBundle(path, { declaration });
-    expect(await readBundle(path)).toMatchObject({ serverKind: "program", version: null, hostedBuild: declaration });
+    expect(await code(readBundle(path))).toBe("bundle_invalid");
+    await expect(readBundle(path)).rejects.toThrow(/config\/summer\.build\.json names no version/);
+  });
+
+  it("refuses a declaration that does not say what the manifest says about the server", async () => {
+    const path = join(root, "engine-declaration.zip");
+    await writeProgramBundle(path, { declaration: { ...PROGRAM_DECLARATION, server: { exportPreset: "Dedicated Server" } } });
+    expect(await code(readBundle(path))).toBe("bundle_invalid");
+    await expect(readBundle(path)).rejects.toThrow(/does not declare server\.kind "program"/);
+  });
+
+  it("says a declaration is too large, not that it is missing", async () => {
+    const path = join(root, "large-declaration.zip");
+    await writeProgramBundle(path, { declaration: { ...PROGRAM_DECLARATION, notes: "n".repeat(70_000) } });
+    await expect(readBundle(path)).rejects.toThrow(/a Build declaration is at most 65536 bytes/);
   });
 
   it("refuses one without its Build declaration in plain words: there is nothing to declare", async () => {

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getSummerDir, setSummerDirForTests } from "../store.js";
-import { readBuildClients } from "./build-clients.js";
+import { readBuildClients, recordBuildClient } from "./build-clients.js";
 import { publishBuild, type PublishBuildDependencies } from "./publish-build.js";
 import { BuildToolError } from "./summer-bundle.js";
 
@@ -303,5 +303,21 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     const error = await failure(publishBuild({ buildId: "build-1", platform: "macos", entry: "Game.app", clientVersion: "v1.0.0", file: archive, face: "mcp" }, deps(store.fetch)));
     expect(error.code).toBe("game_required");
     expect(writes(store.calls)).toEqual([]);
+  });
+});
+
+describe("the clients this computer uploaded to a Build", () => {
+  const client = (clientPackageId: string) => ({ clientPackageId, clientVersion: "v1.0.0", sha256: `sha256:${"b".repeat(64)}`, recordedAt: "2026-11-12T10:00:00Z" });
+
+  it("keeps every platform's client when they are uploaded at the same time, and the newest of each", async () => {
+    await Promise.all([
+      recordBuildClient("game-1", "build-1", "macos", client("client-mac")),
+      recordBuildClient("game-1", "build-1", "windows", client("client-win")),
+      recordBuildClient("game-1", "build-1", "web", client("client-web")),
+    ]);
+    await recordBuildClient("game-1", "build-1", "macos", client("client-mac-2"));
+    await recordBuildClient("game-1", "build-2", "macos", client("client-other-build"));
+    expect(await readBuildClients("game-1", "build-1")).toEqual({ macos: client("client-mac-2"), windows: client("client-win"), web: client("client-web") });
+    expect(await readBuildClients("game-2", "build-1")).toEqual({});
   });
 });

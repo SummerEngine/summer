@@ -8604,8 +8604,8 @@
     {
       "id": "tool/go-live",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "eb2613152e1dd40d4b65c6bd1fc212b7f6b276420b2a3b8a1b4e9ca2f62c6b64",
+      "version": "1.1.1",
+      "content_hash": "482b25f125148ea093779f024e15db38277274882c3522cd357b197d414258db",
       "summary": "Take a store game live: release its checked Build, or a server with the clients you name, publish its page, then answer live or blocked. Confirm-gated.",
       "use_when": [
         "\"make my game live\"",

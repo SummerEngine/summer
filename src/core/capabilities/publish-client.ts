@@ -82,7 +82,7 @@ async function readBuild(store: Store, gameId: string, buildId: string): Promise
 }
 
 const PUBLISH_OFF =
-  "An agent sign-in can finish a client upload only while the person's Agent permissions allow Publish. Turn on Publish in Summer Studio (Agent permissions) and run the same command again, or upload this client from Summer Studio.";
+  "An agent sign-in can finish a client upload only while the person's Agent permissions allow Publish. The game's owner turns on Publish under Agent permissions in Summer Studio; then run the same command again.";
 
 /** The store's refusal to let this sign-in act, with what the person can do about it for a client upload. */
 function withClientRecovery(error: unknown): unknown {

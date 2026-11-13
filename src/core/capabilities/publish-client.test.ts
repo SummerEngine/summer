@@ -284,23 +284,23 @@ describe("publishBuild with buildId: a client of a Build whose server is a progr
     expect(store.calls.some((call) => call.url.startsWith("https://r2.test/"))).toBe(false);
   });
 
-  it("says what the person can do when the store does not let an agent sign-in finish the upload: Publish, or Summer Studio", async () => {
+  it("passes the store's refusal through when it does not let an agent sign-in finish the upload, and says what lifts it: Publish", async () => {
     const store = fakeStore({ complete: { status: 403, code: "owner_approval_required", message: "This sign-in cannot finish a client upload; the game's owner can." } });
     const error = await failure(publishBuild({ ...mac, file: archive, confirm: true }, deps(store.fetch)));
     expect(error.code).toBe("owner_approval_required");
     expect(error.status).toBe(403);
     expect(error.message).toContain("This sign-in cannot finish a client upload");
-    expect(error.recovery).toContain("Turn on Publish in Summer Studio (Agent permissions)");
-    expect(error.recovery).toContain("upload this client from Summer Studio");
-    // No approval link is promised: the store returns none for this call.
+    expect(error.recovery).toContain("turns on Publish under Agent permissions in Summer Studio");
+    // Nothing is promised that does not exist: no approval link for this call, no upload of such a client from Summer Studio.
     expect(error.recovery).not.toMatch(/approval link/i);
+    expect(error.recovery).not.toMatch(/upload .* from Summer Studio/i);
   });
 
   it("warns in the preview, before any byte is sent, when Publish is off for agents", async () => {
     const off = fakeStore({ agentPermissions: { publish: false, makeAndBuild: true } });
     const preview = await publishBuild({ ...mac, file: archive }, deps(off.fetch));
     expect(preview.status).toBe("confirmation_required");
-    expect(String((preview.warnings as string[])[0])).toMatch(/Publish is off.*Turn on Publish in Summer Studio/);
+    expect(String((preview.warnings as string[])[0])).toMatch(/Publish is off.*turns on Publish under Agent permissions in Summer Studio/);
     expect(writes(off.calls)).toEqual([]);
 
     // On, or not told: no warning, and the store decides at the upload.

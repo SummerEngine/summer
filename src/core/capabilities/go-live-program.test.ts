@@ -32,9 +32,12 @@ type Member = { target: string; buildId: string; qualificationId: string };
  * It holds what the store holds a release to: a client is read only under its
  * own Build; a draft and its publish are idempotent on their key, and the same
  * key with another body is refused; a complete publish makes the release
- * exactly the members it names; a browser client is refused for a game with a
- * price, and a client Summer withdrew is refused although its read says
- * admitted.
+ * exactly the members it names; a draft is saved against the environment as
+ * it is then, and says so; a browser client is refused for a game with a
+ * price; a client Summer withdrew is refused although its read says admitted,
+ * by name when the release names its upload and with a bare conflict when the
+ * release names only its qualification, as for a member kept from the live
+ * release.
  */
 function fakeStore(options: {
   /** Each Build's clients as the store holds them, by client id. */
@@ -49,6 +52,14 @@ function fakeStore(options: {
   visibility?: string;
   /** The newest publication's Build (default build-1); build-2 is a second Build of the game. */
   newest?: "build-1" | "build-2";
+  /** Someone else's release becomes active just before this call's draft is saved: these are its members. */
+  raceBeforeDraft?: Member[];
+  /** The store's own fence refuses the publish: another release was published first. */
+  publishEtagConflict?: boolean;
+  /** The newest publication is still being made, or failed, instead of published. */
+  publication?: { state: string; errorCode?: string };
+  /** The live release reads with this status instead of active. */
+  liveStatus?: string;
 } = {}) {
   const calls: Call[] = [];
   const page: Record<string, any> = {
@@ -62,11 +73,12 @@ function fakeStore(options: {
     contentDescriptors: [],
   };
   const environment: Record<string, any> = { id: "env_production", kind: "production", status: "active", revision: 7, activeReleaseId: options.live ? "rel-0" : null, desiredReleaseId: options.live ? "rel-0" : null };
-  const releases: Record<string, Record<string, any>> = options.live ? { "rel-0": { id: "rel-0", status: "active", targets: options.live, server: { buildId: options.live[0]?.buildId } } } : {};
+  const releases: Record<string, Record<string, any>> = options.live ? { "rel-0": { id: "rel-0", status: options.liveStatus ?? "active", targets: options.live, server: { buildId: options.live[0]?.buildId } } } : {};
   // A program publication: exported-game, hosted, published, with no client pack, client version or platform.
-  const publication = (id: string, buildId: string, createdAt: string) => ({ id, buildId, version: buildId === "build-1" ? "0.3.0" : "0.4.0", state: "published", source: { kind: "exported-game", format: "summer-bundle" }, executionMode: "hosted", targetPlatforms: [], createdAt });
+  const publication = (id: string, buildId: string, createdAt: string) => ({ id, buildId, version: buildId === "build-1" ? "0.3.0" : "0.4.0", state: "published", source: { kind: "exported-game", format: "summer-bundle" }, executionMode: "hosted", targetPlatforms: [], createdAt, ...options.publication });
   const publications = [publication("pub-1", "build-1", "2026-11-12T10:00:00Z"), ...(options.newest === "build-2" ? [publication("pub-2", "build-2", "2026-11-13T10:00:00Z")] : [])];
   const drafts = new Map<string, { id: string; body: string }>();
+  let raced = false;
   const published = new Map<string, { body: string; answer: Record<string, unknown> }>();
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   const conflict = () => json(409, { error: { code: "idempotency_conflict", message: "idempotency key was reused" } });
@@ -101,9 +113,17 @@ function fakeStore(options: {
       const key = headers["idempotency-key"] ?? "";
       const known = drafts.get(key);
       if (known && known.body !== JSON.stringify(body)) return conflict();
+      if (options.raceBeforeDraft && !raced) {
+        raced = true;
+        releases["rel-other"] = { id: "rel-other", status: "active", targets: options.raceBeforeDraft, server: { buildId: "build-1" } };
+        environment.activeReleaseId = "rel-other";
+        environment.desiredReleaseId = "rel-other";
+        environment.revision += 1;
+      }
       const id = known?.id ?? `draft-${drafts.size + 1}`;
       drafts.set(key, { id, body: JSON.stringify(body) });
-      return json(200, { id, revision: 1, gameId: "game-1", baseEnvironmentRevision: environment.revision, targets: body.targets });
+      // A draft is saved against the environment as it is now, and its answer says what that was.
+      return json(200, { id, revision: 1, gameId: "game-1", baseEnvironmentRevision: environment.revision, ...(environment.activeReleaseId ? { baseReleaseId: environment.activeReleaseId } : {}), targets: body.targets });
     }
     const publish = /\/release-drafts\/(draft-\d+):publish$/.exec(url);
     if (method === "POST" && publish) {
@@ -114,8 +134,11 @@ function fakeStore(options: {
       const targets = JSON.parse(draft.body).targets as Record<string, { buildId: string; uploadId?: string; qualificationId: string }>;
       const named = (body.targets as string[]).filter((name) => name !== "server");
       if (options.priced && named.includes("web")) return json(409, { error: { code: "web_client_game_priced", message: "this game has a price, so it takes no browser build yet" } });
+      if (options.publishEtagConflict) return json(409, { error: { code: "etag_conflict", message: "resource revision changed" } });
       const withdrawn = named.find((name) => options.revoked?.includes(targets[name]!.qualificationId));
-      if (withdrawn) return json(409, { error: { code: "draft_not_ready", message: `the selected ${withdrawn} client still needs verification for this Build` } });
+      // Named by its upload, a withdrawn client is refused by platform; named by its qualification alone, with a bare conflict.
+      if (withdrawn && targets[withdrawn]!.uploadId) return json(409, { error: { code: "draft_not_ready", message: `the selected ${withdrawn} client still needs verification for this Build` } });
+      if (withdrawn) return json(409, { error: { code: "conflict", message: "request conflicts with current state" } });
       // A complete publish (replaceTargets) makes the release exactly the members named.
       const id = `rel-${Object.keys(releases).length + 1}`;
       releases[id] = { id, status: "active", server: { buildId: targets.server!.buildId }, targets: (body.replaceTargets ? named : Object.keys(targets).filter((name) => name !== "server")).map((name) => ({ target: name, buildId: targets[name]!.buildId, qualificationId: targets[name]!.qualificationId })) };
@@ -382,6 +405,136 @@ describe("goLive: a Build whose server is a program", () => {
     const untold = fakeStore({ clients: { "build-1": three } });
     const neutral = await goLive({ gameId: "game-1", clients: ["client-mac"], confirm: true, face: "mcp" }, deps(untold.fetch));
     expect(String(neutral.next)).toContain("everyone who can see the store page gets it now");
+  });
+
+  it("answers blocked, with the platforms it kept and both ways out, when the store withdrew a client players still have", async () => {
+    // macOS and Windows are live. Summer withdrew the macOS client; the release read still lists it.
+    const options = { revoked: ["qual-mac"], clients: { "build-1": { "client-win-2": admitted("windows", "qual-win-2"), "client-mac-2": admitted("macos", "qual-mac-2") } }, live: [live("macos", "qual-mac"), live("windows", "qual-win")] };
+    const store = fakeStore(options);
+    const result = await goLive({ gameId: "game-1", clients: ["client-win-2"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "blocked", failures: [{ field: "release", code: "conflict", message: "request conflicts with current state", keptPlatforms: ["macos"] }] });
+    const fix = String(failuresOf(result)[0]!.fix);
+    expect(fix).toContain("keeps the client players have now on macOS");
+    expect(fix).toContain("name it in clients");
+    expect(fix).toContain("name the platform in remove");
+    expect(fix).not.toMatch(/export/i);
+    expect(store.players()).toEqual({ macos: "qual-mac", windows: "qual-win" });
+
+    // Way out one: a new client for that platform.
+    const renamed = await goLive({ gameId: "game-1", clients: ["client-win-2", "client-mac-2"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(renamed.status).toBe("live");
+    expect(store.players()).toEqual({ macos: "qual-mac-2", windows: "qual-win-2" });
+
+    // Way out two, on the same starting point: take the platform out.
+    const other = fakeStore(options);
+    const removed = await goLive({ gameId: "game-1", clients: ["client-win-2"], remove: ["macos"], confirm: true, face: "mcp" }, deps(other.fetch));
+    expect(removed).toMatchObject({ status: "live", build: { removed: ["macos"] } });
+    expect(other.players()).toEqual({ windows: "qual-win-2" });
+  });
+
+  it("publishes nothing when someone else's release became active between its read and its draft", async () => {
+    // Players have macOS. While this call runs, another release adds a browser client; this call's list was made before it.
+    const store = fakeStore({ clients: { "build-1": { "client-mac-2": admitted("macos", "qual-mac-2") } }, live: [live("macos", "qual-mac")], raceBeforeDraft: [live("macos", "qual-mac"), live("web", "qual-web")] });
+    const result = await goLive({ gameId: "game-1", clients: ["client-mac-2"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "blocked", failures: [{ field: "release", code: "release_changed" }] });
+    expect(String(result.next)).toContain("The release changed while this ran");
+    expect(store.calls.some((call) => call.url.endsWith(":publish"))).toBe(false);
+    // What the other release gave players is untouched.
+    expect(store.players()).toEqual({ macos: "qual-mac", web: "qual-web" });
+
+    // Run again: it plans from what players have now, and keeps the browser client.
+    const again = await goLive({ gameId: "game-1", clients: ["client-mac-2"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(again.status).toBe("live");
+    expect(store.players()).toEqual({ macos: "qual-mac-2", web: "qual-web" });
+  });
+
+  it("says the release changed, and to run it again, when the store's own fence refuses a second go-live at once", async () => {
+    const store = fakeStore({ publishEtagConflict: true, clients: { "build-1": three } });
+    const result = await goLive({ gameId: "game-1", clients: ["client-mac"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "blocked", failures: [{ field: "release", code: "release_changed" }] });
+    expect(String(failuresOf(result)[0]!.fix)).toContain("Run summer_go_live again");
+    expect(writes(store.calls).some((call) => call.url.endsWith("/revisions/rev-1:publish"))).toBe(false);
+  });
+
+  it("plans nothing when the release players have cannot be read as active: it fails, naming the read", async () => {
+    const store = fakeStore({ liveStatus: "failed", clients: { "build-1": three }, live: [live("macos", "qual-mac"), live("windows", "qual-win")] });
+    let error: unknown;
+    try {
+      await goLive({ gameId: "game-1", clients: ["client-mac"], confirm: true, face: "mcp" }, deps(store.fetch));
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(BuildToolError);
+    expect((error as BuildToolError).code).toBe("release_unreadable");
+    expect((error as BuildToolError).message).toContain("releases/rel-0");
+    expect((error as BuildToolError).message).toContain('"failed"');
+    expect(writes(store.calls)).toEqual([]);
+  });
+
+  it("refuses by name a client whose upload was never finished, instead of waiting on checks that are not running", async () => {
+    const store = fakeStore({ clients: { "build-1": { "client-mac": { platform: "macos", state: "awaiting_upload" } } } });
+    for (const confirm of [false, true]) {
+      const result = await goLive({ gameId: "game-1", clients: ["client-mac"], confirm, waitSeconds: 30, face: "mcp" }, deps(store.fetch));
+      expect(result).toMatchObject({ status: "blocked", failures: [{ field: "client client-mac", platform: "macos", code: "client_upload_unfinished" }] });
+      expect(String(failuresOf(result)[0]!.fix)).toMatch(/upload was never finished.*Run its upload command again/);
+    }
+    expect(writes(store.calls)).toEqual([]);
+  });
+
+  it("says what the publication is when clients are named for a Build that is not made: still being made, or failed", async () => {
+    const refusal = async (publication: { state: string; errorCode?: string }) => {
+      try {
+        await goLive({ gameId: "game-1", publicationId: "pub-1", clients: ["client-mac"], confirm: true, face: "mcp" }, deps(fakeStore({ publication }).fetch));
+      } catch (caught) {
+        return caught as BuildToolError;
+      }
+      throw new Error("expected a refusal");
+    };
+    const making = await refusal({ state: "building" });
+    expect(making.code).toBe("clients_not_applicable");
+    expect(making.message).toContain('Summer is still making the Build of publication pub-1 (its state is "building")');
+    expect(making.message).not.toContain("Summer Engine Build");
+    expect(making.recovery).toContain("once the Build is made");
+    const failed = await refusal({ state: "failed", errorCode: "bundle_invalid" });
+    expect(failed.message).toContain("Publication pub-1 failed (bundle_invalid), so no Build was made from it");
+    expect(failed.message).not.toContain("Summer Engine Build");
+  });
+
+  it("refuses a name in remove that is no platform before any call, and says when a platform named is not live", async () => {
+    const store = fakeStore({ clients: { "build-1": three }, live: [live("macos", "qual-mac")] });
+    for (const remove of [["win"], ["Windows"], ["macos", "desktop"]]) {
+      let error: unknown;
+      try {
+        await goLive({ gameId: "game-1", remove, confirm: true, face: "mcp" }, deps(store.fetch));
+      } catch (caught) {
+        error = caught;
+      }
+      expect((error as BuildToolError).code).toBe("remove_invalid");
+      expect((error as BuildToolError).message).toContain(`"${remove[remove.length - 1]}"`);
+      expect((error as BuildToolError).recovery).toContain("android, ios, macos, web, windows");
+    }
+    expect(store.calls).toEqual([]);
+
+    // A real platform that players do not have now: nothing to take out, and the answer says so.
+    const preview = await goLive({ gameId: "game-1", clients: ["client-win"], remove: ["web"], face: "mcp" }, deps(store.fetch));
+    expect(preview).toMatchObject({ status: "confirmation_required", build: { removed: [], removeNotLive: ["web"] } });
+    expect(String(preview.next)).toContain("Named in remove and not live now, so there is nothing to take out: web.");
+    const result = await goLive({ gameId: "game-1", clients: ["client-win"], remove: ["web"], confirm: true, face: "mcp" }, deps(store.fetch));
+    expect(result).toMatchObject({ status: "live", build: { removed: [], removeNotLive: ["web"] } });
+    expect(store.players()).toEqual({ macos: "qual-mac", windows: "qual-win" });
+  });
+
+  it("treats the same clients with another remove as another request", async () => {
+    // Windows is live; the game has a price, so a release with the browser client is refused each time.
+    const store = fakeStore({ priced: true, clients: { "build-1": three }, live: [live("windows", "qual-win")] });
+    const input = { gameId: "game-1", clients: ["client-mac", "client-web"], confirm: true, face: "mcp" as const };
+    const kept = await goLive(input, deps(store.fetch));
+    const taken = await goLive({ ...input, remove: ["windows"] }, deps(store.fetch));
+    // Both reached the store as their own request and got its answer; the second is no replay of the first.
+    for (const result of [kept, taken]) expect(result).toMatchObject({ status: "blocked", failures: [{ code: "web_client_game_priced" }] });
+    const sent = draftsOf(store.calls);
+    expect(sent.map((call) => Object.keys(call.body.targets).sort())).toEqual([["macos", "server", "web", "windows"], ["macos", "server", "web"]]);
+    expect(sent[0]!.headers["idempotency-key"]).not.toBe(sent[1]!.headers["idempotency-key"]);
   });
 
   it("does not take clients or remove for a Build with a Summer Engine server", async () => {

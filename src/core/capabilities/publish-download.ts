@@ -4,7 +4,7 @@ import { resolveGatewayUrl } from "../config.js";
 import { OAuthError } from "../oauth.js";
 import { appendStoreJsonLine } from "../store.js";
 import { readZipEntries, type ZipEntry } from "../util/zip.js";
-import { BuildToolError, hashFile } from "./summer-bundle.js";
+import { BuildToolError } from "./summer-bundle.js";
 import { createStore, readGrants, uploadParts, type PublishBuildDependencies } from "./publish-build.js";
 
 /**
@@ -47,8 +47,6 @@ export interface PublishDownloadInput {
   confirm?: boolean;
   waitSeconds?: number;
   face: "cli" | "mcp";
-  expectedSha256?: string;
-  expectedSizeBytes?: number;
 }
 
 export function isDownloadPlatform(value: string): value is DownloadPlatform {
@@ -96,19 +94,9 @@ export async function publishDownload(input: PublishDownloadInput, deps: Publish
   }
   const platform = input.platform;
   const sizeBytes = (await stat(file)).size;
-  let fileName = storeFileName(file);
-  if (input.expectedSha256) {
-    const digest = await hashFile(file);
-    if (digest.sha256 !== input.expectedSha256 || digest.sizeBytes !== input.expectedSizeBytes) {
-      throw new BuildToolError(
-        "export_changed", "The last exported file changed after its build completed.",
-        "Recovery: export the game again before preparing an upload."
-      );
-    }
-    fileName = `web-${digest.sha256.slice(7)}.zip`;
-  }
   const { fileCount } = await checkFile(file, platform, sizeBytes);
-  const target = { gameId, file, platform, fileName, sizeBytes, clientVersion, ...(input.expectedSha256 ? { sha256: input.expectedSha256 } : {}), ...(fileCount ? { fileCount } : {}) };
+  const fileName = storeFileName(file);
+  const target = { gameId, file, platform, fileName, sizeBytes, clientVersion, ...(fileCount ? { fileCount } : {}) };
 
   if (input.confirm !== true) {
     return {
@@ -132,15 +120,10 @@ export async function publishDownload(input: PublishDownloadInput, deps: Publish
   const versions = `games/${seg(gameId)}/store/versions`;
 
   try {
-    // Content-addressed Web-only jobs also resume after sealing, including a rejected result.
+    // The same file and version still waiting for its bytes: continue it.
     const listed = await store.call<{ items?: StoreVersion[] }>("GET", `${versions}?platform=${seg(platform)}`);
     let version = (listed.items ?? []).find(
-      (item) => {
-        const resumable = item.status === "awaiting_upload" ||
-          (input.expectedSha256 && ["processing", "ready", "rejected"].includes(item.status));
-        return resumable && item.platform === platform && item.fileName === fileName &&
-          item.sizeBytes === sizeBytes && item.label === clientVersion;
-      }
+      (item) => item.status === "awaiting_upload" && item.platform === platform && item.fileName === fileName && item.sizeBytes === sizeBytes && item.label === clientVersion
     );
     let plan: { partSizeBytes: number; partCount: number } | null = null;
     const resumed = Boolean(version);
@@ -174,15 +157,6 @@ export async function publishDownload(input: PublishDownloadInput, deps: Publish
           missing
         );
       }
-      if (input.expectedSha256) {
-        const finalDigest = await hashFile(file);
-        if (finalDigest.sha256 !== input.expectedSha256 || finalDigest.sizeBytes !== input.expectedSizeBytes) {
-          throw new BuildToolError(
-            "export_changed", "The exported file changed during upload.",
-            "Recovery: export again; the unfinished upload was not completed."
-          );
-        }
-      }
       version = (await store.call<{ version: StoreVersion }>("POST", `${versionPath}:complete`, { body: {} })).version ?? version;
     }
 
@@ -208,9 +182,7 @@ export async function publishDownload(input: PublishDownloadInput, deps: Publish
       ...(version.playUrl ? { playUrl: version.playUrl } : {}),
       next:
         outcome === "ready"
-          ? input.expectedSha256 && platform === "web"
-            ? "The web file is checked. Read store.web_release_get and ask the owner to approve selecting this exact version with store.web_release_promote; publish the store page separately."
-            : "The file is checked. Players get it once the store page is live; publish the page with store.publish (the owner approves)."
+          ? "The file is checked. Players get it once the store page is live; publish the page with store.publish (the owner approves)."
           : "Summer is still checking the file. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice.",
     };
   } catch (error) {

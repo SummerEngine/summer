@@ -24,8 +24,6 @@ A call written `area.action` is the tool `summer_area_action` when your client
 lists it, else `summer_call` with `op: "area.action"`. Engine tools keep their
 `summer_*` names.
 
-For a Web Only project, follow the Web Only steps in `publish-your-game` for export, upload and release. Use the exact Web version the upload returns. The remaining listing and art steps below still apply.
-
 ## Rules that never bend
 
 - **Never invent a fact.** Every feature, mode, player count, language,

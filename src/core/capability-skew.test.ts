@@ -72,10 +72,6 @@ describe("buildCapabilitySkewWarning", () => {
 });
 
 describe("parseEngineCapabilities", () => {
-  it("preserves the exact advertised game build formats", () => {
-    expect(parseEngineCapabilities({ gameBuildFormats: ["summer-bundle", "web-zip"] })?.gameBuildFormats).toEqual(["summer-bundle", "web-zip"]);
-    expect(parseEngineCapabilities({ gameBuildFormats: "web-zip" })?.gameBuildFormats).toBeUndefined();
-  });
   it("returns undefined for absent or unusable adverts", () => {
     expect(parseEngineCapabilities(undefined)).toBeUndefined();
     expect(parseEngineCapabilities(null)).toBeUndefined();

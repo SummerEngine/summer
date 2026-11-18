@@ -1615,7 +1615,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "ced15ad981b14ca26cde11aeefad9255c1b984e0d28ea29bfaf09a28616785cb",
+      "content_hash": "08419e1e78fb05512db1f71b501cedc63d358f144e6afb94016aa5b1cd645d6b",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2180,7 +2180,7 @@
       "id": "skill/launch-ready",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "ae364eee601e280fd1b61a97c5f1e9412f60756f960f076743d21f0e12d7b425",
+      "content_hash": "5bc452d4070b825ecfcd2f0e275f83088932d5d93d9466e2c62a1aee41920084",
       "summary": "Get a game ready to launch on Summer Games and take it live: upload, real screenshots, store art and listing, gathered and filled in.",
       "use_when": [
         "the user says 'get my game ready to launch', 'make my store page', 'publish my game to summer.games' or 'do everything it needs to go live'",
@@ -3038,7 +3038,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "6686357dc1e723d5fb25a4b7de7cdab05e6b6327b2c96acd0a21f9f548d02533",
+      "content_hash": "8499e2e86fae212ed2a3efd2b783c7b2889742a375a6deaed582567431edcd34",
       "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
@@ -9635,8 +9635,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "version": "1.0.2",
+      "content_hash": "a7f7f7482b5c1b21797441cf4aee5747288b3ef7d349aba4bb6363be9085e461",
       "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -9645,7 +9645,7 @@
         "\"release version 1.2.0 of my game\"",
         "\"ship this exported build to the live channel\"",
         "uploading the .zip from summer_export_game as a new Build",
-        "uploading a web build or a macOS or Windows download from summer_export_game format download"
+        "uploading an existing Web, macOS, Windows or Linux ZIP built by any tool"
       ],
       "facets": {
         "lifecycle": [

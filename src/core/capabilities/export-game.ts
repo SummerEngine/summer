@@ -1,10 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { platform } from "node:os";
-import { readProjectManifest } from "../../project-memory/project-manifest.js";
-import { exportWebOnly, type WebOnlyConnect } from "./export-web-only.js";
 import { engineSelectionFromEnv } from "../engine.js";
 import { findEngineBinary } from "../engine-install.js";
 import { readStoreJson, writeStoreJson } from "../store.js";
@@ -53,7 +50,6 @@ export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
  */
 
 export const LAST_EXPORT_FILE = "last-export.json";
-export const WEB_EXPORT_INTENT_FILE = "last-web-export-intent.json";
 const DEFAULT_TIMEOUT_MS = 15 * 60_000;
 
 export type ExportFormat = "bundle" | "download";
@@ -144,8 +140,6 @@ export interface LastExport {
   exportedAt: string;
   /** Download exports: the store versions platform the file is for (summer_publish_build reads it). */
   storePlatform?: string;
-  kind?: "web-only";
-  attemptId?: string;
 }
 
 export interface ExportGameDependencies {
@@ -156,7 +150,6 @@ export interface ExportGameDependencies {
   now: () => Date;
   /** Template lookup for download exports (overridable in tests). */
   templates?: Partial<TemplatesDependencies>;
-  webOnlyConnect?: WebOnlyConnect;
 }
 
 const defaultDependencies: ExportGameDependencies = {
@@ -461,36 +454,7 @@ export async function exportGame(
 ): Promise<ExportGameResult> {
   const deps = { ...defaultDependencies, ...overrides };
   const project = resolveExportProject(input.project);
-  let webOnly = false;
-  try {
-    webOnly = readProjectManifest(project)?.kind === "web-only";
-  } catch (error) {
-    await writeStoreJson(WEB_EXPORT_INTENT_FILE, {
-      attemptId: randomUUID(), project, startedAt: new Date().toISOString(),
-    });
-    throw new BuildToolError(
-      "project_manifest_invalid",
-      `Cannot read the project manifest: ${error instanceof Error ? error.message : String(error)}.`,
-      "Recovery: fix .summer/project.json before exporting."
-    );
-  }
-  let webAttemptId: string | undefined;
-  if (webOnly) {
-    webAttemptId = randomUUID();
-    await writeStoreJson(WEB_EXPORT_INTENT_FILE, { attemptId: webAttemptId, project, startedAt: new Date().toISOString() });
-  }
   let targets = input.targets?.length ? normalizeTargets(input.targets) : undefined;
-  if (webOnly) {
-    const invalidTargets = targets && (targets.length !== 1 || targets[0] !== "web");
-    const invalidFormat = input.format && input.format !== "download";
-    if (invalidTargets || invalidFormat || input.preset || input.debug || input.alignDeclaration) {
-      throw new BuildToolError(
-        "export_args_invalid", "Web-only projects export one web download.",
-        'Recovery: use targets ["web"] and format "download"; omit preset, debug and alignDeclaration.'
-      );
-    }
-    targets = ["web"];
-  }
   const format = resolveFormat(input, targets);
   const debug = input.debug === true;
   const started = deps.now();
@@ -507,21 +471,6 @@ export async function exportGame(
       );
     }
     await mkdir(dirname(out), { recursive: true });
-  }
-
-  if (webOnly) {
-    const artifact = await exportWebOnly(project, out, timeoutMs, deps.webOnlyConnect);
-    const last: LastExport = {
-      ...artifact, project, exportedAt: deps.now().toISOString(), storePlatform: "web",
-      kind: "web-only", attemptId: webAttemptId,
-    };
-    await writeStoreJson(`web-export-${webAttemptId}.json`, last);
-    return {
-      ok: true, format: "download", ...artifact, project, preset: "web-only", targets: ["web"],
-      debug: false, engine: "connected Summer Engine", durationMs: deps.now().getTime() - started.getTime(),
-      storePlatform: "web",
-      next: "Upload it as the game's web store version with summer_publish_build (gameId, clientVersion).",
-    };
   }
 
   const binary = deps.findBinary();
@@ -749,15 +698,5 @@ async function exportDownload(
 /** The file the last summer_export_game wrote (bundle or download), when it is still on disk. */
 export async function readLastExport(): Promise<LastExport | null> {
   const last = await readStoreJson<LastExport>(LAST_EXPORT_FILE).catch(() => null);
-  const intent = await readStoreJson<{ attemptId?: string; startedAt?: string }>(WEB_EXPORT_INTENT_FILE);
-  const webIsLatest = intent && (
-    !last || last.kind === "web-only" || !last.exportedAt ||
-    !intent.startedAt || last.exportedAt <= intent.startedAt
-  );
-  if (webIsLatest) {
-    if (!intent.attemptId || !/^[0-9a-f-]{36}$/.test(intent.attemptId)) return null;
-    const web = await readStoreJson<LastExport>(`web-export-${intent.attemptId}.json`);
-    return web?.attemptId === intent.attemptId && existsSync(web.path) ? web : null;
-  }
   return last && typeof last.path === "string" && existsSync(last.path) ? last : null;
 }

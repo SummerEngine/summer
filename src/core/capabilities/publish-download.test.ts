@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,12 +20,15 @@ interface Call {
 }
 
 /** A fake creator store for store versions, plus storage part PUTs. */
-function fakeStore(options: { existing?: Record<string, unknown>; storedParts?: number[]; completeStatus?: number; reject?: string } = {}) {
+function fakeStore(options: { existing?: Record<string, unknown>; storedParts?: number[]; platform?: string; completeStatus?: number; reject?: string } = {}) {
   const calls: Call[] = [];
   const put = new Set<number>(options.storedParts ?? []);
+  const platform = options.platform ?? "web";
+  let fileName = "game-web.zip";
+  let sizeBytes = Number((globalThis as any).__webSize);
   let status = (options.existing?.status as string) ?? "none";
   const json = (code: number, body: unknown) => new Response(JSON.stringify(body), { status: code, headers: { "content-type": "application/json" } });
-  const version = () => ({ id: "sv_1", platform: "web", label: "v1.0.0", fileName: "game-web.zip", sizeBytes: Number((globalThis as any).__webSize), status, ...(options.reject && status === "rejected" ? { rejectionReason: options.reject } : {}), ...(status === "ready" ? { playUrl: "https://play.test/g/game-1/v1" } : {}) });
+  const version = () => ({ id: "sv_1", platform, label: "v1.0.0", fileName, sizeBytes, status, ...(options.reject && status === "rejected" ? { rejectionReason: options.reject } : {}), ...(status === "ready" ? { playUrl: "https://play.test/g/game-1/v1" } : {}) });
   const fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input);
     const method = init.method ?? "GET";
@@ -37,11 +40,12 @@ function fakeStore(options: { existing?: Record<string, unknown>; storedParts?: 
       return new Response(null, { status: 200, headers: { etag: '"e"' } });
     }
     if (method === "GET" && url.endsWith("/api/creator-store/games/game-1")) return json(200, { id: "game-1", name: "Star Weavers", status: "draft", supportedPlatforms: ["web"] });
-    if (method === "GET" && url === `${VERSIONS}?platform=web`) return json(200, { items: options.existing ? [version()] : [] });
+    if (method === "GET" && url === `${VERSIONS}?platform=${platform}`) return json(200, { items: options.existing ? [version()] : [] });
     if (method === "POST" && url === VERSIONS) {
       status = "awaiting_upload";
-      const size = Number((globalThis as any).__webSize);
-      return json(201, { version: version(), upload: { uploadId: "u1", partSizeBytes: WEB_PART, partCount: Math.max(1, Math.ceil(size / WEB_PART)) } });
+      fileName = body.fileName;
+      sizeBytes = body.sizeBytes;
+      return json(201, { version: version(), upload: { uploadId: "u1", partSizeBytes: WEB_PART, partCount: Math.max(1, Math.ceil(sizeBytes / WEB_PART)) } });
     }
     if (method === "GET" && url === `${VERSIONS}/sv_1/parts`) {
       return json(200, { parts: [...put].map((partNumber) => ({ partNumber, etag: '"e"', sizeBytes: Number((globalThis as any).__webSize) })) });
@@ -110,6 +114,28 @@ describe("summer_publish_build: web builds and native downloads (store versions)
     expect(result.target).toMatchObject({ platform: "web", fileName: "game-web.zip", fileCount: 2 });
     expect(result.game).toMatchObject({ gameId: "game-1", name: "Star Weavers" });
     expect(store.calls.map((call) => call.method)).toEqual(["GET"]);
+  });
+
+  it.each([
+    ["web", "index.html"],
+    ["windows-x64", "Game.exe"],
+    ["macos-universal", "Game.app/Contents/MacOS/Game"],
+    ["linux-x64", "Game.x86_64"],
+  ])("uploads a prebuilt %s ZIP by path without any previous export", async (platform, entry) => {
+    await rm(join(root, ".summer", LAST_EXPORT_FILE));
+    const file = join(root, "prebuilt.zip");
+    await writeZip(file, [{ name: entry, source: join(root, "index.html") }]);
+    const store = fakeStore({ platform });
+    const result = await publishBuild({
+      gameId: "game-1", file, platform, clientVersion: "v1.0.0", confirm: true, face: "mcp",
+    }, deps(store.fetch));
+
+    expect(result).toMatchObject({ status: "ready", platform, versionId: "sv_1" });
+    expect(store.calls.find(call => call.url === VERSIONS && call.method === "POST")?.body)
+      .toMatchObject({ platform, fileName: "prebuilt.zip" });
+    const uploaded = store.calls.find(call => call.method === "PUT")!;
+    expect(Buffer.from(uploaded.body)).toEqual(await readFile(file));
+    expect(store.calls.some(call => call.url.includes("build-publications"))).toBe(false);
   });
 
   it("creates the version, uploads every part with the store sign-in, completes it and waits until ready", async () => {

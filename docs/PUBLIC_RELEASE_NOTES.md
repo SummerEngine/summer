@@ -24,21 +24,15 @@ Score each row **0** when the answer is missing or wrong, **1** when the reader 
 
 ## Describe availability precisely
 
-For a shipped feature, say what the user can do. Use **preview**, **beta**, or **experimental** when it is the feature’s actual release status. Name the feature in the same sentence and explain any verified limits that affect adoption. Keep planned capabilities separate from shipped work. Terms such as “preview a build” and the `summer preview` command describe an action and need no maturity label.
+Lead with the launch. Say what shipped and show the reader how to use it. “Launched” and “is live” are appropriate for released work. A feature can be new and still earn a direct announcement. Describe any material access, platform, publishing, or migration boundary in the sentence about that feature. Use a formal maturity label when it identifies a channel or commitment a developer needs to choose. Terms such as “preview a build” and the `summer preview` command describe actions.
 
 ## A worked example
 
-The [Windows 0.8.7 notes](https://www.summerengine.com/changelog/0.8.7) contain both an editor improvement and a feature preview. A release draft could use this opening.
+> **Build and play a web game beside your chat**
+>
+> In Summer Engine 0.8.7 for Windows, choose **Web-only game** under **New game**. Play in the **Web** tab beside your chat and watch the game reload as your agent edits it.
 
-> **Paste long passages into chat as files**
->
-> In Summer Engine 0.8.7 for Windows, paste a long block of text into chat and Summer saves it as a text file your agent can read.
->
-> **Also in this release**
->
-> Choose **Web-only** under **New game** to create and play a web game in Summer. The Web-only project type is in early preview on Windows.
-
-The headline describes a shipped workflow. The feature label stays with the project type even if a search engine quotes the last paragraph alone.
+The Windows release supported creating and playing these projects locally. That scope belongs beside the steps. A general warning about early software gives the reader less information. [Windows release notes](https://www.summerengine.com/changelog/0.8.7)
 
 ## Reuse across channels
 

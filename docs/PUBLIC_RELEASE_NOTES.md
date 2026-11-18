@@ -10,6 +10,8 @@ A developer reading one entry should know what shipped, who can use it, and what
 | Feature release | Lead with a task the reader can now complete. Give the shortest path to try it and group related fixes underneath. |
 | Major launch | Open with the new workflow. Walk through one real example and link to the download, playable result, or guide. Call out who has access and any upgrade steps. |
 
+For the full changelog, compare the previous and current shipped revisions for each platform. Keep the opening short and give each distinct user-visible fix room in the details. Record the source comparisons in review so the next editor can check coverage.
+
 ## Score the draft out of ten
 
 Score each row **0** when the answer is missing or wrong, **1** when the reader has to infer it, and **2** when the copy makes it clear. Aim for **9/10**. An incorrect version, platform, availability, or capability always needs correction regardless of score. The score belongs in review.

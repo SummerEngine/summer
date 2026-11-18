@@ -18,6 +18,12 @@ Its current text lives on the hosted Summer Engine MCP, the same text the Studio
 2. A host that shows MCP prompts or resources has it as the `publish-your-game` prompt and the resource `summer://skills/publish-your-game`.
 3. Without a store sign-in: https://docs.summerengine.com/llms.txt lists every docs page; fetch any page as .md.
 
+## Web Only games
+
+For a project marked `"kind": "web-only"` in `.summer/project.json`, open that project in an editor that supports Web Only agent export. Run `summer_export_game` once. It builds the Rust game and returns the verified Web ZIP. Preview `summer_publish_build` for the selected game and version. After confirmation, upload that file and keep the returned Web version ID.
+
+When the candidate is ready, read `store.web_release_get`. Use `store.web_release_promote` with that version ID, the returned revision, release notes and a stable idempotency key. Use `store.publish` for the listing if needed. Honor any owner approval the store returns. Verify the selected version with `store.web_release_get` before sharing the play link.
+
 ## The journey in operations
 
 A call written `area.action({...})` is the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`; `summer_search` finds any operation and its exact input. Engine tools keep their `summer_*` names.

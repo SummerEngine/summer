@@ -134,6 +134,8 @@ export interface EngineEventsCapability {
 }
 
 export interface EngineCapabilities {
+  /** Native game build artifact formats advertised by this exact editor. */
+  gameBuildFormats?: string[];
   protocolVersion?: number;
   /** Full dispatch-ladder op set. Absent = engine predates the advert. */
   opKinds?: string[];
@@ -262,6 +264,8 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (navigation) out.navigation = navigation;
   const studioPage = parseStudioPage(record.studioPage);
   if (studioPage) out.studioPage = studioPage;
+  const gameBuildFormats = stringList(record.gameBuildFormats);
+  if (gameBuildFormats) out.gameBuildFormats = gameBuildFormats;
   const launchPostures = stringList(record.launchPostures) ?? stringList(record.launch_postures);
   if (launchPostures) out.launchPostures = launchPostures;
 

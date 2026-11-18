@@ -5,9 +5,9 @@ import { extname, resolve } from "node:path";
 import { summerRequestHeaders } from "../agent-host.js";
 import { resolveGatewayUrl } from "../config.js";
 import { getStoreAccessToken, OAuthError } from "../oauth.js";
-import { appendStoreJsonLine } from "../store.js";
+import { appendStoreJsonLine, readStoreJson } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
-import { readLastExport } from "./export-game.js";
+import { readLastExport, WEB_EXPORT_INTENT_FILE } from "./export-game.js";
 import { publishDownload } from "./publish-download.js";
 import { CHECK_FIXES, summarizeChecks } from "./store-checks.js";
 import { BuildToolError, readSummerBundle, targetPlatformChange, type SummerBundle } from "./summer-bundle.js";
@@ -551,6 +551,18 @@ export async function publishBuild(
   const fileInput = input.file?.trim();
   const last = await readLastExport();
   const file = fileInput ? resolve(fileInput) : last?.path;
+  if (!fileInput) {
+    const intent = await readStoreJson<{ attemptId?: string; startedAt?: string }>(WEB_EXPORT_INTENT_FILE);
+    const unfinishedWebAttempt = intent && (last?.kind === "web-only"
+      ? last.attemptId !== intent.attemptId
+      : !last || !intent.startedAt || !last.exportedAt || last.exportedAt <= intent.startedAt);
+    if (unfinishedWebAttempt) {
+      throw new BuildToolError(
+        "export_required", "The most recent web-only export has not completed successfully.",
+        "Recovery: finish a fresh export or explicitly select a previously verified file."
+      );
+    }
+  }
   if (!file) {
     throw new BuildToolError("export_required", "No export to upload.", "Recovery: run summer_export_game first, or pass file with the exported .zip.");
   }
@@ -559,7 +571,12 @@ export async function publishBuild(
   if (platform) {
     const clientVersion = normalizeClientVersion(input.clientVersion);
     if (!gameId) return listGamesOrThrow(deps);
-    const download = { gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face };
+    const webIdentity = last?.kind === "web-only" && last.path === file
+      ? { expectedSha256: last.sha256, expectedSizeBytes: last.sizeBytes } : {};
+    const download = {
+      gameId, file, platform, clientVersion, ...webIdentity,
+      confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face,
+    };
     if (input.confirm === true) return publishDownload(download, deps);
     const preview = await publishDownload(download, deps);
     return { ...preview, game: (await checkStoreGame(gameId, [], deps)).game };

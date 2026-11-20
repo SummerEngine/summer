@@ -1615,7 +1615,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "08419e1e78fb05512db1f71b501cedc63d358f144e6afb94016aa5b1cd645d6b",
+      "content_hash": "21ee0fe31f2695ce69583fe14f984fdaf6151397f3044490baa178f73287f2f1",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2483,7 +2483,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "8ec73bbd2c0e4ddaad86a4204e143b10edc93f87058f51b3d67986a24185ef1b",
+      "content_hash": "6d1e94b0fe7cd4a8d492f6168b033417315828d282e18049b8365ba3d957d1e3",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -3158,7 +3158,7 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "3eddd242438bc5f373865cab006864efe8957024eab465dea86a2c18a744e974",
+      "content_hash": "4832dc3097a091f4da3c7474f54fa60eabcff35f6634ea5c8992355fd2d84e1b",
       "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
@@ -3166,7 +3166,7 @@
         "Summer.initialize fails with game_identity_mismatch: the initialized Game ID does not match hosted runtime context",
         "checking that a hosted game's server.pck starts the authority scene and not the title screen",
         "players get a blank or black screen when they open the released game, but it runs in the editor: client scripts fail with Parse Error or Failed to load script",
-        "text shows as boxes on iPhone but looks fine on desktop: a font or other file read with FileAccess is missing from the pack, or SystemFont is used",
+        "letters show as boxes or hexadecimal codes in an exported game: check bundled fonts, fallback glyph coverage and the exact client build",
         "the Summer Games phone app says the game could not start, but it works on desktop: the game's Summer version line differs from the app's",
         "the game closes about a minute into play with Play paused or That link can't be opened, and the player is signed out",
         "a game release failed for players and the check that would have caught it needs adding"

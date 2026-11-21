@@ -121,16 +121,16 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_publish_build",
-    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack and wait for Summer's automated checks on each platform (checks: passed, or failed with the code and the fix). A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Going live is summer_go_live.",
+    "Upload an existing file to the creator's game on summer.games. Pass file for a Summer Games export bundle. For a platform-specific ZIP, pass file and platform (web, macos-universal, windows-x64 or linux-x64). The ZIP can come from any build tool. With no file, use the last summer_export_game result. Show the game, file, platform and version from the preview, then set confirm=true after approval. Uses the store sign-in from summer login --store. Reports the store's checks for the uploaded build.",
     {
       gameId: z.string().optional().describe("The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
-      file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
+      file: z.string().optional().describe("Path to an existing Summer Games export or platform ZIP. Defaults to the last summer_export_game result."),
       clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
       publish: z.boolean().default(false).describe("Bundles only: also make the Build available to players once its checks pass. summer_go_live does this, the release and the store page in one step."),
       platform: z
         .enum(["web", "macos-universal", "windows-x64", "linux-x64"])
         .optional()
-        .describe("Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."),
+        .describe("Set for a platform-specific ZIP. Omit for a Summer Games export bundle. A saved download export supplies its own platform."),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the exact upload."),
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
     },

@@ -3038,7 +3038,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "91c133fc41a50f3998786c17d8ad73ed673ef7c40ae9d122e5b3a9f62eedc832",
+      "content_hash": "8499e2e86fae212ed2a3efd2b783c7b2889742a375a6deaed582567431edcd34",
       "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
@@ -9635,8 +9635,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "version": "1.0.2",
+      "content_hash": "a7f7f7482b5c1b21797441cf4aee5747288b3ef7d349aba4bb6363be9085e461",
       "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -9645,7 +9645,7 @@
         "\"release version 1.2.0 of my game\"",
         "\"ship this exported build to the live channel\"",
         "uploading the .zip from summer_export_game as a new Build",
-        "uploading a web build or a macOS or Windows download from summer_export_game format download"
+        "uploading an existing Web, macOS, Windows or Linux ZIP built by any tool"
       ],
       "facets": {
         "lifecycle": [

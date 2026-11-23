@@ -5,6 +5,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- **Still-shot replacement in `content.make` no longer reuses occupied clip windows.** Computing occupied intervals now looks up each existing shot's duration from its original index in `cuts` instead of the filtered array index or the still shot's duration.
 
 ## [4.9.2] - 2026-11-12
 

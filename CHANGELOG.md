@@ -5,6 +5,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.
 
 ## [4.9.2] - 2026-11-12
 

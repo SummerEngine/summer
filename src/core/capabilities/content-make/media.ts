@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { BuildToolError } from "../summer-bundle.js";
 
@@ -14,12 +14,47 @@ export const FPS = 30;
 export const W = 1080;
 export const H = 1920;
 
+function isFile(filePath: string): boolean {
+  try {
+    return statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function commandCandidates(command: string, os: NodeJS.Platform, pathExt: string): string[] {
+  if (os !== "win32") return [command];
+  const rawExts = pathExt
+    .split(";")
+    .map((ext) => ext.trim())
+    .filter(Boolean)
+    .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+  const lowerCommand = command.toLowerCase();
+  if (rawExts.some((ext) => lowerCommand.endsWith(ext.toLowerCase()))) return [command];
+  const names = new Set<string>([command]);
+  for (const ext of rawExts) {
+    names.add(`${command}${ext.toLowerCase()}`);
+    names.add(`${command}${ext}`);
+  }
+  return [...names];
+}
+
 /** Where a command is on PATH, or null. */
-export function which(command: string, path = process.env.PATH ?? ""): string | null {
-  for (const dir of path.split(delimiter)) {
+export function which(
+  command: string,
+  path = process.env.PATH ?? "",
+  options: { platform?: NodeJS.Platform; pathExt?: string } = {},
+): string | null {
+  const os = options.platform ?? process.platform;
+  const pathExt = options.pathExt ?? process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD";
+  const names = commandCandidates(command, os, pathExt);
+  for (const rawDir of path.split(delimiter)) {
+    const dir = rawDir.trim().replace(/^"(.*)"$/, "$1");
     if (!dir) continue;
-    const candidate = join(dir, command);
-    if (existsSync(candidate)) return candidate;
+    for (const name of names) {
+      const candidate = join(dir, name);
+      if (isFile(candidate)) return candidate;
+    }
   }
   return null;
 }

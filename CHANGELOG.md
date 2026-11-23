@@ -5,6 +5,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- **`content.make` finds `ffmpeg`, `ffprobe`, `magick`, `yt-dlp`, and `whisper` on Windows.** Command lookup in `media.which()` now checks `PATHEXT` extensions (`.exe`, `.cmd`, `.bat`, `.com`), strips quoted `PATH` entries, and ignores directories matching a command name instead of failing pre-flight tool checks on Windows.
 
 ## [4.9.2] - 2026-11-12
 

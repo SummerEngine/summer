@@ -1564,7 +1564,9 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 	var render_size := _vec2i(t.get("render_size", [int(rect.size.x), int(rect.size.y)]))
 	var view := String(t.get("view", "beauty"))
 	var sv := SubViewport.new()
-	sv.size = render_size
+	# Godot requires at least two viewport pixels per axis. Three samples give a
+	# one-pixel display strip a single centre texel when the texture is scaled.
+	sv.size = Vector2i(3 if render_size.x == 1 else render_size.x, 3 if render_size.y == 1 else render_size.y)
 	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	sv.transparent_bg = false
 	_apply_project_aa(sv)
@@ -1616,7 +1618,11 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 		var u1 := float(crop[2])
 		var v1 := float(crop[3])
 		cam.projection = Camera3D.PROJECTION_FRUSTUM
-		cam.size = h_near * (v1 - v0)
+		var crop_width := w_near * (u1 - u0)
+		var crop_height := h_near * (v1 - v0)
+		# Keep the longer span of the requested window exact when its short
+		# dimension rounds to a whole output pixel.
+		cam.size = crop_width * sv.size.y / sv.size.x if crop_width >= crop_height else crop_height
 		cam.frustum_offset = Vector2(((u0 + u1) * 0.5 - 0.5) * w_near, (0.5 - (v0 + v1) * 0.5) * h_near)
 		cam.near = near
 		cam.far = far

@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
+
 
 - 3D measurement, visual raycasts and placement include visible meshes beyond 20,000 scene nodes. A scan that runs out of budget reports the limit before its partial bounds can guide placement.
 - **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
@@ -31,6 +33,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
 - Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
+
+- A failed surface attachment now names blocking objects in the piece’s own 3D world, including when the piece is inside a private SubViewport.
 
 ## [4.9.2] - 2026-11-12
 

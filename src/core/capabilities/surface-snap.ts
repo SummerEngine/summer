@@ -45,7 +45,7 @@ import { vec3Literal, vec3LiteralExact } from "./math3d.js";
 import type { Vec3 } from "./placement-math.js";
 import { readSceneNodeTransform } from "./scene-space.js";
 import { normalizeNodePath } from "./tscn.js";
-import { measureMeshSnap, type MeshSnapMeasure } from "./surface-snap-mesh.js";
+import { measureMeshSnap, type MeshSnapFailure, type MeshSnapMeasure } from "./surface-snap-mesh.js";
 
 /** Clearance added above the support before the second sweep. */
 export const SNAP_LIFT_MARGIN = 0.02;
@@ -67,6 +67,8 @@ export interface SnapClient extends CapabilityAdvertisingClient {
 }
 
 const RECOVERY_FAILURES = new Set(["gap_exceeds_hit_travel", "overlap_recovery_exceeded", "aligned_overlap_recovery_exceeded"]);
+/** These failures invalidate a provisional AABB seat or a subsequent triangle correction. */
+const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "translation_not_representable"]);
 /** Engine failures with visual_aabb evidence that the visible-mesh measurement retries. */
 const MESH_FALLBACK_FAILURES = new Set(["overlap_recovery_exceeded", "gap_exceeds_hit_travel", "surface_not_found"]);
 /** A visible-mesh gap this close to the requested one needs no move. */
@@ -401,7 +403,7 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     if (context.engineResult && probeRan) await send([{ op: "SaveScene" }]);
     return { note };
   };
-  const refuseEdgeBudget = async (message: string, correctionApplied: boolean) => {
+  const refuseMeshPlacement = async (failure: MeshSnapFailure, correctionApplied: boolean) => {
     const changed = correctionApplied || (context.engineResult !== undefined && context.engineResult.changed !== false);
     let rollbackError: string | null = null;
     if (changed) {
@@ -409,12 +411,13 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
         ? extractOpError(await send(sceneMutationOps([{ op: "SetProp", path: args.subjectPath, key: "transform", value: context.originalTransform }])))
         : "the original transform was unavailable";
     }
-    const error = message + (rollbackError
+    const advice = failure.failure_reason === "mesh_edge_budget_exceeded" ? " Use a simpler collision shape to snap this mesh." : "";
+    const error = failure.error + (rollbackError
       ? ` The starting transform could not be restored and saved: ${rollbackError}.`
-      : " The subject is at its starting transform. Use a simpler collision shape to snap this mesh.");
-    return { receipt: { ok: false, error, results: [{ op: "SnapToSurface", ok: false, failure_reason: "mesh_edge_budget_exceeded", original_transform_preserved: !rollbackError, error }] } };
+      : ` The subject is at its starting transform.${advice}`);
+    return { receipt: { ok: false, error, results: [{ op: "SnapToSurface", ok: false, failure_reason: failure.failure_reason, original_transform_preserved: !rollbackError, error }] } };
   };
-  if (!measure.ok && measure.failure_reason === "mesh_edge_budget_exceeded") return refuseEdgeBudget(measure.error, false);
+  if (!measure.ok && MESH_ROLLBACK_FAILURES.has(measure.failure_reason)) return refuseMeshPlacement(measure, false);
   if (!measure.ok) return finish({ failure_reason: measure.failure_reason, error: measure.error });
   if (!measure.found || typeof measure.shift !== "number" || typeof measure.travel !== "number" || typeof measure.position_after !== "string") {
     return finish({
@@ -437,7 +440,7 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     if (extractOpError(setReceipt)) return finish({ failure_reason: "mutation_failed", error: `SetProp position failed: ${extractOpError(setReceipt)}` });
   }
   const verify = moved ? await measureMeshSnap(client, probeArgs) : measure;
-  if (!verify.ok && verify.failure_reason === "mesh_edge_budget_exceeded") return refuseEdgeBudget(verify.error, moved);
+  if (!verify.ok && MESH_ROLLBACK_FAILURES.has(verify.failure_reason)) return refuseMeshPlacement(verify, moved);
   const finalGap = verify.ok && verify.found && typeof verify.travel === "number" ? verify.travel : undefined;
   if (moved && finalGap !== undefined && Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE) {
     const restored = typeof measure.position === "string" && !extractOpError(await send([position(measure.position)]));

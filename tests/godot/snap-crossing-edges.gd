@@ -67,6 +67,29 @@ func check_tessellated_slope(subdivisions):
 	fixture.free()
 	return result
 
+func check_parent_write(units, mirrored, far):
+	var fixture := Node3D.new()
+	root.add_child(fixture)
+	fixture.scale = Vector3(-units if mirrored else units, units, units)
+	fixture.position.y = 100000000 if far else 0
+	var start = Vector3(0, -99999992 if far else 4 / units, 0)
+	var plank = box(fixture, "Plank", Vector3.ONE, start)
+	plank.scale = Vector3.ONE / units
+	var floor_mesh = box(fixture, "Floor", Vector3(10, 0.5, 10), Vector3.ZERO)
+	floor_mesh.top_level = true
+	floor_mesh.position = Vector3(0, -0.25, 0)
+	floor_mesh.scale = Vector3.ONE
+	var probe = Probe.new()
+	probe.fixture = fixture
+	var measured = probe.run(null)
+	if not measured.get("found", false):
+		fixture.free()
+		return {"failure": measured.get("failure_reason")}
+	plank.position = str_to_var(measured["position_after"])
+	var gap = (plank.global_transform * plank.get_aabb()).position.y
+	fixture.free()
+	return {"actual_gap": gap}
+
 func _initialize():
 	call_deferred("run")
 
@@ -80,6 +103,6 @@ func run():
 		check_case(true, offset, narrow, 8),
 	]
 	var file = FileAccess.open("res://result.json", FileAccess.WRITE)
-	file.store_string(JSON.stringify({"rows": rows, "slopes": [check_tessellated_slope(16), check_tessellated_slope(96)]}))
+	file.store_string(JSON.stringify({"rows": rows, "slopes": [check_tessellated_slope(16), check_tessellated_slope(96)], "parents": [check_parent_write(1.0, false, false), check_parent_write(0.00005, false, false), check_parent_write(0.00005, true, false), check_parent_write(1.0, false, true)]}))
 	file.close()
 	quit()

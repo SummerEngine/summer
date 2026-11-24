@@ -34,7 +34,7 @@
  * scene only; the mutation is an ordinary SetProp + SaveScene sent by
  * surface-snap.ts.
  */
-import { SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+import { PARENT_TRANSLATION_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { asRecord, type JsonRecord } from "../util/json.js";
@@ -315,10 +315,9 @@ func run(_ctx):
 		return _done(stats, false)
 	var shift = best - gap
 	var world_delta = d * shift
-	var parent_basis = _parent_xf(subject, root).basis
-	if absf(parent_basis.determinant()) < 0.0000001:
-		return _fail("singular_parent", "the subject's parent transform is singular")
-	var after = subject.position + parent_basis.inverse() * world_delta
+	var after = _translated_position_literal(_parent_xf(subject, root), subject.position, world_delta)
+	if after == null:
+		return _fail("translation_not_representable", "The parent transform cannot reproduce the requested mesh movement at engine precision.")
 	var support = _support_of(ranges, int(best_hit["face"]))
 	var origin = _xf(subject, root).origin
 	stats["travel"] = best
@@ -329,7 +328,7 @@ func run(_ctx):
 	stats["hit_normal"] = _raw3(Vector3(best_hit["normal"]).normalized())
 	stats["contact_from"] = best_hit["from"]
 	stats["position"] = var_to_str(subject.position)
-	stats["position_after"] = var_to_str(after)
+	stats["position_after"] = after
 	stats["origin_before"] = _raw3(origin)
 	stats["origin_after"] = _raw3(origin + world_delta)
 	return _done(stats, true)
@@ -522,6 +521,7 @@ func _rel(root, n):
 
 
 ${SCENE_SPACE_GDSCRIPT}
+${PARENT_TRANSLATION_GDSCRIPT}
 
 # Visible MeshInstance3D nodes under start (inclusive) with their scene-space
 # transform; exclude is a subtree root to skip.

@@ -526,13 +526,16 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     expect(fake.unsaved).toBe(false);
   });
 
-  it.each([0, 1])("restores the live starting transform on an edge budget refusal at read %i", async (read) => {
+  it.each([
+    [0, "mesh_edge_budget_exceeded"], [1, "mesh_edge_budget_exceeded"],
+    [0, "translation_not_representable"], [1, "translation_not_representable"],
+  ] as const)("restores the live starting transform at read %i after %s", async (read, reason) => {
     const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0.42 });
     // The editor contains an unsaved pose that differs from the file.
     fake.local[1] = 0.123456789;
-    fake.probeOverride[read] = () => ({ ok: false, failure_reason: "mesh_edge_budget_exceeded", error: "too many crossing edges" });
+    fake.probeOverride[read] = () => ({ ok: false, failure_reason: reason, error: reason });
     const result = await snapToSurface(fake, fernArgs());
-    expect(result).toMatchObject({ ok: false, results: [{ failure_reason: "mesh_edge_budget_exceeded", original_transform_preserved: true }] });
+    expect(result).toMatchObject({ ok: false, results: [{ failure_reason: reason, original_transform_preserved: true }] });
     expect(fake.local[1]).toBe(0.123456789);
     expect(fake.savedLocalY()).toBe(0.123456789);
     expect(fake.unsaved).toBe(false);

@@ -37,7 +37,6 @@ import {
   add,
   angleDegrees,
   axisIndex,
-  basisInverse,
   basisNormalMatrix,
   basisMul,
   basisMulVec,
@@ -46,6 +45,7 @@ import {
   dot,
   isFiniteVec3,
   length,
+  localPositionAfterWorldDelta,
   normalize,
   parseGodotTransform,
   rotationAbout,
@@ -319,12 +319,6 @@ function stripDotSlash(path: string): string {
 function isInside(inner: string, outer: string): boolean {
   if (outer === ".") return inner !== ".";
   return inner.startsWith(`${outer}/`);
-}
-
-/** World delta -> new parent-local position. */
-function localPositionAfter(bounds: NodeBounds, worldDelta: Vec3): Vec3 {
-  const localDelta = basisMulVec(basisInverse(bounds.parent.basis), worldDelta);
-  return add(bounds.position, localDelta);
 }
 
 // ---------------------------------------------------------------------------
@@ -1054,7 +1048,7 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
   if (subject.independentGeometry.length) {
     return fail(tool, "independent_subject_geometry", `Visible geometry does not inherit the subject's transform: ${subject.independentGeometry.join(", ")}`);
   }
-  const position = localPositionAfter(subject, worldDelta);
+  const position = localPositionAfterWorldDelta(subject.position, subject.parent.basis, worldDelta);
   const receipt = await executeSceneMutation(client, args.scenePath, [
     { op: "SetProp", path: args.subject, key: "position", value: toGodotVector3(position) },
   ]);

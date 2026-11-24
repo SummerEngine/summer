@@ -41,13 +41,8 @@ import { asRecord, type JsonRecord } from "../util/json.js";
 import { executeOpsChunked, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError } from "./engine-receipt.js";
 import { STARCAST_FALLBACK } from "./engine-fallbacks.js";
-import {
-  applyMat3,
-  invertMat3,
-  vec3Literal,
-  vec3LiteralExact,
-  type Vec3,
-} from "./math3d.js";
+import { vec3Literal, vec3LiteralExact } from "./math3d.js";
+import { basisDeterminant, localPositionAfterWorldDelta, type Vec3 } from "./placement-math.js";
 import { readSceneNodeTransform } from "./scene-space.js";
 import { normalizeNodePath } from "./tscn.js";
 import { measureMeshSnap, type MeshSnapMeasure } from "./surface-snap-mesh.js";
@@ -173,13 +168,12 @@ async function planLift(client: SnapClient, args: SnapToSurfaceArgs, lift: numbe
   const native = await readSceneNodeTransform(client, args.subjectPath, args.scenePath, true);
   if ("error" in native) return { reason: native.error };
   if (native.independentGeometry.length) return { reason: `visible geometry does not inherit the subject's transform: ${native.independentGeometry.join(", ")}` };
-  const inverse = invertMat3(native.parentBasis);
-  if (!inverse) return { reason: "the parent transform is singular" };
+  const det = basisDeterminant(native.parentBasis);
+  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return { reason: "the parent transform is singular" };
   const length = Math.hypot(...args.direction);
   const worldDelta = args.direction.map((d) => (-d / length) * lift) as Vec3;
-  const localDelta = applyMat3(inverse, worldDelta);
   const original = native.position;
-  return { original, lifted: [original[0] + localDelta[0], original[1] + localDelta[1], original[2] + localDelta[2]] };
+  return { original, lifted: localPositionAfterWorldDelta(original, native.parentBasis, worldDelta, det) };
 }
 
 // ---------------------------------------------------------------------------

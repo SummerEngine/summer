@@ -1,8 +1,7 @@
 /**
- * math3d — the little 3D math the read and placement helpers need, in
- * Godot's conventions: a Basis is three ROWS (Transform3D literals list
- * xx, xy, xz, yx, ... then the origin), Euler angles default to YXZ order,
- * and a Node3D's local basis is rotation * scale.
+ * Row matrices for the inspector's YXZ Euler transform fallback.
+ * Godot's Transform3D literal lists matrix rows followed by the origin.
+ * Placement and surface snapping use the basis columns in placement-math.ts.
  */
 
 export type Vec3 = [number, number, number];
@@ -16,29 +15,6 @@ export function mulMat3(a: Mat3, b: Mat3): Mat3 {
     for (let j = 0; j < 3; j++) out[i]![j] = a[i]![0] * b[0]![j]! + a[i]![1] * b[1]![j]! + a[i]![2] * b[2]![j]!;
   }
   return out as Mat3;
-}
-
-export function applyMat3(m: Mat3, v: Vec3): Vec3 {
-  return [
-    m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
-    m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
-    m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
-  ];
-}
-
-/** Inverse, or null for a singular basis. */
-export function invertMat3(m: Mat3): Mat3 | null {
-  const [[a, b, c], [d, e, f], [g, h, i]] = m;
-  const A = e * i - f * h;
-  const B = -(d * i - f * g);
-  const C = d * h - e * g;
-  const det = a * A + b * B + c * C;
-  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return null;
-  return [
-    [A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
-    [B / det, (a * i - c * g) / det, -(a * f - c * d) / det],
-    [C / det, -(a * h - b * g) / det, (a * e - b * d) / det],
-  ];
 }
 
 /** Godot Basis::from_euler (YXZ order, degrees) times scale: R * S. */
@@ -58,18 +34,6 @@ export function parseVec3(value: unknown): Vec3 | null {
   if (!match) return null;
   const out = [Number(match[1]), Number(match[2]), Number(match[3])] as Vec3;
   return out.every(Number.isFinite) ? out : null;
-}
-
-/** A `Transform3D(12 numbers)` literal -> basis rows + origin. */
-export function parseTransform3D(value: string): { basis: Mat3; origin: Vec3 } | null {
-  const match = /^\s*Transform3D\(([^)]*)\)\s*$/.exec(value);
-  if (!match) return null;
-  const n = match[1]!.split(",").map((part) => Number(part.trim()));
-  if (n.length !== 12 || !n.every(Number.isFinite)) return null;
-  return {
-    basis: [[n[0]!, n[1]!, n[2]!], [n[3]!, n[4]!, n[5]!], [n[6]!, n[7]!, n[8]!]],
-    origin: [n[9]!, n[10]!, n[11]!],
-  };
 }
 
 function num3(value: number): string {

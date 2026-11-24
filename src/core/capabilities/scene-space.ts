@@ -2,7 +2,7 @@
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { asRecord } from "../util/json.js";
 import { extractOpError } from "./engine-receipt.js";
-import { parseTransform3D, type Mat3, type Vec3 } from "./math3d.js";
+import { parseGodotTransform, type Basis3, type Vec3 } from "./placement-math.js";
 import { buildRunSceneScriptOp } from "./scene-script.js";
 
 // Transform inheritance and visibility both stop at a non-Node3D parent.
@@ -59,7 +59,8 @@ export interface SceneNodeTransform {
   origin: Vec3;
   position: Vec3;
   transform: string;
-  parentBasis: Mat3;
+  /** Parent's world-space basis axes as columns, including signed scale and shear. */
+  parentBasis: Basis3;
   independentGeometry: string[];
 }
 
@@ -111,7 +112,7 @@ export async function readSceneNodeTransform(client: TransformClient, path: stri
       Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === "number" && Number.isFinite(n)) ? value as Vec3 : null;
     const origin = vector(result.origin);
     const position = vector(result.position);
-    const parent = typeof result.parent_transform === "string" ? parseTransform3D(result.parent_transform) : null;
+    const parent = typeof result.parent_transform === "string" ? parseGodotTransform(result.parent_transform) : null;
     if (!origin || !position || !parent || typeof result.transform !== "string") return { error: "native transform read returned incomplete data" };
     return { origin, position, transform: result.transform, parentBasis: parent.basis, independentGeometry: Array.isArray(result.independent_geometry) ? result.independent_geometry.map(String) : [] };
   } catch (error) {

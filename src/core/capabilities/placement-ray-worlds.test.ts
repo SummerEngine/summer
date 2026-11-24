@@ -7,7 +7,7 @@ import { buildPlacementScript } from "./placement-script.js";
 
 const binary = process.env.SUMMER_BIN;
 
-it.skipIf(!binary)("keeps physics and visual rays in the same Godot world across viewport boundaries", () => {
+it.skipIf(!binary)("keeps rays and failed-seat blockers in the subject’s Godot world across viewport boundaries", () => {
   const project = mkdtempSync(join(tmpdir(), "summer-ray-worlds-"));
   try {
     writeFileSync(join(project, "project.godot"), 'config_version=5\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n');
@@ -21,9 +21,9 @@ func viewport(parent, name_, own):
 	parent.add_child(view)
 	return view
 
-func box(parent, z, solid):
+func box(parent, z, solid, label = "Box"):
 	var body = StaticBody3D.new()
-	body.name = "Box"
+	body.name = label
 	body.position.z = z
 	parent.add_child(body)
 	var mesh = MeshInstance3D.new()
@@ -34,6 +34,7 @@ func box(parent, z, solid):
 		var shape = CollisionShape3D.new()
 		shape.shape = BoxShape3D.new()
 		body.add_child(shape)
+	return body
 
 func _initialize():
 	call_deferred("check")
@@ -48,6 +49,9 @@ func check():
 	var subject = Node3D.new()
 	subject.name = "Subject"
 	own.add_child(subject)
+	for pair in [[scene, "Piece"], [shared, "Blocker"], [own, "Piece"], [own, "Blocker"]]:
+		var body = box(pair[0], 0, true, pair[1])
+		body.position.x = 30
 	var p = load("res://probe.gd").new()
 	var rows = []
 	for live in [false, true]:
@@ -63,6 +67,9 @@ func check():
 		var foreign = p._cmd_raycast(scene, live, {"from_subject": "Own/Subject", "surface": "Box"})
 		rows.append([ordinary.visual.path, viewport_root.visual.path, attached.visual.path, aimed.visual.path,
 				foreign.failure_reason, ordinary.get("physics", {}).get("path"), attached.get("physics", {}).get("path")])
+		for owner in ["Piece", "Own/Piece"]:
+			var blockers = p._cmd_blockers(scene, live, {"path": owner})
+			rows[-1].append([blockers.evidence, blockers.overlaps])
 	var file = FileAccess.open("res://result.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(rows))
 	file.close()
@@ -76,8 +83,8 @@ func check():
     });
     const visual = ["Shared/Box/Mesh", "Box/Mesh", "Own/Box/Mesh", "Own/Box/Mesh", "surface_has_no_visual_bounds"];
     expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual([
-      [...visual, null, null],
-      [...visual, "Box", "Own/Box"],
+      [...visual, null, null, ["visual_aabb", ["Shared/Blocker/Mesh"]], ["visual_aabb", ["Own/Blocker/Mesh"]]],
+      [...visual, "Box", "Own/Box", ["physics", ["Shared/Blocker"]], ["physics", ["Own/Blocker"]]],
     ]);
   } finally {
     rmSync(project, { recursive: true, force: true });

@@ -914,7 +914,23 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
+# Detached editor tabs have no containing viewport. An inherited world then
+# resolves to null for the scene, while an owned or assigned World3D still exists.
+func _port_world(node):
+	if node.is_inside_tree():
+		return node.get_world_3d()
+	var parent = node.get_parent()
+	while parent != null:
+		if parent is Viewport:
+			var world = parent.find_world_3d()
+			if world != null:
+				return world
+		parent = parent.get_parent()
+	return null
+
+
 func _resolve_port(root, node, port, budget, want_others):
+	var world = _port_world(node)
 	var nt = _xf(node, root)
 	if typeof(port) == TYPE_STRING:
 		var mk = node.get_node_or_null(NodePath(String(port)))
@@ -924,13 +940,15 @@ func _resolve_port(root, node, port, budget, want_others):
 			return {"fail": _fail("port_not_found", "no node named '" + String(port) + "' under " + _rel(root, node))}
 		if not (mk is Node3D):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
+		if _port_world(mk) != world:
+			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
 		var mt = _xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
 			var mothers = []
 			var mtotal = 0
 			for item in _collect(node)["markers"]:
-				if item[0] == mk:
+				if item[0] == mk or _port_world(item[0]) != world:
 					continue
 				mtotal += 1
 				if mothers.size() >= 16:
@@ -943,8 +961,8 @@ func _resolve_port(root, node, port, budget, want_others):
 	# An open-loop port: every loop of the node in its own frame, plus the
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
-	var col = _collect(node)
-	var an = _analyze(_visible_meshes(col), budget, false, true)
+	var meshes = _visible_meshes(_collect(node)).filter(func(mesh): return _port_world(mesh[0]) == world)
+	var an = _analyze(meshes, budget, false, true)
 	var loops = []
 	for lp in an["loops"]:
 		loops.append(_loop_raw(lp))
@@ -966,6 +984,8 @@ func _cmd_ports(root, args):
 		return _fail("not_node3d", "subject and target must be Node3D")
 	if sub == tgt or sub.is_ancestor_of(tgt):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
+	if _port_world(sub) != _port_world(tgt):
+		return _fail("different_world_3d", "subject and target must share a World3D to join their ports")
 	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
 	if sp.has("fail"):
 		return sp["fail"]

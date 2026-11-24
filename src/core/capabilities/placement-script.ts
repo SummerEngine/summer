@@ -234,7 +234,7 @@ func _geoms(start, root, exclude, world_source = null):
 			if bb.size != Vector3.ZERO:
 				if out.size() >= MAX_GEOMS:
 					return null
-				out.append([n, _xf(n, root), bb])
+				out.append([n, _world_xf(n, root), bb])
 		stack.append_array(n.get_children())
 	return out
 
@@ -283,7 +283,7 @@ func _dirs(root, args):
 		return {"fail": _fail("node_not_found", "space node not found: " + space_node)}
 	if not (n is Node3D):
 		return {"fail": _fail("not_node3d", "space node is not a Node3D: " + space_node)}
-	var b = _xf(n, root).basis.orthonormalized()
+	var b = _world_xf(n, root).basis.orthonormalized()
 	return {"dirs": [b.x.normalized(), b.y.normalized(), b.z.normalized()], "space": "local"}
 
 
@@ -344,7 +344,7 @@ func _cmd_bounds(root, active, args):
 		var geoms = _geoms(n, root, exclude, n)
 		if geoms == null:
 			return _geometry_scan_limit(root, n)
-		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_xf(n, root))}
+		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_world_xf(n, root))}
 		rec["parent_xform"] = _xf12(_parent_xf(n, root))
 		rec["independent_geometry"] = []
 		for g in geoms:
@@ -354,13 +354,13 @@ func _cmd_bounds(root, active, args):
 		if geoms.size() > 0:
 			var measured = geoms
 			if spec.get("mount_frame", false):
-				var preview = _mount_geoms(n, _xf(n, root), geoms)
+				var preview = _mount_geoms(n, _world_xf(n, root), geoms)
 				if preview.has("fail"):
 					return preview["fail"]
 				measured = preview["geoms"]
 			rec["intervals"] = _intervals(measured, dirs)
 			var reach = 0.0
-			var o = _xf(n, root).origin
+			var o = _world_xf(n, root).origin
 			for g in geoms:
 				for c in _corners(g[2], g[1]):
 					reach = maxf(reach, (c - o).length())
@@ -512,7 +512,7 @@ func _cmd_raycast(root, active, args):
 	if from_subject != "" and not args.has("direction"):
 		if accept_under == null:
 			return _fail("bad_args", "from_subject needs a surface node")
-		origin = _xf(world_source, root).origin
+		origin = _world_xf(world_source, root).origin
 		var sg = _geoms(accept_under, root, [], world_source)
 		if sg == null:
 			return _geometry_scan_limit(root, accept_under)
@@ -827,7 +827,7 @@ func _collect(top, scene_root = null, inspecting_asset = false):
 	var shapes = []
 	var unsupported = []
 	var frame = _xf(top, top)
-	var scene_frame = _xf(top, scene_root) if scene_root != null else frame
+	var scene_frame = _world_xf(top, scene_root) if scene_root != null else frame
 	if frame.basis.determinant() == 0.0 or scene_frame.basis.determinant() == 0.0:
 		return {"meshes": [], "geoms": [], "markers": [], "shapes": [], "unsupported": [], "singular_root": true}
 	var inverse = frame.affine_inverse()
@@ -836,8 +836,11 @@ func _collect(top, scene_root = null, inspecting_asset = false):
 	while stack.size() > 0:
 		var n = stack.pop_back()
 		if n is Node3D and (scene_root == null or _placement_world(n) == world):
-			var to_piece = scene_inverse if scene_root != null and not _inherits_3d(n, top) else inverse
-			var t = to_piece * _xf(n, top)
+			var t: Transform3D
+			if scene_root != null and not _inherits_3d(n, top):
+				t = scene_inverse * _world_xf(n, scene_root)
+			else:
+				t = inverse * _xf(n, top)
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
@@ -1120,7 +1123,7 @@ func _port_motion_error(root, source, piece, moving_subject):
 
 func _resolve_port(root, node, port, budget, want_others, moving_subject = null):
 	var world = _placement_world(node)
-	var nt = _xf(node, root)
+	var nt = _world_xf(node, root)
 	if typeof(port) == TYPE_STRING:
 		var mk = node.get_node_or_null(NodePath(String(port)))
 		if mk == null:
@@ -1134,7 +1137,7 @@ func _resolve_port(root, node, port, budget, want_others, moving_subject = null)
 		var motion_error = _port_motion_error(root, mk, node, moving_subject)
 		if motion_error != null:
 			return {"fail": motion_error}
-		var mt = _xf(mk, root)
+		var mt = _world_xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
 			var mothers = []
@@ -1145,7 +1148,7 @@ func _resolve_port(root, node, port, budget, want_others, moving_subject = null)
 				mtotal += 1
 				if mothers.size() >= 16:
 					continue
-				var it = _xf(item[0], root)
+				var it = _world_xf(item[0], root)
 				mothers.append({"kind": "marker", "name": String(item[0].name), "path": _rel(root, item[0]), "position": _raw3(it.origin), "direction": _raw3((-it.basis.z).normalized())})
 			mrec["others"] = mothers
 			mrec["others_total"] = mtotal
@@ -1201,7 +1204,7 @@ func _cmd_ports(root, args):
 		if p.has("position"):
 			p["position"] = _raw3(p["position"])
 			p["direction"] = _raw3(p["direction"])
-	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root))}
+	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_world_xf(sub, root))}
 
 
 # ---------------------------------------------------------------- blockers

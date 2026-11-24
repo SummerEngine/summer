@@ -276,7 +276,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.batch": {
     title: "Run engine ops in one call",
     summary:
-      "Send a list of raw engine ops (AddNode, SetProp, RunVerification...) in one call: one undo step unless an op must travel alone, and one save at the end. Ask for receipt summary on long lists. For computed edits, engine.run_script is simpler.",
+      "Send a list of raw engine ops (AddNode, SetProp, RunVerification...) in one call. Edits can take separate undo steps. A scene mutation ends with one save. Ask for receipt summary on long lists. For computed edits, engine.run_script is simpler.",
     effect: "write",
     example: {
       input: {
@@ -287,7 +287,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
         ],
         receipt: "summary",
       },
-      note: "A floor in one undo step.",
+      note: "Create a floor and set its position.",
     },
   },
   "engine.project_setting": {

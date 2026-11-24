@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://setter_holder.gd" id="1"]
+[node name="Root" type="Node3D"]
+[node name="Group" type="Node3D" parent="."]
+[node name="Victim" type="Node3D" parent="Group"]
+position = Vector3(1, 2, 3)
+[node name="Holder" type="Node" parent="." node_paths=PackedStringArray("first", "reject", "later")]
+script = ExtResource("1")
+first = NodePath("../Group/Victim")
+reject = NodePath("../Group/Victim")
+later = NodePath("../Group/Victim")

@@ -11,6 +11,8 @@ Returns (all in the asset root's own frame, the frame position/rotation apply in
 - collision: CollisionShape3D nodes {path, shape, size/radius/height/faces, center, min, max}
 - analysis {triangles_analyzed, triangle_budget, truncated}; a "truncated" object when a list was cut to fit 5 KB
 
+Visible static Sprite3D nodes contribute their Godot drawing bounds to aabb and origin. The mesh rows, triangle counts, and planes describe the mesh geometry listed above.
+
 CSG scenes require a baked visual mesh. For procedural CSG the tool returns csg_visual_mesh_unavailable with the node path and recovery.
 
 maxTriangles 100-300000 (default 60000). Evidence is mesh_triangles. Uses the existing RunSceneScript op (in the live editor, read-only); an engine without it answers engine_lacks_op.

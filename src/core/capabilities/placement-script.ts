@@ -739,8 +739,21 @@ func _loop_raw(lp):
 	return rec
 
 
+# A new detached Sprite3D has no drawing AABB until Godot enters it into a tree.
+# Evaluate a hidden built-in sprite. The authored node, its scripts and children stay detached.
+func _asset_sprite_aabb(sprite):
+	var preview = Sprite3D.new()
+	preview.visible = false
+	for property in ["texture", "region_enabled", "region_rect", "hframes", "vframes", "frame", "centered", "offset", "pixel_size", "axis", "billboard"]:
+		preview.set(property, sprite.get(property))
+	Engine.get_main_loop().root.add_child(preview, false, Node.INTERNAL_MODE_BACK)
+	var bounds = preview.get_aabb()
+	preview.free()
+	return bounds
+
+
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
-func _collect(top, same_world_geometry = false):
+func _collect(top, same_world_geometry = false, inspecting_asset = false):
 	var world = _placement_world(top) if same_world_geometry else null
 	var meshes = []
 	var geoms = []
@@ -759,6 +772,8 @@ func _collect(top, same_world_geometry = false):
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
+				if inspecting_asset and vis and n is Sprite3D and n.texture != null and not n.is_inside_tree():
+					bb = _asset_sprite_aabb(n)
 				if bb.size != Vector3.ZERO:
 					if vis:
 						geoms.append([n, t, bb])
@@ -929,7 +944,7 @@ func _cmd_inspect_asset(args):
 
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
-	var col = _collect(inst)
+	var col = _collect(inst, false, true)
 	if col.get("singular_root", false):
 		return _fail("singular_asset_root", "the asset root has a singular transform")
 	var analysis_error = _mesh_analysis_error(col)

@@ -227,10 +227,11 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     const tool = tools[original];
     if (!tool || tools[alias]) continue;
     const shape = (tool.inputSchema as { shape?: Shape } | undefined)?.shape ?? {};
-    server.tool(alias, v4Text(tool.description ?? ""), shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) => {
+    const registered = server.tool(alias, v4Text(tool.description ?? ""), shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) => {
       const result = await (tool.handler as Handler)(args, extra);
       return LIBRARY_READS.has(original) ? withV4Footer(result) : result;
     }) as never);
+    registered.inputSchema = tool.inputSchema;
   }
 
   // Engine tools (and the operations split out of the two mixed ones) are listed with the v4 shape.

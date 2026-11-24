@@ -91,14 +91,14 @@ export const shotSheetShape = {
   compare_previous: z
     .boolean()
     .optional()
-    .describe("For bookmark shots: one row per bookmark of [previous render | now | difference map], with the share of changed pixels in the caption. The previous render is the bookmark's slot in res://.summer/shots/; this render replaces it (it is the next baseline)."),
+    .describe("For bookmark shots: one row per bookmark of [previous render | now | difference map], with the share of changed pixels in the caption. The previous render comes from the same bookmark and view. This render becomes their next baseline."),
   update_previous: z
     .boolean()
     .optional()
-    .describe("Replace each bookmark's previous image (its compare baseline) with this render without comparing. Default false: a sheet without compare_previous only creates a missing slot and never overwrites an existing baseline."),
+    .describe("Replace the previous image for each bookmark in this view without comparing. Default false: a sheet without compare_previous only creates a missing slot and never overwrites an existing baseline."),
   max_size: maxSize(1536),
   aspect,
-  save_to: saveTo,
+  save_to: saveTo.describe("Also write the returned image to res://.summer/shots/saved/<name>.jpg (1-64 of A-Z a-z 0-9 _ -). Requires max_size <= 1024. Each rendered bookmark keeps a separate comparison image for the selected view."),
 };
 
 export const debugViewsShape = {

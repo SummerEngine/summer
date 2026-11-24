@@ -73,6 +73,36 @@ describe("the surface flag", () => {
   });
 });
 
+describe("library search arguments", () => {
+  it.each([
+    ["v3", "summer_search_library"],
+    ["v4", "summer_docs_search"],
+  ] as const)("rejects unknown fields while keeping the %s kind filter", async (surface, name) => {
+    const { client, close } = await session("engine", surface);
+    try {
+      const result = await client.callTool({ name, arguments: { query: "game", kind: "template" } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("kind");
+
+      const valid = answerOf(await client.callTool({ name, arguments: { query: "game", kinds: ["template"] } }));
+      expect(valid.results.length).toBeGreaterThan(0);
+      expect(valid.results.every((hit: { kind: string }) => hit.kind === "template")).toBe(true);
+    } finally {
+      await close();
+    }
+  });
+
+  it("rejects unknown search arguments in docs.search through summer_call", async () => {
+    const { client, close } = await session("engine", "v4");
+    try {
+      const result = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.search", input: { query: "game", kind: "template" } } }));
+      expect(result).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+    } finally {
+      await close();
+    }
+  });
+});
+
 describe("v4, engine profile", () => {
   it("lists the engine tools by their 3.x names, docs, summer_search and summer_call, and nothing else local", async () => {
     const { client, close } = await session("engine", "v4");

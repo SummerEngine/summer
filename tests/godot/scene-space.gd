@@ -1,0 +1,92 @@
+extends SceneTree
+
+class Context:
+	extends RefCounted
+	var scene: Node
+	func get_scene_root():
+		return scene
+
+func _initialize():
+	_run.call_deferred()
+
+func _mesh(parent: Node, label: String) -> MeshInstance3D:
+	var n := MeshInstance3D.new()
+	n.name = label
+	n.mesh = BoxMesh.new()
+	parent.add_child(n)
+	n.position = Vector3(1, 2, 3)
+	return n
+
+func _run():
+	var scene := Node3D.new()
+	scene.name = "Scene"
+	root.add_child(scene)
+	scene.position = Vector3(10, 20, 30)
+	scene.rotation = Vector3(0.2, 0.5, 0.1)
+	scene.scale = Vector3(2, 1, 3)
+	var parent := Node3D.new()
+	parent.name = "Parent"
+	scene.add_child(parent)
+	parent.position = Vector3(4, 3, 2)
+	parent.rotation = Vector3(0.1, 0.3, 0.2)
+	parent.scale = Vector3(1.5, 2, 0.5)
+	parent.visible = false
+	var inherited := _mesh(parent, "Inherited")
+	var top := _mesh(parent, "Top")
+	top.top_level = true
+	top.position = Vector3(2, 3, 4)
+	var plain := Node.new()
+	plain.name = "Plain"
+	parent.add_child(plain)
+	var independent := _mesh(plain, "Independent")
+	var disabled_scale := _mesh(scene, "Unscaled")
+	disabled_scale.set_disable_scale(true)
+	var rotated := _mesh(scene, "RotationOrder")
+	rotated.rotation_order = EULER_ORDER_ZXY
+	rotated.rotation = Vector3(0.6, 0.4, 0.2)
+	await process_frame
+	var errors: Array = []
+	var observations: Array = []
+	var placement = load("res://placement.gd").new()
+	var snap = load("res://snap.gd").new()
+	for probe in [placement, snap]:
+		for n in [scene, parent, inherited, top, independent, disabled_scale, rotated]:
+			var actual: Transform3D = probe.call("_xf", n, scene)
+			var visible: bool = probe.call("_visible", n, scene)
+			if not actual.is_equal_approx(n.global_transform):
+				errors.append("transform: " + str(scene.get_path_to(n)))
+			if visible != n.is_visible_in_tree():
+				errors.append("visibility: " + str(scene.get_path_to(n)))
+			observations.append({"path": str(scene.get_path_to(n)), "origin": [actual.origin.x, actual.origin.y, actual.origin.z], "visible": visible})
+		var parent_xf: Transform3D = probe.call("_parent_xf", top, scene)
+		if not parent_xf.is_equal_approx(Transform3D.IDENTITY):
+			errors.append("top_level parent space")
+	var geoms: Array = placement.call("_geoms", scene, scene, [])
+	var mesh_items: Array = snap.call("_mesh_items", scene, scene, null, {"screen_space": 0, "not_mesh": 0})
+	for collection in [geoms, mesh_items]:
+		if collection.size() != 3:
+			errors.append("visible mesh count: " + str(collection.size()))
+		for item in collection:
+			if not (item[1] as Transform3D).is_equal_approx(item[0].global_transform):
+				errors.append("mesh transform")
+	var collected: Dictionary = placement.call("_collect", scene)
+	for item in collected["meshes"]:
+		var expected: Transform3D = scene.global_transform.affine_inverse() * item[0].global_transform
+		if not (item[1] as Transform3D).is_equal_approx(expected):
+			errors.append("asset frame: " + str(item[0].name))
+		if bool(item[3]) != item[0].is_visible_in_tree():
+			errors.append("asset visibility: " + str(item[0].name))
+	var ctx := Context.new()
+	ctx.scene = scene
+	var read: Dictionary = load("res://transform.gd").new().run(ctx)
+	if not read["ok"] or not str_to_var(read["transform"]).is_equal_approx(top.global_transform):
+		errors.append("inspector transform")
+	var bounds: Dictionary = placement.call("_cmd_bounds", scene, false, {"nodes": [{"path": "Parent/Plain/Independent"}, {"path": "Parent/Top"}, {"path": "Parent"}]})
+	if bounds["nodes"][0]["parent_xform"] != bounds["nodes"][1]["parent_xform"]:
+		errors.append("independent parent spaces")
+	if bounds["nodes"][2]["independent_geometry"] != ["Parent/Plain/Independent"]:
+		errors.append("independent geometry must name visible plain child only")
+	var f := FileAccess.open("res://result.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify({"errors": errors, "observations": observations, "bounds": bounds}))
+	f.close()
+	quit()

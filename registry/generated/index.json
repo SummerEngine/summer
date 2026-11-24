@@ -8956,7 +8956,7 @@
       "id": "tool/inspect-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "87b7fa642d6b613c2e4ffc37054b8911fe1f08fe60dea881795c15e42f6869e2",
+      "content_hash": "521f23067a30431031e804cf6cbd2962429dbc15b4a917a7bf696f840d62c438",
       "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",

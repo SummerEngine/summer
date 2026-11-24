@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

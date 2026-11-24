@@ -20,7 +20,7 @@
  *    (_solve_physics compares p_gap with hit_travel instead of with the swept
  *    distance from the backed-off start). So on gap_exceeds_hit_travel with a
  *    start overlap this module lifts the subject against the cast direction
- *    by the overlap depth plus a margin (exact local position from the saved
+ *    by the overlap depth plus a margin (exact local position from the live target
  *    scene), snaps again from there, and keeps the result only when it
  *    settles back on a node the subject was sunk into. Otherwise the original
  *    position is restored and the failure is reported.
@@ -43,16 +43,13 @@ import { extractOpError } from "./engine-receipt.js";
 import { STARCAST_FALLBACK } from "./engine-fallbacks.js";
 import {
   applyMat3,
-  IDENTITY3,
   invertMat3,
-  mulMat3,
-  parseTransform3D,
   vec3Literal,
   vec3LiteralExact,
-  type Mat3,
   type Vec3,
 } from "./math3d.js";
-import { findTscnNode, isSceneCreatedNode, normalizeNodePath, parentNodePath, parseTscn } from "./tscn.js";
+import { readSceneNodeTransform } from "./scene-space.js";
+import { normalizeNodePath } from "./tscn.js";
 import { measureMeshSnap, type MeshSnapMeasure } from "./surface-snap-mesh.js";
 
 /** Clearance added above the support before the second sweep. */
@@ -171,46 +168,17 @@ interface LiftPlan {
   lifted: Vec3;
 }
 
-/** Local position of the subject and the world basis of its parent, read
- *  from the saved .tscn (exact floats). Ancestors without a transform line
- *  are identity; an ancestor the file does not list (a node inside an
- *  instanced scene) makes the plan unavailable. */
+/** Read the current target scene, including inherited and instanced parents. */
 async function planLift(client: SnapClient, args: SnapToSurfaceArgs, lift: number): Promise<LiftPlan | { reason: string }> {
-  const read = asRecord(await client.readProjectFile(args.scenePath, 1_000_000));
-  const content = asRecord(read?.data)?.content;
-  if (read?.ok === false || typeof content !== "string" || asRecord(read?.data)?.truncated === true) {
-    return { reason: `${args.scenePath} could not be read back as a whole text scene` };
-  }
-  const parsed = parseTscn(content);
-  const subjectPath = normalizeNodePath(args.subjectPath);
-  const subject = findTscnNode(parsed, subjectPath);
-  if (!subject || !isSceneCreatedNode(subject)) {
-    return { reason: `${subjectPath} is not a node the scene file creates (it may live inside an instanced scene)` };
-  }
-  const local = (node: ReturnType<typeof findTscnNode>) => {
-    const raw = node?.props.find((p) => p.key === "transform")?.value;
-    return raw ? parseTransform3D(raw) : { basis: IDENTITY3, origin: [0, 0, 0] as Vec3 };
-  };
-  const own = local(subject);
-  if (!own) return { reason: `${subjectPath} has a transform the planner cannot read` };
-  if (subject.props.some((p) => p.key === "top_level" && p.value.trim() === "true")) {
-    return { reason: `${subjectPath} is top_level` };
-  }
-  const chain: Mat3[] = [];
-  for (let p = parentNodePath(subjectPath); p !== null; p = parentNodePath(p)) {
-    const node = findTscnNode(parsed, p);
-    if (!node) return { reason: `ancestor ${p} is not listed in the scene file` };
-    const t = local(node);
-    if (!t) return { reason: `ancestor ${p} has a transform the planner cannot read` };
-    chain.unshift(t.basis);
-  }
-  const parentBasis = chain.reduce((acc, basis) => mulMat3(acc, basis), IDENTITY3);
-  const inverse = invertMat3(parentBasis);
+  const native = await readSceneNodeTransform(client, args.subjectPath, args.scenePath, true);
+  if ("error" in native) return { reason: native.error };
+  if (native.independentGeometry.length) return { reason: `visible geometry does not inherit the subject's transform: ${native.independentGeometry.join(", ")}` };
+  const inverse = invertMat3(native.parentBasis);
   if (!inverse) return { reason: "the parent transform is singular" };
   const length = Math.hypot(...args.direction);
   const worldDelta = args.direction.map((d) => (-d / length) * lift) as Vec3;
   const localDelta = applyMat3(inverse, worldDelta);
-  const original = own.origin;
+  const original = native.position;
   return { original, lifted: [original[0] + localDelta[0], original[1] + localDelta[1], original[2] + localDelta[2]] };
 }
 
@@ -332,7 +300,7 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
     });
   }
 
-  // Save first: the lift is computed from the exact transform in the file.
+  // Preserve the original scene before automatic recovery.
   const preSave = await send([{ op: "SaveScene" }]);
   if (extractOpError(preSave)) {
     return failureEnvelope(first, failed, args, diagnosis, { meshFallback, lift, liftNote: "the scene could not be saved before lifting" });

@@ -8,8 +8,7 @@
  * derived fields the inspector cannot give:
  *   transform        local position / rotation_degrees / scale (+ Transform3D
  *                    literal for 3D nodes);
- *   global_transform world origin/basis composed down the ancestor chain from
- *                    the world snapshot's local pos/rot_deg/scale;
+ *   global_transform exact native scene transform, respecting Node3D inheritance;
  *   scene_file_path  the res:// scene the node instances (world snapshot);
  *   aabb             the node's world AABB (world snapshot);
  *   warnings         the node's configuration warnings.
@@ -21,16 +20,13 @@ import { asRecord, type JsonRecord } from "../util/json.js";
 import { annotateVariantTypes } from "./variant-types.js";
 import { extractOpError } from "./engine-receipt.js";
 import { WORLD_SNAPSHOT_FALLBACK } from "./engine-fallbacks.js";
-import { normalizeNodePath, parentNodePath } from "./tscn.js";
+import { normalizeNodePath } from "./tscn.js";
+import { readSceneNodeTransform } from "./scene-space.js";
 import {
-  applyMat3 as apply,
   basisFromEulerScale,
-  IDENTITY3,
-  mulMat3 as mul,
   parseVec3,
   transformLiteral,
   vec3Literal,
-  type Mat3,
   type Vec3,
 } from "./math3d.js";
 
@@ -43,7 +39,7 @@ export const INSPECT_NODE_DERIVED_FIELDS: readonly string[] = [
   "aabb",
   "warnings",
 ];
-const SNAPSHOT_FIELDS = new Set(["global_transform", "scene_file_path", "aabb"]);
+const SNAPSHOT_FIELDS = new Set(["scene_file_path", "aabb"]);
 
 // Mirrors library/tools/inspect-node/resource.yaml input_schema (parity-tested).
 export const inspectNodeInputShape = {
@@ -144,39 +140,6 @@ async function snapshotIndex(client: InspectNodeClient): Promise<Map<string, Sna
   return index;
 }
 
-function hasTransform(node: SnapshotNode | undefined): node is Required<Pick<SnapshotNode, "pos" | "rot" | "scale">> & SnapshotNode {
-  return !!node && !!node.pos && !!node.rot && !!node.scale;
-}
-
-/** World transform of a Node3D: its local transform composed with every
- *  Node3D directly above it. A Node3D's parent space ends at the first
- *  ancestor that is not a Node3D (a plain Node or a CanvasItem — the snapshot
- *  lists CanvasItems only with include_2d), as in Godot. */
-export function globalTransform(index: Map<string, SnapshotNode>, path: string): JsonRecord | { error: string } {
-  const target = index.get(path);
-  if (!target) return { error: `the world snapshot does not list ${path} (a 2D node, or the scene is larger than the snapshot cap)` };
-  if (!hasTransform(target)) return { error: `${path} is not a 3D node` };
-  const chain: SnapshotNode[] = [target];
-  for (let p = parentNodePath(path); p !== null; p = parentNodePath(p)) {
-    const node = index.get(p);
-    if (!hasTransform(node)) break;
-    chain.unshift(node);
-  }
-  let basis: Mat3 = IDENTITY3;
-  let origin: Vec3 = [0, 0, 0];
-  for (const node of chain) {
-    const local = basisFromEulerScale(node.rot!, node.scale!);
-    const moved = apply(basis, node.pos!);
-    origin = [moved[0] + origin[0], moved[1] + origin[1], moved[2] + origin[2]];
-    basis = mul(basis, local);
-  }
-  return {
-    origin: vec3Literal(origin),
-    transform: transformLiteral(basis, origin),
-    source: "composed from the world snapshot's local pos/rot_deg/scale down the parent chain (YXZ Euler; top_level nodes not detected)",
-  };
-}
-
 export async function inspectNodeFields(client: InspectNodeClient, args: InspectNodeArgs): Promise<unknown> {
   const payload = annotateVariantTypes(await client.inspectNode(args.path));
   if (!args.fields || args.fields.length === 0) return payload;
@@ -209,6 +172,16 @@ export async function inspectNodeFields(client: InspectNodeClient, args: Inspect
   }
   if (derived.includes("warnings")) out.warnings = Array.isArray(data.warnings) ? data.warnings : [];
 
+  if (derived.includes("global_transform")) {
+    const native = await readSceneNodeTransform(client, normalizeNodePath(String(data.node_path ?? args.path)));
+    if ("error" in native) unavailable.global_transform = native.error;
+    else out.global_transform = {
+      origin: vec3Literal(native.origin),
+      transform: native.transform,
+      source: "native scene transform (Node3D inheritance, top_level and rotation order respected)",
+    };
+  }
+
   if (derived.some((f) => SNAPSHOT_FIELDS.has(f))) {
     const nodePath = normalizeNodePath(String(data.node_path ?? args.path));
     const index = await snapshotIndex(client);
@@ -224,11 +197,6 @@ export async function inspectNodeFields(client: InspectNodeClient, args: Inspect
       if (derived.includes("aabb")) {
         if (node?.entry.aabb) out.aabb = node.entry.aabb;
         else unavailable.aabb = node ? "the node has no visual bounds" : `the world snapshot does not list ${nodePath}`;
-      }
-      if (derived.includes("global_transform")) {
-        const global = globalTransform(map, nodePath);
-        if ("error" in global && typeof global.error === "string") unavailable.global_transform = global.error;
-        else out.global_transform = global;
       }
     }
   }

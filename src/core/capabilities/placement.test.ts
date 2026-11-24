@@ -464,6 +464,20 @@ describe("summer_raycast", () => {
 });
 
 describe("summer_place_adjacent", () => {
+  it("refuses to translate visible geometry that does not inherit the subject, before mutating or saving", async () => {
+    const { client, mutations } = mockClient(() => ({
+      ok: true, space: "world", dirs: WORLD_DIRS,
+      nodes: [
+        bounds("Group", [[0, 1], [0, 1], [0, 1]], { independent_geometry: ["Group/Plain/Mesh"] }),
+        bounds("Reference", [[3, 4], [0, 1], [0, 1]]),
+      ],
+    }));
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Group", reference: "Reference", axis: "x", side: "max" }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "independent_subject_geometry" });
+    expect(String(result.error)).toContain("Group/Plain/Mesh");
+    expect(mutations).toEqual([]);
+  });
+
   it("computes face-to-face deltas with per-axis alignment", () => {
     const subject: Array<[number, number]> = [[-0.5, 0.5], [0, 3], [-0.25, 0.05]];
     const reference: Array<[number, number]> = [[-1, 1], [0, 3], [-0.2, 0]];

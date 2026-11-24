@@ -389,7 +389,7 @@ Reads the currently OPEN scene — "path" is relative to its root (there is no s
 
 Example: inspect a light to see its energy, color, shadow settings before changing them.
 
-The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + Transform3D, composed from the world snapshot), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
+The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + exact native scene Transform3D), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
     inspectNodeInputShape,
     async (args) =>
       // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int.

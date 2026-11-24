@@ -111,6 +111,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, ${x}, ${y}, ${z})
         this.local = [Number(match[1]), Number(match[2]), Number(match[3])];
         return { ok: true, op: "SetProp" };
       }
+      case "RunSceneScript":
+        return { ok: true, op: "RunSceneScript", result: {
+          ok: true, origin: [2 * this.local[0], this.worldY(), 2 * this.local[2]], position: this.local,
+          transform: `Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, ${2 * this.local[0]}, ${this.worldY()}, ${2 * this.local[2]})`,
+          parent_transform: "Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0.5, 0)", independent_geometry: [],
+        } };
       case "Starcast3D": {
         const bottom = this.worldY() - this.half;
         const contacts = this.starcastContacts ?? this.supports.filter((s) => bottom <= s.top + 0.001).map((s) => s.path);
@@ -189,8 +195,8 @@ describe("summer_snap_to_surface: sunk props", () => {
     expect(fake.worldY() - fake.half).toBeCloseTo(0, 9);
     expect(fake.savedLocalY()).toBeCloseTo(-0.1775, 9);
     // The local lift was mapped through the parent's 2x scale (0.035 local for 0.07 world).
-    expect(fake.sent[3]![0]).toEqual({ op: "SetProp", path: "./Props/Bottle", key: "position", value: "Vector3(1.25, -0.1675, 2)" });
-    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D", "SaveScene", "SetProp+SnapToSurface", "SaveScene"]);
+    expect(fake.sent[4]![0]).toEqual({ op: "SetProp", path: "./Props/Bottle", key: "position", value: "Vector3(1.25, -0.1675, 2)" });
+    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D", "SaveScene", "RunSceneScript", "SetProp+SnapToSurface", "SaveScene"]);
   });
 
   it("refuses to lift deeper than the subject's own extent, names the support and says what to do", async () => {
@@ -218,7 +224,7 @@ describe("summer_snap_to_surface: sunk props", () => {
   });
 
   it("still lifts on an engine without Starcast3D when the contact is behind the start pose", async () => {
-    const fake = new FakeSnapEngine(SUNK_5CM, FLOOR, 0.145, { opKinds: ["SnapToSurface", "SetProp", "SaveScene"] });
+    const fake = new FakeSnapEngine(SUNK_5CM, FLOOR, 0.145, { opKinds: ["SnapToSurface", "SetProp", "SaveScene", "RunSceneScript"] });
     const result = (await snapToSurface(fake, args())) as { results: Array<Record<string, unknown>> };
     expect(result.results.find((r) => r.op === "SnapToSurface")).toMatchObject({ ok: true, supportPath: "Ground/Floor" });
     expect(fake.ops()).not.toContain("Starcast3D");

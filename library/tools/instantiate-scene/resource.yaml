@@ -54,7 +54,7 @@ input_schema:
       maxItems: 3
       items:
         type: number
-      description: Parent-local position [x, y, z], set right after the instance is created (on the node path its receipt reports).
+      description: Parent-local position [x, y, z] on the placed instance.
     rotation_degrees:
       type: array
       minItems: 3

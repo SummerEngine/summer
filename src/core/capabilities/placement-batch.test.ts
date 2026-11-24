@@ -7,14 +7,14 @@ import {
   summarizeTrace,
   traceEnvelope,
 } from "./placement-batch.js";
-import { FALLBACK_SINGLE_ONLY_OPS } from "../capability-skew.js";
+import { FALLBACK_SINGLE_ONLY_OPS, parseEngineCapabilities } from "../capability-skew.js";
 import { sceneMutationOps } from "./engine-ops.js";
 
 type Op = Record<string, unknown>;
 
 /** Engine stand-in: InstantiateScene reports `<parent>/<name>` (or a renamed
  *  path from `renames`), everything else succeeds; `failOn` fails one op kind. */
-function fakeEngine(options: { renames?: Record<string, string>; failOn?: (op: Op) => string | null; noNodePath?: boolean } = {}) {
+function fakeEngine(options: { renames?: Record<string, string>; failOn?: (op: Op) => string | null; noNodePath?: boolean; noPoseAck?: boolean } = {}) {
   const requests: Op[][] = [];
   const send = vi.fn(async (chunk: Op[]) => {
     requests.push(chunk);
@@ -23,7 +23,10 @@ function fakeEngine(options: { renames?: Record<string, string>; failOn?: (op: O
       if (failure) return { ok: false, op: op.op, error: failure };
       if (op.op === "InstantiateScene" && !options.noNodePath) {
         const requested = `${String(op.parent).replace(/^\.\//, "")}/${String(op.name)}`;
-        return { ok: true, op: op.op, meta: { nodePath: options.renames?.[requested] ?? requested } };
+        return {
+          ok: true, op: op.op, meta: { nodePath: options.renames?.[requested] ?? requested },
+          ...(op.target_size_pose && !options.noPoseAck ? { target_size_pose_applied: true, scale_applied: 2 } : {}),
+        };
       }
       return { ok: true, op: op.op };
     });
@@ -240,6 +243,39 @@ describe("runBatch", () => {
 });
 
 describe("instantiateScene", () => {
+  it("sends the final pose and target size to a supporting engine together", async () => {
+    const engine = fakeEngine();
+    const c = { executeIdentityBoundOps: engine.send, getEngineCapabilities: () => parseEngineCapabilities({ instantiateTargetSizePose: true }) };
+    const args = { scenePath: "res://a.tscn", parent: "./World", scene: "res://kit/wall.tscn", name: "Wall",
+      target_size: 8, position: [1, 2, 3] as [number, number, number], rotation_degrees: [0, 45, 0] as [number, number, number] };
+    const result = await instantiateScene(c, args);
+    expect(engine.requests).toEqual([
+      [{ op: "InstantiateScene", parent: args.parent, scene: args.scene, name: args.name,
+        target_size: 8, target_size_pose: { position: args.position, rotation_degrees: args.rotation_degrees } }],
+      [{ op: "SaveScene" }],
+    ]);
+    expect(result).toMatchObject({ placement: { applied: true, nodePath: "World/Wall" } });
+  });
+
+  it("leaves an unconfirmed sized pose unsaved and reports the failure", async () => {
+    const engine = fakeEngine({ noPoseAck: true });
+    const c = { executeIdentityBoundOps: engine.send, getEngineCapabilities: () => parseEngineCapabilities({ instantiateTargetSizePose: true }) };
+    const result = await instantiateScene(c, { scenePath: "res://a.tscn", parent: ".", scene: "res://wall.tscn",
+      target_size: 8, rotation_degrees: [0, 45, 0] });
+    expect(result).toMatchObject({ ok: false, placement: { applied: false } });
+    expect(engine.requests).toHaveLength(1);
+  });
+
+  it("refuses size plus rotation before any mutation on older engines, including in a batch", async () => {
+    const engine = fakeEngine();
+    const c = { executeIdentityBoundOps: engine.send, executeOps: engine.send, getEngineCapabilities: () => parseEngineCapabilities({ instantiateTargetSizePose: "true" }) };
+    await expect(instantiateScene(c, { scenePath: "res://a.tscn", parent: ".", scene: "res://wall.tscn",
+      target_size: 8, rotation_degrees: [0, 45, 0] })).rejects.toThrow("Nothing was sent");
+    await expect(runBatch(c, { scenePath: "res://a.tscn", ops: [piece("First"), piece("Rotated", {
+      target_size: 8, rotation_degrees: [0, 45, 0] })] })).rejects.toThrow("Nothing was sent");
+    expect(engine.requests).toEqual([]);
+  });
+
   it("instances, sets the transform on the reported path, then saves", async () => {
     const engine = fakeEngine({ renames: { "World/Lamp": "World/Lamp_2" } });
     const c = { executeIdentityBoundOps: vi.fn((ops: Op[]) => engine.send(ops)) };

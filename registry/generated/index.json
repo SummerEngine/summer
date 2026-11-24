@@ -9072,7 +9072,7 @@
       "id": "tool/instantiate-scene",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "7b1a511fbe9f6ec3ebcfb3b6af752e65505fd7ab2caa18220397e8bc8dbe0d0d",
+      "content_hash": "1981ffeadfdac661428b8f4b61fd90f729747bfe899a3f2950ff38107c77b5e1",
       "summary": "Add an existing scene or 3D model file as a child node, optionally placed in the same call (position, rotation_degrees, scale or transform).",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene",

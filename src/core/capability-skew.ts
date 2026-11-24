@@ -135,6 +135,8 @@ export interface EngineEventsCapability {
 
 export interface EngineCapabilities {
   protocolVersion?: number;
+  /** InstantiateScene can set the local pose before target_size normalization. */
+  instantiateTargetSizePose?: boolean;
   /** Full dispatch-ladder op set. Absent = engine predates the advert. */
   opKinds?: string[];
   /** Ops that must travel as their own single-op request. Absent = use the
@@ -254,6 +256,7 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (opKinds) out.opKinds = opKinds;
   const singleOnlyOps = stringList(record.singleOnlyOps);
   if (singleOnlyOps) out.singleOnlyOps = singleOnlyOps;
+  if (record.instantiateTargetSizePose === true) out.instantiateTargetSizePose = true;
   const events = parseEventsCapability(record.events);
   if (events) out.events = events;
   const runtimeControl = parseRuntimeControl(record.runtimeControl);

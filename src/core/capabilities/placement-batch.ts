@@ -3,12 +3,10 @@
  * summer_instantiate_scene, summer_batch, summer_repeat_along and their CLI
  * twins.
  *
- * The engine's InstantiateScene accepts only parent / scene / name /
- * target_size and must travel as its own
- * request (single-only). A placed piece is therefore an InstantiateScene plus
- * SetProps on the node path its receipt reports (meta.nodePath, which already
- * carries any collision rename). The caller writes ONE op; this module expands
- * it.
+ * InstantiateScene travels alone. Engines that advertise instantiateTargetSizePose
+ * apply the local pose in that request before measuring a sized instance.
+ * Other placement fields become SetProps on the instance's reported node path,
+ * including any collision rename.
  *
  * Request cost: the SetProps of consecutive InstantiateScene ops are held back
  * and sent together (up to TRANSFORM_OPS_PER_REQUEST per request) just before
@@ -77,7 +75,8 @@ function vectorField(value: unknown, label: string): Vec3 {
  */
 export function splitInstantiatePlacement(
   op: JsonRecord,
-  label: string
+  label: string,
+  supportsTargetSizePose = false
 ): { op: JsonRecord; props: PlacementProp[] } {
   const present = PLACEMENT_FIELDS.filter((field) => op[field] !== undefined && op[field] !== null);
   if (present.length === 0) return { op, props: [] };
@@ -91,6 +90,19 @@ export function splitInstantiatePlacement(
   if (op.target_size !== undefined && (present.includes("scale") || present.includes("transform"))) {
     throw new ToolInputError(
       `${label}: target_size sets the scale; do not combine it with scale or transform.`
+    );
+  }
+  // Measure the subtree at the pose that will actually be saved.
+  if (op.target_size !== undefined && supportsTargetSizePose) {
+    const pose: JsonRecord = {};
+    for (const key of ["position", "rotation_degrees"] as const) {
+      if (present.includes(key)) pose[key] = vectorField(op[key], `${label}.${key}`);
+    }
+    return { op: { ...stripped, target_size_pose: pose }, props: [] };
+  }
+  if (op.target_size !== undefined && present.includes("rotation_degrees")) {
+    throw new ToolInputError(
+      `${label}: this engine sizes an instance before applying rotation. Update Summer Engine to combine target_size with rotation_degrees, or use a prefab authored at the desired rotation. Nothing was sent.`
     );
   }
   if (present.includes("transform")) {
@@ -184,14 +196,15 @@ export async function executePlacementBatch(
   singleOnly: ReadonlySet<string>,
   /** How many leading ops are the caller's; later ones (the appended
    *  SaveScene) are reported with index null. */
-  inputCount: number = ops.length
+  inputCount: number = ops.length,
+  supportsTargetSizePose = false
 ): Promise<BatchTrace> {
   // Validate and plan everything before the first request. Placement fields
   // are read on InstantiateScene only; every other op is forwarded verbatim.
   const planned: PlannedOp[] = ops.map((op, index) => {
     const ownIndex = index < inputCount ? index : null;
     if (String(op.op ?? "") === "InstantiateScene") {
-      const split = splitInstantiatePlacement(op, `ops[${index}]`);
+      const split = splitInstantiatePlacement(op, `ops[${index}]`, supportsTargetSizePose);
       return { op: split.op, index: ownIndex, props: split.props };
     }
     return { op, index: ownIndex, props: [] };
@@ -287,6 +300,14 @@ export async function executePlacementBatch(
     if (!ok) {
       // The pieces created before the failure still get their transforms.
       if (instantiate) await flushPending();
+      break;
+    }
+    if (instantiate && head.op.target_size_pose && entries[0]!.result?.target_size_pose_applied !== true) {
+      trace.failed = true;
+      entries[0]!.ok = false;
+      entries[0]!.failureReason = "target_size_pose_unconfirmed";
+      entries[0]!.error = "The engine created the instance but did not confirm its pose before sizing. Check the instance before saving.";
+      await flushPending();
       break;
     }
     if (instantiate && head.props.length > 0) {
@@ -500,7 +521,8 @@ export async function instantiateScene(client: SceneMutationClient, args: Instan
     (chunk) => client.executeIdentityBoundOps(chunk, { scenePath: args.scenePath }),
     sceneMutationOps([op]),
     resolveSingleOnlyOps(client),
-    1
+    1,
+    client.getEngineCapabilities?.()?.instantiateTargetSizePose === true
   );
   const envelope = traceEnvelope(trace);
   // results[] already holds every op's receipt; the per-request copies are
@@ -509,7 +531,10 @@ export async function instantiateScene(client: SceneMutationClient, args: Instan
   const head = trace.entries[0];
   const nodePath = receiptNodePath(head?.result);
   const derived = trace.entries.filter((entry) => entry.derived === "transform");
-  const applied = derived.length > 0 && derived.every((entry) => entry.ok === true);
+  const applied = head?.ok === true && (
+    head.result?.target_size_pose_applied === true ||
+    (derived.length > 0 && derived.every((entry) => entry.ok === true))
+  );
   return withTargetSizeNote(
     {
       ...envelope,
@@ -594,7 +619,8 @@ export async function runBatch(client: BatchClient, args: BatchArgs): Promise<un
     send,
     containsMutation ? sceneMutationOps(ops) : ops,
     resolveSingleOnlyOps(client),
-    ops.length
+    ops.length,
+    client.getEngineCapabilities?.()?.instantiateTargetSizePose === true
   );
   return args.receipt === "summary" ? summarizeTrace(trace, ops) : traceEnvelope(trace);
 }

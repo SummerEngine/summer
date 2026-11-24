@@ -101,11 +101,22 @@ export function basisNormalMatrix(b: Basis3, det = basisDeterminant(b)): Basis3 
   ];
 }
 
-/** General 3x3 inverse (parents may carry non-uniform scale). */
-export function basisInverse(b: Basis3): Basis3 {
+function invertibleDeterminant(b: Basis3): number {
   const det = basisDeterminant(b);
   if (!(Math.abs(det) > 1e-12)) throw new Error("basis is not invertible");
+  return det;
+}
+
+/** General 3x3 inverse. A caller with its own singularity policy can pass the checked determinant. */
+export function basisInverse(b: Basis3, det = invertibleDeterminant(b)): Basis3 {
   return basisTranspose(basisNormalMatrix(b, det));
+}
+
+/** Convert a world displacement with the inverse parent basis and add it to the child's local position. */
+export function localPositionAfterWorldDelta(
+  local: Vec3, parent: Basis3, worldDelta: Vec3, checkedDeterminant?: number,
+): Vec3 {
+  return add(local, basisMulVec(basisInverse(parent, checkedDeterminant), worldDelta));
 }
 
 export function xformMulPoint(t: Xform, p: Vec3): Vec3 {

@@ -5,6 +5,7 @@ import {
   basisMul,
   basisMulVec,
   godotNumber,
+  localPositionAfterWorldDelta,
   IDENTITY_BASIS,
   parseGodotTransform,
   parseGodotVector3,
@@ -31,6 +32,13 @@ function expectBasis(actual: Basis3, expected: Basis3) {
 }
 
 describe("placement math", () => {
+  it("preserves the tool-specific determinant cutoffs when converting a world translation", () => {
+    const parent: Basis3 = [[1e-12, 0, 0], [0, 1, 0], [0, 0, 1]];
+    expect(() => localPositionAfterWorldDelta([0, 0, 0], parent, [1e-12, 2, 3])).toThrow("not invertible");
+    // Snap accepts the exact boundary after checking the native parent determinant.
+    expect(localPositionAfterWorldDelta([0, 0, 0], parent, [1e-12, 2, 3], 1e-12)).toEqual([1, 2, 3]);
+  });
+
   it("rotates +x to -z with a +90 degree turn about +y (Godot's right-handed convention)", () => {
     const r = rotationAbout([0, 1, 0], Math.PI / 2);
     expectVec(basisMulVec(r, [1, 0, 0]), [0, 0, -1]);

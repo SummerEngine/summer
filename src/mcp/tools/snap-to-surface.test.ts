@@ -10,7 +10,7 @@ import { SNAP_MESH_ARGS_TOKEN, buildSnapMeshScript, snapMeshProbeTemplate } from
 import { gdscriptStructureProblems } from "../../test-helpers/gdscript-structure.js";
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { findTscnNode, parseTscn } from "../../core/capabilities/tscn.js";
-import { parseTransform3D } from "../../core/capabilities/math3d.js";
+import { parseGodotTransform } from "../../core/capabilities/placement-math.js";
 
 const SCENE = "res://town.tscn";
 
@@ -171,7 +171,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, ${x}, ${y}, ${z})
 
   savedLocalY(): number {
     const node = findTscnNode(parseTscn(this.disk), "Props/Bottle")!;
-    return parseTransform3D(node.props.find((p) => p.key === "transform")!.value)!.origin[1];
+    return parseGodotTransform(node.props.find((p) => p.key === "transform")!.value)!.origin[1];
   }
 }
 
@@ -402,7 +402,7 @@ class FakeMeshSnapEngine {
         return { ok: true, op: "SaveScene" };
       case "SetProp": {
         if (op.key === "transform") {
-          const t = parseTransform3D(String(op.value));
+          const t = parseGodotTransform(String(op.value));
           if (!t) return { ok: false, op: "SetProp", error: "bad transform" };
           this.local = t.origin;
           this.unsaved = true;
@@ -447,7 +447,7 @@ class FakeMeshSnapEngine {
 
   savedLocalY(): number {
     const node = findTscnNode(parseTscn(this.disk), "Props/Fern")!;
-    return parseTransform3D(node.props.find((p) => p.key === "transform")!.value)!.origin[1];
+    return parseGodotTransform(node.props.find((p) => p.key === "transform")!.value)!.origin[1];
   }
 }
 

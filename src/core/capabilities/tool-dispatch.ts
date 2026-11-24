@@ -1285,7 +1285,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     const content = replaceAll
       ? current.content.split(oldText).join(newText)
-      : current.content.replace(oldText, newText);
+      : current.content.replace(oldText, () => newText);
     if (content === current.content) {
       return { ok: true, noOp: true, path: safePath, sha256: current.sha256, matches };
     }

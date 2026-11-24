@@ -89,7 +89,7 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   "engine.snapshot_diff": {
     title: "Compare two scene snapshots",
     summary:
-      "Compare two scene snapshots: added, removed and changed nodes and count changes. The proof that a change did what you meant; an empty diff after a change means it did not land. Next: engine.screenshot.",
+      "Compare two scene snapshots: added, removed and changed nodes and count changes. An empty diff means the captured fields showed no change. Check the affected property or image for visual edits. Next: engine.screenshot.",
     effect: "read",
     example: { input: { from_id: "snap_3" }, note: "What changed since the baseline." },
   },

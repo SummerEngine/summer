@@ -10789,8 +10789,8 @@
       "id": "tool/snapshot-diff",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "996761994942d2099ccfa3e5352a59fe3eb9cc3c8637a5c1f1718625dcbe657d",
-      "summary": "Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.",
+      "content_hash": "3a46e2642b117de7349a94d3e4adb7adc314a0b2aa1716236ef729ba9ce70ad8",
+      "summary": "Compare captured node paths, tracked fields and count changes across two scene snapshots.",
       "use_when": [
         "verifying a mutation batch against the snapshot_id taken before it",
         "\"what changed in the scene after that script ran?\"",
@@ -11395,7 +11395,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "8f8dab1d735156630961e3bbef0b5e8985eb7f9e8e933a173aae163c56fbe9e1",
+      "content_hash": "0176f412e102badbf9a63e1672d0e231e5ddaa794584aa8112866d05af046a2e",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

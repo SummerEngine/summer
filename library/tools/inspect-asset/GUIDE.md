@@ -11,7 +11,7 @@ Returns (all in the asset root's own frame, the frame position/rotation apply in
 - collision: CollisionShape3D nodes {path, shape, size/radius/height/faces, center, min, max}
 - analysis {triangles_analyzed, triangle_budget, truncated}; a "truncated" object when a list was cut to fit 5 KB
 
-Visible static Sprite3D nodes contribute their Godot drawing bounds to aabb and origin. The mesh rows, triangle counts, and planes describe the mesh geometry listed above.
+Visible Sprite3D nodes and the saved frame of each visible AnimatedSprite3D contribute their Godot drawing bounds to aabb and origin. Inspection reads the selected animation and frame without playing it. The mesh rows, triangle counts, and planes describe the mesh geometry listed above.
 
 CSG scenes require a baked visual mesh. For procedural CSG the tool returns csg_visual_mesh_unavailable with the node path and recovery.
 

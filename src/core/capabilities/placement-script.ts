@@ -757,12 +757,27 @@ func _loop_raw(lp):
 	return rec
 
 
-# A new detached Sprite3D has no drawing AABB until Godot enters it into a tree.
-# Evaluate a hidden built-in sprite. The authored node, its scripts and children stay detached.
+# SpriteBase3D fills its drawing AABB on tree entry. Both sprite types draw the
+# selected texture through the same native path. A static preview never plays
+# an animation or enters the authored node, its scripts or children.
 func _asset_sprite_aabb(sprite):
+	var texture
+	if sprite is AnimatedSprite3D:
+		var frames = sprite.sprite_frames
+		if frames == null or not frames.has_animation(sprite.animation) or sprite.frame >= frames.get_frame_count(sprite.animation):
+			return AABB()
+		texture = frames.get_frame_texture(sprite.animation, sprite.frame)
+	else:
+		texture = sprite.texture
+	if texture == null:
+		return AABB()
 	var preview = Sprite3D.new()
 	preview.visible = false
-	for property in ["texture", "region_enabled", "region_rect", "hframes", "vframes", "frame", "centered", "offset", "pixel_size", "axis", "billboard"]:
+	preview.texture = texture
+	if sprite is Sprite3D:
+		for property in ["region_enabled", "region_rect", "hframes", "vframes", "frame"]:
+			preview.set(property, sprite.get(property))
+	for property in ["centered", "offset", "pixel_size", "axis", "billboard"]:
 		preview.set(property, sprite.get(property))
 	Engine.get_main_loop().root.add_child(preview, false, Node.INTERNAL_MODE_BACK)
 	var bounds = preview.get_aabb()
@@ -790,7 +805,7 @@ func _collect(top, same_world_geometry = false, inspecting_asset = false):
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
-				if inspecting_asset and vis and n is Sprite3D and n.texture != null and not n.is_inside_tree():
+				if inspecting_asset and vis and (n is Sprite3D or n is AnimatedSprite3D) and not n.is_inside_tree():
 					bb = _asset_sprite_aabb(n)
 				if bb.size != Vector3.ZERO:
 					if vis:

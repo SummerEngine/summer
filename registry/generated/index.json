@@ -9431,7 +9431,7 @@
       "id": "tool/place-adjacent",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4b06271d1a3f354e872bfb9d870109b309b14c5e121af910474d9b1358d7df96",
+      "content_hash": "56d636dacae5f56e18f9490bb9519a245bcb532cefc59a486b308b46125d259b",
       "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
       "use_when": [
         "laying facade or wall modules edge to edge along a street line",

@@ -156,10 +156,11 @@ export function hasNoDisplay(env: NodeJS.ProcessEnv = process.env, platform: Nod
   return platform === "linux" && !env.DISPLAY?.trim() && !env.WAYLAND_DISPLAY?.trim();
 }
 
-/** A live editor with another project than `root`, and its name for the person. */
+/** Another live project, only when no registered editor already owns `root`. */
 async function otherOpenProject(root: string): Promise<{ instance: EngineInstance; name: string } | null> {
+  const owners = await listEngineInstances(Date.now(), undefined, { anyHeartbeat: true });
+  if (owners.some((instance) => instance.resourceRoot === root)) return null;
   for (const instance of await listEngineInstances()) {
-    if (instance.resourceRoot === root) continue;
     if (await checkEngineHealth(instance.port)) {
       return { instance, name: instance.projectName ? `${instance.projectName} (${instance.resourceRoot})` : instance.resourceRoot };
     }

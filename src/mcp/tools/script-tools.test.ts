@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
@@ -14,6 +14,7 @@ vi.mock("../../core/telemetry.js", () => ({
 }));
 
 import { getClient } from "../server.js";
+import { answerOfEngineResult } from "../../core/ops/engine-answer.js";
 import {
   isApiDocsBundleInstalled,
   lookupApiDocs,
@@ -298,6 +299,20 @@ describe("summer_run_script", () => {
 });
 
 describe("summer_run_editor_script", () => {
+  it("keeps actual native errors through the registered handler and V4 failure projection", async () => {
+    const receipt = JSON.parse(readFileSync(new URL("../../../tests/fixtures/script-failure.json", import.meta.url), "utf8"));
+    vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps: vi.fn().mockResolvedValue(receipt) } as never);
+    const result = await tool(tools(), "summer_run_editor_script").handler({
+      source: 'func _run():\n\tpush_error("AUDIT_EXPECTED_DIAGNOSTIC")', checkpoint: false,
+    });
+    expect(result).toMatchObject({ isError: true });
+    const answer = answerOfEngineResult(result, "engine.run_editor_script", { effect: "write", guide: "tool/run-editor-script" });
+    expect(answer).toMatchObject({ ok: false, error: { code: "invalid_input", details: { tool: {
+      errors: receipt.results[0].errors, boot_errors: [], line_offset: 2, ran: true, exit_code: 1,
+    } } } });
+    expect(JSON.stringify(answer)).not.toContain("<OWNED_PROJECT>");
+  });
+
   it("gives the client poll budget headroom beyond max_seconds", async () => {
     const executeIdentityBoundOps = vi.fn().mockResolvedValue({
       ok: true,
@@ -311,5 +326,16 @@ describe("summer_run_editor_script", () => {
     const [ops, , timeoutMs] = executeIdentityBoundOps.mock.calls[0]!;
     expect(ops[0]).toMatchObject({ op: "RunEditorScript", max_seconds: 600 });
     expect(timeoutMs).toBeGreaterThan(600_000);
+  });
+});
+
+it("keeps scene parse diagnostics through the registered handler and V4 failure projection", async () => {
+  const parseErrors = [{ line: 4, column: 7, message: "Expected expression." }];
+  vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps: vi.fn().mockResolvedValue({
+    results: [{ ok: false, op: "RunSceneScript", failure_reason: "parse_error", error: "The script does not compile.", parse_errors: parseErrors, line_offset: 2 }],
+  }) } as never);
+  const result = await tool(tools(), "summer_run_script").handler({ source: "func run(ctx):\n\tvar x = " });
+  expect(answerOfEngineResult(result, "engine.run_script", { effect: "write" })).toMatchObject({
+    ok: false, error: { details: { tool: { parse_errors: parseErrors, line_offset: 2 } } },
   });
 });

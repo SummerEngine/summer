@@ -1550,7 +1550,10 @@ export const repeatAlongArgsSchema = z.object({
   parent: nodePathSchema("Parent for the copies").describe("Parent for the copies; start/end/direction are in this parent's local space (same as position)."),
   start: vec3.describe("First copy's position [x, y, z] in the parent's space."),
   end: vec3.optional().describe("Line end. With spacing: as many copies as fit; with count: count copies spread from start to end."),
-  direction: nonZeroVec3.optional().describe("Instead of end: direction of the row; needs count and spacing."),
+  direction: vec3
+    .refine((v) => v.some((component) => component !== 0), "vector must be non-zero")
+    .optional()
+    .describe("Instead of end: direction of the row; needs count and spacing."),
   count: z.number().int().min(1).max(64).optional().describe("Number of copies (1-64)."),
   spacing: z.number().positive().max(1000).optional().describe("Distance between neighbouring copies' origins."),
   align: z
@@ -1573,6 +1576,13 @@ export type RepeatAlongArgs = z.output<typeof repeatAlongArgsSchema>;
 
 export const REPEAT_MAX_COPIES = 64;
 
+/** A direction is scale-free. Divide by the largest component before normalizing
+ * so even a subnormal or near-maximum input produces a finite unit vector. */
+function repeatDirection(v: Vec3): Vec3 {
+  const largest = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
+  return normalize([v[0] / largest, v[1] / largest, v[2] / largest]);
+}
+
 /** Copy positions for a repeat_along call. Exported for tests. */
 export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "direction" | "count" | "spacing" | "align">): {
   positions: Vec3[];
@@ -1589,10 +1599,10 @@ export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "d
     const total = length(span);
     if (args.count === 1) {
       const at = args.align === "end" ? args.end : args.align === "center" ? scale(add(start, args.end), 0.5) : start;
-      return { positions: [at], spacing: 0, direction: total > 1e-9 ? normalize(span) : [0, 0, 0] };
+      return { positions: [at], spacing: 0, direction: total > 0 ? repeatDirection(span) : [0, 0, 0] };
     }
-    if (total < 1e-9) throw new ToolInputError("start and end are the same point; pass count 1 or a longer line.");
-    const dir = normalize(span);
+    if (total === 0) throw new ToolInputError("start and end are the same point; pass count 1 or a longer line.");
+    const dir = repeatDirection(span);
     if (args.spacing !== undefined) {
       const n = Math.floor(total / args.spacing + 1e-9) + 1;
       if (n > REPEAT_MAX_COPIES) {
@@ -1613,7 +1623,7 @@ export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "d
   if (args.direction) {
     if (args.count === undefined) throw new ToolInputError("With direction, pass count.");
     if (args.count > 1 && args.spacing === undefined) throw new ToolInputError("With direction and count > 1, pass spacing.");
-    const dir = normalize(args.direction);
+    const dir = repeatDirection(args.direction);
     const spacing = args.spacing ?? 0;
     const positions = Array.from({ length: args.count }, (_, i) => add(start, scale(dir, i * spacing)));
     return { positions, spacing, direction: dir };

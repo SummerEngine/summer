@@ -797,11 +797,11 @@ Known models (text-to-video):
   - "ltx" (default) — LTX Video, fast
   - "kling" — Kling 2 Master, high quality
   - "kling-turbo" — Kling 2.5 Turbo Pro
-  - "minimax" — MiniMax
+  - "minimax-h3-max" — MiniMax H3 Max
   - "veo3" — Google Veo 3, premium
 
 Known models (image-to-video, when imageUrl provided):
-  - "ltx" (default), "kling", "minimax"
+  - "ltx" (default), "kling", "minimax-h3-max"
 
 If imageUrl is provided, switches to image-to-video mode.
 Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
@@ -817,7 +817,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       model: z
         .string()
         .default("ltx")
-        .describe("Model name: ltx, kling, kling-turbo, minimax, veo3 (or any new model)"),
+        .describe("Model key: ltx, kling, kling-turbo, minimax-h3-max, veo3, or another registered video model"),
       imageUrl: z
         .string()
         .optional()

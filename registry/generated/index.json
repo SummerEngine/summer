@@ -8078,8 +8078,8 @@
     {
       "id": "tool/generate-video",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "98ae8a3b9181f452cf78040fc9dfe5ccd81ca6ce13f55d9bfea895f21efe90c2",
+      "version": "1.0.3",
+      "content_hash": "789e4f49c6c6d5dbdaa37b0145bd23fa53329f4debfb4c3ed5943052ae9411c2",
       "summary": "Generate a video from text or an image with allowlisted models via Summer Studio.",
       "use_when": [
         "creating cutscene, trailer, or reference footage from a prompt",

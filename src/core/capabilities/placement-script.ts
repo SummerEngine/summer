@@ -1110,6 +1110,17 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
+func _port_motion_error(root, source, piece, moving_subject):
+	if moving_subject == null:
+		return null
+	var follows = _inherits_3d(source, moving_subject)
+	if piece == moving_subject and not follows:
+		return _fail("independent_subject_port", "Port '" + _rel(root, source) + "' does not move with " + _rel(root, piece) + ". Choose a port that inherits the subject transform.")
+	if piece != moving_subject and follows:
+		return _fail("target_port_moves_with_subject", "Target port '" + _rel(root, source) + "' moves with " + _rel(root, moving_subject) + ". Choose a stationary target port.")
+	return null
+
+
 func _resolve_port(root, node, port, budget, want_others, moving_subject = null):
 	var world = _placement_world(node)
 	var nt = _world_xf(node, root)
@@ -1123,12 +1134,9 @@ func _resolve_port(root, node, port, budget, want_others, moving_subject = null)
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
 		if _placement_world(mk) != world:
 			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
-		if moving_subject != null:
-			var moves_with_subject = _inherits_3d(mk, moving_subject)
-			if node == moving_subject and not moves_with_subject:
-				return {"fail": _fail("independent_subject_port", "Port '" + String(port) + "' does not move with " + _rel(root, node) + ". Choose a port that inherits the subject transform.")}
-			if node != moving_subject and moves_with_subject:
-				return {"fail": _fail("target_port_moves_with_subject", "Target port '" + _rel(root, mk) + "' moves with " + _rel(root, moving_subject) + ". Choose a stationary target port.")}
+		var motion_error = _port_motion_error(root, mk, node, moving_subject)
+		if motion_error != null:
+			return {"fail": motion_error}
 		var mt = _world_xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
@@ -1154,9 +1162,19 @@ func _resolve_port(root, node, port, budget, want_others, moving_subject = null)
 		return {"fail": analysis_error}
 	var an = _analyze(col["meshes"], budget, false, true)
 	var loops = []
+	var unavailable = {}
+	var last_mesh = -1
 	for lp in an["loops"]:
+		var mesh = lp["mesh"]
+		if mesh != last_mesh:
+			last_mesh = mesh
+			var motion_error = _port_motion_error(root, col["meshes"][mesh][0], node, moving_subject)
+			if motion_error != null:
+				unavailable[str(mesh)] = motion_error
 		loops.append(_loop_raw(lp))
 	var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}
+	if not unavailable.is_empty():
+		out["unavailable_meshes"] = unavailable
 	if an["truncated"]:
 		out["analysis_truncated"] = true
 	return out

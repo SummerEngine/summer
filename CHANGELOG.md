@@ -14,6 +14,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
 - Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
+- Connecting mesh openings checks that the selected subject opening follows the moving piece and that its target stays put.
 - Placement checks use the original requested movement across long distances. A distant piece can reach a precise gap near the origin, and a gap that the saved position cannot represent is refused before writing.
 - Triangle-based surface snaps also verify the saved movement with Godot and restore the starting pose when the requested placement cannot be represented.
 - Adjacent placement and surface-snap recovery ask Godot to check the requested world movement before writing. Small or reflected parents can place accurately, and unrepresentable adjacent placements report a failure before saving.

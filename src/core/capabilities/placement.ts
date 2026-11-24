@@ -1812,6 +1812,8 @@ export function resolveProbePort(
     counts.set(loop.mesh, index + 1);
     return { ...loop, source: { mesh: loop.mesh, loop: index } };
   }));
+  const unavailable = asRecord(record.unavailable_meshes) ?? {};
+  const available = loops.filter((candidate) => !unavailable[String(candidate.mesh)]);
   const loop = originalSource
     ? loops.find((candidate) => candidate.source?.mesh === originalSource.mesh && candidate.source.loop === originalSource.loop)
     : findLoop(loops, selector);
@@ -1821,21 +1823,25 @@ export function resolveProbePort(
       failure: fail(
         tool,
         "port_not_found",
-        `${asked} not found on the ${label} ${node} (${loops.length} open loop(s)). Pass an id from ${label}_ports, e.g. '${loops[0]?.id ?? "+Y"}', or a Marker3D name.`,
+        `${asked} not found on the ${label} ${node} (${loops.length} open loop(s)). Pass an id from ${label}_ports, e.g. '${available[0]?.id ?? "+Y"}', or a Marker3D name.`,
         {
-          [`${label}_ports`]: loops.slice(0, PORT_CHOICES_SHOWN).map((l) => ({ id: l.id, index: l.index, center: roundVec(l.center), direction: roundVec(l.direction, 4), radius: round(l.radius) })),
-          ...(loops.length > PORT_CHOICES_SHOWN ? { [`${label}_ports_total`]: loops.length } : {}),
+          [`${label}_ports`]: available.slice(0, PORT_CHOICES_SHOWN).map((l) => ({ id: l.id, index: l.index, center: roundVec(l.center), direction: roundVec(l.direction, 4), radius: round(l.radius) })),
+          ...(available.length > PORT_CHOICES_SHOWN ? { [`${label}_ports_total`]: available.length } : {}),
         }
       ),
     };
+  }
+  const error = asRecord(unavailable[String(loop.mesh)]);
+  if (error) {
+    return { failure: fail(tool, String(error.failure_reason), String(error.error), { saved: false, port: loop.id }) };
   }
   const nodeXf = xformFromArray(record.node_xform);
   const normalMatrix = basisNormalMatrix(nodeXf.basis);
   const port = loopPort(loop, nodeXf, normalMatrix);
   if (record.analysis_truncated === true) port.analysis_truncated = true;
   if (withOthers) {
-    port.others = loops.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf, normalMatrix));
-    port.others_total = loops.length - 1;
+    port.others = available.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf, normalMatrix));
+    port.others_total = available.length - 1;
   }
   return { port };
 }

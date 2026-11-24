@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Mesh port connections use the actual position of a fixed target opening under a translated or rotated parent.
+
 - Port connections and surface attachments ask Godot to verify the full local transform before writing. They now work under small, invertible parent scales and leave the scene untouched when the requested pose would lose precision.
 
 - World snapshots include 2D nodes under mixed scene roots on released editors, so subtree and class filters can find those nodes. Set `include_2d: false` to omit 2D nodes under a mixed root.

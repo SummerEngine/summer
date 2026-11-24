@@ -1107,7 +1107,7 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
-func _resolve_port(root, node, port, budget, want_others):
+func _resolve_port(root, node, port, budget, want_others, moving_subject = null):
 	var world = _placement_world(node)
 	var nt = _xf(node, root)
 	if typeof(port) == TYPE_STRING:
@@ -1120,13 +1120,19 @@ func _resolve_port(root, node, port, budget, want_others):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
 		if _placement_world(mk) != world:
 			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
+		if moving_subject != null:
+			var moves_with_subject = _inherits_3d(mk, moving_subject)
+			if node == moving_subject and not moves_with_subject:
+				return {"fail": _fail("independent_subject_port", "Port '" + String(port) + "' does not move with " + _rel(root, node) + ". Choose a port that inherits the subject transform.")}
+			if node != moving_subject and moves_with_subject:
+				return {"fail": _fail("target_port_moves_with_subject", "Target port '" + _rel(root, mk) + "' moves with " + _rel(root, moving_subject) + ". Choose a stationary target port.")}
 		var mt = _xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
 			var mothers = []
 			var mtotal = 0
 			for item in _collect(node)["markers"]:
-				if item[0] == mk or _placement_world(item[0]) != world:
+				if item[0] == mk or _placement_world(item[0]) != world or not _inherits_3d(item[0], node):
 					continue
 				mtotal += 1
 				if mothers.size() >= 16:
@@ -1167,10 +1173,10 @@ func _cmd_ports(root, args):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
 	if _placement_world(sub) != _placement_world(tgt):
 		return _fail("different_world_3d", "subject and target must share a World3D to join their ports")
-	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
+	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)), sub)
 	if sp.has("fail"):
 		return sp["fail"]
-	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false)
+	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false, sub)
 	if tp.has("fail"):
 		return tp["fail"]
 	for p in [sp, tp]:

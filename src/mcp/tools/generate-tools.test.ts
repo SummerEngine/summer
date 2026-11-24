@@ -434,6 +434,7 @@ describe("registerGenerateTools — video job results", () => {
     expect(video.description).toContain("summer_check_job");
     expect(video.description).not.toContain("Returns the generated video URL");
     expect(getTool(tools, "summer_check_job").description).toContain("summer_generate_video");
+    expect(getTool(tools, "summer_check_job").description).toContain("assetId (3D or video)");
   });
 });
 

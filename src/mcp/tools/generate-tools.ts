@@ -862,7 +862,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
 
 summer_generate_3d, summer_generate_video and summer_generate_motion return a jobId; call this with it
 every 15-30 seconds until status is "completed" or "failed". A completed job
-carries the result: assetId (3D), rigAssetId (rig=true), animationAssetId or
+carries the result: assetId (3D or video), rigAssetId (rig=true), animationAssetId or
 result.assets (motion), with file URLs. Import with summer_import_asset_by_id.
 
 Status values: waiting, active, completed, failed, delayed, unknown.

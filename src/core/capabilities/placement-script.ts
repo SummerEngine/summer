@@ -28,7 +28,7 @@
  * only that scene's bodies are in the editor's physics space.
  */
 
-import { SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+import { REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
@@ -136,10 +136,7 @@ func _vec(a):
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
 
 
-# Compare each rounded Vector3 to the original double-precision request.
-func _distance_to_request(v: Vector3, a):
-	return sqrt(pow(v.x - a[0], 2) + pow(v.y - a[1], 2) + pow(v.z - a[2], 2))
-
+${REQUEST_DISTANCE_GDSCRIPT}
 
 func _plan_transform(root, args):
 	var node = _node(root, args["path"])
@@ -822,22 +819,28 @@ func _asset_sprite_aabb(sprite):
 
 
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
-func _collect(top, same_world_geometry = false, inspecting_asset = false):
-	var world = _placement_world(top) if same_world_geometry else null
+func _collect(top, scene_root = null, inspecting_asset = false):
+	var world = _placement_world(top) if scene_root != null else null
 	var meshes = []
 	var geoms = []
 	var markers = []
 	var shapes = []
 	var unsupported = []
 	var frame = _xf(top, top)
-	if frame.basis.determinant() == 0.0:
+	var scene_frame = _world_xf(top, scene_root) if scene_root != null else frame
+	if frame.basis.determinant() == 0.0 or scene_frame.basis.determinant() == 0.0:
 		return {"meshes": [], "geoms": [], "markers": [], "shapes": [], "unsupported": [], "singular_root": true}
 	var inverse = frame.affine_inverse()
+	var scene_inverse = scene_frame.affine_inverse() if scene_root != null else inverse
 	var stack = [top]
 	while stack.size() > 0:
 		var n = stack.pop_back()
-		if n is Node3D and (not same_world_geometry or _placement_world(n) == world):
-			var t = inverse * _xf(n, top)
+		if n is Node3D and (scene_root == null or _placement_world(n) == world):
+			var t: Transform3D
+			if scene_root != null and not _inherits_3d(n, top):
+				t = scene_inverse * _world_xf(n, scene_root)
+			else:
+				t = inverse * _xf(n, top)
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
@@ -1013,7 +1016,7 @@ func _cmd_inspect_asset(args):
 
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
-	var col = _collect(inst, false, true)
+	var col = _collect(inst, null, true)
 	if col.get("singular_root", false):
 		return _fail("singular_asset_root", "the asset root has a singular transform")
 	var analysis_error = _mesh_analysis_error(col)
@@ -1107,7 +1110,7 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
-func _resolve_port(root, node, port, budget, want_others):
+func _resolve_port(root, node, port, budget, want_others, moving_subject = null):
 	var world = _placement_world(node)
 	var nt = _world_xf(node, root)
 	if typeof(port) == TYPE_STRING:
@@ -1120,13 +1123,19 @@ func _resolve_port(root, node, port, budget, want_others):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
 		if _placement_world(mk) != world:
 			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
+		if moving_subject != null:
+			var moves_with_subject = _inherits_3d(mk, moving_subject)
+			if node == moving_subject and not moves_with_subject:
+				return {"fail": _fail("independent_subject_port", "Port '" + String(port) + "' does not move with " + _rel(root, node) + ". Choose a port that inherits the subject transform.")}
+			if node != moving_subject and moves_with_subject:
+				return {"fail": _fail("target_port_moves_with_subject", "Target port '" + _rel(root, mk) + "' moves with " + _rel(root, moving_subject) + ". Choose a stationary target port.")}
 		var mt = _world_xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
 			var mothers = []
 			var mtotal = 0
 			for item in _collect(node)["markers"]:
-				if item[0] == mk or _placement_world(item[0]) != world:
+				if item[0] == mk or _placement_world(item[0]) != world or not _inherits_3d(item[0], node):
 					continue
 				mtotal += 1
 				if mothers.size() >= 16:
@@ -1139,7 +1148,7 @@ func _resolve_port(root, node, port, budget, want_others):
 	# An open-loop port: every loop of the node in its own frame, plus the
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
-	var col = _collect(node, true)
+	var col = _collect(node, root)
 	var analysis_error = _mesh_analysis_error(col, true)
 	if analysis_error != null:
 		return {"fail": analysis_error}
@@ -1167,10 +1176,10 @@ func _cmd_ports(root, args):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
 	if _placement_world(sub) != _placement_world(tgt):
 		return _fail("different_world_3d", "subject and target must share a World3D to join their ports")
-	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
+	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)), sub)
 	if sp.has("fail"):
 		return sp["fail"]
-	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false)
+	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false, sub)
 	if tp.has("fail"):
 		return tp["fail"]
 	for p in [sp, tp]:

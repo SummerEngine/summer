@@ -314,8 +314,9 @@ func run(_ctx):
 	if best_hit.is_empty() or best > max_distance:
 		return _done(stats, false)
 	var shift = best - gap
-	var world_delta = d * shift
-	var after = _translated_position_literal(_parent_xf(subject, root), subject.position, world_delta)
+	var world_delta = [d.x * shift, d.y * shift, d.z * shift]
+	var parent = _parent_xf(subject, root)
+	var after = _translated_position_literal(parent, subject.position, world_delta)
 	if after == null:
 		return _fail("translation_not_representable", "The parent transform cannot reproduce the requested mesh movement at engine precision.")
 	var support = _support_of(ranges, int(best_hit["face"]))
@@ -330,7 +331,7 @@ func run(_ctx):
 	stats["position"] = var_to_str(subject.position)
 	stats["position_after"] = after
 	stats["origin_before"] = _raw3(origin)
-	stats["origin_after"] = _raw3(origin + world_delta)
+	stats["origin_after"] = _raw3(parent * str_to_var(after))
 	return _done(stats, true)
 
 

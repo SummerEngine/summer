@@ -466,7 +466,7 @@ func _cmd_raycast(root, active, args):
 
 # ---------------------------------------------------------------- meshes
 
-# Triangles of the given meshes (each [MeshInstance3D, frame transform, aabb])
+# Triangles of the given mesh rows (owner, frame transform, AABB, visibility, Mesh)
 # in one frame: area-binned planar faces and open boundary loops.
 func _analyze(meshes, budget, want_planes, want_loops):
 	var planes = {}
@@ -478,7 +478,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
-		var mesh = m[0].mesh
+		var mesh = m[4]
 		var t = m[1]
 		var flip = t.basis.determinant() < 0.0
 		var weld = {}
@@ -489,7 +489,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 				break
 			if not _is_tris(mesh, s):
 				continue
-			var culls = _culls_back(m[0], s) if want_planes else true
+			var culls = _culls_back(m[0], mesh, s) if want_planes else true
 			var arr = mesh.surface_get_arrays(s)
 			var verts = arr[Mesh.ARRAY_VERTEX]
 			if verts == null or verts.size() == 0:
@@ -570,8 +570,8 @@ func _analyze(meshes, budget, want_planes, want_loops):
 # Whether surface s of a MeshInstance3D is drawn with back-face culling, so its
 # faces are invisible from behind. No material means the default material,
 # which culls back faces.
-func _culls_back(mi, s):
-	var mat = mi.get_active_material(s)
+func _culls_back(node, mesh, s):
+	var mat = node.get_active_material(s) if node is MeshInstance3D else mesh.surface_get_material(s)
 	if mat == null:
 		return true
 	if mat is BaseMaterial3D:
@@ -712,7 +712,20 @@ func _collect(top):
 				if vis:
 					geoms.append([n, t, bb])
 				if n is MeshInstance3D and n.mesh != null:
-					meshes.append([n, t, bb, vis])
+					meshes.append([n, t, bb, vis, n.mesh])
+		elif n.is_class("GridMap"):
+			# Godot supplies the drawn mesh and grid-local pose for each populated
+			# mesh cell, including orientation, cell scale and library item offset.
+			var cells = n.get_meshes()
+			for index in range(0, cells.size(), 2):
+				var mesh = cells[index + 1]
+				var bb = mesh.get_aabb()
+				if bb.size == Vector3.ZERO:
+					continue
+				var cell_transform = t * cells[index]
+				meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
+				if vis:
+					geoms.append([n, cell_transform, bb])
 		elif n is Marker3D:
 			markers.append([n, t])
 		elif n is CollisionShape3D:
@@ -720,7 +733,11 @@ func _collect(top):
 		for c in n.get_children():
 			stack.append([c, t, vis, false])
 	var by_path = func(a, b): return String(top.get_path_to(a[0])) < String(top.get_path_to(b[0]))
-	meshes.sort_custom(by_path)
+	var by_mesh = func(a, b):
+		if a[0] == b[0] and a.size() > 5 and b.size() > 5:
+			return a[5] < b[5]
+		return by_path.call(a, b)
+	meshes.sort_custom(by_mesh)
 	markers.sort_custom(by_path)
 	shapes.sort_custom(by_path)
 	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes}
@@ -852,10 +869,12 @@ func _describe(inst, args):
 	var meshes_out = []
 	var total = 0
 	for m in col["meshes"]:
-		var tris = _mesh_tris(m[0].mesh)
+		var tris = _mesh_tris(m[4])
 		total += tris
 		var mb = _bounds_of([[m[0], m[1], m[2]]])
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
+		if m.size() > 5:
+			rec["grid_entry"] = m[5]
 		if not m[3]:
 			rec["hidden"] = true
 		meshes_out.append(rec)

@@ -8319,8 +8319,8 @@
     {
       "id": "tool/get-debugger-errors",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "e1c7f166cb7316022f9a5ddc8444292a67e0e3f60d54e9e8c148a8070282715b",
+      "version": "1.0.3",
+      "content_hash": "3efe0a20600f2e716de9d0ada9fe767be849aff04a4539a5c01c43fb0ba5df53",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",

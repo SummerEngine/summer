@@ -1,6 +1,6 @@
 id: tool/get-debugger-errors
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.
 use_when:
   - the running game hit failures like null references or missing nodes
@@ -42,7 +42,7 @@ input_schema:
     include_warnings:
       type: boolean
       default: false
-      description: Forward-compat flag — when engine supports it, returns warning bodies in the same call. Today the engine ignores it; use summer_get_debugger_warnings instead.
+      description: Request warning records alongside errors. Some editors include the warnings array by default. Use summer_get_debugger_warnings for a warnings-only result.
     raw:
       type: boolean
       default: false

@@ -1144,6 +1144,18 @@ describe("stable open-loop ports", () => {
     }
   });
 
+  it("keeps an open-loop normal perpendicular to both transformed ring tangents, with outward sign", () => {
+    // The opening lies in the local XZ plane. Its transformed tangent vectors
+    // are (2, 1, 0) and (0, 0, 1), so its outward normal is parallel to (-1, 2, 0).
+    for (const size of [1, -1, 0.00001]) {
+      const columns = [2, 1, 0, 0, 1, 0, 0, 0, 1].map((value) => value * size);
+      const read = resolveProbePort({ kind: "open_loops", loops: OUTLET_LOOPS, node_xform: xf12([0, 0, 0], columns) }, parsePortSelector("+Y"), "subject", "Outlet", true);
+      if ("failure" in read) throw new Error("the fixture’s +Y opening was not found");
+      const expected = [-1, 2, 0].map((value) => Math.sign(size) * value / Math.sqrt(5));
+      read.port.direction.forEach((value, axis) => expect(value).toBeCloseTo(expected[axis]!, 7));
+    }
+  });
+
   it("measures tilt as the turn of the up axis: a turn about it is no tilt", () => {
     const identity = { basis: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3], origin: [0, 0, 0] as Vec3 };
     const c = Math.cos(Math.PI / 6);

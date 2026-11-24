@@ -38,6 +38,7 @@ import {
   angleDegrees,
   axisIndex,
   basisInverse,
+  basisNormalMatrix,
   basisMul,
   basisMulVec,
   basisDeterminant,
@@ -1763,13 +1764,13 @@ function portOut(port: PortRead): JsonRecord {
 }
 
 /** An ordered loop in scene space, through its node's scene transform. */
-function loopPort(loop: OrderedLoop, nodeXf: Xform): PortRead {
+function loopPort(loop: OrderedLoop, nodeXf: Xform, normalMatrix: Basis3): PortRead {
   return {
     kind: "open_loop",
     id: loop.id,
     index: loop.index,
     position: xformMulPoint(nodeXf, loop.center),
-    direction: normalize(basisMulVec(nodeXf.basis, loop.direction)),
+    direction: normalize(basisMulVec(normalMatrix, loop.direction)),
     radius: loop.radius,
     ...(loop.direction_ambiguous ? { direction_ambiguous: true } : {}),
   };
@@ -1809,10 +1810,11 @@ export function resolveProbePort(
     };
   }
   const nodeXf = xformFromArray(record.node_xform);
-  const port = loopPort(loop, nodeXf);
+  const normalMatrix = basisNormalMatrix(nodeXf.basis);
+  const port = loopPort(loop, nodeXf, normalMatrix);
   if (record.analysis_truncated === true) port.analysis_truncated = true;
   if (withOthers) {
-    port.others = loops.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf));
+    port.others = loops.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf, normalMatrix));
     port.others_total = loops.length - 1;
   }
   return { port };

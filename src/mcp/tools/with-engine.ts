@@ -54,6 +54,8 @@ function attachMeta(result: ToolResult, meta: WithEngineMeta): ToolResult {
  *  Return null to fall through to toContent / the default JSON text. */
 export interface WithEngineOptions<T> {
   toContent?: (result: T) => ToolResultContent[];
+  /** Render a known tool failure while preserving its MCP error state and metadata. */
+  errorContent?: (result: T) => ToolResultContent[] | undefined;
   onResult?: (result: T) => ToolResult | null;
 }
 
@@ -160,15 +162,17 @@ export async function withEngine<T>(
     try {
       const result = await fn(client);
       const opError = extractOpError(result);
+      const meta: WithEngineMeta = { ...readClassifiers(result), retried, boundProjectIdHash };
       if (opError) {
+        const content = opts?.errorContent?.(result);
+        if (content) return attachMeta({ content, isError: true }, meta);
         const hint = buildActionHint(opError);
         const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
         return attachMeta(
           { content: [{ type: "text", text: message }], isError: true },
-          { ...readClassifiers(result), retried, boundProjectIdHash }
+          meta
         );
       }
-      const meta: WithEngineMeta = { ...readClassifiers(result), retried, boundProjectIdHash };
       if (opts?.onResult) {
         const short = opts.onResult(result);
         if (short) return attachMeta(short, meta);

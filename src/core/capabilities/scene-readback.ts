@@ -9,6 +9,7 @@
  * flag to `saved` (engine-receipt.ts
  * honestSceneReceipt); `verified` is set only by tools that read back here.
  */
+import { createHash } from "node:crypto";
 import { asRecord, type JsonRecord } from "../util/json.js";
 import { parseTscn, type ParsedTscn } from "./tscn.js";
 
@@ -36,7 +37,7 @@ export interface SavedSceneReader {
 
 export interface SavedScene {
   parsed: ParsedTscn;
-  sha256?: string;
+  sha256: string;
 }
 
 /**
@@ -71,6 +72,6 @@ export async function readSavedScene(
   }
   return {
     parsed: parseTscn(data.content),
-    ...(typeof data.sha256 === "string" ? { sha256: data.sha256 } : {}),
+    sha256: typeof data.sha256 === "string" ? data.sha256 : createHash("sha256").update(data.content).digest("hex"),
   };
 }

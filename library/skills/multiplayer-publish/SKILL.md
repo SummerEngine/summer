@@ -16,6 +16,11 @@ Step 5 of the multiplayer sequence. It assumes the layout from
 `runtime-manifest.json`, `source-domains.json`, and the `client/`,
 `authority/` and `network/` folders.
 
+The summer.games bundle is the only export that has Summer multiplayer. A copy
+exported for Steam, itch.io or the person's own store listing, including the
+Android and iOS presets in **Project > Export**, cannot join a Summer-hosted
+World; `multiplayer` explains what to build for those.
+
 ## 1. What gets built
 
 **Project > Export**, preset **summer.games**, **Export Project** to a `.zip`

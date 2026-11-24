@@ -280,6 +280,68 @@ describe("summer_get_console scope (E2E 2026-09-03 F-07)", () => {
   });
 });
 
+describe("summer_get_console filters before its page limit", () => {
+  const noise = Array.from({ length: 105 }, (_, i) => consoleMessage("std", `info-${i}`));
+  const error = consoleMessage("error", "retained error");
+  const warning = consoleMessage("warning", "retained warning");
+
+  it.each(["early", "late"])("keeps an %s issue beyond a native all-severity page", async (placement) => {
+    const messages = placement === "early" ? [error, warning, ...noise] : [...noise, warning, error];
+    const full = {
+      ok: true, op: "GetConsoleOutput", messages,
+      summary: { errors: 1, warnings: 1, std: 105, total: 107, returned: 107, truncated: false },
+    };
+    // A legacy native page falsely says truncated:false and counts just its
+    // first 100 rows. The retained total is still available on that build.
+    const pageMessages = messages.slice(0, 100);
+    const page = {
+      ...full, messages: pageMessages,
+      summary: {
+        ...full.summary,
+        errors: pageMessages.filter((row) => row.type === "error").length,
+        warnings: pageMessages.filter((row) => row.type === "warning").length,
+        returned: 100, totalUnique: 100,
+      },
+    };
+    const executeOps = vi.fn().mockResolvedValueOnce({ results: [page] }).mockResolvedValueOnce({ results: [full] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const body = JSON.parse(text(await tool(tools(), "summer_get_console").handler({ max_lines: 100, errors_only: true })));
+    expect(executeOps.mock.calls.map(([ops]) => ops[0].max_lines)).toEqual([100, 107]);
+    expect(body.results[0].messages).toEqual(placement === "early" ? [error, warning] : [warning, error]);
+    expect(body.results[0]._filter.droppedByLevel).toBe(105);
+    expect(body.results[0].summary.errors).toBe(1);
+  });
+
+  it("applies a small final limit after severity selection, preserving text filters", async () => {
+    const full = { op: "GetConsoleOutput", ok: true, messages: [error, ...noise, warning], summary: { total: 107 } };
+    const executeOps = vi.fn().mockResolvedValue(full);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const body = JSON.parse(text(await tool(tools(), "summer_get_console").handler({ max_lines: 1, filter: "retained", errors_only: true })));
+    expect(executeOps).toHaveBeenLastCalledWith([{ op: "GetConsoleOutput", max_lines: 107, filter: "retained" }]);
+    expect(body.messages).toEqual([warning]);
+    expect(body._filter.truncated).toBe(1);
+  });
+
+  it.each([
+    { raw: true, errors_only: true },
+    { errors_only: false },
+    { type: "error", errors_only: true },
+  ])("does not expand a read already filtered or requested raw/all-level: %j", async (options) => {
+    const executeOps = vi.fn().mockResolvedValue({ op: "GetConsoleOutput", messages: [error], summary: { total: 107 } });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    await tool(tools(), "summer_get_console").handler({ max_lines: 100, ...options });
+    expect(executeOps).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the same read for strict errors with errors_only disabled", async () => {
+    const executeOps = vi.fn().mockResolvedValue({ op: "GetConsoleOutput", messages: [error, ...noise, warning], summary: { total: 107 } });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const body = JSON.parse(text(await tool(tools(), "summer_get_console").handler({ max_lines: 100, errors_only: false, strict_errors: true })));
+    expect(executeOps).toHaveBeenCalledTimes(2);
+    expect(body.messages).toEqual([error]);
+  });
+});
+
 describe("summer_play — determinism params", () => {
   it("focus:true without pins calls play(scene) and returns the plain receipt (v1 launch)", async () => {
     const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });

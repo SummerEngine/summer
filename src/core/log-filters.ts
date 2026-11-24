@@ -98,6 +98,18 @@ export function filterAndDedupe<T extends LogEntry>(
     let lastIdx = -1;
     let runCount = 0;
     for (const e of kept) {
+      // Godot already groups debugger events and counts their occurrences.
+      // Different rows may have the same text and different script stacks,
+      // including stacks omitted by an include_stack:false request.
+      if (typeof e.count === "number" && typeof e.severity === "string" &&
+          (typeof e.error === "string" || typeof e.error_descr === "string")) {
+        const message = e.message ?? (e.error_descr || e.error);
+        deduped.push(e.count > 1 && typeof message === "string" && message
+          ? { ...e, message: `${message} (×${e.count})` }
+          : e);
+        lastKey = null;
+        continue;
+      }
       const key = entryKey(e);
       if (key === lastKey && lastIdx >= 0) {
         runCount += 1;

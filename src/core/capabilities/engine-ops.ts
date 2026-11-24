@@ -110,11 +110,12 @@ export async function executeOpsChunked(
         error: notes.join(" "),
         results: combinedResults,
         receipts,
+        ...(receipts.length > 1 && { undoGroup: false }),
       };
     }
   }
   const last = (receipts[receipts.length - 1] ?? {}) as JsonRecord;
-  return { ...last, results: combinedResults, requests: chunks.length, receipts };
+  return { ...last, undoGroup: false, results: combinedResults, requests: chunks.length, receipts };
 }
 
 /** Scene mutation entry point: appends the transaction-boundary SaveScene, then

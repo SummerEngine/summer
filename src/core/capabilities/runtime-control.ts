@@ -781,10 +781,12 @@ export function buildGameInputOp(args: GameInputArgs): BuiltRuntimeOp {
       const op: Record<string, unknown> = { op: "InputRecordStop" };
       if (typeof args.save_as === "string" && args.save_as.trim().length > 0) {
         const saveAs = args.save_as.trim();
-        if (!saveAs.startsWith("res://") || saveAs.includes("..")) {
-          throw new ToolInputError("save_as must be a traversal-free res:// path (the engine writes under res://.summer/replays/).");
+        const match = /^res:\/\/\.summer\/replays\/([A-Za-z0-9_-]{1,64})\.json$/.exec(saveAs);
+        if (!match) {
+          throw new ToolInputError("save_as must be res://.summer/replays/<name>.json; name must contain 1..64 letters, digits, underscores or hyphens.");
         }
-        op.save_as = saveAs;
+        // Native InputRecordStop takes an ID, then adds the fixed directory and extension.
+        op.save_as = match[1];
       }
       return { kind: "InputRecordStop", op: withInstance(op, args.instance), timeoutMs: runtimeBudgetMs(RUNTIME_WATCHDOG_DEFAULT_SEC) };
     }

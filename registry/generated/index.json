@@ -1292,7 +1292,7 @@
       "id": "skill/debug",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "5506e2e64770b083afa10e147350f3968769acc3b2d2fda2a6b7f91a8521bf1f",
+      "content_hash": "7e565142e4cdae25fe90dca39f2f7f40c4b63d9efe027715a5237981c316dd23",
       "summary": "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -3740,7 +3740,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "c186909620b78c13d0df3ea13b7889739b185e743881df25df34e7fe2645a137",
+      "content_hash": "ec2e8dfd623913b45b7278a04fc37ab46514aab53e87c5782550d737fe9b46b5",
       "summary": "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -6324,10 +6324,10 @@
       "id": "tool/api-models",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "73c3ac25cbe1a46f1e4584f081c9b0d06eee3f76f17cdf356b49d4b380e1638b",
+      "content_hash": "ce781725b5109a711c8d01b53f13ed327e76a53f1202e8c791f189e3fc89816b",
       "summary": "The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.",
       "use_when": [
-        "choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API",
+        "choosing a model for an image, 3D, video, voice, dialogue, sound, music or motion asset through the Summer API",
         "checking what a Summer API model costs or takes as input"
       ],
       "facets": {
@@ -6978,11 +6978,11 @@
     {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "0ba437873ed75942b3ac5199b2dcc4c2b0bbd73f015b38414fa4106b5f995ba3",
-      "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
+      "version": "1.1.1",
+      "content_hash": "cfd092a664b3963656cc2042ce4211ac1d94ca8cc0ae18d1fae4875b5dab78f8",
+      "summary": "Run engine ops in order in one call. Edits can take separate undo steps. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
-        "multi-node builds that should undo as one step (no single-only ops in the list)",
+        "multi-node builds with ordered edits",
         "reaching engine ops that have no dedicated tool",
         "placing many kit pieces, one InstantiateScene op per piece with its position and rotation, read back with receipt summary"
       ],
@@ -7902,8 +7902,8 @@
     {
       "id": "tool/generate-3d",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "6668e5ca70c44f1ae291e7368a64396ce3eaf8412343f45e0b44e1899981006f",
+      "version": "1.0.3",
+      "content_hash": "ed213570b54e28abfd547b6493a04b5655e72fe3c6d24f13006aebe6d4e93cc4",
       "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.",
       "use_when": [
         "creating a 3D asset or character from a prompt or reference image",
@@ -8078,8 +8078,8 @@
     {
       "id": "tool/generate-video",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "98ae8a3b9181f452cf78040fc9dfe5ccd81ca6ce13f55d9bfea895f21efe90c2",
+      "version": "1.0.3",
+      "content_hash": "789e4f49c6c6d5dbdaa37b0145bd23fa53329f4debfb4c3ed5943052ae9411c2",
       "summary": "Generate a video from text or an image with allowlisted models via Summer Studio.",
       "use_when": [
         "creating cutscene, trailer, or reference footage from a prompt",
@@ -8319,8 +8319,8 @@
     {
       "id": "tool/get-debugger-errors",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "e1c7f166cb7316022f9a5ddc8444292a67e0e3f60d54e9e8c148a8070282715b",
+      "version": "1.0.3",
+      "content_hash": "3efe0a20600f2e716de9d0ada9fe767be849aff04a4539a5c01c43fb0ba5df53",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",
@@ -8907,7 +8907,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "d06c884df0f155f7ec6c587bca7614fe9a0a90df1ce5816639a1254ecc21e218",
+      "content_hash": "cf776605e9bb0a0823efd0a9a11c04e3bdf8e795770c75166cf68aedb4c7f911",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
@@ -9949,8 +9949,8 @@
     {
       "id": "tool/replace-node",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "813a9e29ac8cc8e67c93b7e69fdad29ee003951a04cef0919f6712927d1b7652",
+      "version": "1.1.1",
+      "content_hash": "ed175b1e5842353d1bc920914b92d629efbf0b1ff6205dfb81720e0669ff414d",
       "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
@@ -10739,8 +10739,8 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "be7dfce006254a9c8b01a7d4e6402e6f4bccf16c33c88ef4a0828208aeeeaf49",
+      "version": "1.3.0",
+      "content_hash": "a69b30be79d2216f3402ebd5f8298b26e9bf3a313bcb4b547bfde22bcd8faaac",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",

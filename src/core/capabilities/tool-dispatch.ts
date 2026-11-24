@@ -1677,7 +1677,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const parsed = parseToolArgs(inspectResourceInputSchema, args, "inspect-resource");
     return requireEngineSuccess(await inspectResource(await ctx.engine(), parsed));
   }),
-  entry("summer_batch", "Run multiple engine ops as one undo group (verbatim passthrough)", true, async (args, ctx) => {
+  entry("summer_batch", "Run multiple engine ops in order (verbatim passthrough)", true, async (args, ctx) => {
     if (!Array.isArray(args.ops)) {
       throw new ToolDispatchError("ops must be an array of operation objects");
     }

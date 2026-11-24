@@ -30,7 +30,12 @@ async function creatorResult<T>(operation: () => Promise<T>) {
   }
 }
 
-export function registerCreatorTools(server: McpServer): void {
+export function registerCreatorTools(
+  server: McpServer,
+  boundProject: () => string | undefined | Promise<string | undefined> = () => undefined
+): void {
+  // Opening another project can rebind the session after these tools register.
+  const projectFor = async (project?: string) => project?.trim() ? project : await boundProject();
   server.tool(
     "summer_export_game",
     "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms, with or without a server; upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. The store targets the platforms in the bundle; when a game with a server declares others in summer.build.json, targetPlatformChange names the difference (nothing is refused), and alignDeclaration:true updates summer.build.json to the targets. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
@@ -53,8 +58,8 @@ export function registerCreatorTools(server: McpServer): void {
         .describe("A game with a server: set summer.build.json targetPlatforms to targets before exporting, so the project declares what it exports. Optional: the store targets the bundle's platforms either way, and the answer's targetPlatformChange names any difference."),
     },
     async ({ project, out, targets, format, debug, timeoutSeconds, alignDeclaration }) =>
-      creatorResult(() =>
-        exportGame({ project, out, targets, format, debug, alignDeclaration, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
+      creatorResult(async () =>
+        exportGame({ project: await projectFor(project), out, targets, format, debug, alignDeclaration, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
       )
   );
 
@@ -116,7 +121,7 @@ export function registerCreatorTools(server: McpServer): void {
         .optional()
         .describe("What to do after waitSeconds, in order; exactly one of press, key, action, click, drag, wait, shot per step."),
     },
-    async (args) => creatorResult(() => captureGameplay(args as CaptureGameplayInput))
+    async (args) => creatorResult(async () => captureGameplay({ ...args, project: await projectFor(args.project) } as CaptureGameplayInput))
   );
 
   server.tool(
@@ -221,7 +226,7 @@ export function registerCreatorTools(server: McpServer): void {
       slugs: z.array(z.string()).max(500).optional().describe("Only these items (their slugs); the rest of the file is left out of the plan. Confirm a plan of more than 50 changed items one batch (from batches) at a time."),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the plan."),
     },
-    async (args) => creatorResult(() => syncItems({ ...args, face: "mcp" }))
+    async (args) => creatorResult(async () => syncItems({ ...args, project: await projectFor(args.project), face: "mcp" }))
   );
 
   server.tool(

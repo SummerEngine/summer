@@ -1,6 +1,6 @@
 id: tool/generate-video
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: Generate a video from text or an image with allowlisted models via Summer Studio.
 use_when:
   - creating cutscene, trailer, or reference footage from a prompt
@@ -37,7 +37,7 @@ input_schema:
     model:
       type: string
       default: ltx
-      description: "Model name: ltx, kling, kling-turbo, minimax, veo3 (or any new model)"
+      description: "Model key: ltx, kling, kling-turbo, minimax-h3-max, veo3, or another registered video model"
     imageUrl:
       type: string
       description: Source image URL — if provided, uses image-to-video mode

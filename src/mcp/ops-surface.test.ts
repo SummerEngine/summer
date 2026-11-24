@@ -123,6 +123,28 @@ describe("v4, engine profile", () => {
     }
   });
 
+  it.each([
+    ["v3", "summer_read_library", "summer_search_library"],
+    ["v4", "summer_docs_read", "summer_docs_search"],
+  ] as const)("offers available library navigation tools on %s", async (surface, read, search) => {
+    const { client, close } = await session("engine", surface);
+    try {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toEqual(expect.arrayContaining([read, search]));
+      const id = "tool/keep-summer_search_library-in-this-id";
+      const missing = answerOf(await client.callTool({ name: read, arguments: { id } }));
+      expect(missing).toMatchObject({ ok: false, id, hint: expect.stringContaining(`use ${search}`) });
+      const hits = answerOf(await client.callTool({ name: search, arguments: { query: "spatial-placement", kinds: ["skill"] } }));
+      expect(hits.hint).toContain(`Read one with ${read}`);
+      const guide = await client.callTool({ name: read, arguments: { id: "skill/spatial-placement", part: "skill" } });
+      expect(guide.content).toContainEqual(expect.objectContaining({ text: expect.stringContaining(`load each with ${read}`) }));
+      const linked = await client.callTool({ name: read, arguments: { id: "skill/spatial-placement/references/kit-placement-tools.md" } });
+      expect(linked.content).toContainEqual(expect.objectContaining({ text: expect.stringContaining(`The entry itself: ${read}`) }));
+    } finally {
+      await close();
+    }
+  });
+
   it("names a bad input of a docs operation and points at ops.describe", async () => {
     const { client, close } = await session("engine", "v4");
     try {

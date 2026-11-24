@@ -94,7 +94,7 @@ export async function buildBase(shots: readonly ShotSpec[], cuts: readonly numbe
     const v = join(seg, `v${String(i).padStart(3, "0")}.mp4`);
     const a = join(seg, `a${String(i).padStart(3, "0")}.wav`);
     const keyFile = `${v}.key`;
-    const key = JSON.stringify({ spec: shots[i], n, v: 2 });
+    const key = JSON.stringify({ spec: shots[i], n, v: 3 });
     if (!(existsSync(v) && existsSync(a) && existsSync(keyFile) && readFileSync(keyFile, "utf8") === key)) {
       await renderShot(shots[i], n, v, a);
       const got = await frameCount(v);

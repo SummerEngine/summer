@@ -458,13 +458,13 @@ describe("summer_screenshot — fixed-pose framings + marks (fixed-pose framings
 describe("summer_camera_bookmark", () => {
   const envelope = (result: Record<string, unknown>) => ({ status: "ok", results: [{ ok: true, ...result }] });
 
-  it("save without a pose sends SaveCameraBookmark {name} and explains how to reuse it", async () => {
+  it.each([{}, { fov: 30 }])("captures the viewport pose and FOV with options %j", async (options) => {
     const executeOps = vi.fn().mockResolvedValue(
       envelope({ op: "SaveCameraBookmark", name: "hero", pose_source: "editor_viewport", overwritten: false, path: "res://.summer/camera_bookmarks.json" })
     );
     vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
 
-    const result = (await tool("summer_camera_bookmark").handler({ action: "save", name: "hero" })) as ToolResult;
+    const result = (await tool("summer_camera_bookmark").handler({ action: "save", name: "hero", ...options })) as ToolResult;
     expect(result.isError).toBeFalsy();
     expect(executeOps).toHaveBeenCalledWith([{ op: "SaveCameraBookmark", name: "hero" }]);
     const body = text(result);
@@ -524,6 +524,11 @@ describe("summer_camera_bookmark", () => {
     const halfPose = (await registered.handler({ action: "save", name: "hero", position: "Vector3(0, 0, 0)" })) as ToolResult;
     expect(halfPose.isError).toBe(true);
     expect(text(halfPose)).toContain("position and look_at go together");
+
+    const invalidFov = (await registered.handler({ action: "save", name: "hero", fov: 180 })) as ToolResult;
+    expect(invalidFov.isError).toBe(true);
+    expect(text(invalidFov)).toContain("1..179");
+
 
     expect(executeOps).not.toHaveBeenCalled();
   });

@@ -71,9 +71,16 @@ describe("placement math", () => {
     expectVec(both.origin, [0, 0, 0]);
   });
 
-  it("formats Godot variant strings without exponent notation and parses them back", () => {
+  it("preserves finite placement values when formatting Godot variant strings", () => {
     expect(godotNumber(0.000001)).toBe("0.000001");
-    expect(godotNumber(1e-9)).toBe("0");
+    for (const value of [4e-7, -1e-9, 1.0000004, 1e30, -1e30]) {
+      expect(Number(godotNumber(value))).toBe(value);
+    }
+    for (const value of [NaN, Infinity, -Infinity]) {
+      expect(() => godotNumber(value)).toThrow("non-finite");
+    }
+    const small: Vec3 = [4e-7, 8e-7, -1.2e-6];
+    expect(parseGodotVector3(toGodotVector3(small))).toEqual(small);
     expect(godotNumber(-0)).toBe("0");
     expect(godotNumber(12.5)).toBe("12.5");
     expect(toGodotVector3([1, -2.25, 0])).toBe("Vector3(1, -2.25, 0)");
@@ -83,11 +90,13 @@ describe("placement math", () => {
 
   it("writes Transform3D row-major like Godot's variant writer", () => {
     // +90 degrees about y: basis.x = (0, 0, -1), basis.z = (1, 0, 0).
-    const t: Xform = { basis: rotationAbout([0, 1, 0], Math.PI / 2), origin: [1, 2, 3] };
+    const t: Xform = { basis: [[0, 0, -1], [0, 1, 0], [1, 0, 0]], origin: [1, 2, 3] };
     expect(toGodotTransform(t)).toBe("Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 1, 2, 3)");
     const parsed = parseGodotTransform(toGodotTransform(t))!;
     expectBasis(parsed.basis, t.basis);
     expectVec(parsed.origin, [1, 2, 3]);
+    const sheared: Xform = { basis: [[4e-7, 0, 0], [1e-7, 4e-7, 0], [0, 0, -4e-7]], origin: [1e30, 8e-7, -1.2e-6] };
+    expect(parseGodotTransform(toGodotTransform(sheared))).toEqual(sheared);
     // The kit's own .tscn line round-trips to the same basis.
     const kit = parseGodotTransform("Transform3D(-0.000000, 0, -1.000000, 0, 1, 0, 1.000000, 0, -0.000000, 0, 0, 0)")!;
     expectVec(kit.basis[0], [0, 0, 1]);

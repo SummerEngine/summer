@@ -50,22 +50,41 @@ func _inherits_3d(node, ancestor):
 	return ancestor is Node3D
 `;
 
+// GDScript scalars retain the precision of the JSON numbers; Vector3 can round them.
+export const REQUEST_DISTANCE_GDSCRIPT = String.raw`
+func _distance_to_request(actual: Vector3, requested, origin := Vector3.ZERO):
+	var dx = (actual.x - origin.x) - requested[0]
+	var dy = (actual.y - origin.y) - requested[1]
+	var dz = (actual.z - origin.z) - requested[2]
+	return sqrt(dx * dx + dy * dy + dz * dz)
+`;
+
 export const PARENT_TRANSLATION_GDSCRIPT = String.raw`
-# Author the same Vector3 that the editor will store, then reconstruct its world movement.
-func _translated_position_literal(parent: Transform3D, local: Vector3, delta: Vector3):
+${REQUEST_DISTANCE_GDSCRIPT}
+
+# Author the same Vector3 that the editor will store and check its original requested movement.
+func _translated_position_literal(parent: Transform3D, local: Vector3, requested):
 	var det = parent.basis.determinant()
 	if not is_finite(det) or det == 0.0:
 		return null
-	var next = local + parent.basis.inverse() * delta
-	if not next.is_finite():
-		return null
-	var literal = var_to_str(next)
-	var stored: Vector3 = str_to_var(literal)
-	var moved = (parent * stored) - (parent * local)
-	# A relative tolerance grows with travel and can accept metre-scale misses.
-	if not moved.is_finite() or moved.distance_to(delta) > 0.0001:
-		return null
-	return literal
+	var before = parent * local
+	var inverse = parent.basis.inverse()
+	var delta = Vector3(requested[0], requested[1], requested[2])
+	# Adding a long displacement to an opposite offset can erase a small, representable final gap.
+	# Form an alternative parent-relative endpoint with scalar components before converting to Vector3.
+	var end_x = (before.x - parent.origin.x) + requested[0]
+	var end_y = (before.y - parent.origin.y) + requested[1]
+	var end_z = (before.z - parent.origin.z) + requested[2]
+	var relative_end = Vector3(end_x, end_y, end_z)
+	for next in [local + inverse * delta, inverse * relative_end]:
+		if not next.is_finite():
+			continue
+		var literal = var_to_str(next)
+		var stored: Vector3 = str_to_var(literal)
+		var after = parent * stored
+		if after.is_finite() and _distance_to_request(after, requested, before) <= 0.0001:
+			return literal
+	return null
 `;
 
 interface TransformClient extends CapabilityAdvertisingClient {
@@ -112,8 +131,7 @@ func run(ctx):
 			stack.append_array(n.get_children())
 	var result = {"ok": true, "origin": [xf.origin.x, xf.origin.y, xf.origin.z], "position": [node.position.x, node.position.y, node.position.z], "transform": var_to_str(xf), "independent_geometry": independent}
 	if args.has("world_delta"):
-		var d = args["world_delta"]
-		var next = _translated_position_literal(_parent_xf(node, root), node.position, Vector3(d[0], d[1], d[2]))
+		var next = _translated_position_literal(_parent_xf(node, root), node.position, args["world_delta"])
 		if next == null:
 			return {"ok": false, "failure_reason": "translation_not_representable", "error": "The parent transform cannot reproduce the requested world movement at engine precision."}
 		result["translated_position"] = next

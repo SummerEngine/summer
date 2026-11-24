@@ -196,7 +196,7 @@ VALUE FORMAT — Godot string syntax for complex types:
 - Strings: "hello" — native JSON
 
 COMMON PROPERTIES:
-- position: "Vector3(x, y, z)" — world position
+- position: "Vector3(x, y, z)" — local position. A Node3D that inherits its parent’s transform uses that parent’s coordinate system.
 - rotation_degrees: "Vector3(rx, ry, rz)" — rotation in degrees
 - scale: "Vector3(sx, sy, sz)" — scale factor
 - visible: true/false — visibility

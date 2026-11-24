@@ -10587,7 +10587,7 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7322a8ec389c209d41c7fe0b56f47c8e8b42616d19044d9b070d7ff6721ab5f9",
+      "content_hash": "a59a8603e2eb9e8bb57d93120889e2385156845082ecd00cb811ce6a3ce06919",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",

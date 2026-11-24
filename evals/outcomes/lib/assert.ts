@@ -627,10 +627,10 @@ export const PREDICATES: Record<string, PredicateFn> = {
       const live = byName.get(g.name);
       const a = parseAabb(g.aabb);
       const b = parseAabb(live?.aabb);
-      return { name: g.name, iou: a && b ? Math.round(aabbIoU(a, b) * 1000) / 1000 : 0 };
+      return { name: g.name, iou: a && b ? aabbIoU(a, b) : 0 };
     });
     const mean = per.reduce((s, p) => s + p.iou, 0) / per.length;
-    return { pass: mean >= minMean - 1e-9, reason: "gold_mismatch", detail: { mean_iou: Math.round(mean * 1000) / 1000, min: minMean, per_name: per } };
+    return { pass: mean >= minMean - 1e-9, reason: "gold_mismatch", detail: { mean_iou: mean, min: minMean, per_name: per } };
   },
 
   /** `tscn:` inline checks from the design tables, generalized: a property on

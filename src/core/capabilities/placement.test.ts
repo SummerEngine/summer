@@ -1263,6 +1263,23 @@ describe("stable open-loop ports", () => {
     }
   });
 
+  it("preserves mesh port IDs and excludes fixed alternatives", () => {
+    const moving = { center: [0, 2, 0], direction: [0, 1, 0], radius: 1, mesh: 1 };
+    const fixed = { ...moving, center: [0, 0, 0], mesh: 0 };
+    const probe = {
+      kind: "open_loops", node_xform: xf12([0, 0, 0]), loops: [fixed, moving],
+      unavailable_meshes: { "0": { failure_reason: "independent_subject_port", error: "The fixed tube stays put." } },
+    };
+    const selected = resolveProbePort(probe, parsePortSelector("+Y"), "subject", "Piece", true);
+    if ("failure" in selected) throw new Error("the moving port must resolve");
+    expect(selected.port).toMatchObject({ id: "+Y", others: [], others_total: 0 });
+    for (const selector of ["+Y#2", 1]) {
+      expect(resolveProbePort(probe, parsePortSelector(selector), "subject", "Piece", true)).toMatchObject({
+        failure: { failure_reason: "independent_subject_port", saved: false, port: "+Y#2" },
+      });
+    }
+  });
+
   it("keeps an open-loop normal perpendicular to both transformed ring tangents, with outward sign", () => {
     // The opening lies in the local XZ plane. Its transformed tangent vectors
     // are (2, 1, 0) and (0, 0, 1), so its outward normal is parallel to (-1, 2, 0).

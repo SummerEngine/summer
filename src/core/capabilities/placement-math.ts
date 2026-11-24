@@ -207,7 +207,7 @@ export function godotNumber(value: number): string {
   return String(value);
 }
 
-export function toGodotVector3(v: Vec3): string {
+export function toGodotVector3(v: Readonly<Vec3>): string {
   return `Vector3(${v.map(godotNumber).join(", ")})`;
 }
 

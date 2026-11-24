@@ -8,6 +8,7 @@
  * with v = 0 at the TOP of the image.
  */
 import { ToolInputError } from "../../tool-errors.js";
+export { toGodotVector3 as formatPoseVector } from "../placement-math.js";
 
 export type Vec3 = readonly [number, number, number];
 
@@ -228,7 +229,9 @@ export function parseVector3(literal: string, label: string): Vec3 {
   if (!match) {
     throw new ToolInputError(`${label} must be a Godot literal like "Vector3(0, 5, 12)" (got ${JSON.stringify(literal)}). Nothing was sent.`);
   }
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+  const components: Vec3 = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (!components.every(Number.isFinite)) throw new ToolInputError(`${label} must contain finite coordinates. Nothing was sent.`);
+  return components;
 }
 
 /** "Vector3(x, y, z)" with 3 decimals — the literal the engine echoes. */

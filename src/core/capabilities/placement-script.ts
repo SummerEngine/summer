@@ -281,6 +281,7 @@ func _cmd_bounds(root, active, args):
 		return d["fail"]
 	var dirs = d["dirs"]
 	var nodes = []
+	var world = null
 	var excluded_subjects = []
 	for spec in args.get("nodes", []):
 		var path = String(spec.get("path", ""))
@@ -289,13 +290,18 @@ func _cmd_bounds(root, active, args):
 			return _fail("node_not_found", "node not found in scene: " + path)
 		if not (n is Node3D):
 			return _fail("not_node3d", "node is not a Node3D: " + path)
+		var node_world = _placement_world(n)
+		if nodes.is_empty():
+			world = node_world
+		elif node_world != world:
+			return _fail("different_world_3d", "nodes must share a World3D to compare their bounds: " + path)
 		var exclude = []
 		for ex in spec.get("exclude", []):
 			var en = _node(root, String(ex))
 			if en != null and n.is_ancestor_of(en):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
-		var geoms = _geoms(n, root, exclude)
+		var geoms = _geoms(n, root, exclude, n)
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_xf(n, root))}
 		rec["parent_xform"] = _xf12(_parent_xf(n, root))
 		rec["independent_geometry"] = []

@@ -81,6 +81,18 @@ describe("repo-lint: tool-dispatch registry", () => {
     );
   });
 
+  it("shares create-scene root validation with MCP before any write", async () => {
+    const executeIdentityBoundOps = vi.fn(async () => ({ results: [{
+      op: "GetClassInfo", ok: true, class_name: "BoxMesh", exists: true,
+      native_class: true, is_node: false, can_instantiate: true,
+    }] }));
+    const { ctx } = fakeEngineContext({ executeIdentityBoundOps });
+    await expect(dispatchTool("create-scene", {
+      path: "res://bad.tscn", rootType: "BoxMesh",
+    }, ctx)).rejects.toThrow("does not inherit Node");
+    expect(executeIdentityBoundOps).toHaveBeenCalledExactlyOnceWith([{ op: "GetClassInfo", class_name: "BoxMesh" }]);
+  });
+
   it("dispatches a pure capability tool without any engine", async () => {
     const engine = async () => {
       throw new EngineUnavailableError("engine must not be needed");

@@ -36,6 +36,7 @@ const registry = readEngineMainFile(REGISTRY_PATH);
 const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   CustomBake: "bake helpers",
   Probe: "verify probe op",
+  GetClassInfo: "scene root validation (SummerEngine/SummerEngine#1452)",
 };
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

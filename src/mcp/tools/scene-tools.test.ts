@@ -82,6 +82,18 @@ describe("summer_create_scene guarded create-only write", () => {
     rootType: "Node3D",
   };
 
+  it("refuses a non-Node class through the MCP callback before writing", async () => {
+    const executeIdentityBoundOps = vi.fn(async () => ({ results: [{
+      op: "GetClassInfo", ok: true, class_name: "BoxMesh", exists: true,
+      native_class: true, is_node: false, can_instantiate: true,
+    }] }));
+    const { readProjectFile } = mockCreateClient({ executeIdentityBoundOps });
+    const result = await sceneTool("summer_create_scene").handler({ ...createArgs, rootType: "BoxMesh" });
+    expect(result).toMatchObject({ isError: true });
+    expect(executeIdentityBoundOps).toHaveBeenCalledExactlyOnceWith([{ op: "GetClassInfo", class_name: "BoxMesh" }]);
+    expect(readProjectFile).not.toHaveBeenCalled();
+  });
+
   it("sends exactly one identity-bound create-only WriteFile with the minimal scene text", async () => {
     const { executeIdentityBoundOps, executeOps, health, getSceneState } = mockCreateClient();
 

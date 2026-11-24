@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Scene creation checks the root class before writing.** Typos, Resource types and abstract classes no longer produce a bogus scene with `verified:true`. Common roots keep working on older editors; other native roots need an editor with `GetClassInfo`. Project script classes use their native base plus an attached script. MCP and CLI share the same create-only validation and read-back check.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

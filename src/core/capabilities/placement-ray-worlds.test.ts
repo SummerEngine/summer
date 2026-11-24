@@ -36,6 +36,9 @@ func box(parent, z, solid, label = "Box"):
 		body.add_child(shape)
 	return body
 
+func paths(hit):
+	return [hit.get("physics", {}).get("path"), hit.get("visual", {}).get("path")]
+
 func _initialize():
 	call_deferred("check")
 
@@ -46,6 +49,11 @@ func check():
 	box(shared, -5, false)
 	var own = viewport(scene, "Own", true)
 	box(own, -3, true)
+	var poster = MeshInstance3D.new()
+	poster.name = "Poster"
+	poster.mesh = BoxMesh.new()
+	poster.position.z = -2
+	own.add_child(poster)
 	var subject = Node3D.new()
 	subject.name = "Subject"
 	own.add_child(subject)
@@ -65,8 +73,7 @@ func check():
 		var attached = p._cmd_raycast(scene, live, {"from_subject": "Own/Subject", "direction": [0, 0, -1]})
 		var aimed = p._cmd_raycast(scene, live, {"from_subject": "Own/Subject", "surface": "Own/Box"})
 		var foreign = p._cmd_raycast(scene, live, {"from_subject": "Own/Subject", "surface": "Box"})
-		rows.append([ordinary.visual.path, viewport_root.visual.path, attached.visual.path, aimed.visual.path,
-				foreign.failure_reason, ordinary.get("physics", {}).get("path"), attached.get("physics", {}).get("path")])
+		rows.append([paths(ordinary), paths(viewport_root), paths(attached), paths(aimed), foreign.get("failure_reason")])
 		for owner in ["Piece", "Own/Piece"]:
 			var blockers = p._cmd_blockers(scene, live, {"path": owner})
 			rows[-1].append([blockers.evidence, blockers.overlaps])
@@ -81,10 +88,15 @@ func check():
       env: { HOME: project, XDG_CONFIG_HOME: project, XDG_DATA_HOME: project, APPDATA: project, PATH: process.env.PATH },
       timeout: 30_000,
     });
-    const visual = ["Shared/Box/Mesh", "Box/Mesh", "Own/Box/Mesh", "Own/Box/Mesh", "surface_has_no_visual_bounds"];
     expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual([
-      [...visual, null, null, ["visual_aabb", ["Shared/Blocker/Mesh"]], ["visual_aabb", ["Own/Blocker/Mesh"]]],
-      [...visual, "Box", "Own/Box", ["physics", ["Shared/Blocker"]], ["physics", ["Own/Blocker"]]],
+      [
+        [null, "Shared/Box/Mesh"], [null, "Poster"], [null, "Own/Poster"], [null, "Own/Box/Mesh"],
+        "surface_has_no_visual_bounds", ["visual_aabb", ["Shared/Blocker/Mesh"]], ["visual_aabb", ["Own/Blocker/Mesh"]],
+      ],
+      [
+        ["Box", "Shared/Box/Mesh"], ["Box", "Poster"], ["Own/Box", "Own/Poster"], ["Own/Box", null],
+        "surface_has_no_visual_bounds", ["physics", ["Shared/Blocker"]], ["physics", ["Own/Blocker"]],
+      ],
     ]);
   } finally {
     rmSync(project, { recursive: true, force: true });

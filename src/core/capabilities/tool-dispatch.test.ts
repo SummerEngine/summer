@@ -155,6 +155,15 @@ describe("repo-lint: tool-dispatch registry", () => {
     }
   });
 
+  it("keeps the plugin save warning through the public tool dispatch", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ results: [{ op: "EnableEditorPlugin", ok: true, enabled: true, projectSettingsSaveError: 12 }] }),
+    });
+    await expect(dispatchTool("enable-plugin", { plugin: "quest_tools" }, ctx)).resolves.toMatchObject({
+      ok: true, enabled: true, projectSettingsSaveError: 12, persisted: false,
+    });
+  });
+
   it("surfaces engine op failures as errors instead of masking them", async () => {
     const { ctx } = fakeEngineContext({
       executeOps: async () => ({ ok: false, error: "no scene open" }),

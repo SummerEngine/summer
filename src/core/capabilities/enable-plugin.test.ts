@@ -25,6 +25,25 @@ describe("summer_enable_plugin", () => {
     });
   });
 
+  it.each([false, true])("preserves a project settings save failure without hiding the live plugin state (alreadyEnabled:%s)", (alreadyEnabled) => {
+    const result = interpretEnablePluginResult(envelope({
+      ok: true,
+      enabled: true,
+      alreadyEnabled,
+      addonPath: "res://addons/q/plugin.cfg",
+      autoloadsRegistered: ["Quests"],
+      projectSettingsSaveError: 12,
+    }));
+    expect(result).toMatchObject({ ok: true, enabled: true, projectSettingsSaveError: 12, persisted: false });
+    expect(result.warning).toContain("project.godot was not saved");
+    if (!alreadyEnabled) expect(result.autoloadsRegistered).toEqual(["Quests"]);
+  });
+
+  it("does not flag a successful save as unsaved", () => {
+    const result = interpretEnablePluginResult(envelope({ ok: true, enabled: true, projectSettingsSaveError: 0 }));
+    expect(result).toEqual({ ok: true, enabled: true, autoloadsRegistered: [] });
+  });
+
   it("passes failures through with the engine's code and a hint", () => {
     const failed = interpretEnablePluginResult(envelope({ ok: false, code: "NOT_TOOL", error: "plugin script must be a @tool script", addonPath: "res://addons/q/plugin.cfg" }));
     expect(failed).toMatchObject({ ok: false, enabled: false, code: "NOT_TOOL", error: "plugin script must be a @tool script" });

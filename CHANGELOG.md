@@ -4,7 +4,29 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+
+- **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
+- **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.
+- Saved game input recordings use the requested `save_as` filename under `.summer/replays/`. Unsupported names fail before stopping the recording instead of being silently rewritten.
+
+- Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
+
+- Debugger reads and support reports preserve separate native error and warning records with the same text. Each record keeps its script stack and its own occurrence count.
+
+- **Your agent now asks where your multiplayer game will be sold before it builds anything.** The `multiplayer` skill says up front that Summer multiplayer runs only when the game is played through Summer Games (summer.games, the desktop app and the phone apps). For Steam, itch.io or your own store listing it tells the agent to build custom networking that you host, and that a phone app exported from Project > Export cannot join Summer-hosted matches.
+- The debugger errors tool now explains how to read warning text returned by the editor and how to request warnings separately.
+
+- On editors that create actions when binding input, a rejected binding now leaves a missing action absent from project.godot. Older editors report when creating the action succeeded before binding failed.
+
+- Batch editing guidance now explains how to undo individual changes. Full receipts for batches that span multiple requests report a separate undo history for each request.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
+
+- Scene audits measure props from their transformed geometry, so wall-alignment checks use the actual long axis and wall clearance even with nonuniform scale or diagonal probe rays.
+
+- When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
+- Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
 
 ## [4.9.2] - 2026-11-12
 

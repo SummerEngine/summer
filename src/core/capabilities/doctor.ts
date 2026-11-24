@@ -52,7 +52,16 @@ export interface DoctorResult {
   };
 }
 
+interface DoctorEngine {
+  port: number;
+  version?: string;
+  projectName?: string;
+  projectPath?: string;
+}
+
 interface DoctorOptions {
+  /** The editor the report already connected to. Null means it was unreachable. */
+  reportEngine?: DoctorEngine | null;
   json?: boolean;
   quiet?: boolean;
 }
@@ -74,8 +83,10 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   checks.push(await checkLogin());
   checks.push(await checkStoreSignIn());
   checks.push(checkEngineInstall());
-  checks.push(await checkLocalApi());
-  checks.push(await checkProjectMemory());
+  checks.push(options.reportEngine === undefined
+    ? await checkLocalApi()
+    : describeLocalApi(options.reportEngine));
+  checks.push(await checkProjectMemory(options.reportEngine));
   checks.push(await checkMcpBoot());
   checks.push(await checkMcpToolsList());
 
@@ -272,25 +283,30 @@ async function checkLocalApi(): Promise<DoctorCheck> {
     };
   }
 
-  return {
+  return describeLocalApi({ port, version: health.version, projectName: health.project_name, projectPath: health.project_path });
+}
+
+function describeLocalApi(engine: DoctorEngine | null): DoctorCheck {
+  return engine ? {
     id: "local-api",
     label: "Local API",
     status: "ok",
-    message: `:${port}`,
-    details: {
-      port,
-      version: health.version,
-      projectName: health.project_name,
-      projectPath: health.project_path,
-    },
+    message: `:${engine.port}`,
+    details: { ...engine },
+  } : {
+    id: "local-api",
+    label: "Local API",
+    status: "warning",
+    message: "engine not connected",
   };
 }
 
-async function checkProjectMemory(): Promise<DoctorCheck> {
-  const port = await getApiPort();
-  const health = await checkEngineHealth(port);
+async function checkProjectMemory(reportEngine?: DoctorEngine | null): Promise<DoctorCheck> {
+  const projectPath = reportEngine === undefined
+    ? (await checkEngineHealth(await getApiPort()))?.project_path
+    : reportEngine?.projectPath;
 
-  if (!health?.project_path) {
+  if (!projectPath) {
     return {
       id: "project-memory",
       label: "Project Memory",
@@ -299,7 +315,7 @@ async function checkProjectMemory(): Promise<DoctorCheck> {
     };
   }
 
-  const summary = getProjectMemorySummary(health.project_path);
+  const summary = getProjectMemorySummary(projectPath);
   if (!summary.present) {
     return {
       id: "project-memory",
@@ -307,7 +323,7 @@ async function checkProjectMemory(): Promise<DoctorCheck> {
       status: "warning",
       message: ".summer not created yet",
       details: {
-        projectPath: health.project_path,
+        projectPath,
         reason: summary.reason,
         recommendedAction: "Ask your agent to run summer:brainstorm-game.",
       },
@@ -320,7 +336,7 @@ async function checkProjectMemory(): Promise<DoctorCheck> {
     status: "ok",
     message: describeProjectMemory(summary),
     details: {
-      projectPath: health.project_path,
+      projectPath,
       files: summary.files.length,
       memoryFiles: summary.structured.fileCount,
       locked: summary.structured.lockedCount,

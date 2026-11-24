@@ -31,8 +31,9 @@ export const MAX_CHOICES_WAIT_SECONDS = 50;
 export const sfxChoicesArgsSchema = z.object({
   text: z
     .string()
+    .trim()
     .min(1)
-    .max(1000)
+    .max(450)
     .describe("The sound to make, written as a Foley description (what hits what, the attack and the tail, close-mic, dry)"),
   durationSeconds: z
     .number()

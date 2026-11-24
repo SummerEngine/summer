@@ -38,6 +38,8 @@ export interface TscnNode {
   instancePlaceholder?: string;
   index?: number;
   groups: string[];
+  /** Exported Node-reference properties, distinct from ordinary NodePath values. */
+  nodePaths?: string[];
   props: TscnProp[];
   /** Position of the [node] entry in the file (0-based). */
   order: number;
@@ -329,6 +331,7 @@ export function parseTscn(text: string): ParsedTscn {
             props: [],
             order: nodes.length,
           };
+          if (attrs.has("node_paths")) node.nodePaths = parseStringArray(attrs.get("node_paths"));
           const type = attrString(attrs, "type");
           if (type !== undefined) node.type = type;
           if (instance !== undefined) {

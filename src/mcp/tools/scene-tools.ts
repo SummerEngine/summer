@@ -196,7 +196,7 @@ VALUE FORMAT — Godot string syntax for complex types:
 - Strings: "hello" — native JSON
 
 COMMON PROPERTIES:
-- position: "Vector3(x, y, z)" — world position
+- position: "Vector3(x, y, z)" — local position. A Node3D that inherits its parent’s transform uses that parent’s coordinate system.
 - rotation_degrees: "Vector3(rx, ry, rz)" — rotation in degrees
 - scale: "Vector3(sx, sy, sz)" — scale factor
 - visible: true/false — visibility
@@ -333,7 +333,7 @@ Common signals:
 
 The receiver should have the method (a script method, or a built-in such as queue_free); a missing one is saved anyway and reported in warnings. scenePath must be a .tscn.
 
-PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair), saves, reads the saved .tscn back and returns persisted:true / verified:true only when the [connection] line is there; otherwise an error with failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts it.`,
+PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair) and verifies the saved connection. A local connection includes its [connection] line. For an existing connection inherited from a base or instanced scene, Godot reads the saved scene and its dependencies and reports the declaring scene and flags. If the saved declaration is missing, the tool returns failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts a newly created connection.`,
     connectSignalInputShape,
     async (args) => withEngine(async (client) => connectSignalPersisted(client, args))
   );
@@ -370,11 +370,15 @@ PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_
     "summer_replace_node",
     `Replace a node with a different scene/model or node type, keeping its parent, sibling index, name, transform and property overrides, and the children the scene added under it. Use it to swap a kit piece for another (a wall host for a door host), a placeholder for a prefab, or a StaticBody3D for a RigidBody3D.
 
+Direct exported Node references held by other retained nodes are rebound to the replacement when its type is compatible. Ordinary NodePath properties and references to unchanged children keep their values. An incompatible exported reference refuses the swap before the old node is removed. Arrays, dictionaries and Resource-contained references are not traversed.
+
 Give exactly one of scene or type. The scenePath must be a .tscn.
 
-PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
+PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child and the preserved exported Node references present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
 
-How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
+For matching Node2D or Node3D roots, the tool compares their local poses in Godot, including an identity pose omitted from the file. On a hand-authored prefab it can pin a pose override in the Inspector so Godot keeps it when saving.
+
+How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> rebind direct exported Node references -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
     replaceNodeInputShape,
     async (args) => withEngine(async (client) => replaceNodePersisted(client, args))
   );
@@ -389,7 +393,7 @@ Reads the currently OPEN scene — "path" is relative to its root (there is no s
 
 Example: inspect a light to see its energy, color, shadow settings before changing them.
 
-The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + Transform3D, composed from the world snapshot), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
+The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + exact native scene Transform3D), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
     inspectNodeInputShape,
     async (args) =>
       // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int.
@@ -411,7 +415,7 @@ Two forms, pass exactly one:
     "summer_batch",
     `Execute multiple operations (a multi-node build) in a single call. Each op is forwarded to the engine VERBATIM: this is also how you reach engine ops without a dedicated tool.
 
-UNDO: when nothing in the list forces a split (see SPLITS), the whole batch is ONE undo step (one Ctrl+Z). Single-only ops split the list into sequential requests, and EACH chunk is its own undo step (the receipt shows the chunks).
+UNDO: the editor can record separate undo steps for edits in the same engine request. Undo once and inspect the scene before repeating. A full receipt reports undoGroup for each request. A batch spanning multiple requests cannot share one undo group.
 
 Ops use the individual tools' format:
 - {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
@@ -429,7 +433,7 @@ REFUSED: a raw ReplaceNode with scene (it saves the old scene reference; use sum
 
 REPARENTNODE KEEPS ITS SUBTREE AND IS VERIFIED: the engine op re-owns only the moved node and drops its descendants from the saved file, so the tool saves, sends each ReparentNode alone plus an in-place ReparentNode per scene-owned descendant, then reads the saved .tscn back: persisted:true / verified:true only when every moved node and descendant is at its new path, else failure_reason not_persisted. A move onto a parent with a same-named child is refused (name_collision). scenePath must be a .tscn; Undo cannot share the batch.
 
-PLACED INSTANCES: an InstantiateScene op may carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"), set on the created node; one op per piece. Each InstantiateScene is its own request and the transforms of a run follow together (up to 200 per request), so N pieces plus the save cost about N + 2 requests and undo steps. Later ops (SetProp, SnapToSurface, the save) see the pieces placed; if one fails, the pieces before it still get their transforms.
+PLACED INSTANCES: an InstantiateScene op may carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"), set on the created node; one op per piece. Each InstantiateScene is its own request and the transforms of a run follow together (up to 200 per request), so N pieces plus the save cost about N + 2 requests. Later ops (SetProp, SnapToSurface, the save) see the pieces placed; if one fails, the pieces before it still get their transforms.
 
 RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index into your ops), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops: a large full receipt overflows the tool-output limit.
 

@@ -1,0 +1,120 @@
+/** Native Node3D inheritance shared by spatial readers, including inactive tabs. */
+import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
+import { asRecord } from "../util/json.js";
+import { extractOpError } from "./engine-receipt.js";
+import { parseTransform3D, type Mat3, type Vec3 } from "./math3d.js";
+import { buildRunSceneScriptOp } from "./scene-script.js";
+
+// Transform inheritance and visibility both stop at a non-Node3D parent.
+// top_level stops transform inheritance, but keeps Node3D visibility inheritance.
+export const SCENE_SPACE_GDSCRIPT = String.raw`
+func _xf(node, root):
+	var chain = []
+	var cur = node
+	while cur is Node3D:
+		chain.push_front(cur)
+		if cur == root or cur.top_level:
+			break
+		cur = cur.get_parent()
+	var t = Transform3D.IDENTITY
+	for n in chain:
+		t = t * n.transform
+		if n.is_scale_disabled():
+			t.basis = t.basis.orthonormalized()
+	return t
+
+
+func _parent_xf(node, root):
+	if node != root and node is Node3D and not node.top_level and node.get_parent() is Node3D:
+		return _xf(node.get_parent(), root)
+	return Transform3D.IDENTITY
+
+
+func _visible(node, root):
+	var cur = node
+	while cur is Node3D:
+		if not cur.visible:
+			return false
+		if cur == root:
+			break
+		cur = cur.get_parent()
+	return true
+
+
+func _inherits_3d(node, ancestor):
+	var cur = node
+	while cur != ancestor:
+		if not (cur is Node3D) or cur.top_level:
+			return false
+		cur = cur.get_parent()
+	return ancestor is Node3D
+`;
+
+interface TransformClient extends CapabilityAdvertisingClient {
+  executeOps?(ops: Record<string, unknown>[], options?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
+  executeIdentityBoundOps?(ops: Record<string, unknown>[], options?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
+}
+
+export interface SceneNodeTransform {
+  origin: Vec3;
+  position: Vec3;
+  transform: string;
+  parentBasis: Mat3;
+  independentGeometry: string[];
+}
+
+export function buildSceneTransformScript(path: string, checkGeometry = false): string {
+  const data = Buffer.from(JSON.stringify({ path, check_geometry: checkGeometry }), "utf8").toString("base64");
+  return String.raw`@tool
+extends RefCounted
+${SCENE_SPACE_GDSCRIPT}
+
+func run(ctx):
+	var args = JSON.parse_string(Marshalls.base64_to_utf8("${data}"))
+	var root = ctx.get_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no edited scene"}
+	var path = String(args["path"])
+	var node = root if path == "." or path == "./" else root.get_node_or_null(NodePath(path))
+	if not (node is Node3D):
+		return {"ok": false, "error": "the target is not a Node3D in the edited scene"}
+	var xf = _xf(node, root)
+	var parent = _parent_xf(node, root)
+	var independent = []
+	if args["check_geometry"]:
+		var stack = [node]
+		while not stack.is_empty():
+			var n = stack.pop_back()
+			if n is GeometryInstance3D and _visible(n, root) and not _inherits_3d(n, node):
+				independent.append(String(root.get_path_to(n)))
+			stack.append_array(n.get_children())
+	return {"ok": true, "origin": [xf.origin.x, xf.origin.y, xf.origin.z], "position": [node.position.x, node.position.y, node.position.z], "transform": var_to_str(xf), "parent_transform": var_to_str(parent), "independent_geometry": independent}
+`;
+}
+
+/** Exact scene-local world transform; no rounded Euler reconstruction. */
+export async function readSceneNodeTransform(client: TransformClient, path: string, scenePath?: string, checkGeometry = false): Promise<SceneNodeTransform | { error: string }> {
+  const missing = missingEngineOpResult(client, "RunSceneScript", "read the node's native transform with RunSceneScript");
+  if (missing) return { error: missing.error };
+  const execute = client.executeIdentityBoundOps ?? client.executeOps;
+  if (!execute) return { error: "this client cannot read native scene transforms" };
+  const { op, timeoutMs } = buildRunSceneScriptOp({ source: buildSceneTransformScript(path, checkGeometry), max_seconds: 10, undo: "none", checkpoint: false });
+  try {
+    const receipt = await execute.call(client, [op], scenePath ? { scenePath } : undefined, timeoutMs);
+    const failure = extractOpError(receipt);
+    if (failure) return { error: failure };
+    const results = asRecord(receipt)?.results;
+    const row = asRecord(Array.isArray(results) ? results.find((r) => asRecord(r)?.op === "RunSceneScript") : null);
+    const result = asRecord(row?.result);
+    if (row?.ok !== true || result?.ok !== true) return { error: String(result?.error ?? row?.error ?? "native transform read returned no result") };
+    const vector = (value: unknown): Vec3 | null =>
+      Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === "number" && Number.isFinite(n)) ? value as Vec3 : null;
+    const origin = vector(result.origin);
+    const position = vector(result.position);
+    const parent = typeof result.parent_transform === "string" ? parseTransform3D(result.parent_transform) : null;
+    if (!origin || !position || !parent || typeof result.transform !== "string") return { error: "native transform read returned incomplete data" };
+    return { origin, position, transform: result.transform, parentBasis: parent.basis, independentGeometry: Array.isArray(result.independent_geometry) ? result.independent_geometry.map(String) : [] };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}

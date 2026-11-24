@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { knownOp, localEntries, localInputSchema, resolveCliOp } from "./catalog.js";
+import { knownOp, localEntries, localInputSchema, resolveCliOp, unknownInputField } from "./catalog.js";
 
 describe("knownOp", () => {
   it("keeps a real operation, local or cloud, and drops any other word", () => {
@@ -27,4 +27,13 @@ it("exposes the verified Remix download as a local write without account sign-in
   const entry = localEntries().find(entry => entry.name === "games.download_remix");
   expect(entry).toMatchObject({ provider: "local", effect: "write", mcpTool: "summer_games_download_remix" });
   expect(entry?.needsSignIn).toBeUndefined();
+});
+
+it("checks only undeclared top-level fields in a closed schema", () => {
+  const closed = { additionalProperties: false, required: ["name"], properties: { name: {}, props: { type: "object" } } };
+  expect(unknownInputField(closed, {})).toBeNull();
+  expect(unknownInputField(closed, { props: { material_override: "res://custom.tres" } })).toBeNull();
+  expect(unknownInputField(closed, { toString: "unexpected" })).toContain("toString");
+  expect(unknownInputField({ ...closed, additionalProperties: true }, { custom: 1 })).toBeNull();
+  expect(unknownInputField(null, { custom: 1 })).toBeNull();
 });

@@ -115,6 +115,19 @@ describe("summer tool command", () => {
     }
   }
 
+  const placement = { scenePath: "res://main.tscn", parent: ".", scene: "res://seat.tscn", rotationDegrees: [0, 90, 0] };
+
+  it.each([
+    ["instantiate-scene", placement, "rotationDegrees"],
+    ["summer_instantiate_scene", placement, "rotationDegrees"],
+    ["tool/get-scene-tree", { scenePath: "res://main.tscn", maxNodes: 1 }, "maxNodes"],
+  ] as const)("refuses unknown fields before %s connects to an editor", async (tool, input, field) => {
+    vi.mocked(EngineApiClient.connect).mockClear();
+    await expect(runToolCommand([tool, "--args", JSON.stringify(input)]))
+      .rejects.toThrow(`${field}: not a field of this operation.`);
+    expect(EngineApiClient.connect).not.toHaveBeenCalled();
+  });
+
   it("exits 1 and prints the engine's failure envelope when a read fails — the CLI twin of the MCP face's isError (E2E F-06)", async () => {
     // Engine 0.5.65 answers a missing node with HTTP 200 + {ok:false, error};
     // the MCP face marks that isError.

@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "2254b18d04de74838191dd0ec194a72868c630bf0a121632ba24c3b3cbfdeb74",
+      "content_hash": "c16a302c1dcf17e40caf0ecf6312bbd551242fdb5b282ec8372d959d634bddbb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5056,7 +5056,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.5.0",
-      "content_hash": "21b2654e9a2f325588a42da4ea8ca11197417be9afd45d2bb33c7042d9f4c7a5",
+      "content_hash": "2572dc99854e0b7c7d5f748e0e73c2c1b0f297450b9fb0e7d3f1041fa0109162",
       "summary": "Prove scene work landed: snapshot, diff, screenshots, runtime reads, 3D audits, shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -10656,7 +10656,7 @@
       "id": "tool/shot-sheet",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "9e9dddf23e353637b51db1a6ae82e0be981c0c3bbe3274262194a644e9e2a004",
+      "content_hash": "c3ff954e6ada030dcc19ef67ea35052421c5ee085b5538d86b55e51453946889",
       "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
       "use_when": [
         "seeing every hero view of an environment at once after a change, in one image",

@@ -3,6 +3,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../../core/store.js";
+import * as exportCapability from "../../core/capabilities/export-game.js";
+import * as captureCapability from "../../core/capabilities/capture-gameplay.js";
+import * as syncCapability from "../../core/capabilities/sync-items.js";
 import { registerCreatorTools } from "./creator-tools.js";
 
 type Registered = {
@@ -56,6 +59,45 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
+  const projectTools = [
+    ["summer_export_game", () => vi.spyOn(exportCapability, "exportGame")],
+    ["summer_capture_gameplay", () => vi.spyOn(captureCapability, "captureGameplay")],
+    ["summer_sync_items", () => vi.spyOn(syncCapability, "syncItems")],
+  ] as const;
+
+  it.each(projectTools)("%s follows the current binding when project is omitted", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    let bound = join(root, "project-b");
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any, async () => bound);
+    const tool = getTool(tools, name);
+    await tool.handler({});
+    expect(operation).toHaveBeenLastCalledWith(expect.objectContaining({ project: bound }));
+
+    bound = join(root, "project-c");
+    await tool.handler({ project: "   " });
+    expect(operation).toHaveBeenLastCalledWith(expect.objectContaining({ project: bound }));
+  });
+
+  it.each(projectTools)("%s keeps an explicit project without resolving another editor", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    const bound = vi.fn(async () => { throw new Error("unreachable selected editor"); });
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any, bound);
+    const explicit = join(root, "project-a");
+    await getTool(tools, name).handler({ project: explicit });
+    expect(operation).toHaveBeenCalledWith(expect.objectContaining({ project: explicit }));
+    expect(bound).not.toHaveBeenCalled();
+  });
+
+  it.each(projectTools)("%s retains the core environment/cwd fallback when unbound", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    await getTool(tools, name).handler({});
+    expect(operation.mock.calls[0][0].project).toBeUndefined();
+  });
+
   it("returns structured failures from summer_publish_build", async () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);

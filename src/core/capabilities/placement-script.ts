@@ -182,25 +182,31 @@ func _placement_world(node):
 
 # Visible GeometryInstance3D descendants of start (inclusive) with their
 # scene-space transform and local AABB: the bounds definition AlignDistribute3D
-# uses. exclude holds subtree roots to skip.
+# uses. exclude holds subtree roots to skip. A null result means the scan
+# exceeded the geometry limit. RunSceneScript enforces its own time budget.
 func _geoms(start, root, exclude, world_source = null):
 	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
+	for excluded in exclude:
+		if excluded.is_ancestor_of(start):
+			return out
 	var stack = [start]
-	var visited = 0
 	while stack.size() > 0:
-		visited += 1
-		if visited > MAX_GEOMS:
-			break
 		var n = stack.pop_back()
 		if exclude.has(n):
 			continue
 		if n is GeometryInstance3D and _visible(n, root) and (world_source == null or _placement_world(n) == world):
 			var bb = n.get_aabb()
 			if bb.size != Vector3.ZERO:
+				if out.size() >= MAX_GEOMS:
+					return null
 				out.append([n, _xf(n, root), bb])
 		stack.append_array(n.get_children())
 	return out
+
+
+func _geometry_scan_limit(root, start):
+	return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")
 
 
 func _corners(bb, t):
@@ -296,6 +302,8 @@ func _cmd_bounds(root, active, args):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
 		var geoms = _geoms(n, root, exclude)
+		if geoms == null:
+			return _geometry_scan_limit(root, n)
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_xf(n, root))}
 		rec["parent_xform"] = _xf12(_parent_xf(n, root))
 		rec["independent_geometry"] = []
@@ -365,14 +373,12 @@ func _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclu
 	return {"available": true, "hit": false, "skipped": skipped, "gave_up": true}
 
 
-func _vis_ray(geoms, origin, dir, dist, accept_under):
+func _vis_ray(geoms, origin, dir, dist):
 	var best_t = INF
 	var best = null
 	var best_axis = -1
 	var inside = 0
 	for g in geoms:
-		if accept_under != null and not (g[0] == accept_under or accept_under.is_ancestor_of(g[0])):
-			continue
 		var cs = _corners(g[2], g[1])
 		var mn = cs[0]
 		var mx = cs[0]
@@ -451,6 +457,8 @@ func _cmd_raycast(root, active, args):
 			return _fail("bad_args", "from_subject needs a surface node")
 		origin = _xf(world_source, root).origin
 		var sg = _geoms(accept_under, root, [], world_source)
+		if sg == null:
+			return _geometry_scan_limit(root, accept_under)
 		if sg.size() == 0:
 			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at in the subject's world: " + surface)
 		var iv = _intervals(sg, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
@@ -463,18 +471,24 @@ func _cmd_raycast(root, active, args):
 	var phys = {"available": false, "reason": "not_requested"}
 	if mode != "visual_aabb":
 		phys = _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclude_nodes, accept_under)
-	var geoms = _geoms(root, root, exclude_nodes, world_source)
-	var vis = _vis_ray(geoms, origin, dir, dist, accept_under)
 	out["physics_available"] = phys.get("available", false)
 	if not phys.get("available", false):
 		out["physics_unavailable_reason"] = phys.get("reason", "")
 	if phys.get("hit", false):
 		out["physics"] = {"path": phys["path"], "point": _raw3(phys["point"]), "normal": _raw3(phys["normal"]), "distance": (phys["point"] - origin).length(), "skipped": phys.get("skipped", 0)}
+	if mode == "physics":
+		return out
+	var scan_root = accept_under if accept_under != null else root
+	var geoms = _geoms(scan_root, root, exclude_nodes, world_source)
+	if geoms == null:
+		if not phys.get("hit", false):
+			return _geometry_scan_limit(root, scan_root)
+		out["visual_truncated"] = true
+		return out
+	var vis = _vis_ray(geoms, origin, dir, dist)
 	if vis.get("hit", false):
 		out["visual"] = {"path": _rel(root, vis["node"]), "point": _raw3(vis["point"]), "normal": _raw3(vis["normal"]), "distance": vis["t"]}
 	out["visual_origin_inside"] = vis.get("inside", 0)
-	if geoms.size() >= MAX_GEOMS:
-		out["visual_truncated"] = true
 	return out
 
 
@@ -1147,10 +1161,16 @@ func _cmd_blockers(root, active, args):
 		if best_path != "":
 			pout["first_contact"] = {"path": best_path, "distance": best}
 		return pout
-	var mine = _bounds_of(_geoms(n, root, []))
+	var subject_geoms = _geoms(n, root, [])
+	if subject_geoms == null:
+		return _geometry_scan_limit(root, n)
+	var mine = _bounds_of(subject_geoms)
 	if mine == null:
 		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
-	for g in _geoms(root, root, [n]):
+	var other_geoms = _geoms(root, root, [n])
+	if other_geoms == null:
+		return _geometry_scan_limit(root, root)
+	for g in other_geoms:
 		var ob = _bounds_of([g])
 		if mine.intersects(ob):
 			var vp_path = _rel(root, g[0])

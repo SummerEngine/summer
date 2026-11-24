@@ -667,32 +667,23 @@ func _sphere(radius: float) -> RID:
 	return s
 
 
-func _ray(from: Vector3, to: Vector3, mask: int) -> Dictionary:
+func _ray(from: Vector3, to: Vector3, mask: int, read_side := false) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, to, mask)
 	q.hit_back_faces = true
-	return _state.intersect_ray(q)
+	var hit := _state.intersect_ray(q)
+	if read_side and not hit.is_empty():
+		hit["back"] = false
+		if (int(_geom(hit).get("flags", 0)) & FLAG_DOUBLE) == 0:
+			# Preserve the actual segment: a shorter ray can miss a small drawn
+			# triangle. A front face on a different surface can also lie behind it.
+			q.hit_back_faces = false
+			var front := _state.intersect_ray(q)
+			hit["back"] = front.is_empty() or front["rid"] != hit["rid"] or front["position"] != hit["position"]
+	return hit
 
 
 func _geom(hit: Dictionary) -> Dictionary:
 	return _body_geom.get((hit["rid"] as RID).get_id(), {})
-
-
-# Did a ray travelling along `dir` meet the surface at `point` from BEHIND?
-# Both physics servers report hit normals turned toward the ray, so the side
-# is read with a short FRONT-faces-only ray across the hit point instead: a
-# front face there means the side facing the camera is drawn. A double-sided
-# material is drawn from both sides and never counts as a back face.
-func _is_back(point: Vector3, dir: Vector3, flags: int) -> bool:
-	if flags & FLAG_DOUBLE:
-		return false
-	# Only the hit's own kind of surface: a glass pane 1 cm in front of a
-	# wall's back must not count as that wall's front.
-	var mask: int = LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
-	if (flags & FLAG_SEE) != 0:
-		mask = LAYER_SEE
-	var q := PhysicsRayQueryParameters3D.create(point - dir * 0.02, point + dir * 0.02, mask)
-	q.hit_back_faces = false
-	return _state.intersect_ray(q).is_empty()
 
 
 # What a line from `from` to `to` really crosses, in order, up to the first
@@ -713,14 +704,14 @@ func _walk(from: Vector3, to: Vector3, mask: int) -> Dictionary:
 	var dir := (to - from) / total
 	var start := from
 	for _step in 8:
-		var hit := _ray(start, to, mask | LAYER_SEE)
+		var hit := _ray(start, to, mask | LAYER_SEE, true)
 		if hit.is_empty():
 			break
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var cls := int(g.get("cls", CLASS_HARD))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		if flags & FLAG_SEE:
 			if not back and String(out["see"]) == "":
 				out["see"] = String(g.get("path", ""))
@@ -899,14 +890,13 @@ func _floor_at(x: float, z: float, top: float, bottom: float, height: float) -> 
 	var from := Vector3(x, top, z)
 	var to := Vector3(x, bottom, z)
 	for _step in 8:
-		var hit := _ray(from, to, EYE_GROUND_MASK)
+		var hit := _ray(from, to, EYE_GROUND_MASK, true)
 		if hit.is_empty():
 			return null
 		var p: Vector3 = hit["position"]
-		var flags := int(_geom(hit).get("flags", 0))
 		# Hit normals are turned toward the ray, so this only says "horizontal";
-		# _is_back says which side was met.
-		if (hit["normal"] as Vector3).y > 0.7 and not _is_back(p, Vector3.DOWN, flags):
+		# The paired front-only query says which side was met.
+		if (hit["normal"] as Vector3).y > 0.7 and not bool(hit["back"]):
 			if _ray(p + Vector3.UP * 0.05, p + Vector3.UP * height, EYE_GROUND_MASK).is_empty():
 				return p.y
 		from = p + Vector3.DOWN * 0.01
@@ -1319,14 +1309,14 @@ func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array
 	var start := pos
 	var end := pos + dir * max_dist
 	for _step in 6:
-		var hit := _ray(start, end, mask | LAYER_SEE)
+		var hit := _ray(start, end, mask | LAYER_SEE, true)
 		if hit.is_empty():
 			return [".", -1]
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var cls := int(g.get("cls", CLASS_HARD))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		var d := snappedf(pos.distance_to(point), 0.1)
 		if flags & FLAG_SEE:
 			if not back:
@@ -1358,7 +1348,7 @@ func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, a
 # Boxed in: geometry within arm's reach on all four horizontal sides AND
 # overhead. A camera there is inside a wall cavity, a prop or a solid block,
 # never a place to shoot from. (Ray normals cannot tell inside from outside:
-# the physics server reports normals facing the ray; _is_back reads the side.)
+# the physics server reports normals facing the ray; the front-only query reads the side.)
 func _enclosed(pos: Vector3, fwd: Vector3) -> bool:
 	return _enclosure_sides(pos, fwd) >= 5
 
@@ -1476,14 +1466,14 @@ func _sees_node(cam: Vector3, target: Vector3, own: String, mask: int) -> Dictio
 	var start := cam
 	var met_own_back := false
 	for _step in 8:
-		var hit := _ray(start, end, mask)
+		var hit := _ray(start, end, mask, true)
 		if hit.is_empty():
 			break
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var path := String(g.get("path", ""))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		var is_own := own == "." or path == own or path.begins_with(own + "/")
 		if is_own:
 			if not back:

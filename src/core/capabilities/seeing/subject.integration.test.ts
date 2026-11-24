@@ -19,7 +19,7 @@ describe.runIf(Boolean(binary))("seeing target load — real headless GDScript",
   let project: string;
   beforeAll(() => {
     project = mkdtempSync(join(tmpdir(), "seeing-subject-test-"));
-    writeFileSync(join(project, "project.godot"), 'config_version=5\n[application]\nconfig/name="Seeing subject regression"\n');
+    writeFileSync(join(project, "project.godot"), 'config_version=5\n[application]\nconfig/name="Seeing subject regression"\n[physics]\n3d/physics_engine="GodotPhysics3D"\n');
     writeFileSync(join(project, "valid.tscn"), '[gd_scene format=3]\n[node name="ValidEmptyScene" type="Node3D"]\n');
     writeFileSync(join(project, "run.gd"), `extends SceneTree
 func _initialize():
@@ -93,6 +93,27 @@ mesh = SubResource("Box")
       expect(target[i]).toBeCloseTo(center[i]!, 6);
       expect(position[i]).toBeCloseTo(center[i]! + (i === 2 ? distance : 0), 6);
     }
+  }, 20_000);
+
+  it.each([
+    { side: 1, reason: "near_lens_blocked" },
+    { side: -1, reason: "behind_surface" },
+  ])("reads the actual side of a small single-sided quad viewed from $side", async ({ side, reason }) => {
+    const scenePath = "res://quad.tscn";
+    writeFileSync(join(project, "quad.tscn"), `[gd_scene format=3]
+[sub_resource type="QuadMesh" id="Quad"]
+size = Vector2(0.012, 0.008)
+[node name="Scene" type="Node3D"]
+[node name="Marker" type="MeshInstance3D" parent="."]
+mesh = SubResource("Quad")
+`);
+    const client = engine();
+    const runProbe = client.executeOps.bind(client);
+    client.executeOps = async (ops) => ops[0]?.scene_path === scenePath
+      ? { results: [{ ok: true, image_base64: OK_JPEG.toString("base64"), width: 64, height: 64, mime: "image/jpeg" }] }
+      : runProbe(ops);
+    const result = await frameNodes(client, { scenePath, nodes: ["Marker"], from: `Vector3(0, 0, ${side})`, fov: 10, aspect: 1 });
+    expect(result).toMatchObject({ ok: true, receipt: { view_check: { ok: false, reason, blockers: ["Marker"] } } });
   }, 20_000);
 
   const pose = { camera_position: "Vector3(0, 1, 7)", camera_look_at: "Vector3(0, 0, 0)" };

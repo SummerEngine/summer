@@ -29,6 +29,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Node inspection reads 3D local transforms directly from Godot, preserving shear, small scales, and all editor rotation modes.
 - Live 3D spatial reads use Godot’s world transform. Inactive scenes and assets retain their own transform frames.
 - Framing uses Godot’s full mesh bounds and camera coordinates, keeping small subjects centred in close-up previews.
+- Camera visibility checks preserve the original physics ray when testing face winding. Close-ups of small, front-facing meshes now report clearance overlaps without a false back-face warning.
 - Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
 - Zooming in on narrow seams preserves the requested strip and centres it between the image bars.
 - Placing and repeating 3D scenes preserves small offsets, scales and full transforms under scaled parents. Large coordinates also retain their exponent.

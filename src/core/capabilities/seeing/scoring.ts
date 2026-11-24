@@ -453,7 +453,7 @@ export function viewProblem(m: Measurement, maxHardFraction = 0.34): ViewProblem
         : m.rejected === "behind_surface"
           ? `the camera is right behind a one-sided surface${lens}: its back is not drawn, so the image looks through it`
           : m.rejected === "near_lens_blocked"
-            ? `geometry touches the lens${lens}`
+            ? `geometry overlaps the camera’s clearance volume${lens}`
             : m.rejected === "below_ground"
               ? "the camera is below the ground"
               : m.rejected;

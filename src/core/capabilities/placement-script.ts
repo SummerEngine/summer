@@ -267,6 +267,32 @@ func _dirs(root, args):
 
 # ---------------------------------------------------------------- bounds
 
+# Geometry in the frame the mount will use: its final axis lengths, before
+# the rigid turn into the surface. A sheared current frame has different extents.
+func _mount_geoms(subject, subject_xf, geoms):
+	var b = subject_xf.basis
+	var axis_lengths = Vector3(b.x.length(), b.y.length(), b.z.length())
+	var poses = {subject: Transform3D(Basis.from_scale(axis_lengths), subject_xf.origin)}
+	var posed = []
+	for g in geoms:
+		var node = g[0]
+		var chain = []
+		while not poses.has(node):
+			if not (node is Node3D) or node.top_level:
+				return {"fail": _fail("independent_subject_geometry", "Visible mounting geometry does not inherit the subject transform")}
+			chain.append(node)
+			node = node.get_parent()
+		var t = poses[node]
+		for i in range(chain.size() - 1, -1, -1):
+			node = chain[i]
+			t = t * node.transform
+			if node.is_scale_disabled():
+				t.basis = t.basis.orthonormalized()
+			poses[node] = t
+		posed.append([g[0], t, g[2]])
+	return {"geoms": posed}
+
+
 func _cmd_bounds(root, active, args):
 	var d = _dirs(root, args)
 	if d.has("fail"):
@@ -296,7 +322,13 @@ func _cmd_bounds(root, active, args):
 		rec["position"] = _raw3(n.position)
 		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
-			rec["intervals"] = _intervals(geoms, dirs)
+			var measured = geoms
+			if spec.get("mount_frame", false):
+				var preview = _mount_geoms(n, _xf(n, root), geoms)
+				if preview.has("fail"):
+					return preview["fail"]
+				measured = preview["geoms"]
+			rec["intervals"] = _intervals(measured, dirs)
 			var reach = 0.0
 			var o = _xf(n, root).origin
 			for g in geoms:

@@ -1300,8 +1300,8 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
     cmd: "multi",
     scene_path: args.scenePath,
     steps: [
-      // The subject's bounds along its OWN axes: where its back face is.
-      { cmd: "bounds", space_node: args.subject, nodes: [{ path: args.subject }] },
+      // Measure the proposed axis lengths before turning this frame onto the wall.
+      { cmd: "bounds", nodes: [{ path: args.subject, mount_frame: true }] },
       {
         cmd: "raycast",
         ...ray,

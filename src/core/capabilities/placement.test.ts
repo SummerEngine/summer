@@ -581,7 +581,8 @@ describe("summer_attach_to_surface", () => {
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", surface: "./Wall", standoff: 0.02 })
     );
     const steps = probeArgs(probeCalls[0]!).steps as Op[];
-    expect(steps[0]).toMatchObject({ cmd: "bounds", space_node: "Lamp" });
+    expect(steps[0]).toMatchObject({ cmd: "bounds", nodes: [{ path: "Lamp", mount_frame: true }] });
+    expect(steps[0]).not.toHaveProperty("space_node");
     expect(steps[1]).toMatchObject({ cmd: "raycast", from_subject: "Lamp", surface: "./Wall", exclude: ["Lamp"] });
     const [setProp, snap] = mutations[0]!;
     expect(setProp).toMatchObject({ op: "SetProp", path: "Lamp", key: "transform" });

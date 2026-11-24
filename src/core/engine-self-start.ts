@@ -158,9 +158,9 @@ export function hasNoDisplay(env: NodeJS.ProcessEnv = process.env, platform: Nod
 
 /** Another live project, only when no registered editor already owns `root`. */
 async function otherOpenProject(root: string): Promise<{ instance: EngineInstance; name: string } | null> {
-  const instances = await listEngineInstances();
-  if (instances.some((instance) => instance.resourceRoot === root)) return null;
-  for (const instance of instances) {
+  const owners = await listEngineInstances(Date.now(), undefined, { anyHeartbeat: true });
+  if (owners.some((instance) => instance.resourceRoot === root)) return null;
+  for (const instance of await listEngineInstances()) {
     if (await checkEngineHealth(instance.port)) {
       return { instance, name: instance.projectName ? `${instance.projectName} (${instance.resourceRoot})` : instance.resourceRoot };
     }

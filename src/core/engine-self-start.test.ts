@@ -286,12 +286,12 @@ describe("the MCP opens the session's project when no editor runs", () => {
 });
 
 describe("projects.open_local switches an editor that has another game open (J16.1)", () => {
-  function register(id: string, resourceRoot: string, port: number): void {
+  function register(id: string, resourceRoot: string, port: number, heartbeatAt = Math.floor(Date.now() / 1000)): void {
     const instances = join(root, ".summer", "instances");
     mkdirSync(instances, { recursive: true });
     writeFileSync(
       join(instances, `${id}.json`),
-      JSON.stringify({ schemaVersion: 1, instanceId: id, pid: process.pid, port, token: "t", resourceRoot, projectName: id, heartbeatAt: Math.floor(Date.now() / 1000) })
+      JSON.stringify({ schemaVersion: 1, instanceId: id, pid: process.pid, port, token: "t", resourceRoot, projectName: id, heartbeatAt })
     );
   }
 
@@ -330,9 +330,9 @@ describe("projects.open_local switches an editor that has another game open (J16
     expect(connect.mock.calls).toEqual([[{ cwd: project }]]);
   });
 
-  it("waits for a registered busy matching editor without switching another project", async () => {
+  it("waits for a live matching editor with a stale busy heartbeat without switching another project", async () => {
     register("other", elsewhere, 6553);
-    register("matching", project, 6554);
+    register("matching", project, 6554, Math.floor(Date.now() / 1000) - 240);
     healthMock.mockImplementation(async (port) => port === 6553 ? up as never : null);
     const launch = launcher({ status: "starting", binary: "/fake/Summer" });
     const connect = vi.fn(async () => fakeClient);

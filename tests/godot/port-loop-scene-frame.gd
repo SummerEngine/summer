@@ -35,7 +35,10 @@ func check():
 			for loop in resolved.loops:
 				var c: Array = loop.center
 				var center: Vector3 = probe._xf(piece, scene) * Vector3(c[0], c[1], c[2])
-				assert(expected.any(func(e): return e.distance_to(center) < 0.0001))
+				if not expected.any(func(e): return e.distance_to(center) < 0.0001):
+					push_error("%s port center %s does not match Godot ring centers %s" % [mode, center, expected])
+					quit(1)
+					return
 			if not entered:
 				root.add_child(scene)
 		holder.free()

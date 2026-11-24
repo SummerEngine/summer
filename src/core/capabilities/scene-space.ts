@@ -8,6 +8,7 @@ import { buildRunSceneScriptOp } from "./scene-script.js";
 // Transform inheritance and visibility both stop at a non-Node3D parent.
 // top_level stops transform inheritance, but keeps Node3D visibility inheritance.
 export const SCENE_SPACE_GDSCRIPT = String.raw`
+# Compose only as far as root, including its local transform. Asset reads use this frame even in a live tree.
 func _xf(node, root):
 	var chain = []
 	var cur = node
@@ -24,9 +25,17 @@ func _xf(node, root):
 	return t
 
 
+func _world_xf(node, root):
+	if node is Node3D and node.is_inside_tree():
+		return node.global_transform
+	return _xf(node, root)
+
+
 func _parent_xf(node, root):
-	if node != root and node is Node3D and not node.top_level and node.get_parent() is Node3D:
-		return _xf(node.get_parent(), root)
+	if node is Node3D and (node != root or node.is_inside_tree()):
+		var parent = node.get_parent_node_3d()
+		if parent != null:
+			return _world_xf(parent, root)
 	return Transform3D.IDENTITY
 
 
@@ -112,7 +121,7 @@ func run(ctx):
 	var node = root if path == "." or path == "./" else root.get_node_or_null(NodePath(path))
 	if not (node is Node3D):
 		return {"ok": false, "error": "the target is not a Node3D in the edited scene"}
-	var xf = _xf(node, root)
+	var xf = _world_xf(node, root)
 	var independent = []
 	if args["check_geometry"]:
 		var stack = [node]

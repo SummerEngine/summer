@@ -73,6 +73,38 @@ func _check_transform_plan(probe, errors: Array):
 			errors.append("unexpected refusal: " + str(plan))
 	scene.free()
 
+func _check_world_and_asset_frames(probe, scene, rig, nodes, errors: Array):
+	# This mounted copy gives Godot's piece-local frame without the outer scene.
+	var standalone = rig.duplicate()
+	root.add_child(standalone)
+	var inverse = standalone.global_transform.affine_inverse()
+	var asset_frames = {}
+	for item in probe._collect(rig).meshes:
+		var path = rig.get_path_to(item[0])
+		asset_frames[path] = inverse * standalone.get_node(path).global_transform
+		if not item[1].is_equal_approx(asset_frames[path]):
+			errors.append("live asset frame: " + str(path))
+	standalone.free()
+	var worlds = {}
+	var parents = {}
+	for node in nodes:
+		worlds[node] = node.global_transform
+		var parent = node.get_parent_node_3d()
+		parents[node] = parent.global_transform if parent != null else Transform3D.IDENTITY
+		if probe._world_xf(node, scene) != worlds[node]:
+			errors.append("live world frame: " + str(node.name))
+	# In a live scene, even a nested query root has a Godot world frame.
+	if probe._world_xf(rig, rig) != rig.global_transform or probe._parent_xf(rig, rig) != scene.global_transform:
+		errors.append("live world frame at a nested query root")
+	root.remove_child(scene)
+	for node in nodes:
+		if not probe._world_xf(node, scene).is_equal_approx(worlds[node]) or not probe._parent_xf(node, scene).is_equal_approx(parents[node]):
+			errors.append("detached world frame: " + str(node.name))
+	for item in probe._collect(rig).meshes:
+		if not item[1].is_equal_approx(asset_frames[rig.get_path_to(item[0])]):
+			errors.append("detached asset frame: " + str(item[0].name))
+	root.add_child(scene)
+
 func _run():
 	var scene := Node3D.new()
 	scene.name = "Scene"
@@ -107,7 +139,7 @@ func _run():
 	var snap = load("res://snap.gd").new()
 	for probe in [placement, snap]:
 		for n in [scene, parent, inherited, top, independent, disabled_scale, rotated]:
-			var actual: Transform3D = probe.call("_xf", n, scene)
+			var actual: Transform3D = probe.call("_world_xf", n, scene)
 			var visible: bool = probe.call("_visible", n, scene)
 			if not actual.is_equal_approx(n.global_transform):
 				errors.append("transform: " + str(scene.get_path_to(n)))
@@ -149,6 +181,7 @@ func _run():
 	var inspected: Dictionary = inspector.run(ctx)
 	if inspected.get("local", {}).get("transform") != var_to_str(top.transform) or inspected.get("world_origin") != var_to_str(top.global_position):
 		errors.append("inspection lost a sheared local basis or a sub-millimetre origin")
+	_check_world_and_asset_frames(placement, scene, parent, [scene, parent, inherited, top, independent, disabled_scale, rotated], errors)
 	var f := FileAccess.open("res://result.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify({"errors": errors, "observations": observations, "bounds": bounds}))
 	f.close()

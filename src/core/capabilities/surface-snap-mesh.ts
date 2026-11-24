@@ -319,7 +319,7 @@ func run(_ctx):
 	if after == null:
 		return _fail("translation_not_representable", "The parent transform cannot reproduce the requested mesh movement at engine precision.")
 	var support = _support_of(ranges, int(best_hit["face"]))
-	var origin = _xf(subject, root).origin
+	var origin = _world_xf(subject, root).origin
 	stats["travel"] = best
 	stats["shift"] = shift
 	stats["support"] = _rel(root, support) if support != null else ""
@@ -543,7 +543,7 @@ func _mesh_items(start, root, exclude, skipped):
 					if _screen_space(n):
 						skipped["screen_space"] += 1
 					else:
-						out.append([n, _xf(n, root)])
+						out.append([n, _world_xf(n, root)])
 			else:
 				skipped["not_mesh"] += 1
 		stack.append_array(n.get_children())

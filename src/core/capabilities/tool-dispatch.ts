@@ -40,6 +40,7 @@ import {
   missingEngineOpResult,
   type MissingOpResult,
 } from "../capability-skew.js";
+import { bindInputAction } from "./input-map.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
 import {
   recentEvents,
@@ -1505,10 +1506,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       throw new ToolDispatchError("events must be an array of input event objects");
     }
     return requireEngineSuccess(
-      await (await ctx.engine()).executeOps([
-        { op: "InputMapAddAction", name: str(args, "name") },
-        { op: "InputMapBind", name: str(args, "name"), events: args.events },
-      ])
+      await bindInputAction(await ctx.engine(), str(args, "name"), args.events)
     );
   }),
   entry("summer_get_scene_tree", "Read a scene's node tree (explicit depth/limit honored)", true, async (args, ctx) => {

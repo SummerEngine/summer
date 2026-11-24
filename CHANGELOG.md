@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- On editors that create actions when binding input, a rejected binding now leaves a missing action absent from project.godot. Older editors report when creating the action succeeded before binding failed.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

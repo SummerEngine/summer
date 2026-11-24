@@ -16,6 +16,7 @@ import {
 import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { appendMcpLogEvent } from "../../core/mcp-log.js";
 import { withEngine } from "./with-engine.js";
+import { bindInputAction } from "../../core/capabilities/input-map.js";
 import { importUrls } from "../../core/capabilities/video-ogv.js";
 
 import { asRecord, stringFrom, type JsonRecord } from "../../core/util/json.js";
@@ -268,13 +269,7 @@ Example: Bind jump to Space and W:
       events: z.array(z.record(z.unknown())).describe("Array of input event objects"),
     },
     async ({ name, events }) =>
-      withEngine(async (client) => {
-        const ops = [
-          { op: "InputMapAddAction", name },
-          { op: "InputMapBind", name, events },
-        ];
-        return client.executeOps(ops);
-      })
+      withEngine(async (client) => bindInputAction(client, name, events))
   );
 
   server.tool(

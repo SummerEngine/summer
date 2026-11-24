@@ -286,12 +286,12 @@ describe("the MCP opens the session's project when no editor runs", () => {
 });
 
 describe("projects.open_local switches an editor that has another game open (J16.1)", () => {
-  function register(id: string, resourceRoot: string, port: number): void {
+  function register(id: string, resourceRoot: string, port: number, heartbeatAt = Math.floor(Date.now() / 1000)): void {
     const instances = join(root, ".summer", "instances");
     mkdirSync(instances, { recursive: true });
     writeFileSync(
       join(instances, `${id}.json`),
-      JSON.stringify({ schemaVersion: 1, instanceId: id, pid: process.pid, port, token: "t", resourceRoot, projectName: id, heartbeatAt: Math.floor(Date.now() / 1000) })
+      JSON.stringify({ schemaVersion: 1, instanceId: id, pid: process.pid, port, token: "t", resourceRoot, projectName: id, heartbeatAt })
     );
   }
 
@@ -314,6 +314,35 @@ describe("projects.open_local switches an editor that has another game open (J16
     });
     return { ops, connect };
   }
+
+  it.each([false, true])("reuses a registered matching editor before considering another project (switchOpen: %s)", async (switchOpen) => {
+    register("other", elsewhere, 6553);
+    register("matching", project, 6554);
+    healthMock.mockResolvedValue(up as never);
+    const launch = launcher({ status: "running", launched: false, port: 6554, health: up as never });
+    const connect = vi.fn(async () => fakeClient);
+
+    const client = await openProjectInEditor(project, { cwd: project }, { switchOpen }, { env: on, launch, connect });
+
+    expect(client).toBe(fakeClient);
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(launch.mock.calls[0][0]).toMatchObject({ projectPath: project });
+    expect(connect.mock.calls).toEqual([[{ cwd: project }]]);
+  });
+
+  it("waits for a live matching editor with a stale busy heartbeat without switching another project", async () => {
+    register("other", elsewhere, 6553);
+    register("matching", project, 6554, Math.floor(Date.now() / 1000) - 240);
+    healthMock.mockImplementation(async (port) => port === 6553 ? up as never : null);
+    const launch = launcher({ status: "starting", binary: "/fake/Summer" });
+    const connect = vi.fn(async () => fakeClient);
+
+    const error = await failureOf(openProjectInEditor(project, { cwd: project }, { switchOpen: true }, { env: on, launch, connect }));
+
+    expect(error.message).toBe("Summer Engine is starting.");
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(connect).not.toHaveBeenCalled();
+  });
 
   it("asks the running editor to switch, says so at once, waits for the new editor in the registry, and connects to it", async () => {
     register("other", elsewhere, 6553);

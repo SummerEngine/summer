@@ -196,7 +196,7 @@ VALUE FORMAT — Godot string syntax for complex types:
 - Strings: "hello" — native JSON
 
 COMMON PROPERTIES:
-- position: "Vector3(x, y, z)" — world position
+- position: "Vector3(x, y, z)" — local position. A Node3D that inherits its parent’s transform uses that parent’s coordinate system.
 - rotation_degrees: "Vector3(rx, ry, rz)" — rotation in degrees
 - scale: "Vector3(sx, sy, sz)" — scale factor
 - visible: true/false — visibility
@@ -333,7 +333,7 @@ Common signals:
 
 The receiver should have the method (a script method, or a built-in such as queue_free); a missing one is saved anyway and reported in warnings. scenePath must be a .tscn.
 
-PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair), saves, reads the saved .tscn back and returns persisted:true / verified:true only when the [connection] line is there; otherwise an error with failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts it.`,
+PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair) and verifies the saved connection. A local connection includes its [connection] line. For an existing connection inherited from a base or instanced scene, Godot reads the saved scene and its dependencies and reports the declaring scene and flags. If the saved declaration is missing, the tool returns failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts a newly created connection.`,
     connectSignalInputShape,
     async (args) => withEngine(async (client) => connectSignalPersisted(client, args))
   );
@@ -373,6 +373,8 @@ PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_
 Give exactly one of scene or type. The scenePath must be a .tscn.
 
 PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
+
+For matching Node2D or Node3D roots, the tool compares their local poses in Godot, including an identity pose omitted from the file. On a hand-authored prefab it can pin a pose override in the Inspector so Godot keeps it when saving.
 
 How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
     replaceNodeInputShape,

@@ -8,7 +8,7 @@
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readLibraryEntry, readLibraryInputShape } from "../../core/library-read.js";
-import { runSearchLibrary, searchLibraryInputShape } from "../../core/library-search.js";
+import { runSearchLibrary, searchLibraryInputSchema } from "../../core/library-search.js";
 import type { SurfaceVersion } from "../../core/tool-profiles.js";
 import { textJson } from "./text-json.js";
 
@@ -39,13 +39,16 @@ export const READ_LIBRARY_DESCRIPTION =
 
 export function registerLibraryTools(server: McpServer, surface: SurfaceVersion = "v3"): void {
   const deps = surface === "v4" ? { docsTools: { read: "summer_docs_read", search: "summer_docs_search" } } : {};
-  server.tool("summer_search_library", SEARCH_LIBRARY_DESCRIPTION, searchLibraryInputShape, async (args) => {
+  const search = server.tool("summer_search_library", SEARCH_LIBRARY_DESCRIPTION, searchLibraryInputSchema.shape, async (args) => {
     try {
       return textJson(await runSearchLibrary(args, deps));
     } catch (error) {
       return textJson({ ok: false, error: error instanceof Error ? error.message : String(error) }, true);
     }
   });
+
+  // The SDK wraps a raw shape in an object that strips unknown arguments.
+  search.inputSchema = searchLibraryInputSchema;
 
   server.tool("summer_read_library", READ_LIBRARY_DESCRIPTION, readLibraryInputShape, async (args) => {
     try {

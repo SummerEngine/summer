@@ -3,7 +3,13 @@
  * (src/mcp/tools/with-engine.ts and src/core/capabilities/tool-dispatch.ts).
  */
 
-export type OpResult = {
+type FailureDiagnostics = {
+  call_error_detail?: string;
+  animations?: string[];
+  rejected?: Array<{ index: number; failure_reason?: string; error?: string }>;
+};
+
+export type OpResult = FailureDiagnostics & {
   ok?: boolean;
   status?: string;
   error?: string;
@@ -11,7 +17,7 @@ export type OpResult = {
   errorClass?: string;
   failureReason?: string;
   failure_reason?: string;
-  results?: Array<{
+  results?: Array<FailureDiagnostics & {
     ok?: boolean;
     op?: string;
     error?: string;
@@ -88,6 +94,11 @@ export function extractOpError(result: unknown): string | null {
       {
         error: message,
         failure_reason: failureReason,
+        // These fields are named in the runtime tools' recovery messages. A
+        // failed batch carries them on its failed row; older replies can be flat.
+        call_error_detail: firstFailed?.call_error_detail ?? op.call_error_detail,
+        animations: firstFailed?.animations ?? op.animations,
+        rejected: firstFailed?.rejected ?? op.rejected,
         ...(typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error !== message
           ? { op_error: firstFailed.error }
           : {}),

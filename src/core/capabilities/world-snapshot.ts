@@ -7,9 +7,8 @@
  * scene_path / max_nodes / max_lights / include_2d and returns every node it
  * walked, about 250 bytes each: a scene of a few thousand nodes is far too
  * big to read.
- * The engine snapshot is still taken whole — its snapshot_id is the baseline
- * summer_snapshot_diff compares against, and capping it would hide changes —
- * but the agent gets a filtered, capped view: a subtree (path_prefix), some
+ * The engine stores a bounded list for summer_snapshot_diff. The agent gets
+ * a filtered, paged view of that list: a subtree (path_prefix), some
  * classes, some fields, a page (offset/max_nodes), plus class counts of what
  * matched. Whole-scene `counts` and `total_nodes` stay as the engine sent them.
  */
@@ -40,7 +39,7 @@ export const worldSnapshotInputShape = {
     .positive()
     .optional()
     .describe(
-      `Most node entries to return (default ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES}). The engine still snapshots the whole scene for the diff baseline; the result says when the list is cut (truncated, next_offset).`
+      `Most node entries to return (default ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES}). The engine stores up to 4000 node entries by default. A larger max_nodes raises that cap. engine_truncated indicates an incomplete diff baseline; next_offset pages the captured entries.`
     ),
   offset: z
     .number()
@@ -151,9 +150,12 @@ export function shapeWorldSnapshot(result: unknown, args: WorldSnapshotArgs): un
       }
     }
   }
-  if (end < matched.length || offset > 0 || filtered) {
+  if (engineTruncated) {
     shaped.note =
-      "nodes is a filtered/paged view; counts and total_nodes describe the whole scene, and snapshot_id covers the whole scene for summer_snapshot_diff.";
+      "The engine reached its node cap. Filters, pages, and snapshot_id cover only the captured node entries. counts and total_nodes still describe the scene. Increase max_nodes and take a new baseline to include more entries.";
+  } else if (end < matched.length || offset > 0 || filtered) {
+    shaped.note =
+      "nodes is a filtered or paged view. snapshot_id retains the captured node entries before filtering or paging. counts and total_nodes describe the scene.";
   }
 
   if (found.index === null) return shaped;

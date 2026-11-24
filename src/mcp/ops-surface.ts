@@ -386,32 +386,33 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     };
   }
 
-  async function runLocal(op: string, call: { tool: string; args: Record<string, unknown>; split?: true }, extra: unknown, dryRun: boolean, input: Record<string, unknown>): Promise<Answer> {
+  async function runLocal(op: string, call: { tool: string; args: Record<string, unknown>; split?: true }, extra: unknown, dryRun: boolean, input: Record<string, unknown>): Promise<ReturnType<typeof toolResult>> {
     const { tool: toolName, args } = call;
     // A split operation's own fields first: its 3.x tool took them as optional (its fixed action may come along; it is replaced).
     const split = call.split ? ENGINE_SPLIT_OPS[op] : undefined;
     const missing = split ? missingInput(localInputSchema(op), Object.fromEntries(Object.entries(input).filter(([key]) => !(key in split.fixed)))) : null;
     if (missing) {
       const guide = guideOf(toolName);
-      return errorAnswer("invalid_input", missing, { next: guide ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } } });
+      return toolResult(errorAnswer("invalid_input", missing, { next: guide ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } } }));
     }
     const checked = await validate(toolName, args, op);
-    if ("error" in checked) return checked.error;
+    if ("error" in checked) return toolResult(checked.error);
     const entry = entries.get(op);
     if (dryRun) {
       // The default dry run (SPEC §5.3): the input is checked and the call described; nothing reaches the engine.
       const target = typeof args.scenePath === "string" ? ` on ${args.scenePath}` : typeof args.path === "string" ? ` on ${args.path}` : "";
-      return {
+      return toolResult({
         ok: true,
         status: "dry_run",
         preview: { summary: `${entry?.title ?? op}${target}: the input is valid. Nothing was done.`, changes: [], approval: entry?.approval ?? "none", estimate: null, valid: true },
-      };
+      });
     }
     const handler = rawHandlers.get(toolName) ?? (tools[toolName].handler as Handler);
     const result = checked.data === undefined ? await handler(extra) : await handler(checked.data, extra);
     const raw = LIBRARY_READS.has(toolName) ? withV4Footer(result) : result;
     const def = engineOpDef(op);
-    return def ? answerOfEngineResult(raw, op, { effect: def.effect, guide: guideOf(toolName) }) : answerOfLocal(raw, op, entry?.effect === "read" ? "read" : "write");
+    const answer = def ? answerOfEngineResult(raw, op, { effect: def.effect, guide: guideOf(toolName) }) : answerOfLocal(raw, op, entry?.effect === "read" ? "read" : "write");
+    return toolResult(answer, raw);
   }
 
   async function search(query: string, area: string | undefined, limit: number): Promise<Answer> {
@@ -474,12 +475,12 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       // options such as summer_app_publish's dir keep working), wherever its
       // 4.0 operation runs.
       if (names[name] && tools[name] && name !== SUMMER_CALL && name !== SUMMER_SEARCH && !isLocalOp(resolved)) {
-        return toolResult(await runLocal(resolved, { tool: name, args }, extra, dryRun === true, args));
+        return runLocal(resolved, { tool: name, args }, extra, dryRun === true, args);
       }
       if (isLocalOp(resolved)) {
         const call = localCall(name, resolved, args);
         if (!call) return toolResult(errorAnswer("not_in_profile", `${resolved} is not served by this profile.`, { next: { say: "Run the MCP with --profile engine." } }));
-        return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
+        return runLocal(resolved, call, extra, dryRun === true, args);
       }
       // The running Summer app answers its own Studio tab's ops itself; else Summer's server does.
       if (options.studio && dryRun !== true) {

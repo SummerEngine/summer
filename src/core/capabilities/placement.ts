@@ -373,6 +373,7 @@ export interface RawLoop {
   radius: number;
   vertices?: number;
   mesh?: number;
+  instance?: number;
   max_dev?: number;
   direction_ambiguous?: boolean;
 }
@@ -504,6 +505,7 @@ function loopOut(loop: OrderedLoop): JsonRecord {
     id: loop.id,
     index: loop.index,
     ...(loop.mesh !== undefined ? { mesh: loop.mesh } : {}),
+    ...(loop.instance !== undefined ? { instance: loop.instance } : {}),
     center: roundVec(loop.center),
     direction: roundVec(loop.direction, 4),
     radius: round(loop.radius),
@@ -629,9 +631,10 @@ function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: Orde
   const warnings: string[] = [];
   if (analysis.truncated === true) {
     const analyzed = typeof analysis.triangles_analyzed === "number" ? analysis.triangles_analyzed : 0;
-    warnings.push(
-      `the triangle budget cut the analysis (${analyzed} of ${triangles} triangles): planes and open loops are incomplete; pass maxTriangles ${Math.min(300000, Math.max(triangles, 100))} for the whole mesh`
-    );
+    const next = triangles <= 300000
+      ? `pass maxTriangles ${Math.max(triangles, 100)} for the whole mesh`
+      : "the asset exceeds the maximum maxTriangles 300000; inspect smaller pieces for complete face and loop analysis";
+    warnings.push(`the triangle budget cut the analysis (${analyzed} of ${triangles} triangles): planes and open loops are incomplete; ${next}`);
   }
   return {
     aabb: probe.aabb ?? null,
@@ -1302,8 +1305,8 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
     cmd: "multi",
     scene_path: args.scenePath,
     steps: [
-      // The subject's bounds along its OWN axes: where its back face is.
-      { cmd: "bounds", space_node: args.subject, nodes: [{ path: args.subject }] },
+      // Measure the proposed axis lengths before turning this frame onto the wall.
+      { cmd: "bounds", nodes: [{ path: args.subject, mount_frame: true }] },
       {
         cmd: "raycast",
         ...ray,

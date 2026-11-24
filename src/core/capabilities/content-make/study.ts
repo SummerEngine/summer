@@ -55,6 +55,7 @@ export async function studyReference(ref: Reference, file: string): Promise<Stud
   const hasVoice = refHasVoice(ref);
   const sound = `${ref.hook ?? ""} ${ref.voPattern ?? ""} ${ref.captionStyle ?? ""}`.toLowerCase();
   return {
+    version: 2,
     referenceId: ref.referenceId,
     file,
     duration: round2(info.duration),
@@ -125,7 +126,7 @@ function sidecarFor(file: string): Sidecar | null {
 /** Measures one clip (cached by path, size and time): motion and brightness per half second. */
 async function measureClip(file: string, cacheDir: string): Promise<FootageClip> {
   const stat = statSync(file);
-  const key = createHash("sha1").update(`${file}|${stat.size}|${stat.mtimeMs}|v1`).digest("hex");
+  const key = createHash("sha1").update(`${file}|${stat.size}|${stat.mtimeMs}|v2`).digest("hex");
   const cacheFile = join(cacheDir, "footage", `${key}.json`);
   const sidecar = sidecarFor(file);
   const nameWords = wordsOf(`${basename(file, extname(file)).replace(/[_-]+/g, " ")} ${basename(dirname(file)).replace(/[_-]+/g, " ")}`);

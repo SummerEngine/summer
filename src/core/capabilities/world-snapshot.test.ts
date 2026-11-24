@@ -66,6 +66,18 @@ describe("summer_world_snapshot filters", () => {
     expect(shaped.truncated).toBe(false);
   });
 
+  it("identifies a missing filtered match when the engine truncated the baseline", () => {
+    const partial = { ...envelope.results[0]!, total_nodes: 4002, truncated: true };
+    const shaped = shapeWorldSnapshot(partial, { path_prefix: "Tail" });
+    expect(shaped).toMatchObject({
+      engine_truncated: true, truncated: true, matched_nodes: 0, returned_nodes: 0, next_offset: null,
+      total_nodes: 4002, note: expect.stringContaining("Increase max_nodes"),
+    });
+    expect(shapeWorldSnapshot(partial, { max_nodes: 5000 })).toMatchObject({
+      engine_truncated: true, next_offset: null, note: expect.stringContaining("only the captured node entries"),
+    });
+  });
+
   it("the engine baseline is never capped below its default; failures pass through", () => {
     expect(buildWorldSnapshotOp({ max_nodes: 50 })).toEqual({ op: "GetWorldSnapshot" });
     expect(buildWorldSnapshotOp({ max_nodes: 9000, scene_path: "res://a.tscn" })).toEqual({ op: "GetWorldSnapshot", scene_path: "res://a.tscn", max_nodes: 9000 });

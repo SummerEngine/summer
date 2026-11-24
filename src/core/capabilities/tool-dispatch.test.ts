@@ -102,6 +102,38 @@ describe("repo-lint: tool-dispatch registry", () => {
     ]);
   });
 
+  it.each(["$&", "$$", "$`", "$'", "$1", "", "literal output"])(
+    "writes unique replacement text literally through CLI dispatch: %j",
+    async (replacement) => {
+      const sha = "d".repeat(64);
+      const { ctx, calls } = fakeEngineContext({
+        readProjectFile: async () => ({
+          ok: true,
+          data: { content: "before OLD after", encoding: "utf-8", sha256: sha },
+        }),
+      });
+
+      await dispatchTool("replace-text", {
+        path: "res://literal.txt",
+        old_text: "OLD",
+        new_text: replacement,
+        replace_all: false,
+      }, ctx);
+
+      expect(calls).toEqual([
+        {
+          method: "executeIdentityBoundOps",
+          args: [[{
+            op: "WriteFile",
+            path: "res://literal.txt",
+            content: `before ${replacement} after`,
+            expectedSha256: sha,
+          }]],
+        },
+      ]);
+    }
+  );
+
   it("appends SaveScene to scene mutations and dispatches it as its own request", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool(
@@ -121,6 +153,15 @@ describe("repo-lint: tool-dispatch registry", () => {
     for (const call of calls) {
       expect((call.args[1] as Record<string, unknown>).scenePath).toBe("res://main.tscn");
     }
+  });
+
+  it("keeps the plugin save warning through the public tool dispatch", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ results: [{ op: "EnableEditorPlugin", ok: true, enabled: true, projectSettingsSaveError: 12 }] }),
+    });
+    await expect(dispatchTool("enable-plugin", { plugin: "quest_tools" }, ctx)).resolves.toMatchObject({
+      ok: true, enabled: true, projectSettingsSaveError: 12, persisted: false,
+    });
   });
 
   it("surfaces engine op failures as errors instead of masking them", async () => {
@@ -644,16 +685,23 @@ describe("spatial dispatch entries", () => {
     expect(calls).toEqual([]);
   });
 
-  it("snap-to-surface sends the mutation then SaveScene, identity-bound to the exact scene", async () => {
-    const { ctx, calls } = fakeEngineContext();
+  it("snap-to-surface captures the pose, snaps, then saves in separate requests bound to the same scene", async () => {
+    const executeIdentityBoundOps = vi.fn(async (ops: Array<{ op: string }>, _options: { scenePath: string }) => ({
+      ok: true,
+      results: ops.map(({ op }) => op === "RunSceneScript"
+        ? { op, ok: true, result: { ok: true, found: false, transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" } }
+        : { op, ok: true }),
+    }));
+    const { ctx, calls } = fakeEngineContext({ executeIdentityBoundOps });
     await dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: " ./Crate " }, ctx);
-    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps", "executeIdentityBoundOps"]);
-    expect(calls[0]!.args[0]).toEqual([
-      { op: "SnapToSurface", subject_path: "./Crate", direction: [0, -1, 0], max_distance: 20, gap: 0, align_up: false },
+    expect(calls).toEqual([]);
+    expect(executeIdentityBoundOps.mock.calls.map(([ops]) => ops)).toEqual([
+      [expect.objectContaining({ op: "RunSceneScript", checkpoint: false, undo: "none" })],
+      [{ op: "SnapToSurface", subject_path: "./Crate", direction: [0, -1, 0], max_distance: 20, gap: 0, align_up: false }],
+      [{ op: "SaveScene" }],
     ]);
-    expect(calls[1]!.args[0]).toEqual([{ op: "SaveScene" }]);
-    for (const call of calls) {
-      expect((call.args[1] as Record<string, unknown>).scenePath).toBe("res://a.tscn");
+    for (const [, options] of executeIdentityBoundOps.mock.calls) {
+      expect(options.scenePath).toBe("res://a.tscn");
     }
   });
 
@@ -834,8 +882,8 @@ describe("engine failures exit 1 on the CLI face exactly when the MCP face sets 
     const result = (failure as ToolResultError).result;
     expect(result.ok).toBe(false);
     // The chunked-mutation envelope (engine-ops, shared by both faces) states
-    // which op failed at the top level and keeps the engine's own text per op.
-    expect(result.error).toBe("Engine request failed (AddNode).");
+    // which op failed and carries the native cause at both levels.
+    expect(result.error).toBe("ops[0] AddNode: parent not found: Nope Not sent: SaveScene.");
     expect((result.results as Array<{ error?: string }>)[0]?.error).toBe("parent not found: Nope");
   });
 
@@ -1223,6 +1271,14 @@ describe("runtime control dispatch entries (runtime control)", () => {
     expect(calls[5]!.method).toBe("stop");
     await dispatchTool("stop", { instance: "a" }, ctx);
     expect(calls[6]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
+  });
+
+  it("sends the native recording ID for a requested public save path", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("game-input", { action: "record_stop", save_as: "res://.summer/replays/run1.json" }, ctx);
+    expect(calls).toEqual([{ method: "executeOps", args: [[{ op: "InputRecordStop", save_as: "run1" }], undefined, expect.any(Number)] }]);
+    await expect(dispatchTool("game-input", { action: "record_stop", save_as: "res://elsewhere/run1.json" }, ctx)).rejects.toThrow(/save_as/);
+    expect(calls).toHaveLength(1);
   });
 
   it("play refuses an offscreen instance before sending on an engine that provably lacks the runtime-control wave", async () => {

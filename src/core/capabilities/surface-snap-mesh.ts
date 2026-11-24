@@ -24,6 +24,7 @@
  *   - the support's vertices inside the subject's footprint are cast back
  *     against the subject's triangles, for support peaks between subject
  *     vertices;
+ *   - crossing edges supply the remaining projected triangle contacts;
  *   - travel = the smallest of those distances; the new local position is
  *     the current one plus (travel - gap) along the direction, mapped
  *     through the parent's transform.
@@ -49,6 +50,7 @@ export interface SnapMeshProbeArgs {
   direction: [number, number, number];
   maxDistance: number;
   gap: number;
+  captureTransform?: boolean;
 }
 
 export interface MeshSnapMeasure {
@@ -65,11 +67,12 @@ export interface MeshSnapMeasure {
   subject_colliders?: number;
   hit_point?: [number, number, number];
   hit_normal?: [number, number, number];
-  /** Which cast found the contact: a subject vertex onto the support, or a support vertex onto the subject. */
-  contact_from?: "subject_vertex" | "support_vertex";
+  /** Which projected triangle feature supplied the first contact. */
+  contact_from?: "subject_vertex" | "support_vertex" | "crossing_edges";
   /** The subject's extent along the direction. */
   extent?: number;
   /** Godot literals of the subject's local position now and after the move. */
+  transform?: string;
   position?: string;
   position_after?: string;
   origin_before?: [number, number, number];
@@ -104,6 +107,7 @@ export async function measureMeshSnap(client: SnapMeshClient, args: SnapMeshProb
       direction: args.direction,
       max_distance: args.maxDistance,
       gap: args.gap,
+      ...(args.captureTransform ? { capture_transform: true } : {}),
     }),
     max_seconds: 30,
     checkpoint: false,
@@ -111,7 +115,7 @@ export async function measureMeshSnap(client: SnapMeshClient, args: SnapMeshProb
   });
   let receipt: unknown;
   try {
-    receipt = await client.executeIdentityBoundOps([op], undefined, timeoutMs);
+    receipt = await client.executeIdentityBoundOps([op], { scenePath: args.scenePath }, timeoutMs);
   } catch (err) {
     return { ok: false, failure_reason: "mesh_probe_failed", error: `the visible-mesh probe failed: ${err instanceof Error ? err.message : String(err)}` };
   }
@@ -119,6 +123,9 @@ export async function measureMeshSnap(client: SnapMeshClient, args: SnapMeshProb
   const entry = asRecord(Array.isArray(results) ? results.find((r) => asRecord(r)?.op === "RunSceneScript") ?? results[0] : undefined);
   const envelopeError = extractOpError(receipt);
   if (!entry || entry.ok === false || envelopeError) {
+    if (/unknown op.*RunSceneScript|RunSceneScript.*(?:unsupported|not supported)/i.test(String(entry?.error ?? envelopeError))) {
+      return { ok: false, failure_reason: "engine_lacks_op", error: "this engine build has no RunSceneScript" };
+    }
     return { ok: false, failure_reason: "mesh_probe_failed", error: `the visible-mesh probe (RunSceneScript) failed: ${String(entry?.error ?? envelopeError ?? "no result")}` };
   }
   const result = asRecord(entry.result);
@@ -152,6 +159,9 @@ const MAX_NODES = 60000
 const MAX_SUPPORT_TRIS = 400000
 const MAX_SUBJECT_SAMPLES = 6000
 const MAX_REVERSE_VERTS = 150000
+const EDGE_BANDS = 16
+const MAX_EDGE_PAIRS = 60000
+const MAX_EDGE_VISITS = 1000000
 const EPS = 0.0001
 
 
@@ -168,6 +178,8 @@ func run(_ctx):
 		return _fail("node_not_found", "subject not found: " + String(args.get("subject", "")))
 	if not (subject is Node3D) or subject == root:
 		return _fail("not_snappable", "the subject must be a Node3D below the scene root")
+	if args.get("capture_transform", false):
+		return {"ok": true, "found": false, "transform": var_to_str(subject.transform)}
 	var dv = _vec(args.get("direction", [0, -1, 0]))
 	if dv.length() < 0.000001:
 		return _fail("bad_args", "direction must be non-zero")
@@ -292,6 +304,13 @@ func run(_ctx):
 			if travel < best:
 				best = travel
 				best_hit = {"point": q, "normal": -hit["normal"], "face": floori(i / 3.0), "from": "support_vertex"}
+	var footprint = Rect2(Vector2(umin, vmin), Vector2(umax - umin, vmax - vmin))
+	var crossing = _crossing_contact(sub_faces, sup_faces, d, u, v, lo, hi, footprint, minf(best, max_distance + 2.0 * EPS))
+	if crossing.has("failure_reason"):
+		return crossing
+	if not crossing.is_empty():
+		best = crossing["travel"]
+		best_hit = crossing
 	if best_hit.is_empty() or best > max_distance:
 		return _done(stats, false)
 	var shift = best - gap
@@ -314,6 +333,147 @@ func run(_ctx):
 	stats["origin_before"] = _raw3(origin)
 	stats["origin_after"] = _raw3(origin + world_delta)
 	return _done(stats, true)
+
+
+# On the overlapping projections of two triangles, the travel along d is
+# affine. Its minimum can be at two crossing edges even when neither
+# triangle has a vertex in the other's footprint.
+func _crossing_contact(subject, supports, d, u, v, lo, hi, footprint, best):
+	var hit = {}
+	var cells = {}
+	var checks = 0
+	var visits = 0
+	var cell_size = Vector2(maxf(footprint.size.x, EPS), maxf(footprint.size.y, EPS)) / EDGE_BANDS
+	var depth_axis = Vector3.ZERO
+	var leading_depth = -INF
+	var origin = subject[0]
+	for i in range(0, supports.size(), 3):
+		var depths = [supports[i].dot(d), supports[i + 1].dot(d), supports[i + 2].dot(d)]
+		var nearest = minf(depths[0], minf(depths[1], depths[2]))
+		var face_normal = (supports[i + 1] - supports[i]).cross(supports[i + 2] - supports[i]).normalized()
+		var incidence = face_normal.dot(d)
+		# At a shared edge both faces touch at the same travel. Prefer the
+		# face that opposes the cast (a shelf's top over its vertical rim).
+		var better_normal = not hit.is_empty() and absf(incidence) > absf(hit["normal"].dot(d)) + EPS
+		var cutoff = best + EPS if better_normal else best - EPS
+		if nearest - hi >= cutoff or maxf(depths[0], maxf(depths[1], depths[2])) < lo - EPS:
+			continue
+		var q = _project_face(supports, i, u, v)
+		var bounds = _face_rect(q)
+		if not footprint.intersects(bounds, true):
+			continue
+		# A slab containing every subject vertex provides a lower travel bound
+		# against a support face, even when the subject is nonplanar.
+		if depth_axis == Vector3.ZERO:
+			depth_axis = d
+			for j in range(0, subject.size(), 3):
+				var n = (subject[j + 1] - subject[j]).cross(subject[j + 2] - subject[j]).normalized()
+				var dot_d = n.dot(d)
+				if absf(dot_d) > 0.25:
+					depth_axis = n / dot_d
+					break
+			for vertex in subject:
+				leading_depth = maxf(leading_depth, (vertex - origin).dot(depth_axis))
+		var face_depth = INF
+		for k in 3:
+			face_depth = minf(face_depth, (supports[i + k] - origin).dot(depth_axis))
+		if face_depth - leading_depth >= cutoff:
+			continue
+		if cells.is_empty():
+			var slots = 0
+			for j in range(0, subject.size(), 3):
+				var p = _project_face(subject, j, u, v)
+				var rect = _face_rect(p)
+				var first = _edge_cell(rect.position, footprint.position, cell_size)
+				var last = _edge_cell(rect.end, footprint.position, cell_size)
+				var span = last - first + Vector2i.ONE
+				slots += span.x * span.y
+				if slots > MAX_EDGE_VISITS:
+					return _edge_budget()
+				var entry = [j, p, rect, first]
+				for x in range(first.x, last.x + 1):
+					for y in range(first.y, last.y + 1):
+						var key = Vector2i(x, y)
+						if not cells.has(key):
+							cells[key] = []
+						cells[key].append(entry)
+		var first = _edge_cell(bounds.position, footprint.position, cell_size)
+		var last = _edge_cell(bounds.end, footprint.position, cell_size)
+		for x in range(first.x, last.x + 1):
+			for y in range(first.y, last.y + 1):
+				var key = Vector2i(x, y)
+				for entry in cells.get(key, []):
+					visits += 1
+					if visits > MAX_EDGE_VISITS:
+						return _edge_budget()
+					if key != first.max(entry[3]) or not bounds.intersects(entry[2], true):
+						continue
+					var j = entry[0]
+					if absf(incidence) > EPS:
+						var earliest = INF
+						for k in 3:
+							earliest = minf(earliest, face_normal.dot(supports[i] - subject[j + k]) / incidence)
+						if earliest >= cutoff:
+							continue
+					checks += 1
+					if checks > MAX_EDGE_PAIRS:
+						return _edge_budget()
+					var contact = _face_edge_contact(subject, j, entry[1], supports, i, q, d, lo, best + EPS if better_normal else best)
+					if not contact.is_empty():
+						best = minf(best, contact["travel"])
+						hit = contact
+						hit["travel"] = best
+						better_normal = false
+						cutoff = best - EPS
+	return hit
+
+
+func _face_edge_contact(subject, subject_start, p, supports, support_start, q, direction, top, best):
+	var hit = {}
+	for a in 3:
+		var b = (a + 1) % 3
+		var ab = p[b] - p[a]
+		if ab.length_squared() == 0.0:
+			continue
+		for c in 3:
+			var e = (c + 1) % 3
+			var ce = q[e] - q[c]
+			if ce.length_squared() == 0.0:
+				continue
+			var cross_point = Geometry2D.segment_intersects_segment(p[a], p[b], q[c], q[e])
+			if cross_point == null:
+				continue
+			var t = (cross_point - p[a]).dot(ab) / ab.length_squared()
+			var s = (cross_point - q[c]).dot(ce) / ce.length_squared()
+			var source = subject[subject_start + a].lerp(subject[subject_start + b], t)
+			var target = supports[support_start + c].lerp(supports[support_start + e], s)
+			var travel = (target - source).dot(direction)
+			if travel >= best or target.dot(direction) < top - EPS:
+				continue
+			best = travel
+			var normal = (supports[support_start + 1] - supports[support_start]).cross(supports[support_start + 2] - supports[support_start]).normalized()
+			hit = {"travel": travel, "point": target, "normal": -normal if normal.dot(direction) > 0 else normal, "face": floori(support_start / 3.0), "from": "crossing_edges"}
+	return hit
+
+
+func _edge_budget():
+	return _fail("mesh_edge_budget_exceeded", "The crossing-edge contact check exceeded its triangle-pair budget.")
+
+
+func _edge_cell(point, origin, cell_size):
+	return Vector2i(((point - origin) / cell_size).floor()).clampi(0, EDGE_BANDS - 1)
+
+
+func _project_face(faces, index, u, v):
+	var points = PackedVector2Array()
+	for k in 3:
+		var p = faces[index + k]
+		points.append(Vector2(p.dot(u), p.dot(v)))
+	return points
+
+
+func _face_rect(points):
+	return Rect2(points[0], Vector2.ZERO).expand(points[1]).expand(points[2])
 
 
 func _done(stats, found):

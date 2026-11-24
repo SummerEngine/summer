@@ -121,13 +121,18 @@ func _ready() -> void:
 		return
 	_cfg = parsed
 	_result["renderer"] = RenderingServer.get_current_rendering_method()
+	var scene_path := String(_cfg.get("scene_path", ""))
+	var packed: PackedScene = load(scene_path) as PackedScene
+	# The editor can preserve a non-null MissingNode for an unavailable scene
+	# instance. Check the requested resource before rendering that placeholder.
+	if packed == null or packed.get_state().get_node_count() == 0:
+		_fail("scene_load_failed", "Could not load scene: " + scene_path)
+		return
 	_subject = get_parent().get_node_or_null(SUBJECT_NAME)
 	if _subject == null:
 		_fail("no_subject", "The wrapper scene has no Subject instance (the target scene failed to instantiate).")
 		return
-	var packed: PackedScene = load(String(_cfg.get("scene_path", ""))) as PackedScene
-	if packed != null and packed.get_state().get_node_count() > 0:
-		_scene_root_name = String(packed.get_state().get_node_name(0))
+	_scene_root_name = String(packed.get_state().get_node_name(0))
 	_result["scene_root_name"] = _scene_root_name
 	_result["stage"] = "configured"
 	var mode := String(_cfg.get("mode", ""))

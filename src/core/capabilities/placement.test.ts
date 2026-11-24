@@ -547,6 +547,30 @@ describe("summer_place_adjacent", () => {
     expect(result).toMatchObject({ ok: true, moved: true, saved: true, moved_by: [1.5, 0, -0.05], verify: { gap: 0, residuals: { y: 0, z: 0 } } });
   });
 
+  it.each([
+    { missing: ["Window"] },
+    { missing: ["Wall"] },
+    { missing: ["Window", "Wall"] },
+  ])("reports an unverified saved gap when bounds disappear for $missing", async ({ missing }) => {
+    const intervals: Array<[number, number]> = [[0, 1], [0, 1], [0, 1]];
+    const paths = ["Window", "Wall"];
+    const read = { ok: true, space: "world", dirs: WORLD_DIRS };
+    const { client, mutations } = mockClient([
+      () => ({ ...read, nodes: paths.map((path) => bounds(path, intervals)) }),
+      () => ({ ...read, nodes: paths.map((path) => bounds(path, missing.includes(path) ? null : intervals)) }),
+    ]);
+
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Window", reference: "Wall", axis: "x", side: "max",
+    }));
+
+    expect(result).toMatchObject({ ok: true, moved: true, saved: true });
+    expect(result.verify).toEqual({
+      ok: false, error: `Could not measure the saved gap. No visible geometry bounds for ${missing.join(", ")}.`,
+    });
+    expect(mutations.flat().map((op) => op.op)).toEqual(["SetProp", "SaveScene"]);
+  });
+
   it("refuses a reference inside the subject and a subject without bounds", async () => {
     const nested = mockClient(() => ({ ok: true, space: "world", dirs: WORLD_DIRS, nodes: [bounds("House", [[0, 1], [0, 1], [0, 1]]), bounds("House/Door", [[0, 1], [0, 1], [0, 1]])] }));
     const args = placeAdjacentArgsSchema.parse({ scenePath: "res://a.tscn", subject: "House", reference: "House/Door", axis: "x", side: "max" });

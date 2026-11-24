@@ -1084,6 +1084,9 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
       if (k !== main && alignFor(args, name) !== "none") residuals[name] = round(remaining[k]!);
     });
     result.verify = { gap: round(achievedGap), residuals };
+  } else {
+    const missing = [s2, r2].filter((node) => !node.intervals).map((node) => node.resolved);
+    result.verify = { ok: false, error: `Could not measure the saved gap. No visible geometry bounds for ${missing.join(", ")}.` };
   }
   return result as PlacementResult;
 }

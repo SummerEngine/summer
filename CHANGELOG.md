@@ -29,6 +29,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
 
 - Scene audits measure props from their transformed geometry, so wall-alignment checks use the actual long axis and wall clearance even with nonuniform scale or diagonal probe rays.
+- After saving an adjacent placement, `summer_place_adjacent` names any piece whose visible bounds disappeared before it could verify the gap.
 
 - When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
 - Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.

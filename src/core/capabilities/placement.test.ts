@@ -456,7 +456,7 @@ describe("summer_raycast", () => {
       visual_origin_inside: 0,
     }));
     const result = await raycast(client, raycastArgsSchema.parse({ scenePath: "res://a.tscn", origin: [0, 1, 0], direction: [0, 0, -1] }));
-    expect(result).toMatchObject({ hit: true, evidence: "physics", path: "Wall", distance: 2, nearer_visual_only: { path: "Poster/Mesh" } });
+    expect(result).toMatchObject({ hit: true, evidence: "physics", path: "Wall", distance: 2, nearer_visual_only: { path: "Poster/Mesh", evidence: "visual_aabb" } });
     expect(result).not.toHaveProperty("fallback");
   });
 

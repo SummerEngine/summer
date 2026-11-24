@@ -85,6 +85,17 @@ export interface SceneNodeTransform {
   independentGeometry: string[];
 }
 
+interface InspectedTransform extends SceneNodeTransform {
+  worldOrigin: string;
+  local: {
+    position: string;
+    rotation_degrees: string;
+    scale: string;
+    rotation_order: number;
+    transform: string;
+  };
+}
+
 export function buildSceneTransformScript(path: string, checkGeometry = false, worldDelta?: Vec3): string {
   const data = Buffer.from(JSON.stringify({ path, check_geometry: checkGeometry, world_delta: worldDelta }), "utf8").toString("base64");
   return String.raw`@tool
@@ -117,6 +128,15 @@ func run(ctx):
 		if next == null:
 			return {"ok": false, "failure_reason": "translation_not_representable", "error": "The parent transform cannot reproduce the requested world movement at engine precision."}
 		result["translated_position"] = next
+	else:
+		result["world_origin"] = var_to_str(xf.origin)
+		result["local"] = {
+			"position": var_to_str(node.position),
+			"rotation_degrees": var_to_str(node.rotation_degrees),
+			"scale": var_to_str(node.scale),
+			"rotation_order": node.rotation_order,
+			"transform": var_to_str(node.transform),
+		}
 	return result
 `;
 }
@@ -125,9 +145,9 @@ func run(ctx):
 export function readSceneNodeTransform(client: TransformClient, path: string, scenePath: string, checkGeometry: boolean, worldDelta: Vec3):
   Promise<(SceneNodeTransform & { translation: Translation }) | TransformError>;
 export function readSceneNodeTransform(client: TransformClient, path: string, scenePath?: string, checkGeometry?: boolean):
-  Promise<SceneNodeTransform | TransformError>;
+  Promise<InspectedTransform | TransformError>;
 export async function readSceneNodeTransform(client: TransformClient, path: string, scenePath?: string, checkGeometry = false, worldDelta?: Vec3):
-  Promise<SceneNodeTransform | TransformError> {
+  Promise<SceneNodeTransform | InspectedTransform | TransformError> {
   const missing = missingEngineOpResult(client, "RunSceneScript", "read the node's native transform with RunSceneScript");
   if (missing) return { error: missing.error };
   const execute = client.executeIdentityBoundOps ?? client.executeOps;
@@ -150,15 +170,22 @@ export async function readSceneNodeTransform(client: TransformClient, path: stri
       Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === "number" && Number.isFinite(n)) ? value as Vec3 : null;
     const origin = vector(result.origin);
     const position = vector(result.position);
-    let translation: SceneNodeTransform["translation"];
+    if (!origin || !position || typeof result.transform !== "string") return { error: "native transform read returned incomplete data" };
+    const base = { origin, position, transform: result.transform, independentGeometry: Array.isArray(result.independent_geometry) ? result.independent_geometry.map(String) : [] };
     if (worldDelta) {
       const literal = result.translated_position;
       const value = typeof literal === "string" ? parseGodotVector3(literal) : null;
       if (typeof literal !== "string" || !value) return { error: "native transform read returned no translated position" };
-      translation = { literal, value };
+      return { ...base, translation: { literal, value } };
     }
-    if (!origin || !position || typeof result.transform !== "string") return { error: "native transform read returned incomplete data" };
-    return { origin, position, transform: result.transform, translation, independentGeometry: Array.isArray(result.independent_geometry) ? result.independent_geometry.map(String) : [] };
+    const local = asRecord(result.local);
+    if (!local || typeof local.position !== "string" || typeof local.rotation_degrees !== "string" ||
+        typeof local.scale !== "string" || typeof local.rotation_order !== "number" || typeof local.transform !== "string" ||
+        typeof result.world_origin !== "string") return { error: "native transform read returned incomplete pose fields" };
+    return { ...base, worldOrigin: result.world_origin, local: {
+      position: local.position, rotation_degrees: local.rotation_degrees, scale: local.scale,
+      rotation_order: local.rotation_order, transform: local.transform,
+    } };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
   }

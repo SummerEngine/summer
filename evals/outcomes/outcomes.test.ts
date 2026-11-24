@@ -215,6 +215,24 @@ script = ExtResource("1")
     expect(aabbIoU({ pos: { x: 0, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 } }, { pos: { x: 0.5, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 } })).toBeCloseTo(1 / 3);
   });
 
+  it("requires readable bounds from every selected geometric node", () => {
+    const broken = box("Broken", "Parts/Broken", 0, 0, 0);
+    broken.aabb.pos = "not a Vector3";
+    const inputs = evidence({ snap: snapshot({ nodes: [box("Good", "Good", 10, 0, 0), broken] }) });
+    for (const [predicate, args] of [
+      ["aabb_within", { selector: "*", max: [20, 20, 20] }],
+      ["no_overlap", { a: "Broken", b: "Good" }],
+      ["no_overlap", { a: "Good", b: "Broken" }],
+      ["on_ground", { selector: "*" }],
+    ] as const) {
+      const result = evaluateAssertion({ id: "bounds", predicate, args, required: true }, inputs);
+      expect(result).toMatchObject({
+        pass: false, reason: "evidence_missing", severity: "evidence_missing",
+        detail: { path: "Parts/Broken" },
+      });
+    }
+  });
+
   it("collision_under walks the path-sorted node list; script_attached needs live fp + saved script", () => {
     expect(evaluateAssertion({ id: "t", predicate: "collision_under", args: { selector: "*Terrain*" }, required: true }, ev).pass).toBe(true);
     expect(evaluateAssertion({ id: "p", predicate: "collision_under", args: { selector: "Player*" }, required: true }, ev).pass).toBe(true);

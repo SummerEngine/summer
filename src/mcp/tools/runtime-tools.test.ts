@@ -242,6 +242,30 @@ describe("failure passthrough", () => {
     expect(text(replay)).toContain("deterministic:true");
   });
 
+  it.each([
+    {
+      name: "summer_runtime_call", args: { path: "/root/A", method: "move" },
+      op: "CallRuntimeMethod", reason: "call_error", diagnostics: { call_error_detail: "Cannot convert argument 1 from String to Vector3." },
+    },
+    {
+      name: "summer_runtime_animate", args: { path: "/root/Player", target: "player", action: "play", name: "missing" },
+      op: "RuntimeAnimation", reason: "unknown_animation", diagnostics: { animations: ["idle", "walk"] },
+    },
+    {
+      name: "summer_game_input", args: { action: "script", events: [{ type: "action", action: "unknown" }] },
+      op: "SimulateInputScript", reason: "all_rejected", diagnostics: { rejected: [{ index: 0, failure_reason: "unknown_action", error: "Unknown action" }] },
+    },
+  ])("returns the native diagnostic fields promised by $name", async ({ name, args, op, reason, diagnostics }) => {
+    const result = failed(op, reason, "operation failed");
+    Object.assign(result.results[0], diagnostics);
+    vi.mocked(getClient).mockResolvedValue({ executeOps: vi.fn().mockResolvedValue(result) } as never);
+
+    const response = await tool(name).handler(args) as { isError?: boolean };
+    expect(response.isError).toBe(true);
+    const parsed = JSON.parse(text(response).split("\n\nHint:")[0]);
+    expect(parsed).toMatchObject({ op, failure_reason: reason, ...diagnostics });
+  });
+
   it("renders not_applied honestly: the op succeeded, the result carries a hint, not an error", async () => {
     const executeOps = vi.fn().mockResolvedValue(
       ok("SetRuntimeProp", { applied: false, failure_reason: "not_applied", value_before: "1", value_after: "1" })

@@ -7212,9 +7212,9 @@
     {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "bd6c59df3479e5d60c0dac5f61dee6cde3da59054122add68bd344ffe4bc167e",
-      "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
+      "version": "1.2.0",
+      "content_hash": "45937b7f6107f77d824c0952bc6bc2259f7897117437ef4dc96144e287890c4a",
+      "summary": "Connect a signal and verify its local or inherited declaration in the saved scene. The receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
         "\"when the button is pressed, call my function\"",

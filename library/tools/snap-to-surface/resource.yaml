@@ -1,6 +1,6 @@
 id: tool/snap-to-surface
 kind: tool
-version: 1.2.0
+version: 1.3.0
 summary: Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.
 use_when:
   - seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position

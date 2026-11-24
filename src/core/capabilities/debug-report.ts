@@ -225,7 +225,10 @@ export function renderDebugReportMarkdown(report: DebugReport): string {
   const health = asRecord(report.engine.health);
   const projectName = pickString(health, ["project_name", "projectName"]) ?? "unknown";
   const projectPath = pickString(health, ["project_path", "projectPath"]) ?? "unknown";
-  const scene = pickString(health, ["scene", "scenePath", "scene_path"]) ?? "unknown";
+  const sceneState = asRecord(report.engine.scene);
+  const scene = pickString(sceneState?.data ?? sceneState, ["scenePath", "scene_path"])
+    ?? pickString(health, ["scene", "scenePath", "scene_path"])
+    ?? "unknown";
 
   return `# Summer Debug Report
 

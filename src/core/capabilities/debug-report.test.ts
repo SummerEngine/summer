@@ -60,8 +60,12 @@ describe("debug report", () => {
       },
     };
 
+    expect(renderDebugReportMarkdown(report)).toContain("- Scene: res://main.tscn");
+    report.engine.scene = { ok: true, data: { path: ".", scenePath: "res://active.tscn" } };
+    report.engine.health = { project_name: "Test Game" };
     const markdown = renderDebugReportMarkdown(report);
 
+    expect(markdown).toContain("- Scene: res://active.tscn");
     expect(markdown).toContain("# Summer Debug Report");
     expect(markdown).toContain("Player crashes after pickup");
     expect(markdown).toContain("## Before Sending");

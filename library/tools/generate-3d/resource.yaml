@@ -1,6 +1,6 @@
 id: tool/generate-3d
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.
 use_when:
   - creating a 3D asset or character from a prompt or reference image
@@ -38,20 +38,20 @@ input_schema:
     kind:
       type: string
       default: text-to-3d
-      description: "Generation type: text-to-3d, image-to-3d, texture"
+      description: "Use text-to-3d for a prompt, image-to-3d for imageUrl, or multi-image-to-3d for imageUrls"
     model:
       type: string
       default: hunyuan
-      description: "Model: hunyuan (default), trellis, meshy, or any fal-ai model ID"
+      description: "Registered Studio model ID, e.g. hunyuan (default), trellis or meshy"
     imageUrl:
       type: string
-      description: Source image URL for image-to-3d or texture
+      description: Source image URL for image-to-3d
     imageUrls:
       type: array
       items:
         type: string
       maxItems: 4
-      description: Up to four views for multi-image-to-3d
+      description: Up to four image URLs for multi-image-to-3d. Directional models read them in front, left, back, right order.
     title:
       type: string
       description: Asset or character title

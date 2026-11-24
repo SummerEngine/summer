@@ -496,6 +496,29 @@ describe("registerGenerateTools — summer_generate_3d description", () => {
     expect(gen3d.schema.idempotencyKey).toBeDefined();
   });
 
+  it("advertises the accepted 3D input kinds and preserves directional reference order", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const gen3d = getTool(tools, "summer_generate_3d");
+    const views = ["front", "left", "back", "right"].map((side) => `https://example.com/${side}.png`);
+    expect(gen3d.description).toContain('"multi-image-to-3d"');
+    expect(gen3d.description).not.toContain('"texture"');
+    expect(gen3d.schema.imageUrls.description).toContain("front, left, back, right");
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "multiview-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+    await gen3d.handler({ kind: "multi-image-to-3d", imageUrls: views, wait: false });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      kind: "multi-image-to-3d",
+      options: { imageUrls: views },
+    });
+  });
+
   it("maps first-class character and preparation fields into the cloud route contract", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

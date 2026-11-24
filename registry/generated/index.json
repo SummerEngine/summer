@@ -7902,8 +7902,8 @@
     {
       "id": "tool/generate-3d",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "6668e5ca70c44f1ae291e7368a64396ce3eaf8412343f45e0b44e1899981006f",
+      "version": "1.0.3",
+      "content_hash": "ed213570b54e28abfd547b6493a04b5655e72fe3c6d24f13006aebe6d4e93cc4",
       "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.",
       "use_when": [
         "creating a 3D asset or character from a prompt or reference image",

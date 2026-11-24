@@ -61,6 +61,18 @@ describe("withEngine — toContent image mapping", () => {
     expect((res.content[0] as any).text).toContain("did not include image data");
   });
 
+  it("renders a classified failure without clearing isError or exposing other fields", async () => {
+    mockGetClient.mockResolvedValue({});
+    const failure = { ok: false, code: "CFG_MISSING", error: "missing plugin.cfg", internal: "private" };
+    const res = await withEngine(async () => failure, {
+      errorContent: (outcome) => [{ type: "text", text: outcome.code }],
+    });
+    expect(res.isError).toBe(true);
+    expect(res.content).toEqual([{ type: "text", text: "CFG_MISSING" }]);
+    const plain = await withEngine(async () => failure, { errorContent: () => undefined });
+    expect(plain.content).toEqual([{ type: "text", text: "missing plugin.cfg" }]);
+  });
+
   it("onResult short-circuits a successful result before toContent (bridge-required honesty)", async () => {
     mockGetClient.mockResolvedValue({});
     const toContent = vi.fn();

@@ -533,7 +533,7 @@ export function createMcpServer(
   registerSpatialTools(server);
   registerPlacementTools(server);
   registerNavigationTools(server);
-  registerLibraryTools(server);
+  registerLibraryTools(server, surface);
   registerEventTools(server);
   registerFabricateTools(server);
   registerUiTools(server);

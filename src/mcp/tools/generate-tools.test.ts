@@ -7,6 +7,7 @@ vi.mock("../../core/auth.js", () => ({
 
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { z } from "zod";
+import { parse as parseYaml } from "yaml";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,6 +72,20 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe("registerGenerateTools — video model discovery", () => {
+  it("recommends the live MiniMax key instead of its retired alias", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const video = getTool(tools, "summer_generate_video");
+    expect(video.description).toContain('"minimax-h3-max"');
+    expect(video.description).not.toContain('"minimax"');
+    expect(video.schema.model.description).toContain("minimax-h3-max");
+    expect(video.schema.model.description).not.toMatch(/\bminimax(?:,|$)/);
+    const descriptor = parseYaml(await readFile(new URL("../../../library/tools/generate-video/resource.yaml", import.meta.url), "utf8"));
+    expect(descriptor.input_schema.properties.model.description).toBe(video.schema.model.description);
+  });
+});
 
 describe("registerGenerateTools — summer_generate_motion", () => {
   it("registers the tool with the correct name and schema fields", () => {

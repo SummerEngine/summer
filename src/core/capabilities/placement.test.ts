@@ -936,6 +936,28 @@ describe("summer_repeat_along", () => {
     expect(byDirection.positions[2]![2]).toBeCloseTo(1.6);
   });
 
+  it.each([4e-10, Number.MIN_VALUE, Number.MAX_VALUE])("uses the same direction at magnitude %s", (component) => {
+    const args = repeatAlongArgsSchema.parse({
+      scenePath: "res://room.tscn", template: "res://piece.tscn", parent: "Scaled",
+      start: [0, 0, 0], direction: [component, -component, 0], spacing: 2, count: 2,
+    });
+    const row = repeatPositions(args);
+    expect(row.direction[0]).toBeCloseTo(Math.SQRT1_2, 13);
+    expect(row.direction[1]).toBeCloseTo(-Math.SQRT1_2, 13);
+    expect(row.positions[1]![0]).toBeCloseTo(Math.SQRT2, 13);
+    expect(row.positions[1]![1]).toBeCloseTo(-Math.SQRT2, 13);
+  });
+
+  it("distinguishes short local spans from coincident endpoints", () => {
+    const base = { start: [0, 0, 0] as Vec3, end: [4e-10, 0, 0] as Vec3, align: "start" as const };
+    expect(repeatPositions({ ...base, count: 2 }).positions).toEqual([[0, 0, 0], [4e-10, 0, 0]]);
+    expect(repeatPositions({ ...base, spacing: 2e-10 }).positions).toEqual([[0, 0, 0], [2e-10, 0, 0], [4e-10, 0, 0]]);
+    expect(repeatPositions({ ...base, count: 1 }).direction).toEqual([1, 0, 0]);
+    expect(repeatPositions({ ...base, count: 1, end: base.start }).direction).toEqual([0, 0, 0]);
+    expect(() => repeatPositions({ ...base, count: 2, end: base.start })).toThrow(/same point/);
+    expect(repeatAlongArgsSchema.shape.direction.safeParse([0, 0, 0]).success).toBe(false);
+  });
+
   it("rejects over-determined, under-determined and oversized rows", () => {
     expect(() => repeatPositions({ start: [0, 0, 0], end: [1, 0, 0], count: 2, spacing: 0.5, align: "start" })).toThrow(/not both/);
     expect(() => repeatPositions({ start: [0, 0, 0], end: [1, 0, 0], align: "start" })).toThrow(/spacing or count/);

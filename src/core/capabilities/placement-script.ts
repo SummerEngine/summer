@@ -914,6 +914,17 @@ func _cmd_inspect_asset(args):
 		return _fail("unsupported_resource", path + " is a " + res.get_class() + "; pass a scene (.tscn/.scn/.glb/.gltf) or a Mesh resource")
 	if inst == null:
 		return _fail("asset_instantiate_failed", "Could not instantiate " + path)
+	# A detached CSG root has no evaluated visual mesh. A collision bake lacks
+	# the per-surface materials needed for facing and back-face evidence.
+	var csg = inst if inst.is_class("CSGShape3D") else null
+	if csg == null:
+		var shapes = inst.find_children("*", "CSGShape3D", true, false)
+		if not shapes.is_empty():
+			csg = shapes[0]
+	if csg != null:
+		var where = String(inst.get_path_to(csg))
+		inst.free()
+		return _fail("csg_visual_mesh_unavailable", path + " contains procedural CSG geometry at " + where + ". Its visual mesh and materials cannot be measured off-scene. Bake the CSG root to a MeshInstance3D in Godot, save a separate scene, then inspect that scene.")
 	var out = _describe(inst, args)
 	inst.free()
 	out["path"] = path

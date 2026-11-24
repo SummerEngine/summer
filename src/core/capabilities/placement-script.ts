@@ -498,7 +498,7 @@ func _cmd_raycast(root, active, args):
 
 # ---------------------------------------------------------------- meshes
 
-# Triangles of mesh nodes (each [node, frame transform, mesh aabb, visible])
+# Triangles of mesh nodes (each [node, frame transform, mesh aabb, visible, Mesh])
 # in one frame: area-binned planar faces and open boundary loops.
 func _analyze(meshes, budget, want_planes, want_loops):
 	var planes = {}
@@ -510,7 +510,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
-		var mesh = _mesh_resource(m[0])
+		var mesh = _mesh_resource(m)
 		if _mesh_tris(mesh) == 0:
 			continue
 		for instance in range(_drawn_instances(m[0])):
@@ -528,7 +528,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 					break
 				if not _is_tris(mesh, s):
 					continue
-				var culls = _culls_back(m[0], s) if want_planes else true
+				var culls = _culls_back(m[0], mesh, s) if want_planes else true
 				var arr = mesh.surface_get_arrays(s)
 				var verts = arr[Mesh.ARRAY_VERTEX]
 				if verts == null or verts.size() == 0:
@@ -611,10 +611,10 @@ func _analyze(meshes, budget, want_planes, want_loops):
 # Whether surface s of a MeshInstance3D is drawn with back-face culling, so its
 # faces are invisible from behind. No material means the default material,
 # which culls back faces.
-func _culls_back(mi, s):
-	var mat = mi.material_override
+func _culls_back(mi, mesh, s):
+	var mat = mi.material_override if mi is GeometryInstance3D else null
 	if mat == null:
-		mat = mi.get_active_material(s) if mi is MeshInstance3D else mi.multimesh.mesh.surface_get_material(s)
+		mat = mi.get_active_material(s) if mi is MeshInstance3D else mesh.surface_get_material(s)
 	if mat == null:
 		return true
 	if mat is BaseMaterial3D:
@@ -758,12 +758,23 @@ func _collect(top):
 				if vis:
 					geoms.append([n, t, bb])
 				if n is MeshInstance3D and n.mesh != null:
-					meshes.append([n, t, bb, vis])
+					meshes.append([n, t, bb, vis, n.mesh])
 			if n is MultiMeshInstance3D and n.multimesh != null and n.multimesh.mesh != null:
 				if n.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
 					unsupported.append([String(top.get_path_to(n)), vis])
 				else:
-					meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis])
+					meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis, n.multimesh.mesh])
+		elif n.is_class("GridMap"):
+			var cells = n.get_meshes()
+			for index in range(0, cells.size(), 2):
+				var mesh = cells[index + 1]
+				var bb = mesh.get_aabb()
+				if bb.size == Vector3.ZERO:
+					continue
+				var cell_transform = t * cells[index]
+				meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
+				if vis:
+					geoms.append([n, cell_transform, bb])
 		elif n is Marker3D:
 			markers.append([n, t])
 		elif n is CollisionShape3D:
@@ -771,18 +782,22 @@ func _collect(top):
 		for c in n.get_children():
 			stack.append([c, t, vis, false])
 	var by_path = func(a, b): return String(top.get_path_to(a[0])) < String(top.get_path_to(b[0]))
-	meshes.sort_custom(by_path)
+	var by_mesh = func(a, b):
+		if a[0] == b[0] and a.size() > 5 and b.size() > 5:
+			return a[5] < b[5]
+		return by_path.call(a, b)
+	meshes.sort_custom(by_mesh)
 	markers.sort_custom(by_path)
 	shapes.sort_custom(by_path)
 	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes, "unsupported": unsupported}
 
 
-func _mesh_resource(node):
-	return node.mesh if node is MeshInstance3D else node.multimesh.mesh
+func _mesh_resource(row):
+	return row[4]
 
 
 func _drawn_instances(node):
-	if node is MeshInstance3D:
+	if not (node is MultiMeshInstance3D):
 		return 1
 	var mm = node.multimesh
 	return mm.instance_count if mm.visible_instance_count < 0 else mini(mm.instance_count, mm.visible_instance_count)
@@ -931,10 +946,13 @@ func _describe(inst, args):
 	var meshes_out = []
 	var total = 0
 	for m in col["meshes"]:
-		var tris = _mesh_tris(_mesh_resource(m[0])) * _drawn_instances(m[0])
+		var tris = _mesh_tris(_mesh_resource(m)) * _drawn_instances(m[0])
 		total += tris
-		var mb = _bounds_of([[m[0], m[1], m[0].get_aabb()]])
+		var mesh_bounds = m[0].get_aabb() if m[0] is MultiMeshInstance3D else m[2]
+		var mb = _bounds_of([[m[0], m[1], mesh_bounds]])
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
+		if m.size() > 5:
+			rec["grid_entry"] = m[5]
 		if m[0] is MultiMeshInstance3D:
 			rec["instances"] = m[0].multimesh.instance_count
 			rec["drawn_instances"] = _drawn_instances(m[0])

@@ -62,13 +62,13 @@ const RUNTIME_TRANSPORT_HINT =
 export function registerPerceptionTools(server: McpServer): void {
   server.tool(
     "summer_world_snapshot",
-    `Compact structured snapshot of the whole EDITED scene — the cheap read to run BEFORE and AFTER every mutation batch. Per node: path, class, transform (pos/rot/scale as Godot literal strings, 3-decimal floats), world AABB (3D visuals), visibility, and 8-hex resource fingerprints (script/materials — detect-change markers, never content). Plus a light summary, camera list, environment fingerprint, and per-class counts.
+    `Compact structured snapshot of the EDITED scene — the cheap read to run BEFORE and AFTER every mutation batch. Per node: path, class, transform (pos/rot/scale as Godot literal strings, 3-decimal floats), world AABB (3D visuals), visibility, and 8-hex resource fingerprints (script/materials — detect-change markers, never content). Plus a light summary, camera list, environment fingerprint, and per-class counts.
 
-THE LOOP: summer_world_snapshot (note snapshot_id) -> mutate (summer_run_script / scene tools / imports) -> summer_snapshot_diff from_id:<that id> -> summer_screenshot. The diff proves exactly what changed structurally; the screenshot proves it looks right. This is how you catch a node that silently vanished on save, a transform that landed at the origin, or an AABB clipping through the floor.
+THE LOOP: summer_world_snapshot (note snapshot_id) -> mutate (summer_run_script / scene tools / imports) -> summer_snapshot_diff from_id:<that id> -> summer_screenshot. Compare the captured structural fields, then inspect the result visually. This is how you catch a node that silently vanished on save, a transform that landed at the origin, or an AABB clipping through the floor.
 
-Node lists are path-sorted and truncated DETERMINISTICALLY (result carries total_nodes + truncated) so two snapshots stay diffable without phantom adds/removes. The engine retains the last 8 snapshots per session, keyed by snapshot_id. Use this instead of summer_get_scene_tree when you need transforms/AABBs/fingerprints or a diffable baseline; the tree read remains the hierarchy-shaped view. On an engine build that predates GetWorldSnapshot the result is a structured engine_lacks_op failure naming the fallback.
+Node entries are sorted by path. When the engine reaches its node cap, changes near that boundary can appear as additions or removals. The engine retains the last 8 snapshots per session, keyed by snapshot_id. Use this instead of summer_get_scene_tree when you need transforms/AABBs/fingerprints or a diffable baseline; the tree read remains the hierarchy-shaped view. On an engine build that predates GetWorldSnapshot the result is a structured engine_lacks_op failure naming the fallback.
 
-KEEP IT SMALL (about 250 bytes per node): at most ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES} nodes are listed by default. path_prefix reads one subtree ('House3', 'Lane2/Props'), classes keeps some node classes, fields keeps some per-node fields (e.g. ['pos','aabb']), offset/next_offset page the list. A filtered read adds matched_nodes and matched_counts (class counts of the subtree). counts and total_nodes always describe the whole scene, and snapshot_id always covers the whole scene, so summer_snapshot_diff still sees every change.`,
+KEEP IT SMALL (about 250 bytes per node): at most ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES} nodes are listed by default. path_prefix reads one subtree ('House3', 'Lane2/Props'), classes keeps some node classes, fields keeps some per-node fields (e.g. ['pos','aabb']), offset/next_offset page the list. A filtered read adds matched_nodes and matched_counts (class counts of the subtree). counts and total_nodes describe the scene. Filtering and paging leave the stored baseline intact. If engine_truncated is true, the engine omitted node entries from the baseline. Increase max_nodes and take a new baseline before editing.`,
     worldSnapshotInputShape,
     async (args) =>
       withEngine(async (client) => {
@@ -89,9 +89,9 @@ KEEP IT SMALL (about 250 bytes per node): at most ${WORLD_SNAPSHOT_DEFAULT_MAX_N
 
   server.tool(
     "summer_snapshot_diff",
-    `Diff two world snapshots into exactly what changed: added/removed node paths, changed nodes with the fields that moved (pos, scale, material fingerprint, ...), and per-class count deltas. Reads like a receipt — no wading through two full dumps.
+    `Compare the structure recorded in two world snapshots: added/removed node paths, changed nodes with the fields that moved (pos, scale, material fingerprint, ...), and per-class count deltas. Reads like a receipt — no wading through two full dumps.
 
-Standard use: take summer_world_snapshot BEFORE a mutation batch, mutate, then call this with from_id (to_id omitted = the engine takes a fresh snapshot now). Verify the diff matches your INTENT: exactly the nodes you meant to add were added, nothing you didn't touch changed, nothing vanished. An empty diff after a "successful" mutation is a red flag — the change did not land (wrong scene? unsaved? unowned nodes dropped on save?).
+Standard use: take summer_world_snapshot BEFORE a mutation batch, mutate, then call this with from_id (to_id omitted = the engine takes a fresh snapshot now). Verify the diff matches your INTENT: exactly the nodes you meant to add were added, nothing you didn't touch changed, nothing vanished. An empty diff means the captured fields showed no change. For an expected visual or property change, inspect the property or take a screenshot. If the engine truncated a baseline, increase max_nodes and repeat with a new baseline.
 
 The engine retains the last 8 snapshot ids per session; an expired/unknown id fails with failure_reason "unknown_snapshot" — take a fresh baseline and re-run the mutation check rather than guessing.`,
     {

@@ -61,6 +61,13 @@ describe("generateSfxChoices", () => {
     expect(sfxChoicesArgsSchema.safeParse({ text: "" }).success).toBe(false);
   });
 
+  it("matches the Studio sound description limit before making a request", () => {
+    expect(sfxChoicesArgsSchema.safeParse({ text: "x".repeat(450) }).success).toBe(true);
+    expect(sfxChoicesArgsSchema.safeParse({ text: "x".repeat(451) }).success).toBe(false);
+    expect(sfxChoicesArgsSchema.parse({ text: `  ${"x".repeat(450)}  ` }).text).toBe("x".repeat(450));
+    expect(sfxChoicesArgsSchema.safeParse({ text: "   " }).success).toBe(false);
+  });
+
   it("reports the Studio tab and opens no browser when the server queued the tab open", async () => {
     const deps = fakeDeps({}, { data: { ...choiceSet, studioTab: { queued: true, tabId: "tab_1" } }, status: 200 });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);

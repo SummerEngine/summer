@@ -20,7 +20,8 @@
  *   1. read + parse the saved .tscn (which children the scene added under the
  *      node, which properties it overrides, its sibling index);
  *   2. InstantiateScene / AddNode at the same parent under a temporary name;
- *   3. SetProp every copyable property override (transform, visibility, ...);
+ *   3. SetProp copyable overrides, then compare the effective spatial poses
+ *      in Godot and restore any difference before removing the original;
  *   4. ReparentNode each scene-added child onto the new node (local
  *      transforms kept), then re-parent each deeper scene-added descendant in
  *      place — the engine's ReparentNode re-owns only the node it moves, and
@@ -41,6 +42,7 @@ import { asRecord, type JsonRecord } from "../util/json.js";
 import { executeOpsChunked, safeProjectPath, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError } from "./engine-receipt.js";
 import { REPLACE_NODE_FALLBACK } from "./engine-fallbacks.js";
+import { prepareReplacementPose } from "./replace-node-pose.js";
 import { reownInPlaceOps } from "./scene-batch.js";
 import { isReadbackFailure, readSavedScene as readSceneFile, readbackFailure, type ReadbackFailure } from "./scene-readback.js";
 import {
@@ -334,7 +336,7 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
   const parent = node.parent;
 
   // Capability pre-flight for every op this path sends.
-  for (const op of [scene !== undefined ? "InstantiateScene" : "AddNode", "SetProp", "ReparentNode", "MoveNode", "RemoveNode"]) {
+  for (const op of [scene !== undefined ? "InstantiateScene" : "AddNode", "SetProp", "ReparentNode", "MoveNode", "RemoveNode", "RunSceneScript"]) {
     const missing = missingEngineOpResult(client, op, REPLACE_NODE_FALLBACK);
     if (missing) return { ...missing };
   }
@@ -433,6 +435,18 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
       else notCopied.push({ key: p.key, reason: String(r?.error ?? "SetProp failed") });
     });
     if (notCopied.length) notCarriedOver.props = notCopied;
+  }
+
+  const pose = await prepareReplacementPose(client, scenePath, target, newPath, propsCopied);
+  if ("error" in pose) return rollbackNew("pose_unavailable", `Cannot compare the replacement pose: ${pose.error}.`);
+
+  if (pose.overrides.length) {
+    const receipt = await send(pose.overrides.map(({ key, value }) => ({ op: "SetProp", path: newPath, key, value })));
+    const error = extractOpError(receipt);
+    if (error) return rollbackNew("pose_copy_failed", `Cannot preserve the replacement pose: ${error}.`);
+    for (const { key } of pose.overrides) {
+      if (!propsCopied.includes(key)) propsCopied.push(key);
+    }
   }
 
   // 4 + 5. Move children, restore ownership below them, take the old slot, drop the old node, take its name.

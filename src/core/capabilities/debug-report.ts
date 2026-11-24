@@ -21,6 +21,7 @@ export interface DebugReportOptions {
   maxDebuggerEntries?: number;
   includeDoctor?: boolean;
   baseDir?: string;
+  connectEngine?: () => Promise<EngineApiClient>;
 }
 
 export interface DebugReportArtifact {
@@ -224,7 +225,10 @@ export function renderDebugReportMarkdown(report: DebugReport): string {
   const health = asRecord(report.engine.health);
   const projectName = pickString(health, ["project_name", "projectName"]) ?? "unknown";
   const projectPath = pickString(health, ["project_path", "projectPath"]) ?? "unknown";
-  const scene = pickString(health, ["scene", "scenePath", "scene_path"]) ?? "unknown";
+  const sceneState = asRecord(report.engine.scene);
+  const scene = pickString(sceneState?.data ?? sceneState, ["scenePath", "scene_path"])
+    ?? pickString(health, ["scene", "scenePath", "scene_path"])
+    ?? "unknown";
 
   return `# Summer Debug Report
 
@@ -339,25 +343,32 @@ export async function collectDebugReport(
     },
   };
 
-  if (includeDoctor) {
-    report.doctor = await runDoctor({ quiet: true });
-  }
-  report.mcp.recentLog = await readRecentMcpLogLines();
-
-  let client: EngineApiClient;
+  let client: EngineApiClient | undefined;
   try {
-    client = await EngineApiClient.connect();
+    client = options.connectEngine ? await options.connectEngine() : await EngineApiClient.connect();
     report.engine.connected = true;
+    report.engine.health = await safeCollect("health", client.health.bind(client));
   } catch (error) {
     report.engine.error = errorMessage(error);
-    report.mcp.recentLog = await readRecentMcpLogLines();
-    return report;
   }
+
+  if (includeDoctor) {
+    report.doctor = await runDoctor({
+      quiet: true,
+      reportEngine: client ? {
+        port: client.getPort(),
+        version: client.getEngineVersion(),
+        projectPath: client.getProjectRoot(),
+        projectName: pickString(report.engine.health, ["project_name", "projectName"]) ?? undefined,
+      } : null,
+    });
+  }
+  report.mcp.recentLog = await readRecentMcpLogLines();
+  if (!client) return report;
 
   const maxConsoleLines = options.maxConsoleLines ?? 200;
   const maxDebuggerEntries = options.maxDebuggerEntries ?? 100;
 
-  report.engine.health = await safeCollect("health", () => client.health());
   report.engine.project = await safeCollect("project-state", () => client.getProjectState());
   report.engine.scene = await safeCollect("scene-state", () => client.getSceneState());
   report.engine.diagnostics = await safeCollect("diagnostics", () => client.getDiagnostics());

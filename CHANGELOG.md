@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Scene audits measure props from their transformed geometry, so wall-alignment checks use the actual long axis and wall clearance even with nonuniform scale or diagonal probe rays.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

@@ -10,6 +10,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - On editors that create actions when binding input, a rejected binding now leaves a missing action absent from project.godot. Older editors report when creating the action succeeded before binding failed.
 
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
 
 - When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
 

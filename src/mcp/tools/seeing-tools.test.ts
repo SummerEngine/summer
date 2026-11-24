@@ -76,6 +76,19 @@ describe("seeing tools — MCP face", () => {
     expect(body.failure_reason).toBe("probe_did_not_run");
   });
 
+  it.each(["summer_debug_views", "summer_shot_sheet"])("%s returns a scene-load error without an image", async (name) => {
+    vi.mocked(getClient).mockResolvedValue(fakeEngine({
+      projectRoot: project,
+      render: () => ({ ok: false, failure_reason: "scene_load_failed", errors: ["Could not load scene: res://missing.tscn"] }),
+    }) as never);
+    const pose = { camera_position: "Vector3(0, 2, 5)", camera_look_at: "Vector3(0, 0, 0)" };
+    const args = name === "summer_debug_views" ? pose : { shots: [pose] };
+    const result = (await tool(name).handler({ scenePath: "res://missing.tscn", ...args })) as Result;
+    expect(result.isError).toBe(true);
+    expect(result.content.map((c) => c.type)).toEqual(["text"]);
+    expect(JSON.parse(result.content[0]!.text!)).toMatchObject({ failure_reason: "scene_load_failed" });
+  });
+
   it("classifies bad arguments as invalid_input with nothing sent", async () => {
     const engine = fakeEngine({ projectRoot: project });
     vi.mocked(getClient).mockResolvedValue(engine as never);

@@ -91,15 +91,21 @@ export function basisDeterminant(b: Basis3): number {
   return dot(b[0], cross(b[1], b[2]));
 }
 
+/** Inverse transpose for transforming plane normals through a general basis. */
+export function basisNormalMatrix(b: Basis3, det = basisDeterminant(b)): Basis3 {
+  if (!Number.isFinite(det) || det === 0) throw new Error("basis is not invertible");
+  return [
+    scale(cross(b[1], b[2]), 1 / det),
+    scale(cross(b[2], b[0]), 1 / det),
+    scale(cross(b[0], b[1]), 1 / det),
+  ];
+}
+
 /** General 3x3 inverse (parents may carry non-uniform scale). */
 export function basisInverse(b: Basis3): Basis3 {
   const det = basisDeterminant(b);
   if (!(Math.abs(det) > 1e-12)) throw new Error("basis is not invertible");
-  // Rows of the inverse are the cross products of the columns, divided by det.
-  const r0 = scale(cross(b[1], b[2]), 1 / det);
-  const r1 = scale(cross(b[2], b[0]), 1 / det);
-  const r2 = scale(cross(b[0], b[1]), 1 / det);
-  return basisTranspose([r0, r1, r2]);
+  return basisTranspose(basisNormalMatrix(b, det));
 }
 
 export function xformMulPoint(t: Xform, p: Vec3): Vec3 {

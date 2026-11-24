@@ -1209,8 +1209,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_get_script_errors", "Check a GDScript file for parse/compile errors", true, async (args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).getScriptErrors(str(args, "path")))
   ),
-  entry("summer_create_debug_report", "Create a support-ready Markdown debug report", false, async (args) => {
+  entry("summer_create_debug_report", "Create a support-ready Markdown debug report", false, async (args, ctx) => {
     const artifact = await createDebugReportArtifact({
+      connectEngine: () => ctx.engine(),
       issue: optStr(args, "issue"),
       outputPath: optStr(args, "output_path"),
       includePlaySession: args.include_play_session === true,

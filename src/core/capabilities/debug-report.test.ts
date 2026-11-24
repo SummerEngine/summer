@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectDebugReport,
   defaultDebugReportFilename,
   renderDebugReportMarkdown,
   type DebugReport,
@@ -72,6 +73,15 @@ describe("debug report", () => {
     expect(markdown).toContain("mcp:tool_error");
     expect(markdown).not.toContain("abcdefgh12345678xyz");
     expect(markdown).not.toContain("supersecretvalue");
+  });
+
+  it("records a failed selected connection without rediscovering another editor", async () => {
+    const report = await collectDebugReport({
+      includeDoctor: false,
+      connectEngine: async () => { throw new Error("Selected editor is unavailable"); },
+    });
+
+    expect(report.engine).toEqual({ connected: false, error: "Selected editor is unavailable" });
   });
 
   it("creates filesystem-safe default report names", () => {

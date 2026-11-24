@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { Command, Option } from "commander";
+import { toolInputSchema, unknownInputField } from "../../core/ops/catalog.js";
 import {
   ToolDispatchError,
   ToolResultError,
@@ -189,6 +190,8 @@ export const toolCommand = new Command("tool")
       console.error("Note: 'summer tool --json <args>' is deprecated; use --args <json>.");
     }
     const args = parseJsonArgs(options.args ?? options.json);
+    const unknown = unknownInputField(toolInputSchema(entry.name), args);
+    if (unknown) throw new ToolDispatchError(unknown);
     noteCliTool(entry.name);
     let result: unknown;
     try {

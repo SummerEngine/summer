@@ -330,6 +330,7 @@ Use this as a one-shot grep before any export:
 | Export preset `embed_pck = true` | For all desktop release presets |
 | `.gitignore` excludes build artifacts | `build/`, `.godot/`, `.import/`, `*.tmp` listed |
 | Screenshots ≥ minimum count for platform | 3 for itch, 5 for Steam, 2 for Play |
+| UI fonts and fallbacks ship with the game | Run `release-readiness` check 8 on the exported client. Read the title and menu on each target without the development machine’s installed fonts. |
 | No leftover dev assets in `res://` | No `_test_`, `_old_`, `_temp_` files in the export paths |
 
 ## Common mistakes

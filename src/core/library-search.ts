@@ -135,6 +135,8 @@ export interface LibrarySearchOptions {
  *  optional; the defaults read the shipped package. */
 export interface LibrarySearchDeps {
   entries?: LibraryIndexEntry[];
+  /** MCP tool names to use in generated navigation hints. */
+  docsTools?: { read: string; search: string };
   /** `null` = no embeddings file. `undefined` = read the shipped one. */
   embeddings?: EmbeddingsFile | null;
   /** Query embedder. Return null to signal "unavailable" (never throw). */
@@ -405,12 +407,12 @@ export interface SearchLibraryPayload {
   hint: string;
 }
 
-export function searchHint(hits: readonly LibrarySearchHit[]): string {
+export function searchHint(hits: readonly LibrarySearchHit[], readTool = "summer_read_library"): string {
   if (hits.length === 0) {
     return "No entry matched. Rephrase in task words (what you are building or fixing), or drop the kinds filter; if the library truly has nothing, say so instead of guessing.";
   }
   const top = hits[0]!.id;
-  return `Read one with summer_read_library {"id": "${top}"} before acting on it (shell: summer tool read-library --args '{"id":"${top}"}'). Scores compare only within this response.`;
+  return `Read one with ${readTool} {"id": "${top}"} before acting on it (shell: summer tool read-library --args '{"id":"${top}"}'). Scores compare only within this response.`;
 }
 
 /** What summer_search_library and `summer tool search-library` return. */
@@ -420,5 +422,5 @@ export async function runSearchLibrary(args: SearchLibraryArgs, deps: LibrarySea
     { kinds: args.kinds, limit: args.limit, includePreview: args.include_preview },
     deps
   );
-  return { query: args.query, semantic, count: hits.length, results: hits, hint: searchHint(hits) };
+  return { query: args.query, semantic, count: hits.length, results: hits, hint: searchHint(hits, deps.docsTools?.read) };
 }

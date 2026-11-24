@@ -1,6 +1,6 @@
 id: tool/publish-build
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download."
 use_when:
   - '"upload my game to summer.games"'
@@ -11,7 +11,7 @@ use_when:
   - uploading the .zip from summer_export_game as a new Build
   - uploading an existing Web, macOS, Windows or Linux ZIP built by any tool
 do_not_use_when:
-  - the user has not approved the exact game, file, digest, version and publish choice
+  - the user has not approved the exact upload target returned by the confirm=false preview
   - the user wants to build an archive from source — use the project’s export tool first
   - store page text, art or price — store.update_listing, store.set_art (hosted, after summer login --store)
   - making the build live — summer_go_live

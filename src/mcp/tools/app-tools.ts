@@ -178,7 +178,10 @@ export function registerAppTools(server: McpServer) {
     async (args: unknown) => {
       const parsed = enablePluginArgsSchema.safeParse(args ?? {});
       if (!parsed.success) return result({ ok: false, code: "invalid", error: parsed.error.issues[0]?.message ?? "Invalid arguments" });
-      return withEngine(async (client) => interpretEnablePluginResult(await client.executeOps([enablePluginOp(parsed.data)])));
+      return withEngine(
+        async (client) => interpretEnablePluginResult(await client.executeOps([enablePluginOp(parsed.data)])),
+        { errorContent: (outcome) => typeof outcome.code === "string" ? result(outcome).content : undefined }
+      );
     }
   );
 }

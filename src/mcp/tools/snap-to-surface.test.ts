@@ -122,10 +122,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, ${x}, ${y}, ${z})
       }
       case "RunSceneScript":
         if (String(op.script_source).includes("independent_geometry")) {
+          const data = /Marshalls\.base64_to_utf8\("([^"]+)"\)/.exec(String(op.script_source))![1]!;
+          const { world_delta } = JSON.parse(Buffer.from(data, "base64").toString("utf8"));
           return { ok: true, op: "RunSceneScript", result: {
             ok: true, origin: [2 * this.local[0], this.worldY(), 2 * this.local[2]], position: this.local,
             transform: `Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, ${2 * this.local[0]}, ${this.worldY()}, ${2 * this.local[2]})`,
-            parent_transform: "Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0.5, 0)", independent_geometry: [],
+            translated_position: `Vector3(${this.local.map((v, i) => v + world_delta[i] / 2).join(", ")})`, independent_geometry: [],
           } };
         }
         return { ok: true, op: "RunSceneScript", result: initialTransform(this.local) };

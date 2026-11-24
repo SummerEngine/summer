@@ -42,7 +42,7 @@ import { executeOpsChunked, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError } from "./engine-receipt.js";
 import { STARCAST_FALLBACK } from "./engine-fallbacks.js";
 import { vec3Literal, vec3LiteralExact } from "./math3d.js";
-import { basisDeterminant, localPositionAfterWorldDelta, type Vec3 } from "./placement-math.js";
+import type { Vec3 } from "./placement-math.js";
 import { readSceneNodeTransform } from "./scene-space.js";
 import { normalizeNodePath } from "./tscn.js";
 import { measureMeshSnap, type MeshSnapMeasure } from "./surface-snap-mesh.js";
@@ -161,19 +161,17 @@ async function diagnose(client: SnapClient, args: SnapToSurfaceArgs): Promise<Sn
 interface LiftPlan {
   original: Vec3;
   lifted: Vec3;
+  literal: string;
 }
 
 /** Read the current target scene, including inherited and instanced parents. */
 async function planLift(client: SnapClient, args: SnapToSurfaceArgs, lift: number): Promise<LiftPlan | { reason: string }> {
-  const native = await readSceneNodeTransform(client, args.subjectPath, args.scenePath, true);
-  if ("error" in native) return { reason: native.error };
-  if (native.independentGeometry.length) return { reason: `visible geometry does not inherit the subject's transform: ${native.independentGeometry.join(", ")}` };
-  const det = basisDeterminant(native.parentBasis);
-  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return { reason: "the parent transform is singular" };
   const length = Math.hypot(...args.direction);
   const worldDelta = args.direction.map((d) => (-d / length) * lift) as Vec3;
-  const original = native.position;
-  return { original, lifted: localPositionAfterWorldDelta(original, native.parentBasis, worldDelta, det) };
+  const native = await readSceneNodeTransform(client, args.subjectPath, args.scenePath, true, worldDelta);
+  if ("error" in native) return { reason: native.error };
+  if (native.independentGeometry.length) return { reason: `visible geometry does not inherit the subject's transform: ${native.independentGeometry.join(", ")}` };
+  return { original: native.position, lifted: native.translation.value, literal: native.translation.literal };
 }
 
 // ---------------------------------------------------------------------------
@@ -310,15 +308,15 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
   const plan = await planLift(client, args, lift);
   if ("reason" in plan) return failureEnvelope(first, failed, args, diagnosis, { meshFallback, lift, liftNote: plan.reason });
 
-  const position = (v: Vec3) => ({ op: "SetProp", path: args.subjectPath, key: "position", value: vec3LiteralExact(v) });
-  const restore = async () => !extractOpError(await send(sceneMutationOps([position(plan.original)])));
+  const position = (literal: string) => ({ op: "SetProp", path: args.subjectPath, key: "position", value: literal });
+  const restore = async () => !extractOpError(await send(sceneMutationOps([position(vec3LiteralExact(plan.original))])));
   const recovery: JsonRecord = {
     lifted_by: round3(lift),
     original_local_position: vec3Literal(plan.original),
     lifted_local_position: vec3Literal(plan.lifted),
   };
 
-  const second = await send([position(plan.lifted), op], { groupUndo: true });
+  const second = await send([position(plan.literal), op], { groupUndo: true });
   const settled = snapResult(second);
   if (extractOpError(second) || !settled || settled.ok === false) {
     const restored = await restore();

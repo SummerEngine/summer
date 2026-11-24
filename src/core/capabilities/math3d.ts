@@ -1,7 +1,6 @@
 /**
  * Row matrices for the inspector's YXZ Euler transform fallback.
  * Godot's Transform3D literal lists matrix rows followed by the origin.
- * Placement and surface snapping use the basis columns in placement-math.ts.
  */
 
 export type Vec3 = [number, number, number];

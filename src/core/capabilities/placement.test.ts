@@ -250,6 +250,25 @@ describe("summer_inspect_asset", () => {
     expect(result).toMatchObject({ ok: true, tool: "summer_inspect_asset", evidence: "mesh_triangles", mesh_count: 200 });
   });
 
+  it("retains MultiMesh counts and per-instance loop identity", async () => {
+    const { client } = mockClient(() => ({
+      ok: true, mesh_count: 1, triangles: 24,
+      meshes: [{ path: "Batch", tris: 24, instances: 4, drawn_instances: 2 }],
+      planes: [], open_loops: [{ mesh: 0, instance: 1, center: [0, 0, 0], direction: [0, 1, 0], radius: 1 }],
+    }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://batch.tscn", detail: "full" }));
+    expect(result).toMatchObject({ summary: { mesh_count: 1, triangles: 24 }, meshes: [{ instances: 4, drawn_instances: 2 }], open_loops: [{ mesh: 0, instance: 1 }] });
+  });
+
+  it("does not promise complete analysis beyond the maximum triangle budget", async () => {
+    const { client } = mockClient(() => ({ ok: true, triangles: 300012, planes: [], open_loops: [], analysis: { triangles_analyzed: 100, truncated: true } }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://batch.tscn", maxTriangles: 100 }));
+    const warnings = String((result.summary as Record<string, unknown>).warnings);
+    expect(warnings).toContain("planes and open loops are incomplete");
+    expect(warnings).toContain("exceeds the maximum maxTriangles 300000");
+    expect(warnings).not.toContain("for the whole mesh");
+  });
+
   it("rejects non-asset paths in the schema", () => {
     expect(inspectAssetArgsSchema.safeParse({ path: "res://notes.txt" }).success).toBe(false);
     expect(inspectAssetArgsSchema.safeParse({ path: "/tmp/wall.glb" }).success).toBe(false);
@@ -866,6 +885,13 @@ describe("summer_repeat_along", () => {
 });
 
 describe("summer_connect_ports", () => {
+  it.each(["multimesh_backend_unavailable", "unsupported_multimesh_format"])("does not mutate after %s loop evidence", async (failure_reason) => {
+    const { client, mutations } = mockClient(() => ({ ok: false, failure_reason, error: "Triangle evidence unavailable" }));
+    const result = await connectPorts(client, connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "A", subjectPort: 0, target: "B", targetPort: 0 }));
+    expect(result).toMatchObject({ ok: false, failure_reason });
+    expect(mutations).toEqual([]);
+  });
+
   it("turns and moves the subject so the ports meet facing each other", () => {
     const subject = { basis: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3], origin: [5, 0, 0] as Vec3 };
     // Subject port points +y at its origin + (0, 1, 0); target port at (0, 3, 0) points +y.

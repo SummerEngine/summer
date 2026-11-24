@@ -478,6 +478,9 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
+		# Preserve the row index used by the asset mesh list when skipping hidden meshes.
+		if not m[3]:
+			continue
 		var mesh = m[0].mesh
 		var t = m[1]
 		var flip = t.basis.determinant() < 0.0
@@ -726,14 +729,6 @@ func _collect(top):
 	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes}
 
 
-func _visible_meshes(col):
-	var out = []
-	for m in col["meshes"]:
-		if m[3]:
-			out.append(m)
-	return out
-
-
 # Whether surface s is a triangle list. Only ArrayMesh binds
 # surface_get_primitive_type; the built-in primitive meshes (PlaneMesh,
 # BoxMesh, CylinderMesh, ...) are always triangles.
@@ -862,7 +857,7 @@ func _describe(inst, args):
 	out["mesh_count"] = meshes_out.size()
 	out["meshes"] = meshes_out
 	out["triangles"] = total
-	var an = _analyze(_visible_meshes(col), budget, true, true)
+	var an = _analyze(col["meshes"], budget, true, true)
 	var planes_out = []
 	for p in an["planes"]:
 		if planes_out.size() >= 16:
@@ -944,7 +939,7 @@ func _resolve_port(root, node, port, budget, want_others):
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
 	var col = _collect(node)
-	var an = _analyze(_visible_meshes(col), budget, false, true)
+	var an = _analyze(col["meshes"], budget, false, true)
 	var loops = []
 	for lp in an["loops"]:
 		loops.append(_loop_raw(lp))

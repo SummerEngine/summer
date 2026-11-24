@@ -421,6 +421,22 @@ describe("registerGenerateTools — summer_generate_motion", () => {
   });
 });
 
+describe("registerGenerateTools — video job results", () => {
+  it("describes the queued result and names video in the polling tool", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const video = getTool(tools, "summer_generate_video");
+    const queued = { success: true, queued: true, jobId: "video_job_1" };
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => queued })) as any;
+
+    expect(parseResult(await video.handler({ prompt: "the arrow moves right", model: "ltx" }))).toEqual(queued);
+    expect(video.description).toContain("jobId");
+    expect(video.description).toContain("summer_check_job");
+    expect(video.description).not.toContain("Returns the generated video URL");
+    expect(getTool(tools, "summer_check_job").description).toContain("summer_generate_video");
+  });
+});
+
 describe("registerGenerateTools — not signed in", () => {
   it("answers every generation and job tool with the same not_signed_in shape, sending nothing", async () => {
     const { getAuthToken } = await import("../../core/auth.js");

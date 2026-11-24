@@ -171,6 +171,22 @@ script = ExtResource("1")
 `);
   const ev = evidence({ snap, tscn });
 
+  it.each([
+    [0.8996, false],
+    [0.9, true],
+    [0.9004, true],
+  ])("compares the full-precision mean IoU %s to the threshold", (iou, pass) => {
+    const cube = box("Cube", "Cube", 0, 0, 0);
+    const shift = (1 - iou) / (1 + iou);
+    const gold = [box("Cube", "Cube", shift, 0, 0)];
+    const result = evaluateAssertion(
+      { id: "iou", predicate: "gold_iou", args: { min: 0.9 }, required: true },
+      evidence({ snap: snapshot({ nodes: [cube] }), gold }),
+    );
+    expect(result.pass).toBe(pass);
+    expect((result.detail as { mean_iou: number }).mean_iou).toBeCloseTo(iou, 10);
+  });
+
   it("selectors match by name glob, class: and path: with alternation", () => {
     const node = { name: "Wall_North", path: "Grid/Wall_North", class: "MeshInstance3D" };
     expect(matchSelector("Wall*|Floor*", node)).toBe(true);
@@ -213,6 +229,24 @@ script = ExtResource("1")
     expect((iou.detail as { mean_iou: number }).mean_iou).toBeCloseTo(0.833, 2);
     expect(evaluateAssertion({ id: "iou", predicate: "gold_iou", args: { min: 0.8 }, required: true }, evidence({ snap, tscn, gold })).pass).toBe(true);
     expect(aabbIoU({ pos: { x: 0, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 } }, { pos: { x: 0.5, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 } })).toBeCloseTo(1 / 3);
+  });
+
+  it("requires readable bounds from every selected geometric node", () => {
+    const broken = box("Broken", "Parts/Broken", 0, 0, 0);
+    broken.aabb.pos = "not a Vector3";
+    const inputs = evidence({ snap: snapshot({ nodes: [box("Good", "Good", 10, 0, 0), broken] }) });
+    for (const [predicate, args] of [
+      ["aabb_within", { selector: "*", max: [20, 20, 20] }],
+      ["no_overlap", { a: "Broken", b: "Good" }],
+      ["no_overlap", { a: "Good", b: "Broken" }],
+      ["on_ground", { selector: "*" }],
+    ] as const) {
+      const result = evaluateAssertion({ id: "bounds", predicate, args, required: true }, inputs);
+      expect(result).toMatchObject({
+        pass: false, reason: "evidence_missing", severity: "evidence_missing",
+        detail: { path: "Parts/Broken" },
+      });
+    }
   });
 
   it("collision_under walks the path-sorted node list; script_attached needs live fp + saved script", () => {

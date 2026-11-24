@@ -15,8 +15,8 @@
  *  - ConnectSignal: connects without CONNECT_PERSIST, so SaveScene writes no
  *    [connection] line.
  *
- * RunSceneScript runs only the connect probe of core/capabilities/
- * connect-signal.ts (read from its constants), in the ACTIVE tab, and marks
+ * RunSceneScript models the signal and replacement-pose probes (read from
+ * their constants) in the active tab, and marks
  * that tab unsaved as the engine does after every run. Receipts come back
  * the way EngineApiClient hands them to the tools: scenePersistence renamed
  * by honestSceneReceipt.
@@ -28,6 +28,7 @@ import { honestSceneReceipt } from "../core/capabilities/engine-receipt.js";
 export interface FakeSceneDef {
   /** Root class of the scene file. */
   rootType: string;
+  rootTransform?: string;
   /** Nodes the scene itself creates under its root (owned by the instance). */
   children?: Array<{ name: string; type: string }>;
 }
@@ -313,14 +314,26 @@ export class FakeSceneEngine {
     }
   }
 
-  /** The connect probe of connect-signal.ts, run against the active tab. */
+  /** Run the supported signal and pose probes against the active tab. */
   private runSceneScript(source: string): OpResult {
     const consts: Record<string, string> = {};
     for (const match of source.matchAll(/^const (\w+) := (".*")$/gm)) consts[match[1]!] = JSON.parse(match[2]!) as string;
     this.unsaved.add(this.activeScene);
     const done = (result: Record<string, unknown>): OpResult => ({ ok: true, op: "RunSceneScript", ran: true, result, undo_action: "registered" });
+    if (consts.POSE_SOURCE !== undefined && consts.POSE_DESTINATION !== undefined) {
+      const old = this.resolve(consts.POSE_SOURCE);
+      const replacement = this.resolve(consts.POSE_DESTINATION);
+      if (!old || !replacement || consts.TARGET_SCENE !== this.activeScene) return done({ error: "Cannot find the active nodes" });
+      const is3d = old.type.endsWith("3D") && replacement.type.endsWith("3D");
+      const is2d = old.type.endsWith("2D") && replacement.type.endsWith("2D");
+      if (!is3d && !is2d) return done({ compared: true });
+      const identity = is3d ? "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" : "Transform2D(1, 0, 0, 1, 0, 0)";
+      const transform = (node: FakeNode) => node.props.get("transform") ?? this.options.scenes[node.instance ?? ""]?.rootTransform ?? identity;
+      const previous = transform(old);
+      return done({ compared: true, ...(previous !== transform(replacement) ? { transform: previous } : {}) });
+    }
     if (!source.includes("Object.CONNECT_PERSIST") || consts.EMITTER === undefined) {
-      return { ok: false, op: "RunSceneScript", failure_reason: "script_runtime_error", error: "the fake engine only runs the connect probe" };
+      return { ok: false, op: "RunSceneScript", failure_reason: "script_runtime_error", error: "unsupported scene script in the fake engine" };
     }
     if (consts.TARGET_SCENE !== this.activeScene) {
       return done({ ok: false, failure_reason: "scene_not_active", active_scene: this.activeScene, error: `The active editor tab is ${this.activeScene}` });

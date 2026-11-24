@@ -154,7 +154,7 @@ The MCP server reads the complete file, requires a unique match by default, comp
 
             const content = replace_all
               ? current.content.split(old_text).join(new_text)
-              : current.content.replace(old_text, new_text);
+              : current.content.replace(old_text, () => new_text);
             if (content === current.content) {
               return {
                 ok: true,

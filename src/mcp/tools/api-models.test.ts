@@ -8,7 +8,6 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../../core/store.js";
-import { apiCommand } from "../../cli/commands/api.js";
 import { registerApiTools } from "./api-tools.js";
 
 const capabilities = ["image", "3d", "video", "voice", "dialogue", "sound", "music", "motion"];
@@ -68,9 +67,5 @@ describe("Summer API model capability filters", () => {
     const result = await client.callTool({ name: "summer_api_models", arguments: { capability: "time-travel" } });
     expect(result.isError).toBe(true);
     expect(requests.length).toBe(before);
-  });
-
-  it("names motion in the dedicated CLI filter help", () => {
-    expect(apiCommand.commands.find((command) => command.name() === "models")!.helpInformation()).toContain("motion");
   });
 });

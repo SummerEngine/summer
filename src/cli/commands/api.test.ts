@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../../core/store.js";
 import { API_NOT_OPEN, SIGN_IN_GONE_MESSAGE, estimateJob, getJob, jobToolResult, listModels, runJob, SummerApiError } from "../../core/summer-api.js";
-import { runApiAction } from "./api.js";
+import { apiCommand, runApiAction } from "./api.js";
 import { runTokenCommand } from "./token.js";
 import { OAuthError } from "../../core/oauth.js";
 
@@ -139,4 +139,8 @@ describe("while Summer has not opened the API", () => {
     }
     await expect(listModels({}, { fetch: api.fetch })).rejects.toBeInstanceOf(SummerApiError);
   });
+});
+
+it("names motion in the dedicated CLI filter help", () => {
+  expect(apiCommand.commands.find((command) => command.name() === "models")!.helpInformation()).toContain("motion");
 });

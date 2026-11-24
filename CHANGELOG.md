@@ -31,6 +31,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
 - Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
 
+- A failed surface attachment now names blocking objects in the piece’s own 3D world, including when the piece is inside a private SubViewport.
+
 ## [4.9.2] - 2026-11-12
 
 - **Cloud operation discovery matches the hosted server.** The CLI and MCP catalog includes board previews and clips, project templates, web release operations, and the latest video and character inputs.

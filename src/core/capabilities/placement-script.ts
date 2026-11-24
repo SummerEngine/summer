@@ -1096,23 +1096,21 @@ func _cmd_blockers(root, active, args):
 	dir = dir.normalized()
 	var dist = float(args.get("max_distance", 1.0))
 	var mask = int(args.get("collision_mask", 4294967295))
+	var world = _placement_world(n)
 	var shapes = []
 	var ex: Array[RID] = []
 	var stack = [n]
 	while stack.size() > 0:
 		var cur = stack.pop_back()
-		if cur is CollisionObject3D:
+		if cur is CollisionObject3D and _placement_world(cur) == world:
 			ex.append(cur.get_rid())
-		if cur is CollisionShape3D and not cur.disabled and cur.shape != null:
+		if cur is CollisionShape3D and not cur.disabled and cur.shape != null and _placement_world(cur) == world:
 			shapes.append(cur)
 		for c in cur.get_children():
 			stack.append(c)
 	var space = null
-	if active and shapes.size() > 0 and n.is_inside_tree():
-		var vp = root.get_viewport()
-		var world = vp.find_world_3d() if vp != null else null
-		if world != null:
-			space = world.direct_space_state
+	if active and shapes.size() > 0 and n.is_inside_tree() and world != null:
+		space = world.direct_space_state
 	var overlaps = []
 	var best = INF
 	var best_path = ""
@@ -1147,10 +1145,10 @@ func _cmd_blockers(root, active, args):
 		if best_path != "":
 			pout["first_contact"] = {"path": best_path, "distance": best}
 		return pout
-	var mine = _bounds_of(_geoms(n, root, []))
+	var mine = _bounds_of(_geoms(n, root, [], n))
 	if mine == null:
 		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
-	for g in _geoms(root, root, [n]):
+	for g in _geoms(root, root, [n], n):
 		var ob = _bounds_of([g])
 		if mine.intersects(ob):
 			var vp_path = _rel(root, g[0])

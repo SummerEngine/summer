@@ -566,13 +566,13 @@ export const ENGINE_OPS: Readonly<Record<string, EngineOpDef>> = {
   // ── Imports and assets ────────────────────────────────────────────────────
   "engine.import_from_url": {
     title: "Import a file from a URL",
-    summary: "Download one file (model, texture, audio) from a URL into the project and run the import, so it is ready to use. For a model, next: engine.instantiate_scene.",
+    summary: "Download one file (model, texture, audio) from a public HTTPS URL into the project and run the import, so it is ready to use. For a model, next: engine.instantiate_scene.",
     effect: "write",
     example: { input: { url: "https://example.com/models/lamp.glb", path: "res://models/lamp.glb" }, note: "A lamp model." },
   },
   "engine.import_from_url_batch": {
     title: "Import files from URLs",
-    summary: "Download several files from URLs into the project in one call, with one import scan at the end.",
+    summary: "Download several files from public HTTPS URLs into the project in one call, with one import scan at the end.",
     effect: "write",
     example: {
       input: {

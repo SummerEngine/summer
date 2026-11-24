@@ -257,12 +257,15 @@ export function parsePollPage(raw: unknown): ParsedPollPage {
   const record = asRecord(raw) ?? {};
   const events: EngineEvent[] = [];
   const frames: EventsFrame[] = [];
+  // Native polls carry gap outside events[]; normalize it to the existing transport notice.
+  if (record.gap !== undefined) frames.push({ kind: "sys.gap", data: record.gap });
   if (Array.isArray(record.events)) {
     for (const entry of record.events) {
       const item = asRecord(entry);
       const kind = item ? stringFrom(item.kind) : undefined;
       if (!item || !kind) continue;
       if (kind.startsWith("sys.")) {
+        if (kind === "sys.gap" && record.gap !== undefined) continue;
         frames.push({ kind, data: item.data });
         continue;
       }

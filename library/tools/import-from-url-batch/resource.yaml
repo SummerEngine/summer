@@ -1,7 +1,7 @@
 id: tool/import-from-url-batch
 kind: tool
-version: 1.0.2
-summary: Download multiple files by URL in one operation with a single filesystem scan afterwards.
+version: 1.0.3
+summary: Download multiple files by public HTTPS URL in one operation with a single filesystem scan afterwards.
 use_when:
   - importing several related files, like a model plus its textures
   - '"download the model plus its three textures together"'
@@ -38,7 +38,7 @@ input_schema:
         properties:
           url:
             type: string
-            description: URL to download
+            description: Public HTTPS URL on port 443; local/private addresses and URL credentials are refused.
           path:
             type: string
             description: Target path in project

@@ -1,7 +1,7 @@
 id: tool/import-from-url
 kind: tool
-version: 1.0.2
-summary: Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.
+version: 1.0.3
+summary: Download one file from a public HTTPS URL and run Godot's full import pipeline so the asset is immediately usable.
 use_when:
   - importing a model, texture, or audio file from an external URL
   - '"grab this .glb from the link and add it to my project"'
@@ -34,7 +34,7 @@ input_schema:
   properties:
     url:
       type: string
-      description: HTTP(S) URL to download from
+      description: Public HTTPS URL on port 443; local/private addresses and URL credentials are refused.
     path:
       type: string
       description: Target path in project, e.g. 'res://assets/player.glb'. Auto-inferred from URL if omitted.

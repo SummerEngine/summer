@@ -102,6 +102,38 @@ describe("repo-lint: tool-dispatch registry", () => {
     ]);
   });
 
+  it.each(["$&", "$$", "$`", "$'", "$1", "", "literal output"])(
+    "writes unique replacement text literally through CLI dispatch: %j",
+    async (replacement) => {
+      const sha = "d".repeat(64);
+      const { ctx, calls } = fakeEngineContext({
+        readProjectFile: async () => ({
+          ok: true,
+          data: { content: "before OLD after", encoding: "utf-8", sha256: sha },
+        }),
+      });
+
+      await dispatchTool("replace-text", {
+        path: "res://literal.txt",
+        old_text: "OLD",
+        new_text: replacement,
+        replace_all: false,
+      }, ctx);
+
+      expect(calls).toEqual([
+        {
+          method: "executeIdentityBoundOps",
+          args: [[{
+            op: "WriteFile",
+            path: "res://literal.txt",
+            content: `before ${replacement} after`,
+            expectedSha256: sha,
+          }]],
+        },
+      ]);
+    }
+  );
+
   it("appends SaveScene to scene mutations and dispatches it as its own request", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool(

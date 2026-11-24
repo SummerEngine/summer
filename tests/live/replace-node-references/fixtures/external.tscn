@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="Script" path="res://holder.gd" id="1_holder"]
+[ext_resource type="Script" path="res://child.gd" id="2_child"]
+[node name="Room" type="Node3D"]
+[node name="Group" type="Node3D" parent="."]
+position = Vector3(10, 2, -4)
+rotation = Vector3(0.1, 0.7, -0.2)
+scale = Vector3(2, 0.75, -1.5)
+[node name="Before" type="Node3D" parent="Group"]
+[node name="Victim" type="Node3D" parent="Group"]
+position = Vector3(1, 2, 3)
+[node name="Child" type="Node3D" parent="Group/Victim"]
+position = Vector3(0.3, 1.1, -0.7)
+[node name="Grandchild" type="Marker3D" parent="Group/Victim/Child"]
+position = Vector3(0.2, 0.4, 0.6)
+[node name="After" type="Node3D" parent="Group"]
+[node name="Holder" type="Node" parent="." node_paths=PackedStringArray("target", "child_ref")]
+script = ExtResource("1_holder")
+target = NodePath("../Group/Victim")
+child_ref = NodePath("../Group/Victim/Child")
+node_path = NodePath("../Group/Victim")

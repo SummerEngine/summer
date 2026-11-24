@@ -7,6 +7,7 @@ vi.mock("../../core/auth.js", () => ({
 
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { z } from "zod";
+import { parse as parseYaml } from "yaml";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,6 +72,20 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe("registerGenerateTools — video model discovery", () => {
+  it("recommends the live MiniMax key instead of its retired alias", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const video = getTool(tools, "summer_generate_video");
+    expect(video.description).toContain('"minimax-h3-max"');
+    expect(video.description).not.toContain('"minimax"');
+    expect(video.schema.model.description).toContain("minimax-h3-max");
+    expect(video.schema.model.description).not.toMatch(/\bminimax(?:,|$)/);
+    const descriptor = parseYaml(await readFile(new URL("../../../library/tools/generate-video/resource.yaml", import.meta.url), "utf8"));
+    expect(descriptor.input_schema.properties.model.description).toBe(video.schema.model.description);
+  });
+});
 
 describe("registerGenerateTools — summer_generate_motion", () => {
   it("registers the tool with the correct name and schema fields", () => {
@@ -421,6 +436,23 @@ describe("registerGenerateTools — summer_generate_motion", () => {
   });
 });
 
+describe("registerGenerateTools — video job results", () => {
+  it("describes the queued result and names video in the polling tool", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const video = getTool(tools, "summer_generate_video");
+    const queued = { success: true, queued: true, jobId: "video_job_1" };
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => queued })) as any;
+
+    expect(parseResult(await video.handler({ prompt: "the arrow moves right", model: "ltx" }))).toEqual(queued);
+    expect(video.description).toContain("jobId");
+    expect(video.description).toContain("summer_check_job");
+    expect(video.description).not.toContain("Returns the generated video URL");
+    expect(getTool(tools, "summer_check_job").description).toContain("summer_generate_video");
+    expect(getTool(tools, "summer_check_job").description).toContain("assetId (3D or video)");
+  });
+});
+
 describe("registerGenerateTools — not signed in", () => {
   it("answers every generation and job tool with the same not_signed_in shape, sending nothing", async () => {
     const { getAuthToken } = await import("../../core/auth.js");
@@ -462,6 +494,29 @@ describe("registerGenerateTools — summer_generate_3d description", () => {
     expect(gen3d.schema.animationNames).toBeDefined();
     expect(gen3d.schema.actionIds).toBeDefined();
     expect(gen3d.schema.idempotencyKey).toBeDefined();
+  });
+
+  it("advertises the accepted 3D input kinds and preserves directional reference order", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const gen3d = getTool(tools, "summer_generate_3d");
+    const views = ["front", "left", "back", "right"].map((side) => `https://example.com/${side}.png`);
+    expect(gen3d.description).toContain('"multi-image-to-3d"');
+    expect(gen3d.description).not.toContain('"texture"');
+    expect(gen3d.schema.imageUrls.description).toContain("front, left, back, right");
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "multiview-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+    await gen3d.handler({ kind: "multi-image-to-3d", imageUrls: views, wait: false });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      kind: "multi-image-to-3d",
+      options: { imageUrls: views },
+    });
   });
 
   it("maps first-class character and preparation fields into the cloud route contract", async () => {

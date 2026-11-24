@@ -161,7 +161,7 @@ instances it off the scene tree, measures, and frees it.
   transforms of a run of `InstantiateScene` ops are held back and sent
   together (up to 200 `SetProp`s per request) just before the next op that is
   not an `InstantiateScene`, riding along with it when it can. A batch of N
-  placed pieces is therefore about N + 2 requests and N + 2 undo steps. Every later op in the list (a `SetProp`, `SnapToSurface`, a query,
+  placed pieces is therefore about N + 2 requests. Undo can reverse individual edits. Every later op in the list (a `SetProp`, `SnapToSurface`, a query,
   the save) runs after the transforms land. If an `InstantiateScene` fails,
   the pieces created before it still get their transforms; nothing is saved.
 

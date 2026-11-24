@@ -525,7 +525,17 @@ export function createMcpServer(
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
-  registerCreatorTools(server);
+  registerCreatorTools(server, async () => {
+    if (engineSelection?.projectPath) return engineSelection.projectPath;
+    const project = cachedClient?.getProjectRoot();
+    if (project) return project;
+    if (engineSelection?.instanceId) {
+      const project = (await getClient({ launch: false })).getProjectRoot();
+      if (!project) throw new Error("The selected editor did not report a project directory. Pass project explicitly.");
+      return project;
+    }
+    return engineSelection?.cwd;
+  });
   registerFeedbackTools(server);
   registerApiTools(server);
   registerScriptTools(server);
@@ -533,7 +543,7 @@ export function createMcpServer(
   registerSpatialTools(server);
   registerPlacementTools(server);
   registerNavigationTools(server);
-  registerLibraryTools(server);
+  registerLibraryTools(server, surface);
   registerEventTools(server);
   registerFabricateTools(server);
   registerUiTools(server);

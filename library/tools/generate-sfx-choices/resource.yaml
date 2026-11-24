@@ -37,6 +37,7 @@ input_schema:
   properties:
     text:
       type: string
+      maxLength: 450
       description: The sound to make, written as a Foley description (what hits what, the attack and the tail, close-mic, dry)
     durationSeconds:
       type: number

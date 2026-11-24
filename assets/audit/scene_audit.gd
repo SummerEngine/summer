@@ -1989,22 +1989,22 @@ func _scan_long_props() -> Array:
 		done += 1
 		var la: AABB = rec["laabb"]
 		var xf: Transform3D = rec["xf"]
-		var sx := la.size.x
-		var sz := la.size.z
+		# Dimensions and the long axis are measured in the horizontal world
+		# footprint. Local mesh dimensions alone lose nonuniform scale.
+		var wx: Vector3 = xf.basis * Vector3(1, 0, 0)
+		var wz: Vector3 = xf.basis * Vector3(0, 0, 1)
+		wx.y = 0
+		wz.y = 0
+		var sx := la.size.x * wx.length()
+		var sz := la.size.z * wz.length()
 		var length := maxf(sx, sz)
 		var depth := minf(sx, sz)
 		if length < 0.6 or length < 1.8 * maxf(depth, 0.001):
 			continue
-		var lax := Vector3(1, 0, 0) if sx >= sz else Vector3(0, 0, 1)
-		var wl: Vector3 = xf.basis * lax
-		wl.y = 0
-		if wl.length() < 0.2:
+		var wl: Vector3 = wx if sx >= sz else wz
+		if wl.length() < 0.000001:
 			continue
 		wl = wl.normalized()
-		var wx: Vector3 = (xf.basis * Vector3(1, 0, 0))
-		var wz: Vector3 = (xf.basis * Vector3(0, 0, 1))
-		wx.y = 0
-		wz.y = 0
 		var c := la.get_center()
 		var wc: Vector3 = xf * c
 		var wa: AABB = rec["waabb"]
@@ -2014,16 +2014,19 @@ func _scan_long_props() -> Array:
 		for k in 8:
 			var ang := TAU * float(k) / 8.0
 			var dir := Vector3(sin(ang), 0, cos(ang))
-			var ext := absf(dir.dot(wx.normalized())) * sx * 0.5 + absf(dir.dot(wz.normalized())) * sz * 0.5
+			var ext := absf(dir.dot(wx)) * la.size.x * 0.5 + absf(dir.dot(wz)) * la.size.z * 0.5
 			var hit := _ray(wc, wc + dir * (ext + 1.4), MASK_FACADE, ex)
 			if hit.is_empty():
 				continue
 			var nrm: Vector3 = hit["normal"]
 			if absf(nrm.y) > 0.35:
 				continue
-			var clearance := (hit["position"] as Vector3).distance_to(wc) - ext
+			var hn := Vector3(nrm.x, 0, nrm.z).normalized()
+			# A diagonal ray's projected support is not the distance to the
+			# prop's surface on that ray. Measure separation from the hit plane.
+			var wall_extent := absf(hn.dot(wx)) * la.size.x * 0.5 + absf(hn.dot(wz)) * la.size.z * 0.5
+			var clearance := absf(hn.dot((hit["position"] as Vector3) - wc)) - wall_extent
 			if best.is_empty() or clearance < float(best[0]):
-				var hn := Vector3(nrm.x, 0, nrm.z).normalized()
 				best = [snappedf(clearance, 0.001), _hit_inst(hit), _a3(hn, 0.0001), _a3(dir, 0.0001)]
 		if best.is_empty():
 			continue

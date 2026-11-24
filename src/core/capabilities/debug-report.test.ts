@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectDebugReport,
   defaultDebugReportFilename,
   renderDebugReportMarkdown,
   type DebugReport,
@@ -59,8 +60,12 @@ describe("debug report", () => {
       },
     };
 
+    expect(renderDebugReportMarkdown(report)).toContain("- Scene: res://main.tscn");
+    report.engine.scene = { ok: true, data: { path: ".", scenePath: "res://active.tscn" } };
+    report.engine.health = { project_name: "Test Game" };
     const markdown = renderDebugReportMarkdown(report);
 
+    expect(markdown).toContain("- Scene: res://active.tscn");
     expect(markdown).toContain("# Summer Debug Report");
     expect(markdown).toContain("Player crashes after pickup");
     expect(markdown).toContain("## Before Sending");
@@ -72,6 +77,15 @@ describe("debug report", () => {
     expect(markdown).toContain("mcp:tool_error");
     expect(markdown).not.toContain("abcdefgh12345678xyz");
     expect(markdown).not.toContain("supersecretvalue");
+  });
+
+  it("records a failed selected connection without rediscovering another editor", async () => {
+    const report = await collectDebugReport({
+      includeDoctor: false,
+      connectEngine: async () => { throw new Error("Selected editor is unavailable"); },
+    });
+
+    expect(report.engine).toEqual({ connected: false, error: "Selected editor is unavailable" });
   });
 
   it("creates filesystem-safe default report names", () => {

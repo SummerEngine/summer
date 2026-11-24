@@ -16,6 +16,33 @@ Read this first, whatever the user asked for: "multiplayer", "co-op", "PvP",
 "netcode", "sync players". It explains the model in one page and sends you to
 the skill that builds the next piece.
 
+## Where it runs: only through Summer Games
+
+Summer multiplayer works **only when the game is played through Summer
+Games**: on summer.games in the browser, in the Summer Games desktop app and
+in the Summer Games phone apps. Local Play covers development. Those apps sign
+the player in and hand the game its seat in a match; a game has no other way
+into a Summer-hosted World.
+
+A copy of the game distributed anywhere else has **no Summer multiplayer**:
+Steam, itch.io, the creator's own installer, the creator's own App Store or
+Google Play listing. It starts and plays offline, and Summer reports hosted
+play as unavailable (`player_host_unavailable`). The Android and iOS presets
+in **Project > Export** build such a copy: they use stock templates, which
+contain none of Summer's networking.
+
+**Ask where the game will be sold before building multiplayer**, and tell the
+person which row they are in:
+
+| The person wants online play | Build |
+|---|---|
+| On Summer Games (browser, desktop, phones) | Summer multiplayer: this skill and the ones it names. One Build serves every platform, and players on all of them share matches |
+| On Steam, itch.io or their own store listing | **Custom networking**, written and hosted by the person: the stock high-level multiplayer API (`ENetMultiplayerPeer`, `@rpc`, `MultiplayerSynchronizer`) or the store's own networking, their own servers or a player-hosted match, and their own way for players to find each other. Summer's skills, hosting, matchmaking, parties and other services are absent there |
+| On both | Both of the above: two networking layers in one game, about twice the multiplayer work. Say so before starting |
+
+Summer multiplayer code does not carry over to a custom build: the
+composition, Sessions and the authority exist only in Summer's runtime.
+
 ## The picture
 
 A Summer multiplayer game is **one project with two entry scenes**:
@@ -72,11 +99,13 @@ the sender's verified Session. Events are fire-and-forget.
 2. **The authority owns every other fact.** Clients never change shared
    state; they send a Command and show the result.
 3. **Identity comes from the Session**, never from a field a client sent.
-4. **Never use the stock high-level multiplayer API in a Summer game:** no
+4. **Never use the stock high-level multiplayer API in Summer multiplayer:** no
    `@rpc`, `MultiplayerSynchronizer`, `MultiplayerSpawner`,
    `ENetMultiplayerPeer`, `multiplayer.is_server()` or peer-ID branches. Their
    sender ids are transport peers, not verified players. Late joiners miss
    state, and the game cannot use Summer hosting, matchmaking or identity.
+   They are the tools for a custom build sold outside Summer Games (see
+   [Where it runs](#where-it-runs-only-through-summer-games)).
 5. **Test under a bad network before calling anything done:** Local Play
    with latency, jitter and loss (`multiplayer-testing`).
 
@@ -131,6 +160,7 @@ Each skill continues the same small game, so their code fits together:
 
 | They ask for | On Summer |
 |---|---|
+| Multiplayer on Steam, itch.io or in their own phone app | Custom networking they write and host; Summer multiplayer runs only through Summer Games (see [Where it runs](#where-it-runs-only-through-summer-games)) |
 | "One player hosts", peer-to-peer | A headless authority per match, started by Summer or by Local Play |
 | Host migration | Not needed: no player is the authority |
 | Join by IP, invite code, server browser | Not available. Players join a queue; friends join as a party (`summer-parties`) |
@@ -145,6 +175,9 @@ Each skill continues the same small game, so their code fits together:
 Check what exists: `summer.build.json`, `world.json`, `network/`,
 `authority/`, `client/`.
 
+- **The game is headed for Steam or another store:** settle
+  [Where it runs](#where-it-runs-only-through-summer-games) with the person
+  first.
 - **None of them:** start with `multiplayer-project`.
 - **They exist:** pick the skill for the piece you need from the tables above.
 - **The game already uses `@rpc` or `MultiplayerSynchronizer`:** tell the user

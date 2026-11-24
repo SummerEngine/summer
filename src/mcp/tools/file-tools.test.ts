@@ -137,6 +137,41 @@ describe("identity-bound MCP file tools", () => {
     ]);
   });
 
+  it.each(["$&", "$$", "$`", "$'", "$1", "", "literal output"])(
+    "writes unique replacement text literally: %j",
+    async (replacement) => {
+      const sha = "c".repeat(64);
+      const executeIdentityBoundOps = vi.fn(async () => ({
+        status: "ok",
+        results: [{ ok: true, op: "WriteFile" }],
+      }));
+      vi.mocked(getClient).mockResolvedValue({
+        getBoundProjectIdHash: () => "hash-literal",
+        readProjectFile: vi.fn(async () => ({
+          ok: true,
+          data: { content: "before OLD after", encoding: "utf-8", sha256: sha },
+        })),
+        executeIdentityBoundOps,
+      } as never);
+
+      await tool(tools(), "summer_replace_text").handler({
+        path: "res://literal.txt",
+        old_text: "OLD",
+        new_text: replacement,
+        replace_all: false,
+      });
+
+      expect(executeIdentityBoundOps).toHaveBeenCalledWith([
+        {
+          op: "WriteFile",
+          path: "res://literal.txt",
+          content: `before ${replacement} after`,
+          expectedSha256: sha,
+        },
+      ]);
+    }
+  );
+
   it("serializes complete replace transactions for the same project file", async () => {
     let currentContent = "speed = 10\nname = \"runner\"\n";
     let currentSha = "a".repeat(64);

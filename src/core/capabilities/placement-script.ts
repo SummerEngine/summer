@@ -267,6 +267,32 @@ func _dirs(root, args):
 
 # ---------------------------------------------------------------- bounds
 
+# Geometry in the frame the mount will use: its final axis lengths, before
+# the rigid turn into the surface. A sheared current frame has different extents.
+func _mount_geoms(subject, subject_xf, geoms):
+	var b = subject_xf.basis
+	var axis_lengths = Vector3(b.x.length(), b.y.length(), b.z.length())
+	var poses = {subject: Transform3D(Basis.from_scale(axis_lengths), subject_xf.origin)}
+	var posed = []
+	for g in geoms:
+		var node = g[0]
+		var chain = []
+		while not poses.has(node):
+			if not (node is Node3D) or node.top_level:
+				return {"fail": _fail("independent_subject_geometry", "Visible mounting geometry does not inherit the subject transform")}
+			chain.append(node)
+			node = node.get_parent()
+		var t = poses[node]
+		for i in range(chain.size() - 1, -1, -1):
+			node = chain[i]
+			t = t * node.transform
+			if node.is_scale_disabled():
+				t.basis = t.basis.orthonormalized()
+			poses[node] = t
+		posed.append([g[0], t, g[2]])
+	return {"geoms": posed}
+
+
 func _cmd_bounds(root, active, args):
 	var d = _dirs(root, args)
 	if d.has("fail"):
@@ -296,7 +322,13 @@ func _cmd_bounds(root, active, args):
 		rec["position"] = _raw3(n.position)
 		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
-			rec["intervals"] = _intervals(geoms, dirs)
+			var measured = geoms
+			if spec.get("mount_frame", false):
+				var preview = _mount_geoms(n, _xf(n, root), geoms)
+				if preview.has("fail"):
+					return preview["fail"]
+				measured = preview["geoms"]
+			rec["intervals"] = _intervals(measured, dirs)
 			var reach = 0.0
 			var o = _xf(n, root).origin
 			for g in geoms:
@@ -466,7 +498,7 @@ func _cmd_raycast(root, active, args):
 
 # ---------------------------------------------------------------- meshes
 
-# Triangles of the given meshes (each [MeshInstance3D, frame transform, aabb])
+# Triangles of mesh nodes (each [node, frame transform, mesh aabb, visible])
 # in one frame: area-binned planar faces and open boundary loops.
 func _analyze(meshes, budget, want_planes, want_loops):
 	var planes = {}
@@ -478,85 +510,94 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
-		var mesh = m[0].mesh
-		var t = m[1]
-		var flip = t.basis.determinant() < 0.0
-		var weld = {}
-		var pos = PackedVector3Array()
-		var edges = {}
-		for s in range(mesh.get_surface_count()):
+		var mesh = _mesh_resource(m[0])
+		if _mesh_tris(mesh) == 0:
+			continue
+		for instance in range(_drawn_instances(m[0])):
 			if truncated:
 				break
-			if not _is_tris(mesh, s):
-				continue
-			var culls = _culls_back(m[0], s) if want_planes else true
-			var arr = mesh.surface_get_arrays(s)
-			var verts = arr[Mesh.ARRAY_VERTEX]
-			if verts == null or verts.size() == 0:
-				continue
-			if verts.size() > budget * 3:
-				truncated = true
-				break
-			var idx = arr[Mesh.ARRAY_INDEX]
-			var has_idx = idx != null and idx.size() > 0
-			var count = idx.size() if has_idx else verts.size()
-			var ids = PackedInt32Array()
-			ids.resize(verts.size())
-			var wv = PackedVector3Array()
-			wv.resize(verts.size())
-			for i in range(verts.size()):
-				var p = t * verts[i]
-				wv[i] = p
-				var key = Vector3i(roundi(p.x * 10000.0), roundi(p.y * 10000.0), roundi(p.z * 10000.0))
-				var id = weld.get(key, -1)
-				if id < 0:
-					id = pos.size()
-					weld[key] = id
-					pos.append(p)
-				ids[i] = id
-			var k = 0
-			while k + 2 < count:
-				if analyzed >= budget:
+			var t = m[1]
+			if m[0] is MultiMeshInstance3D:
+				t = t * m[0].multimesh.get_instance_transform(instance)
+			var flip = t.basis.determinant() < 0.0
+			var weld = {}
+			var pos = PackedVector3Array()
+			var edges = {}
+			for s in range(mesh.get_surface_count()):
+				if truncated:
+					break
+				if not _is_tris(mesh, s):
+					continue
+				var culls = _culls_back(m[0], s) if want_planes else true
+				var arr = mesh.surface_get_arrays(s)
+				var verts = arr[Mesh.ARRAY_VERTEX]
+				if verts == null or verts.size() == 0:
+					continue
+				if verts.size() > budget * 3:
 					truncated = true
 					break
-				analyzed += 1
-				var i0 = idx[k] if has_idx else k
-				var i1 = idx[k + 1] if has_idx else k + 1
-				var i2 = idx[k + 2] if has_idx else k + 2
-				k += 3
-				if want_planes:
-					var a = wv[i0]
-					var cr = (a - wv[i2]).cross(a - wv[i1])
-					if flip:
-						cr = -cr
-					var l = cr.length()
-					if l > 0.0000000001:
-						var nn = cr / l
-						var area = l * 0.5
-						var ca = area if culls else 0.0
-						var off = nn.dot(a)
-						var pk = Vector4i(roundi(nn.x * 40.0), roundi(nn.y * 40.0), roundi(nn.z * 40.0), roundi(off * 100.0))
-						var acc = planes.get(pk)
-						if acc == null:
-							planes[pk] = [area, nn * area, off * area, 1, ca]
-						else:
-							acc[0] += area
-							acc[1] += nn * area
-							acc[2] += off * area
-							acc[3] += 1
-							acc[4] += ca
-				if want_loops:
-					_edge(edges, ids[i0], ids[i1])
-					_edge(edges, ids[i1], ids[i2])
-					_edge(edges, ids[i2], ids[i0])
-		if want_loops and edges.size() > 0:
-			var mc = t * m[2].get_center()
-			var found = _loops(edges, pos)
-			open_chains += found["open"]
-			for lp in found["loops"]:
-				var rec = _loop_record(lp, pos, mc)
-				rec["mesh"] = mi
-				loops.append(rec)
+				var idx = arr[Mesh.ARRAY_INDEX]
+				var has_idx = idx != null and idx.size() > 0
+				var count = idx.size() if has_idx else verts.size()
+				var ids = PackedInt32Array()
+				ids.resize(verts.size())
+				var wv = PackedVector3Array()
+				wv.resize(verts.size())
+				for i in range(verts.size()):
+					var p = t * verts[i]
+					wv[i] = p
+					var key = Vector3i(roundi(p.x * 10000.0), roundi(p.y * 10000.0), roundi(p.z * 10000.0))
+					var id = weld.get(key, -1)
+					if id < 0:
+						id = pos.size()
+						weld[key] = id
+						pos.append(p)
+					ids[i] = id
+				var k = 0
+				while k + 2 < count:
+					if analyzed >= budget:
+						truncated = true
+						break
+					analyzed += 1
+					var i0 = idx[k] if has_idx else k
+					var i1 = idx[k + 1] if has_idx else k + 1
+					var i2 = idx[k + 2] if has_idx else k + 2
+					k += 3
+					if want_planes:
+						var a = wv[i0]
+						var cr = (a - wv[i2]).cross(a - wv[i1])
+						if flip:
+							cr = -cr
+						var l = cr.length()
+						if l > 0.0000000001:
+							var nn = cr / l
+							var area = l * 0.5
+							var ca = area if culls else 0.0
+							var off = nn.dot(a)
+							var pk = Vector4i(roundi(nn.x * 40.0), roundi(nn.y * 40.0), roundi(nn.z * 40.0), roundi(off * 100.0))
+							var acc = planes.get(pk)
+							if acc == null:
+								planes[pk] = [area, nn * area, off * area, 1, ca]
+							else:
+								acc[0] += area
+								acc[1] += nn * area
+								acc[2] += off * area
+								acc[3] += 1
+								acc[4] += ca
+					if want_loops:
+						_edge(edges, ids[i0], ids[i1])
+						_edge(edges, ids[i1], ids[i2])
+						_edge(edges, ids[i2], ids[i0])
+			if want_loops and edges.size() > 0:
+				var mc = t * m[2].get_center()
+				var found = _loops(edges, pos)
+				open_chains += found["open"]
+				for lp in found["loops"]:
+					var rec = _loop_record(lp, pos, mc)
+					rec["mesh"] = mi
+					if m[0] is MultiMeshInstance3D:
+						rec["instance"] = instance
+					loops.append(rec)
 	var plist = []
 	for pk in planes:
 		var acc = planes[pk]
@@ -571,7 +612,9 @@ func _analyze(meshes, budget, want_planes, want_loops):
 # faces are invisible from behind. No material means the default material,
 # which culls back faces.
 func _culls_back(mi, s):
-	var mat = mi.get_active_material(s)
+	var mat = mi.material_override
+	if mat == null:
+		mat = mi.get_active_material(s) if mi is MeshInstance3D else mi.multimesh.mesh.surface_get_material(s)
 	if mat == null:
 		return true
 	if mat is BaseMaterial3D:
@@ -687,6 +730,8 @@ func _loop_raw(lp):
 	var rec = {"mesh": lp["mesh"], "center": _raw3(lp["center"]), "direction": _raw3(lp["direction"]), "radius": lp["radius"], "vertices": lp["vertices"], "max_dev": lp["max_dev"]}
 	if lp["ambiguous"]:
 		rec["direction_ambiguous"] = true
+	if lp.has("instance"):
+		rec["instance"] = lp["instance"]
 	return rec
 
 
@@ -696,6 +741,7 @@ func _collect(top):
 	var geoms = []
 	var markers = []
 	var shapes = []
+	var unsupported = []
 	var stack = [[top, Transform3D.IDENTITY, true, true]]
 	while stack.size() > 0:
 		var it = stack.pop_back()
@@ -713,6 +759,11 @@ func _collect(top):
 					geoms.append([n, t, bb])
 				if n is MeshInstance3D and n.mesh != null:
 					meshes.append([n, t, bb, vis])
+			if n is MultiMeshInstance3D and n.multimesh != null and n.multimesh.mesh != null:
+				if n.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
+					unsupported.append([String(top.get_path_to(n)), vis])
+				else:
+					meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis])
 		elif n is Marker3D:
 			markers.append([n, t])
 		elif n is CollisionShape3D:
@@ -723,7 +774,32 @@ func _collect(top):
 	meshes.sort_custom(by_path)
 	markers.sort_custom(by_path)
 	shapes.sort_custom(by_path)
-	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes}
+	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes, "unsupported": unsupported}
+
+
+func _mesh_resource(node):
+	return node.mesh if node is MeshInstance3D else node.multimesh.mesh
+
+
+func _drawn_instances(node):
+	if node is MeshInstance3D:
+		return 1
+	var mm = node.multimesh
+	return mm.instance_count if mm.visible_instance_count < 0 else mini(mm.instance_count, mm.visible_instance_count)
+
+
+func _mesh_analysis_error(col, visible_only = false):
+	var unsupported = []
+	for item in col["unsupported"]:
+		if not visible_only or item[1]:
+			unsupported.append(item[0])
+	if not unsupported.is_empty():
+		return _fail("unsupported_multimesh_format", "Triangle analysis requires MultiMesh.TRANSFORM_3D; 2D transform data at " + str(unsupported))
+	if DisplayServer.get_name() == "headless" or RenderingServer.get_current_rendering_driver_name() == "dummy":
+		for m in col["meshes"]:
+			if m[0] is MultiMeshInstance3D and _drawn_instances(m[0]) > 0 and (not visible_only or m[3]):
+				return _fail("multimesh_backend_unavailable", "The dummy renderer does not retain MultiMesh instance transforms or bounds; inspect this asset in a rendering editor.")
+	return null
 
 
 func _visible_meshes(col):
@@ -832,6 +908,9 @@ func _cmd_inspect_asset(args):
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
 	var col = _collect(inst)
+	var analysis_error = _mesh_analysis_error(col)
+	if analysis_error != null:
+		return analysis_error
 	var out = {"ok": true, "frame": "asset_root", "root_class": inst.get_class(), "root_name": String(inst.name)}
 	if inst is Node3D:
 		out["root_transform_identity"] = inst.transform.is_equal_approx(Transform3D.IDENTITY)
@@ -852,10 +931,13 @@ func _describe(inst, args):
 	var meshes_out = []
 	var total = 0
 	for m in col["meshes"]:
-		var tris = _mesh_tris(m[0].mesh)
+		var tris = _mesh_tris(_mesh_resource(m[0])) * _drawn_instances(m[0])
 		total += tris
-		var mb = _bounds_of([[m[0], m[1], m[2]]])
+		var mb = _bounds_of([[m[0], m[1], m[0].get_aabb()]])
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
+		if m[0] is MultiMeshInstance3D:
+			rec["instances"] = m[0].multimesh.instance_count
+			rec["drawn_instances"] = _drawn_instances(m[0])
 		if not m[3]:
 			rec["hidden"] = true
 		meshes_out.append(rec)
@@ -944,6 +1026,9 @@ func _resolve_port(root, node, port, budget, want_others):
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
 	var col = _collect(node)
+	var analysis_error = _mesh_analysis_error(col, true)
+	if analysis_error != null:
+		return {"fail": analysis_error}
 	var an = _analyze(_visible_meshes(col), budget, false, true)
 	var loops = []
 	for lp in an["loops"]:

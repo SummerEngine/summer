@@ -4,9 +4,9 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
-
+- **Your agent now asks where your multiplayer game will be sold before it builds anything.** The `multiplayer` skill says up front that Summer multiplayer runs only when the game is played through Summer Games (summer.games, the desktop app and the phone apps). For Steam, itch.io or your own store listing it tells the agent to build custom networking that you host, and that a phone app exported from Project > Export cannot join Summer-hosted matches.
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
 
 ## [4.9.2] - 2026-11-12
 

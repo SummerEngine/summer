@@ -201,11 +201,10 @@ export function roundVec(v: Vec3, digits = 3): Vec3 {
   return [round(v[0], digits), round(v[1], digits), round(v[2], digits)];
 }
 
-/** A number in Godot variant-string form: fixed-point, never exponent notation. */
+/** Serialize a finite scalar without changing the value sent to Godot. */
 export function godotNumber(value: number): string {
   if (!Number.isFinite(value)) throw new Error("non-finite number in a variant string");
-  const fixed = value.toFixed(6).replace(/\.?0+$/, "");
-  return fixed === "-0" || fixed === "" ? "0" : fixed;
+  return String(value);
 }
 
 export function toGodotVector3(v: Vec3): string {

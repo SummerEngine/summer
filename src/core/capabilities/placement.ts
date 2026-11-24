@@ -57,10 +57,7 @@ import {
   scale,
   signedAxisVector,
   sub,
-  toGodotTransform,
-  xformCompose,
   xformFromArray,
-  xformInverse,
   xformMulPoint,
   type Basis3,
   type SignedAxis,
@@ -152,7 +149,7 @@ const NODE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_\- ]*$/;
 // Probe plumbing
 // ---------------------------------------------------------------------------
 
-function fail(tool: string, failureReason: string, error: string, extra: JsonRecord = {}): PlacementResult {
+function fail(tool: string, failureReason: string, error: string, extra: JsonRecord = {}): PlacementResult & { ok: false } {
   return { ok: false, tool, failure_reason: failureReason, error, ...extra };
 }
 
@@ -222,6 +219,21 @@ export async function runPlacementProbe(
   return result as PlacementResult;
 }
 
+/** Ask Godot to round-trip the writable local pose before issuing any mutation. */
+async function planLocalTransform(
+  client: PlacementClient, tool: string, scenePath: string, path: string, desiredWorld: Xform,
+): Promise<{ ok: true; localTransform: string; originalTransform: string } | (PlacementResult & { ok: false })> {
+  const plan = await runPlacementProbe(client, tool, {
+    cmd: "plan_transform", scene_path: scenePath, path, desired: [...desiredWorld.basis, desiredWorld.origin],
+  });
+  if (!plan.ok) return { ...plan, ok: false, saved: false };
+  const { local_transform: local, original_transform: original } = plan;
+  if (typeof local !== "string" || !parseGodotTransform(local) || typeof original !== "string" || !parseGodotTransform(original)) {
+    return fail(tool, "measurement_script_failed", "The placement probe returned an invalid transform.", { saved: false });
+  }
+  return { ok: true, localTransform: local, originalTransform: original };
+}
+
 function bytes(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
@@ -280,10 +292,6 @@ interface NodeBounds {
   geometryCount: number;
   independentGeometry: string[];
   xform: Xform;
-  parent: Xform;
-  /** The node's local transform as Godot writes it (var_to_str), for an
-   *  exact restore. */
-  transformStr?: string;
   intervals?: Array<[number, number]>;
   reach?: number;
 }
@@ -296,8 +304,6 @@ function parseBounds(record: unknown): NodeBounds {
     geometryCount: typeof r.geometry_count === "number" ? r.geometry_count : 0,
     independentGeometry: Array.isArray(r.independent_geometry) ? r.independent_geometry.map(String) : [],
     xform: xformFromArray(r.xform),
-    parent: xformFromArray(r.parent_xform),
-    transformStr: typeof r.transform_str === "string" ? r.transform_str : undefined,
     intervals: Array.isArray(r.intervals) ? (r.intervals as Array<[number, number]>) : undefined,
     reach: typeof r.reach === "number" ? r.reach : undefined,
   };
@@ -1405,15 +1411,13 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   // then let SnapToSurface sweep it in over a short, bounded distance.
   const basis = scaledBasis(mount.rotation, basisScale(subject.xform.basis));
   const preseat: Xform = { basis, origin: add(plan.origin, scale(n, ATTACH_PRESEAT_CLEARANCE)) };
-  const local = xformCompose(xformInverse(subject.parent), preseat);
+  const transformPlan = await planLocalTransform(client, tool, args.scenePath, args.subject, preseat);
+  if (!transformPlan.ok) return transformPlan;
   const sweep = round(args.standoff + ATTACH_PRESEAT_CLEARANCE + ATTACH_SEAT_REACH, 4);
   const options = { scenePath: args.scenePath };
   const restore = async (): Promise<boolean> => {
-    const original = subject.transformStr && parseGodotTransform(subject.transformStr)
-      ? subject.transformStr
-      : toGodotTransform(xformCompose(xformInverse(subject.parent), subject.xform));
     const receipt = await client.executeIdentityBoundOps(
-      [{ op: "SetProp", path: args.subject, key: "transform", value: original }],
+      [{ op: "SetProp", path: args.subject, key: "transform", value: transformPlan.originalTransform }],
       options
     );
     return !extractOpError(receipt);
@@ -1433,7 +1437,7 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   };
 
   const receipt = await client.executeIdentityBoundOps([
-    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
+    { op: "SetProp", path: args.subject, key: "transform", value: transformPlan.localTransform },
     {
       op: "SnapToSurface",
       subject_path: args.subject,
@@ -1907,7 +1911,6 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
   const sp = spRead.port;
   const tp = tpRead.port;
   const subjectXf = xformFromArray(read.xform);
-  const parentXf = xformFromArray(read.parent_xform);
   const { xform, rotation, joint, rollAxis } = connectTransform(subjectXf, sp, tp, args.gap, args.rollDegrees);
   const tilt = tiltDegrees(subjectXf, rotation);
   if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES && !args.allowTilt) {
@@ -1930,7 +1933,8 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
       }
     );
   }
-  const local = xformCompose(xformInverse(parentXf), xform);
+  const plan = await planLocalTransform(client, tool, args.scenePath, args.subject, xform);
+  if (!plan.ok) return plan;
   const warnings: string[] = [];
   for (const [label, port] of [["subject", sp], ["target", tp]] as const) {
     if (port.direction_ambiguous) warnings.push(`${label}_port_direction_ambiguous`);
@@ -1938,7 +1942,7 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
   }
   if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES) warnings.push("tilt_allowed");
   const receipt = await executeSceneMutation(client, args.scenePath, [
-    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
+    { op: "SetProp", path: args.subject, key: "transform", value: plan.localTransform },
   ]);
   const failed = mutationFailure(tool, receipt);
   if (failed) return failed;

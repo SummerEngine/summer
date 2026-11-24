@@ -14,6 +14,7 @@
  *   bounds         visible-geometry extents of nodes along three directions
  *                  (world axes or a node's local axes), plus transforms.
  *   raycast        physics ray (active scene only) and a visual-AABB ray.
+ *   plan_transform verify a parent-local literal reproduces a desired full pose.
  *   ports          resolve Marker3D ports (optionally with the subject's
  *                  other markers), or return every open loop of the node in
  *                  its own frame for placement.ts to order and pick from.
@@ -96,6 +97,8 @@ func _dispatch(root, active, args):
 		return _cmd_bounds(root, active, args)
 	if cmd == "raycast":
 		return _cmd_raycast(root, active, args)
+	if cmd == "plan_transform":
+		return _plan_transform(root, args)
 	if cmd == "ports":
 		return _cmd_ports(root, args)
 	if cmd == "blockers":
@@ -131,6 +134,40 @@ func _xf12(t):
 
 func _vec(a):
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
+
+
+# Compare each rounded Vector3 to the original double-precision request.
+func _distance_to_request(v: Vector3, a):
+	return sqrt(pow(v.x - a[0], 2) + pow(v.y - a[1], 2) + pow(v.z - a[2], 2))
+
+
+func _plan_transform(root, args):
+	var node = _node(root, args["path"])
+	if not (node is Node3D):
+		return _fail("not_node3d", "placement subject must be a Node3D")
+	var xf = args["desired"]
+	var want = Transform3D(Basis(_vec(xf[0]), _vec(xf[1]), _vec(xf[2])), _vec(xf[3]))
+	var parent = _parent_xf(node, root)
+	var det = parent.basis.determinant()
+	var refused = _fail("transform_not_representable", "The parent transform cannot reproduce the requested world pose at engine precision.")
+	if not is_finite(det) or det == 0.0 or not want.is_finite():
+		return refused
+	var inv = parent.basis.inverse()
+	var local = Transform3D(inv * want.basis, inv * (want.origin - parent.origin))
+	if not local.is_finite():
+		return refused
+	var literal = var_to_str(local)
+	var stored: Transform3D = str_to_var(literal)
+	var actual = parent * stored
+	if node.is_scale_disabled():
+		actual.basis = actual.basis.orthonormalized()
+	if not actual.is_finite() or _distance_to_request(actual.origin, xf[3]) > 0.0001:
+		return refused
+	# Relative axis error checks scale and orientation even for very small pieces.
+	for i in 3:
+		if _distance_to_request(actual.basis[i], xf[i]) > want.basis[i].length() * 0.0001:
+			return refused
+	return {"ok": true, "local_transform": literal, "original_transform": var_to_str(node.transform)}
 
 
 func _open_scene(scene_path):
@@ -317,7 +354,6 @@ func _cmd_bounds(root, active, args):
 			if not _inherits_3d(g[0], n):
 				rec["independent_geometry"].append(_rel(root, g[0]))
 		rec["position"] = _raw3(n.position)
-		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
 			var measured = geoms
 			if spec.get("mount_frame", false):
@@ -1141,8 +1177,7 @@ func _cmd_ports(root, args):
 		if p.has("position"):
 			p["position"] = _raw3(p["position"])
 			p["direction"] = _raw3(p["direction"])
-	var parent_xf = _parent_xf(sub, root)
-	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root)), "parent_xform": _xf12(parent_xf)}
+	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root))}
 
 
 # ---------------------------------------------------------------- blockers

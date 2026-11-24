@@ -42,6 +42,37 @@ func _check_world_bounds(probe, errors: Array):
 			errors.append("bounds must use the subject's own private world")
 	scene.free()
 
+func _check_transform_plan(probe, errors: Array):
+	var scene := Node3D.new()
+	root.add_child(scene)
+	var parent := Node3D.new()
+	parent.name = "Rig"
+	scene.add_child(parent)
+	var piece := _mesh(parent, "Piece")
+	var wanted := Transform3D(Basis.from_euler(Vector3(0.3, -0.7, 0.25)), Vector3(4.125, 3.3, -6.7))
+	var request = {"path": "Rig/Piece", "desired": []}
+	for v: Vector3 in [wanted.basis.x, wanted.basis.y, wanted.basis.z, wanted.origin]:
+		request.desired.append([v.x, v.y, v.z])
+	var small := Basis.IDENTITY.scaled(Vector3.ONE * 0.00005)
+	var mirrored := Basis(Vector3.UP, 0.5).scaled(Vector3(-2, 1.3, 0.8))
+	var lossy := Basis(Vector3.RIGHT, Vector3(1, 0.0000001, 0), Vector3.BACK)
+	for case in [[small, true], [mirrored, true], [lossy, false], [Basis.IDENTITY.scaled(Vector3(0, 1, 1)), false]]:
+		parent.basis = case[0]
+		var original := piece.transform
+		var plan = probe._plan_transform(scene, request)
+		if piece.transform != original or plan.ok != case[1]:
+			errors.append("full-pose preflight: " + str(case))
+		elif plan.ok:
+			piece.transform = str_to_var(plan.local_transform)
+			if not piece.global_transform.is_equal_approx(wanted):
+				errors.append("planned pose differs from Godot: " + str(case))
+			piece.transform = str_to_var(plan.original_transform)
+			if piece.transform != original:
+				errors.append("original transform changed")
+		elif plan.failure_reason != "transform_not_representable":
+			errors.append("unexpected refusal: " + str(plan))
+	scene.free()
+
 func _run():
 	var scene := Node3D.new()
 	scene.name = "Scene"
@@ -111,6 +142,7 @@ func _run():
 		errors.append("independent parent spaces")
 	if bounds["nodes"][2]["independent_geometry"] != ["Parent/Plain/Independent"]:
 		errors.append("independent geometry must name visible plain child only")
+	_check_transform_plan(placement, errors)
 	await _check_world_bounds(placement, errors)
 	var f := FileAccess.open("res://result.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify({"errors": errors, "observations": observations, "bounds": bounds}))

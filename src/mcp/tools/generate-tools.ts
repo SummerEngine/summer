@@ -806,7 +806,8 @@ Known models (image-to-video, when imageUrl provided):
 If imageUrl is provided, switches to image-to-video mode.
 Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
 
-Returns the generated video URL and asset metadata.
+Returns a queued jobId, not a finished video. Poll summer_check_job every 15-30 seconds
+until completed or failed; the completed job holds the generated video asset.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
@@ -859,9 +860,9 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     "summer_check_job",
     `Check the status of an async generation job.
 
-summer_generate_3d and summer_generate_motion return a jobId; call this with it
+summer_generate_3d, summer_generate_video and summer_generate_motion return a jobId; call this with it
 every 15-30 seconds until status is "completed" or "failed". A completed job
-carries the result: assetId (3D), rigAssetId (rig=true), animationAssetId or
+carries the result: assetId (3D or video), rigAssetId (rig=true), animationAssetId or
 result.assets (motion), with file URLs. Import with summer_import_asset_by_id.
 
 Status values: waiting, active, completed, failed, delayed, unknown.

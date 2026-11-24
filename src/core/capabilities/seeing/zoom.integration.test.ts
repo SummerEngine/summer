@@ -41,6 +41,7 @@ func check():
 	for spec in JSON.parse_string(FileAccess.get_file_as_string("res://cases.json")):
 		var wrapper = load("res://" + spec.tag + "/wrapper.tscn").instantiate()
 		root.add_child(wrapper)
+		await process_frame
 		var viewport: SubViewport = wrapper.find_children("*", "SubViewport", true, false)[0]
 		var crop := viewport.get_camera_3d()
 		var reference := SubViewport.new()

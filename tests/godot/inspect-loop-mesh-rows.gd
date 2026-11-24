@@ -10,8 +10,13 @@ func add_mesh(parent: Node3D, label: String, mesh: Mesh, x: float) -> MeshInstan
 	return node
 
 func _initialize():
+	call_deferred("check")
+
+func check():
 	var probe = preload("res://probe.gd").new()
 	var asset := Node3D.new()
+	root.add_child(asset)
+	assert(asset.is_inside_tree())
 	var tube := CylinderMesh.new()
 	tube.cap_top = false
 	tube.cap_bottom = false

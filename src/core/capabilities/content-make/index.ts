@@ -8,7 +8,7 @@ import { loudness, onsets, probe, requireTools, run } from "./media.js";
 import { alignScript, beatCaptions, beatMap, bestWindow, chunkWords, evaluateChecks, FREEZE_LIMIT, lineStarts, mapTimes, musicStart, pickReference, scoreReference, snapCuts, unwrittenLines, voiceAnchors, type PickContext } from "./plan.js";
 import { buildBase, captionTrack, contactSheet, cover, fontFile, mix, motionReport, pictureTrack, sideBySide, wordCaptionItems, type CaptionBox } from "./render.js";
 import { defaultContentRoot, indexFootage, referenceVideo, studyReference } from "./study.js";
-import type { Check, FootageClip, FootageIndex, Plan, Reference, Study } from "./types.js";
+import type { Check, FootageClip, FootageIndex, Plan, Reference, ShotSpec, Study } from "./types.js";
 import { transcribeWords } from "./voice.js";
 
 /**
@@ -339,6 +339,26 @@ function briefChanges(brief: string | undefined): Array<{ sha?: string; title: s
 }
 
 /** Makes one piece; see the header of this file. */
+/** Time ranges `[start, end]` already used by `clipPath` in `shots`, sized by each shot's own duration from `cuts`. */
+export function usedClipWindows(
+  shots: readonly ShotSpec[],
+  cuts: readonly number[],
+  clipPath: string,
+  excludeIndex?: number,
+): Array<[number, number]> {
+  const used: Array<[number, number]> = [];
+  for (let j = 0; j < shots.length; j++) {
+    if (j === excludeIndex) continue;
+    const other = shots[j];
+    if (other.src !== clipPath) continue;
+    const duration = cuts[j + 1] - cuts[j];
+    if (Number.isFinite(duration) && duration > 0) {
+      used.push([other.t ?? 0, (other.t ?? 0) + duration]);
+    }
+  }
+  return used;
+}
+
 export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps = defaultDeps(input.face)): Promise<ContentMakeResult> {
   const today = deps.now().toISOString().slice(0, 10);
   let request = input.workDir ? readJson<Request>(join(resolve(input.workDir), "request.json")) : null;
@@ -635,7 +655,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
         const shot = plan.shots[index];
         const clip = clipsByPath.get(shot.src!) as FootageClip;
         const seconds = cuts[index + 1] - cuts[index];
-        const used = plan.shots.filter((other, j) => j !== index && other.src === clip.path).map((other, j): [number, number] => [other.t ?? 0, (other.t ?? 0) + (cuts[j + 1] - cuts[j])]);
+        const used = usedClipWindows(plan.shots, cuts, clip.path, index);
         used.push([shot.t ?? 0, (shot.t ?? 0) + seconds]);
         const better = bestWindow(clip, seconds, used);
         // short shots measure noisily: ask for clear motion before keeping the clip
@@ -644,7 +664,7 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
           // another clip with motion where this one has none
           const alt = footage.clips
             .filter((other) => other.kind === "video" && other !== clip)
-            .map((other) => ({ other, window: bestWindow(other, seconds, plan!.shots.filter((s2) => s2.src === other.path).map((s2): [number, number] => [s2.t ?? 0, (s2.t ?? 0) + seconds])) }))
+            .map((other) => ({ other, window: bestWindow(other, seconds, usedClipWindows(plan!.shots, cuts, other.path)) }))
             .filter((candidate) => candidate.window.clean)
             .sort((a, b) => b.window.motion - a.window.motion || a.other.path.localeCompare(b.other.path))[0];
           if (alt && alt.window.motion >= 2) {

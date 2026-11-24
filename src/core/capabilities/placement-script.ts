@@ -510,6 +510,8 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
+		if not m[3]:
+			continue
 		var mesh = _mesh_resource(m)
 		if _mesh_tris(mesh) == 0:
 			continue
@@ -817,14 +819,6 @@ func _mesh_analysis_error(col, visible_only = false):
 	return null
 
 
-func _visible_meshes(col):
-	var out = []
-	for m in col["meshes"]:
-		if m[3]:
-			out.append(m)
-	return out
-
-
 # Whether surface s is a triangle list. Only ArrayMesh binds
 # surface_get_primitive_type; the built-in primitive meshes (PlaneMesh,
 # BoxMesh, CylinderMesh, ...) are always triangles.
@@ -973,7 +967,7 @@ func _describe(inst, args):
 	out["mesh_count"] = meshes_out.size()
 	out["meshes"] = meshes_out
 	out["triangles"] = total
-	var an = _analyze(_visible_meshes(col), budget, true, true)
+	var an = _analyze(col["meshes"], budget, true, true)
 	var planes_out = []
 	for p in an["planes"]:
 		if planes_out.size() >= 16:
@@ -1058,7 +1052,7 @@ func _resolve_port(root, node, port, budget, want_others):
 	var analysis_error = _mesh_analysis_error(col, true)
 	if analysis_error != null:
 		return {"fail": analysis_error}
-	var an = _analyze(_visible_meshes(col), budget, false, true)
+	var an = _analyze(col["meshes"], budget, false, true)
 	var loops = []
 	for lp in an["loops"]:
 		loops.append(_loop_raw(lp))

@@ -244,23 +244,28 @@ describe("failure passthrough", () => {
 
   it.each([
     {
-      name: "summer_runtime_call", args: { path: "/root/A", method: "move" },
+      name: "summer_runtime_call", args: { path: "/root/A", method: "move", args: ["bad"] },
+      expectedRequest: { method: "move", args: ["bad"] },
       op: "CallRuntimeMethod", reason: "call_error", diagnostics: { call_error_detail: "Cannot convert argument 1 from String to Vector3." },
     },
     {
-      name: "summer_runtime_animate", args: { path: "/root/Player", target: "player", action: "play", name: "missing" },
+      name: "summer_runtime_animate", args: { path: "/root/Player", target: "player", cmd: "play", name: "missing" },
+      expectedRequest: { cmd: "play", name: "missing" },
       op: "RuntimeAnimation", reason: "unknown_animation", diagnostics: { animations: ["idle", "walk"] },
     },
     {
       name: "summer_game_input", args: { action: "script", events: [{ type: "action", action: "unknown" }] },
+      expectedRequest: { events: [{ type: "action", action: "unknown" }] },
       op: "SimulateInputScript", reason: "all_rejected", diagnostics: { rejected: [{ index: 0, failure_reason: "unknown_action", error: "Unknown action" }] },
     },
-  ])("returns the native diagnostic fields promised by $name", async ({ name, args, op, reason, diagnostics }) => {
+  ])("returns the native diagnostic fields promised by $name", async ({ name, args, expectedRequest, op, reason, diagnostics }) => {
     const result = failed(op, reason, "operation failed");
     Object.assign(result.results[0], diagnostics);
-    vi.mocked(getClient).mockResolvedValue({ executeOps: vi.fn().mockResolvedValue(result) } as never);
+    const executeOps = vi.fn().mockResolvedValue(result);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
 
     const response = await tool(name).handler(args) as { isError?: boolean };
+    expect(executeOps.mock.calls[0]?.[0]).toMatchObject([{ op, ...expectedRequest }]);
     expect(response.isError).toBe(true);
     const parsed = JSON.parse(text(response).split("\n\nHint:")[0]);
     expect(parsed).toMatchObject({ op, failure_reason: reason, ...diagnostics });

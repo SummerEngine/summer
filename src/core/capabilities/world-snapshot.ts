@@ -29,6 +29,9 @@ export const WORLD_SNAPSHOT_NODE_FIELDS: readonly string[] = [
 
 // Mirrors library/tools/world-snapshot/resource.yaml input_schema (parity-tested).
 export const worldSnapshotInputShape = {
+  include_2d: z.boolean().default(true).describe(
+    "Include 2D nodes in the snapshot and its diff baseline (default true). Set false to omit CanvasItem nodes in mixed scenes. The engine still includes them when the scene root is a CanvasItem."
+  ),
   scene_path: z
     .string()
     .optional()
@@ -66,10 +69,10 @@ export const worldSnapshotInputShape = {
 };
 
 export const worldSnapshotInputSchema = z.object(worldSnapshotInputShape).strict();
-export type WorldSnapshotArgs = z.infer<typeof worldSnapshotInputSchema>;
+export type WorldSnapshotArgs = z.input<typeof worldSnapshotInputSchema>;
 
 export function buildWorldSnapshotOp(args: WorldSnapshotArgs): JsonRecord {
-  const op: JsonRecord = { op: "GetWorldSnapshot" };
+  const op: JsonRecord = { op: "GetWorldSnapshot", include_2d: args.include_2d ?? true };
   if (args.scene_path) op.scene_path = args.scene_path;
   // The stored snapshot is the diff baseline: never smaller than the engine
   // default, larger only when the caller asks to see more than that.

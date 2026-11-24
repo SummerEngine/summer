@@ -455,6 +455,26 @@ attached to a terminal, so its log can look empty while the title scene
 runs. Don't debug from the empty log; run check 1 on your own computer to
 see which scene starts.
 
+### 14. Browser play uses Compatibility
+
+**Why.** Summer 0.8.8 Web exports and the 0.8.8 shared player use Compatibility
+(WebGL 2), even for a project authored with Forward+ or Mobile. A previously
+published ZIP or pinned shared player keeps its own runtime. For example, the
+0.8.0 shared player can select WebGPU on supported browsers.
+
+**Check it.** Boot the exact browser ZIP or shared player. For a shared player,
+record the template version in the play URL. Look for `Compatibility` in the
+startup log, reach the first playable scene and try an input. Check the console
+for script errors and inspect any materials that use Forward+-only effects. On
+the deployed URL, check the Wasm response's `Content-Encoding` and the
+transferred size in the browser Network panel.
+
+**Fix.** If the renderer is wrong, prepare a Compatibility export or select a
+shared template set that requires Compatibility. Verify the replacement in a
+browser before publishing and keep the previous version for rollback. If the
+deployed Wasm is uncompressed, check the host's compression settings and
+repeat the network check.
+
 ## Add a check after every incident
 
 The list grows from real failures. When a release fails in a way no check
@@ -482,6 +502,7 @@ here would have caught:
 - [ ] 8. Every file the game reads by path has a `PACK res://…` line in the listing of `client.pck` (or `server.pck`), no phone text uses `SystemFont`, and text shows as letters on an iPhone (or is reported as not run).
 - [ ] 9. For an iPhone or Android bundle, `summerVersion` has the current Summer release's MAJOR.MINOR.
 - [ ] 10. A signed-in player played the released version for 3 minutes in each Summer Games app, through an analytics event, without the game closing or being signed out (or it is reported as not run).
+- [ ] 14. Browser play reports Compatibility, reaches gameplay, and loads its compressed runtime correctly.
 - [ ] One line per check reported to the user before anything is changed.
 
 <!-- shell-commands: generated from the operation catalog by npm run generate:registry; do not edit by hand -->

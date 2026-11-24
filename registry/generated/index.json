@@ -1615,7 +1615,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "21ee0fe31f2695ce69583fe14f984fdaf6151397f3044490baa178f73287f2f1",
+      "content_hash": "f9013baecccf26af95b4548aedd1c895f1256e28c5ab8e1e1d42cb57f345f044",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2484,7 +2484,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "3caf0a108d6b949df72a7c431a744bc4e0c9ff8091bb4046114127c8e65405c9",
+      "content_hash": "ac8ba4b38bbd97df353c48c40532dbc2c25826b8fd2be0716d296418777fcd61",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -3159,7 +3159,7 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "38f9a45f9166ecd2851d0e204649b2b8a46a44675c5fa67882a08570e3e626e1",
+      "content_hash": "6815bc3e9243c1517e783723fc1806de389254f52a01f02ef4ce89266558ae00",
       "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",

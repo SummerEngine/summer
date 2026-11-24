@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

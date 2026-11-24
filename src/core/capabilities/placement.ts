@@ -366,6 +366,7 @@ interface PlaneRecord {
  *  piece's own frame (the frame of the asset root, or of the scene node with
  *  its own transform excluded), in discovery order. */
 export interface RawLoop {
+  source?: { mesh: number; loop: number };
   center: Vec3;
   direction: Vec3;
   radius: number;
@@ -1743,6 +1744,7 @@ const OTHER_PORTS_SHOWN = 8;
 const PORT_CHOICES_SHOWN = 8;
 
 interface PortRead {
+  source?: RawLoop["source"];
   kind: string;
   position: Vec3;
   direction: Vec3;
@@ -1774,6 +1776,7 @@ function portOut(port: PortRead): JsonRecord {
 function loopPort(loop: OrderedLoop, nodeXf: Xform, normalMatrix: Basis3): PortRead {
   return {
     kind: "open_loop",
+    source: loop.source,
     id: loop.id,
     index: loop.index,
     position: xformMulPoint(nodeXf, loop.center),
@@ -1795,15 +1798,25 @@ export function resolveProbePort(
   selector: PortSelector,
   label: "subject" | "target",
   node: string,
-  withOthers: boolean
+  withOthers: boolean,
+  originalSource?: RawLoop["source"]
 ): { port: PortRead } | { failure: PlacementResult } {
   const record = asRecord(raw) ?? {};
   if (record.kind !== "open_loops") return { port: record as unknown as PortRead };
   const tool = "summer_connect_ports";
-  const loops = orderLoops((Array.isArray(record.loops) ? record.loops : []) as RawLoop[]);
+  const rawLoops = (Array.isArray(record.loops) ? record.loops : []) as RawLoop[];
+  const counts = new Map<number, number>();
+  const loops = orderLoops(rawLoops.map((loop) => {
+    if (loop.mesh === undefined) return loop;
+    const index = counts.get(loop.mesh) ?? 0;
+    counts.set(loop.mesh, index + 1);
+    return { ...loop, source: { mesh: loop.mesh, loop: index } };
+  }));
   const unavailable = asRecord(record.unavailable_meshes) ?? {};
   const available = loops.filter((candidate) => !unavailable[String(candidate.mesh)]);
-  const loop = findLoop(loops, selector);
+  const loop = originalSource
+    ? loops.find((candidate) => candidate.source?.mesh === originalSource.mesh && candidate.source.loop === originalSource.loop)
+    : findLoop(loops, selector);
   if (!loop) {
     const asked = selector.kind === "loop_index" ? `open-loop index ${selector.index}` : selector.kind === "loop_id" ? `open loop ${selector.id}` : `port ${selector.name}`;
     return {
@@ -1978,8 +1991,8 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
     warnings,
   };
   const after = await runPlacementProbe(client, tool, readArgs);
-  const sp2Read = after.ok ? resolveProbePort(after.subject_port, subjectSel, "subject", args.subject, true) : undefined;
-  const tp2Read = after.ok ? resolveProbePort(after.target_port, targetSel, "target", args.target, false) : undefined;
+  const sp2Read = after.ok ? resolveProbePort(after.subject_port, subjectSel, "subject", args.subject, true, sp.source) : undefined;
+  const tp2Read = after.ok ? resolveProbePort(after.target_port, targetSel, "target", args.target, false, tp.source) : undefined;
   const sp2 = sp2Read && "port" in sp2Read ? sp2Read.port : undefined;
   const tp2 = tp2Read && "port" in tp2Read ? tp2Read.port : undefined;
   const others = otherPortsOut(sp, sp2, { rotation, joint });

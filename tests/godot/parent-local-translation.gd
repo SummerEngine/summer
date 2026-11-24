@@ -2,6 +2,12 @@ extends SceneTree
 
 # SCENE_SPACE_HELPERS
 
+class SceneContext:
+	var scene: Node3D
+
+	func get_scene_root():
+		return scene
+
 func _initialize():
 	check.call_deferred()
 
@@ -47,5 +53,36 @@ func check():
 		if _translated_position_literal(remote, Vector3(0, -99999992, 0), delta) != null:
 			errors.append("accepted a write missing its target by three metres")
 		count += 1
+	# These are the unrounded scalar components sent in the public request.
+	for sample in [
+		[-10000.0, 10001.0043, true], [10000.0, -10001.0043, true],
+		[0.0, 4097.0252, false], [0.0, 65537.003, false],
+		[0.0, 65537.03125, true], [0.0, 8193.0313, true],
+	]:
+		var local := Vector3(sample[0], 0, 0)
+		var literal = _translated_position_literal(Transform3D.IDENTITY, local, [sample[1], 0.0, 0.0])
+		if (literal != null) != sample[2]:
+			errors.append(["unexpected decision", sample])
+		elif literal != null:
+			var stored: Vector3 = str_to_var(literal)
+			if absf((stored.x - local.x) - sample[1]) > 0.0001:
+				errors.append(["lost requested precision", sample])
+		count += 1
+	# Exercise the real JSON adapter that carries a toolkit request into Godot.
+	var ctx = SceneContext.new()
+	ctx.scene = Node3D.new()
+	root.add_child(ctx.scene)
+	var piece := Node3D.new()
+	piece.name = "Piece"
+	ctx.scene.add_child(piece)
+	piece.position.x = -10000
+	var planned = load("res://long-read.gd").new().run(ctx)
+	if not planned.get("ok") or absf(str_to_var(planned["translated_position"]).x - 1.0043) > 0.0001:
+		errors.append("the scene read rounded the incoming scalar request")
+	piece.position.x = 0
+	if load("res://far-read.gd").new().run(ctx).get("failure_reason") != "translation_not_representable":
+		errors.append("the scene read accepted an unrepresentable original request")
+	ctx.scene.free()
+	count += 2
 	FileAccess.open("res://result.json", FileAccess.WRITE).store_string(JSON.stringify({"count": count, "errors": errors}))
 	quit()

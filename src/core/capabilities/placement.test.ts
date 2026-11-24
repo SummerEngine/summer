@@ -1280,6 +1280,22 @@ describe("stable open-loop ports", () => {
     }
   });
 
+  it("verifies the chosen physical opening after another mesh crosses it in the sorted port list", () => {
+    const moving = { center: [0, 2, 0], direction: [0, 1, 0], radius: 1, mesh: 1 };
+    const fixed = { ...moving, center: [0, 0, 0], mesh: 0 };
+    const lower = { ...moving, center: [0, -2, 0], direction: [0, -1, 0] };
+    for (const selector of ["+Y", 0]) {
+      const initial = { kind: "open_loops", node_xform: xf12([0, 0, 0]), loops: [fixed, lower, moving] };
+      const selected = resolveProbePort(initial, parsePortSelector(selector), "subject", "Piece", true);
+      if ("failure" in selected) throw new Error("the fixture's opening was not found");
+      const reordered = { ...initial, loops: [{ ...fixed, center: [0, 3, 0] }, lower, moving] };
+      expect(resolveProbePort(reordered, parsePortSelector(selector), "subject", "Piece", true, selected.port.source))
+        .toMatchObject({ port: { id: "+Y#2", position: [0, 2, 0] } });
+      expect(resolveProbePort({ ...initial, loops: [fixed, lower] }, parsePortSelector(selector), "subject", "Piece", true, selected.port.source))
+        .toMatchObject({ failure: { failure_reason: "port_not_found" } });
+    }
+  });
+
   it("keeps an open-loop normal perpendicular to both transformed ring tangents, with outward sign", () => {
     // The opening lies in the local XZ plane. Its transformed tangent vectors
     // are (2, 1, 0) and (0, 0, 1), so its outward normal is parallel to (-1, 2, 0).

@@ -15,11 +15,13 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
 - Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
 - Connecting mesh openings checks that the selected subject opening follows the moving piece and that its target stays put.
+- Placement checks use the original requested movement across long distances. A distant piece can reach a precise gap near the origin, and a gap that the saved position cannot represent is refused before writing.
 - Triangle-based surface snaps also verify the saved movement with Godot and restore the starting pose when the requested placement cannot be represented.
 - Adjacent placement and surface-snap recovery ask Godot to check the requested world movement before writing. Small or reflected parents can place accurately, and unrepresentable adjacent placements report a failure before saving.
 - Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
 
 
+- Mesh connection verification measures the two selected openings after a move, even when another tube crosses their position in the port list.
 - Raycasts and surface attachments skip the hit collider’s own display mesh when reporting nearer visual bounds. Angled walls with matching collision no longer produce a spurious obstacle warning.
 - 3D measurement, visual raycasts and placement include visible meshes beyond 20,000 scene nodes. A scan that runs out of budget reports the limit before its partial bounds can guide placement.
 - **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.

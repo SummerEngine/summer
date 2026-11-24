@@ -1,6 +1,6 @@
 id: tool/create-scene
 kind: tool
-version: 1.0.2
+version: 1.1.0
 summary: Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.
 use_when:
   - starting a new level, prefab, or UI scene file
@@ -42,7 +42,7 @@ input_schema:
     rootType:
       type: string
       default: Node3D
-      description: "Root node type. Default 'Node3D' (3D scenes); common alternatives: 'Node2D' (2D scenes), 'Control' (UI scenes), 'Node' (logic-only)."
+      description: "Concrete native Node, or a registered GDScript class open in the editor with a constructor that accepts no arguments. Default 'Node3D'."
     allow_temporary_scene_mutation:
       type: boolean
       description: DEPRECATED, ignored. Scene creation no longer mutates any open scene; kept only so older callers don't break.

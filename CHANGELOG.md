@@ -7,6 +7,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Asset inspection includes visible Sprite3D bounds and the selected frame of each AnimatedSprite3D when measuring a saved scene, including framed textures and billboards.
 
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
+- Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
 - Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
 
 

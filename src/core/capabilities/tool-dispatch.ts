@@ -16,6 +16,7 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { createScene, createSceneInputSchema } from "./create-scene.js";
 import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
 import { setGameRemix } from "./game-remix.js";
 import { viewSetOp } from "./view-set.js";
@@ -1549,42 +1550,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene ---
-  entry("summer_create_scene", "Create a new minimal .tscn with a create-only guard", true, async (args, ctx) => {
-    const safePath = str(args, "path").trim().replace(/\\/g, "/");
-    const rootName = optStr(args, "rootName") ?? "Main";
-    const rootType = optStr(args, "rootType") ?? "Node3D";
-    if (!safePath.startsWith("res://") || safePath.includes("..")) {
-      throw new ToolDispatchError("Scene path must be a traversal-free res:// project path.");
-    }
-    if (!safePath.endsWith(".tscn")) {
-      throw new ToolDispatchError("New scenes must use the text format: the path must end in .tscn.");
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_\- ]*$/.test(rootName)) {
-      throw new ToolDispatchError(`Invalid rootName "${rootName}".`);
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(rootType)) {
-      throw new ToolDispatchError(`Invalid rootType "${rootType}".`);
-    }
-    const client = await ctx.engine();
-    const receipt = requireEngineSuccess(
-      await client.executeIdentityBoundOps([
-        {
-          op: "WriteFile",
-          path: safePath,
-          content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
-          mustNotExist: true,
-        },
-      ])
-    );
-    return {
-      ok: true,
-      created: safePath,
-      rootName,
-      rootType,
-      receipt,
-      hint: "The new scene is on disk but not open. Use open-scene to start editing it.",
-    };
-  }),
+  entry("summer_create_scene", "Create a new minimal .tscn with a create-only guard", true, async (args, ctx) =>
+    requireEngineSuccess(await createScene(await ctx.engine(), parseToolArgs(createSceneInputSchema, args, "create-scene")))
+  ),
   entry("summer_add_node", "Add a node to an exact scene", true, async (args, ctx) =>
     executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
       { op: "AddNode", parent: str(args, "parent"), type: str(args, "type"), name: str(args, "name") },

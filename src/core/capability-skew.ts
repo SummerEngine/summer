@@ -60,7 +60,7 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Project + input
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
   // Files (summer_write_file / summer_replace_text / summer_create_scene)
-  "WriteFile",
+  "WriteFile", "GetClassInfo",
   // Import (RenameFile registers a video converted on this computer: core/capabilities/video-ogv.ts)
   "ImportFromUrl", "ImportFromUrlBatch", "RenameFile",
   // Diagnostics + runtime control

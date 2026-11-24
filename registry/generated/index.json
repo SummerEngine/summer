@@ -7319,8 +7319,8 @@
     {
       "id": "tool/create-scene",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "8a8d28ab4feebc5cbbc9169f6320c64688ab74f950d4ad4c3fc7c089288bf21d",
+      "version": "1.1.0",
+      "content_hash": "8c671a10d30e5d79e703aefd5effa5a86eef58ca211fb4d2cb099e19108ffd74",
       "summary": "Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.",
       "use_when": [
         "starting a new level, prefab, or UI scene file",

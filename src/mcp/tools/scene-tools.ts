@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createScene, createSceneInputShape } from "../../core/capabilities/create-scene.js";
 import { viewSetOp } from "../../core/capabilities/view-set.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
@@ -23,37 +24,8 @@ import {
 // re-exported here for the spatial tools (snap / align).
 export { FALLBACK_SINGLE_ONLY_OPS, resolveSingleOnlyOps, executeSceneMutation };
 
-function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
-  const receipt = (result ?? {}) as Record<string, unknown>;
-  const results = Array.isArray(receipt.results)
-    ? receipt.results as Array<Record<string, unknown>>
-    : [];
-  const failed = results.find((entry) => entry?.ok === false);
-  if (receipt.status === "error" || failed) {
-    const error =
-      (typeof failed?.error === "string" && failed.error) ||
-      (typeof receipt.error === "string" && receipt.error) ||
-      `${context} failed`;
-    throw new Error(error);
-  }
-  return receipt;
-}
-
-/** Compose the minimal valid .tscn text scene: header + one root node.
- *  `uid` and `load_steps` are optional in the engine parser
- *  (resource_format_text.cpp treats a missing uid as INVALID_ID); the editor
- *  assigns a uid on first save. */
-function minimalSceneText(rootName: string, rootType: string): string {
-  return `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`;
-}
-
 const finiteNumber = z.number().finite();
 const finiteVector3 = z.tuple([finiteNumber, finiteNumber, finiteNumber]);
-
-// Node names reject . : @ / " %; the type must be a plain class name.
-// Both are interpolated into quoted .tscn fields, so validate before composing.
-const VALID_ROOT_NAME = /^[A-Za-z_][A-Za-z0-9_\- ]*$/;
-const VALID_ROOT_TYPE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function registerSceneTools(server: McpServer): void {
   server.tool(
@@ -62,97 +34,14 @@ export function registerSceneTools(server: McpServer): void {
 
 The new scene is on disk but NOT opened. Call summer_open_scene to start editing it, then summer_add_node to build it out.
 
+rootType must be a concrete native Node class. Node3D, Node2D, Control and Node work on older editors; other roots need an editor advertising GetClassInfo. Unknown names, Resources and abstract classes are refused before writing a file. For a project class_name, create its native base and attach the script. verified:true confirms both the validated root class and the exact root name/type in the file read back. Class checks do not open, instantiate or modify a scene.
+
 Recommended workflow:
 1) Call summer_get_project_context
 2) Call summer_create_scene with a new res:// path
 3) Call summer_open_scene with that path`,
-    {
-      path: z.string().describe("New scene path, e.g. 'res://scenes/empty_level.tscn'"),
-      rootName: z.string().default("Main").describe("Root node name for the new scene"),
-      rootType: z
-        .string()
-        .default("Node3D")
-        .describe(
-          "Root node type. Default 'Node3D' (3D scenes); common alternatives: 'Node2D' (2D scenes), 'Control' (UI scenes), 'Node' (logic-only)."
-        ),
-      allow_temporary_scene_mutation: z
-        .boolean()
-        .optional()
-        .describe(
-          "DEPRECATED, ignored. Scene creation no longer mutates any open scene; kept only so older callers don't break."
-        ),
-    },
-    async ({ path, rootName, rootType }) =>
-      withEngine(async (client) => {
-        const safePath = path.trim().replace(/\\/g, "/");
-        if (!safePath.startsWith("res://") || safePath.includes("..")) {
-          throw new ToolInputError("Scene path must be a traversal-free res:// project path.");
-        }
-        if (!safePath.endsWith(".tscn")) {
-          throw new ToolInputError("New scenes must use the text format: the path must end in .tscn.");
-        }
-        if (!VALID_ROOT_NAME.test(rootName)) {
-          throw new ToolInputError(
-            `Invalid rootName "${rootName}": use letters, digits, underscores, hyphens, or spaces, starting with a letter or underscore.`
-          );
-        }
-        if (!VALID_ROOT_TYPE.test(rootType)) {
-          throw new ToolInputError(
-            `Invalid rootType "${rootType}": must be a plain class name like 'Node3D', 'Node2D', or 'Control'.`
-          );
-        }
-
-        // Same engine-routed guarded write path summer_write_file uses:
-        // identity-bound, and mustNotExist makes the engine refuse (create-only)
-        // if the path already exists. The open scene is never touched.
-        const receipt = requireSuccessfulOps(
-          await client.executeIdentityBoundOps([
-            {
-              op: "WriteFile",
-              path: safePath,
-              content: minimalSceneText(rootName, rootType),
-              mustNotExist: true,
-            },
-          ]),
-          `Creating ${safePath}`,
-        );
-
-        // Post-write verification: read the file back through the engine. The
-        // write receipt already passed; a read-back failure is reported honestly
-        // instead of failing the create or being masked.
-        let verified = false;
-        let verifyError: string | undefined;
-        try {
-          const read = (await client.readProjectFile(safePath, 4096)) as {
-            ok?: boolean;
-            error?: unknown;
-            data?: { content?: unknown };
-          };
-          const content = typeof read?.data?.content === "string" ? read.data.content : null;
-          if (read?.ok === false) {
-            verifyError = String(read.error ?? "engine could not read the file back");
-          } else if (content === null) {
-            verifyError = "engine returned no text content on read-back";
-          } else if (!content.includes(`[node name="${rootName}"`)) {
-            verifyError = "read-back content does not contain the expected root node";
-          } else {
-            verified = true;
-          }
-        } catch (err) {
-          verifyError = err instanceof Error ? err.message : String(err);
-        }
-
-        return {
-          ok: true,
-          created: safePath,
-          rootName,
-          rootType,
-          verified,
-          ...(verifyError ? { verifyError } : {}),
-          receipt,
-          hint: "The new scene is on disk but not open. Call summer_open_scene to start editing it.",
-        };
-      })
+    createSceneInputShape,
+    async (args) => withEngine(async (client) => createScene(client, args))
   );
 
   server.tool(

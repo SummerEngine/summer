@@ -50,19 +50,19 @@ export function escapeTscnString(value: string): string {
  * through its own script path and parses as JSON — nothing is spliced into
  * GDScript source.
  */
-export function buildWrapperScene(targetScenePath: string, kernelSource: string): string {
+export function buildWrapperScene(targetScenePath: string | undefined, kernelSource: string): string {
   const script = kernelSource;
   return [
     "[gd_scene format=3]",
     "",
-    `[ext_resource type="PackedScene" path="${escapeTscnString(targetScenePath)}" id="1_subject"]`,
+    ...(targetScenePath ? [`[ext_resource type="PackedScene" path="${escapeTscnString(targetScenePath)}" id="1_subject"]`] : []),
     "",
     '[sub_resource type="GDScript" id="GDScript_seeing"]',
     `script/source = "${escapeTscnString(script)}"`,
     "",
     '[node name="SummerSeeing" type="Node3D"]',
     "",
-    '[node name="Subject" parent="." instance=ExtResource("1_subject")]',
+    ...(targetScenePath ? ['[node name="Subject" parent="." instance=ExtResource("1_subject")]'] : []),
     "",
     '[node name="SeeingProbe" type="Node" parent="."]',
     'script = SubResource("GDScript_seeing")',

@@ -9637,8 +9637,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "version": "1.0.2",
+      "content_hash": "30c4aee3174f7f8a3d96ede80a56633288ad28c1d70bb9b847b5386a6884ba73",
       "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",

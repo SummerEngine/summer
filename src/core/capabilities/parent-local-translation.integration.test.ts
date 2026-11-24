@@ -16,7 +16,7 @@ it.runIf(Boolean(binary))("reconstructs representable world movements at Godot p
     execFileSync(binary!, ["--headless", "--path", project, "--audio-driver", "Dummy", "--script", "res://check.gd"], {
       env: { ...process.env, HOME: project, SUMMER_NO_TELEMETRY: "1", DO_NOT_TRACK: "1" }, timeout: 15_000,
     });
-    expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual({ count: 26, errors: [] });
+    expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual({ count: 28, errors: [] });
   } finally {
     rmSync(project, { recursive: true, force: true });
   }

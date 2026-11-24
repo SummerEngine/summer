@@ -62,7 +62,8 @@ func _translated_position_literal(parent: Transform3D, local: Vector3, delta: Ve
 	var literal = var_to_str(next)
 	var stored: Vector3 = str_to_var(literal)
 	var moved = (parent * stored) - (parent * local)
-	if not moved.is_finite() or not moved.is_equal_approx(delta):
+	# A relative tolerance grows with travel and can accept metre-scale misses.
+	if not moved.is_finite() or moved.distance_to(delta) > 0.0001:
 		return null
 	return literal
 `;

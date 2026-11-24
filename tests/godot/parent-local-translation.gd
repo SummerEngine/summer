@@ -42,5 +42,10 @@ func check():
 		if _translated_position_literal(parent, Vector3(0.75, -0.4, 1.2), Vector3(-92.1455, 1.975, -2.394)) != null:
 			errors.append("accepted an unrepresentable requested movement")
 		count += 1
+	var remote := Transform3D(Basis.IDENTITY, Vector3(0, 1e8, 0))
+	for delta in [Vector3(0, -5, 0), Vector3(0, 999995, 0)]:
+		if _translated_position_literal(remote, Vector3(0, -99999992, 0), delta) != null:
+			errors.append("accepted a write missing its target by three metres")
+		count += 1
 	FileAccess.open("res://result.json", FileAccess.WRITE).store_string(JSON.stringify({"count": count, "errors": errors}))
 	quit()

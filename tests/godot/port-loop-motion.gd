@@ -38,6 +38,10 @@ func check():
 			assert(fixed.global_position.is_equal_approx(fixed_start))
 		var subject: Dictionary = probe._resolve_port(scene, piece, 0, 60000, true, piece)
 		assert(subject.loops.size() == 6)
+		if not subject.has("unavailable_meshes"):
+			push_error("The native probe offered meshes that stay fixed when Piece moves.")
+			quit(1)
+			return
 		for mesh in range(3):
 			assert(subject.unavailable_meshes.has(str(mesh)) == (mesh != 0))
 			if mesh != 0:

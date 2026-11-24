@@ -647,11 +647,13 @@ describe("summer_attach_to_surface", () => {
     );
 
   it("keeps the piece's height with a ray and seats its back face, not its origin", async () => {
-    const { client, mutations } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
+    const { client, mutations, probeCalls } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
     const result = await attachToSurface(
       client,
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } })
     );
+    const steps = probeArgs(probeCalls[0]!).steps as Op[];
+    expect(steps[1]).toMatchObject({ from_subject: "Lane2/ShutterWin", origin: [2, 2.35, 3], direction: [0, 0, -1] });
     const t = parseGodotTransform(String(mutations[0]![0]!.value))!;
     // The ray is at y 2.35; the shutter keeps y 1.1. Its back face (0.2 behind
     // the origin) goes onto the wall at z 0: origin z 0.2, sent 5 cm in front.

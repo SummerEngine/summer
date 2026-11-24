@@ -162,10 +162,29 @@ func _rel(root, n):
 
 ${SCENE_SPACE_GDSCRIPT}
 
+# Use the effective world in a live tree. Detached tabs can still have owned
+# or explicitly assigned worlds. A null world there means the scene default.
+func _placement_world(node):
+	if node.is_inside_tree():
+		if node is Node3D:
+			return node.get_world_3d()
+		var view = node if node is Viewport else node.get_viewport()
+		return view.find_world_3d() if view != null else null
+	var cur = node
+	while cur != null:
+		if cur is Viewport:
+			var world = cur.find_world_3d()
+			if world != null:
+				return world
+		cur = cur.get_parent()
+	return null
+
+
 # Visible GeometryInstance3D descendants of start (inclusive) with their
 # scene-space transform and local AABB: the bounds definition AlignDistribute3D
 # uses. exclude holds subtree roots to skip.
-func _geoms(start, root, exclude):
+func _geoms(start, root, exclude, world_source = null):
+	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
 	var stack = [start]
 	var visited = 0
@@ -176,7 +195,7 @@ func _geoms(start, root, exclude):
 		var n = stack.pop_back()
 		if exclude.has(n):
 			continue
-		if n is GeometryInstance3D and _visible(n, root):
+		if n is GeometryInstance3D and _visible(n, root) and (world_source == null or _placement_world(n) == world):
 			var bb = n.get_aabb()
 			if bb.size != Vector3.ZERO:
 				out.append([n, _xf(n, root), bb])
@@ -308,11 +327,10 @@ func _cmd_bounds(root, active, args):
 
 # ---------------------------------------------------------------- raycast
 
-func _phys_ray(root, active, origin, dir, dist, mask, areas, exclude_nodes, accept_under):
+func _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclude_nodes, accept_under):
 	if not active:
 		return {"available": false, "reason": "scene_not_active"}
-	var vp = root.get_viewport()
-	var world = vp.find_world_3d() if vp != null else null
+	var world = _placement_world(world_source)
 	if world == null:
 		return {"available": false, "reason": "no_world_3d"}
 	var space = world.direct_space_state
@@ -425,27 +443,27 @@ func _cmd_raycast(root, active, args):
 	# A ray from a subject toward a surface node: start at the subject origin,
 	# aim at the nearest point of the surface's visible bounds.
 	var from_subject = String(args.get("from_subject", ""))
-	if from_subject != "":
-		var sn = _node(root, from_subject)
-		if sn == null:
-			return _fail("node_not_found", "subject not found: " + from_subject)
+	var world_source = _node(root, from_subject)
+	if world_source == null:
+		return _fail("node_not_found", "subject not found: " + from_subject)
+	if from_subject != "" and not args.has("direction"):
 		if accept_under == null:
 			return _fail("bad_args", "from_subject needs a surface node")
-		origin = _xf(sn, root).origin
-		var sg = _geoms(accept_under, root, [])
+		origin = _xf(world_source, root).origin
+		var sg = _geoms(accept_under, root, [], world_source)
 		if sg.size() == 0:
-			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at: " + surface)
+			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at in the subject's world: " + surface)
 		var iv = _intervals(sg, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
 		var closest = Vector3(clampf(origin.x, iv[0][0], iv[0][1]), clampf(origin.y, iv[1][0], iv[1][1]), clampf(origin.z, iv[2][0], iv[2][1]))
 		if (closest - origin).length() < 0.0001:
 			return _fail("subject_inside_surface_bounds", "the subject origin is inside the surface's bounds, so no direction toward it is defined; pass an explicit ray")
 		dir = (closest - origin).normalized()
-		exclude_nodes.append(sn)
+		exclude_nodes.append(world_source)
 	var out = {"ok": true, "origin": _raw3(origin), "direction": _raw3(dir), "scene_active": active}
 	var phys = {"available": false, "reason": "not_requested"}
 	if mode != "visual_aabb":
-		phys = _phys_ray(root, active, origin, dir, dist, mask, areas, exclude_nodes, accept_under)
-	var geoms = _geoms(root, root, exclude_nodes)
+		phys = _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclude_nodes, accept_under)
+	var geoms = _geoms(root, root, exclude_nodes, world_source)
 	var vis = _vis_ray(geoms, origin, dir, dist, accept_under)
 	out["physics_available"] = phys.get("available", false)
 	if not phys.get("available", false):
@@ -703,7 +721,7 @@ func _loop_raw(lp):
 
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
 func _collect(top, same_world_geometry = false):
-	var world = _port_world(top) if same_world_geometry else null
+	var world = _placement_world(top) if same_world_geometry else null
 	var meshes = []
 	var geoms = []
 	var markers = []
@@ -716,7 +734,7 @@ func _collect(top, same_world_geometry = false):
 	var stack = [top]
 	while stack.size() > 0:
 		var n = stack.pop_back()
-		if n is Node3D and (not same_world_geometry or _port_world(n) == world):
+		if n is Node3D and (not same_world_geometry or _placement_world(n) == world):
 			var t = inverse * _xf(n, top)
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
@@ -985,23 +1003,8 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
-# Detached editor tabs have no containing viewport. An inherited world then
-# resolves to null for the scene, while an owned or assigned World3D still exists.
-func _port_world(node):
-	if node.is_inside_tree():
-		return node.get_world_3d()
-	var parent = node.get_parent()
-	while parent != null:
-		if parent is Viewport:
-			var world = parent.find_world_3d()
-			if world != null:
-				return world
-		parent = parent.get_parent()
-	return null
-
-
 func _resolve_port(root, node, port, budget, want_others):
-	var world = _port_world(node)
+	var world = _placement_world(node)
 	var nt = _xf(node, root)
 	if typeof(port) == TYPE_STRING:
 		var mk = node.get_node_or_null(NodePath(String(port)))
@@ -1011,7 +1014,7 @@ func _resolve_port(root, node, port, budget, want_others):
 			return {"fail": _fail("port_not_found", "no node named '" + String(port) + "' under " + _rel(root, node))}
 		if not (mk is Node3D):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
-		if _port_world(mk) != world:
+		if _placement_world(mk) != world:
 			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
 		var mt = _xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
@@ -1019,7 +1022,7 @@ func _resolve_port(root, node, port, budget, want_others):
 			var mothers = []
 			var mtotal = 0
 			for item in _collect(node)["markers"]:
-				if item[0] == mk or _port_world(item[0]) != world:
+				if item[0] == mk or _placement_world(item[0]) != world:
 					continue
 				mtotal += 1
 				if mothers.size() >= 16:
@@ -1058,7 +1061,7 @@ func _cmd_ports(root, args):
 		return _fail("not_node3d", "subject and target must be Node3D")
 	if sub == tgt or sub.is_ancestor_of(tgt):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
-	if _port_world(sub) != _port_world(tgt):
+	if _placement_world(sub) != _placement_world(tgt):
 		return _fail("different_world_3d", "subject and target must share a World3D to join their ports")
 	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
 	if sp.has("fail"):

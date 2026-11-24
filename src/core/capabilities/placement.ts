@@ -1298,9 +1298,6 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   if (args.surface && args.surface === args.subject) throw new ToolInputError("surface must not be the subject.");
   const missingSnap = missingEngineOpResult(client, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
   if (missingSnap) return { ...missingSnap, tool } as PlacementResult;
-  const ray = args.ray
-    ? { origin: args.ray.origin, direction: args.ray.direction }
-    : { origin: [0, 0, 0], direction: [0, 0, -1], from_subject: args.subject };
   const read = await runPlacementProbe(client, tool, {
     cmd: "multi",
     scene_path: args.scenePath,
@@ -1309,7 +1306,8 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
       { cmd: "bounds", nodes: [{ path: args.subject, mount_frame: true }] },
       {
         cmd: "raycast",
-        ...ray,
+        from_subject: args.subject,
+        ...args.ray,
         surface: args.surface ?? "",
         exclude: [args.subject],
         max_distance: args.maxDistance,

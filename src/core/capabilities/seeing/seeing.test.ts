@@ -333,6 +333,14 @@ describe("summer_frame_shot", () => {
     };
   }
 
+  it.each([1, 3, 3.7, 0.64])("renders candidate scoring images at the ray-grid aspect %s", async (aspect) => {
+    const engine = fakeEngine({ projectRoot: project, analyze: measure });
+    await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1"], aspect, render: "none", save_bookmark: false });
+    const { size } = engine.configs[1]!.image_check as { size: [number, number] };
+    expect(size[0] / size[1]).toBe(aspect);
+    expect(engine.configs[1]!.measure).toMatchObject({ aspect });
+  });
+
   it("measures candidates in-engine, returns the top 3, saves the best and renders one sheet", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: measure });
     const r = (await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1", "House2", "House3"] })) as SeeingSuccess;
@@ -340,7 +348,7 @@ describe("summer_frame_shot", () => {
     expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze", "render"]);
     expect((engine.configs[1]!.candidates as unknown[]).length).toBe(36);
     expect(engine.configs[1]!.measure).toMatchObject({ grid_cols: 24, grid_rows: 14, near_lens_radius: 0.3 });
-    expect(engine.configs[1]!.image_check).toEqual({ size: [96, 56] });
+    expect(engine.configs[1]!.image_check).toEqual({ size: [96, 54] });
     const receipt = r.receipt as { top: unknown[]; rejected: Record<string, number>; bookmark: string };
     expect(receipt.top).toHaveLength(3);
     expect(receipt.rejected.hard_blocked).toBe(12);

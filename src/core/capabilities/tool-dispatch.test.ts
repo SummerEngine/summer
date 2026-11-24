@@ -875,8 +875,8 @@ describe("engine failures exit 1 on the CLI face exactly when the MCP face sets 
     const result = (failure as ToolResultError).result;
     expect(result.ok).toBe(false);
     // The chunked-mutation envelope (engine-ops, shared by both faces) states
-    // which op failed at the top level and keeps the engine's own text per op.
-    expect(result.error).toBe("Engine request failed (AddNode).");
+    // which op failed and carries the native cause at both levels.
+    expect(result.error).toBe("ops[0] AddNode: parent not found: Nope Not sent: SaveScene.");
     expect((result.results as Array<{ error?: string }>)[0]?.error).toBe("parent not found: Nope");
   });
 

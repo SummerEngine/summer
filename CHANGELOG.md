@@ -11,6 +11,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
+- When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
+
 ## [4.9.2] - 2026-11-12
 
 - **Cloud operation discovery matches the hosted server.** The CLI and MCP catalog includes board previews and clips, project templates, web release operations, and the latest video and character inputs.

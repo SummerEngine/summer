@@ -30,8 +30,8 @@ func viewport(parent, name_, own):
 	parent.add_child(view)
 	return view
 
-func inspect(p, scene, sub, target, port = "Port"):
-	var answer = p._cmd_ports(scene, {"subject": sub, "target": target, "subject_port": port, "target_port": "Port"})
+func inspect(p, scene, sub, target, port = "Port", target_port = "Port"):
+	var answer = p._cmd_ports(scene, {"subject": sub, "target": target, "subject_port": port, "target_port": target_port})
 	return answer.get("failure_reason", "ok" if answer.ok else "unexpected error")
 
 func _initialize():
@@ -91,6 +91,8 @@ func check():
 			inspect(p, scene, "Subject", "Shared/Target", "FixedMarker/Port"),
 			inspect(p, scene, "Subject", "Shared/Target", "FixedCarrier/Port"),
 			inspect(p, scene, "Subject", "Shared/Target", "Plain/Piece/Port"),
+			inspect(p, scene, "Subject", ".", "Port", "Subject/Carrier/Port"),
+			inspect(p, scene, "Subject", ".", "Port", "Subject/FixedMarker/Port"),
 			inspect(p, scene, "Subject", "Own/Target"),
 			inspect(p, scene, "Subject", "Shared/Target", "Inner/Nested/Port"),
 			inspect(p, scene, "Left/Piece", "Right/Piece"),
@@ -112,7 +114,7 @@ func check():
       timeout: 30_000,
     });
     const detached = "independent_subject_port";
-    const expected = ["ok", "ok", detached, detached, detached, "different_world_3d", "different_world_3d", "ok", 0, 2, 2, "unsupported_multimesh_format", 1];
+    const expected = ["ok", "ok", detached, detached, detached, "target_port_moves_with_subject", "ok", "different_world_3d", "different_world_3d", "ok", 0, 2, 2, "unsupported_multimesh_format", 1];
     expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual([expected, expected]);
   } finally {
     rmSync(project, { recursive: true, force: true });

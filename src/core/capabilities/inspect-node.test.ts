@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { basisFromEulerScale, inspectNodeFields } from "./inspect-node.js";
+import { inspectNodeFields } from "./inspect-node.js";
 import { dispatchTool } from "./tool-dispatch.js";
 
 // A ~5 KB inspector read: the target props plus a long tail.
 function inspector(path: string) {
   return {
     ok: true,
+    provenance: { scenePath: "res://room.tscn" },
     data: {
       node_name: path.split("/").pop(),
       node_type: "StaticBody3D",
@@ -48,10 +49,11 @@ function client() {
     executeOps: vi.fn(async (ops: Record<string, unknown>[]) => {
       if (ops[0]?.op !== "RunSceneScript") return snapshot;
       const origin = path === "Logic/Marker" ? [0, 1, 0] : [10, 0, -2];
+      const local = { position: "Vector3(0.00025, 0, -2)", rotation_degrees: "Vector3(0, 0, 0)", scale: "Vector3(1, 1.25, 1)", rotation_order: 2, transform: "Transform3D(1, 0.75, 0, 0, 1, 0, 0, 0, 1, 0.00025, 0, -2)" };
       const transform = path === "Logic/Marker"
         ? "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)"
         : "Transform3D(0, 0, 2, 0, 2, 0, -2, 0, 0, 10, 0, -2)";
-      return { ok: true, results: [{ ok: true, op: "RunSceneScript", result: { ok: true, origin, position: [1, 0, 0], transform, parent_transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)", independent_geometry: [] } }] };
+      return { ok: true, results: [{ ok: true, op: "RunSceneScript", result: { ok: true, origin, local, world_origin: `Vector3(${origin.join(", ")})`, position: [1, 0, 0], transform, parent_transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)", independent_geometry: [] } }] };
     }),
   };
 }
@@ -66,16 +68,17 @@ describe("summer_inspect_node fields", () => {
 
   it("transform + globs read only what was asked, and name what is missing", async () => {
     const c = client();
-    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["transform", "surface_material_override/*", "nope"] })) as {
+    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["transform", "global_transform", "surface_material_override/*", "nope"] })) as {
       data: Record<string, unknown> & { props: Array<{ name: string }>; transform: Record<string, string> };
     };
     expect(result.data.props.map((p) => p.name)).toEqual(["surface_material_override/0", "surface_material_override/1"]);
-    expect(result.data.transform.position).toBe("Vector3(1, 0, -2)");
-    expect(result.data.transform.rotation_degrees).toBe("Vector3(0, 90.012, 0)");
-    expect(result.data.transform.transform).toMatch(/^Transform3D\(/);
+    expect(result.data.transform.position).toBe("Vector3(0.00025, 0, -2)");
+    expect(result.data.transform.rotation_degrees).toBe("Vector3(0, 0, 0)");
+    expect(result.data.transform.transform).toBe("Transform3D(1, 0.75, 0, 0, 1, 0, 0, 0, 1, 0.00025, 0, -2)");
     expect(result.data.missing_fields).toEqual(["nope"]);
-    expect(c.executeOps).not.toHaveBeenCalled();
-    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(800);
+    expect(c.executeOps).toHaveBeenCalledTimes(1);
+    expect(c.executeOps).toHaveBeenCalledWith([expect.objectContaining({ op: "RunSceneScript" })], { scenePath: "res://room.tscn" }, expect.any(Number));
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(1100);
   });
 
   it("global_transform reads the native transform; scene_file_path and aabb come from the world snapshot", async () => {
@@ -102,18 +105,14 @@ describe("summer_inspect_node fields", () => {
 
   it("says when the required native transform and snapshot reads are unavailable", async () => {
     const c = { ...client(), getEngineCapabilities: () => ({ opKinds: ["AddNode"] }) };
-    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["global_transform", "aabb", "warnings"] })) as {
+    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["transform", "global_transform", "aabb", "warnings"] })) as {
       data: { unavailable: Record<string, string>; warnings: string[] };
     };
+    expect(result.data.unavailable.transform).toContain("RunSceneScript");
     expect(result.data.unavailable.global_transform).toContain("RunSceneScript");
     expect(result.data.unavailable.aabb).toContain("GetWorldSnapshot");
     expect(result.data.warnings).toEqual(["no collision shape"]);
     expect(c.executeOps).not.toHaveBeenCalled();
-  });
-
-  it("matches Godot's YXZ Euler basis", () => {
-    const basis = basisFromEulerScale([90, 0, 0], [1, 1, 1]);
-    expect(basis.map((row) => row.map((v) => Math.round(v)))).toEqual([[1, 0, 0], [0, 0, -1], [0, 1, 0]]);
   });
 
   it("the CLI face takes the same fields", async () => {

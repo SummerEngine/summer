@@ -18,6 +18,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Raycasts and surface attachments skip the hit collider’s own display mesh when reporting nearer visual bounds. Angled walls with matching collision no longer produce a spurious obstacle warning.
 - 3D measurement, visual raycasts and placement include visible meshes beyond 20,000 scene nodes. A scan that runs out of budget reports the limit before its partial bounds can guide placement.
 - **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
+- Node inspection reads 3D local transforms directly from Godot, preserving shear, small scales, and all editor rotation modes.
 - Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
 - Zooming in on narrow seams preserves the requested strip and centres it between the image bars.
 - **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.

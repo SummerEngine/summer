@@ -22,15 +22,6 @@ import { extractOpError } from "./engine-receipt.js";
 import { WORLD_SNAPSHOT_FALLBACK } from "./engine-fallbacks.js";
 import { normalizeNodePath } from "./tscn.js";
 import { readSceneNodeTransform } from "./scene-space.js";
-import {
-  basisFromEulerScale,
-  parseVec3,
-  transformLiteral,
-  vec3Literal,
-  type Vec3,
-} from "./math3d.js";
-
-export { basisFromEulerScale, parseVec3 };
 
 export const INSPECT_NODE_DERIVED_FIELDS: readonly string[] = [
   "transform",
@@ -75,25 +66,8 @@ function globMatcher(pattern: string): (name: string) => boolean {
   return (name) => regex.test(name);
 }
 
-function localTransformFromProps(props: JsonRecord[]): JsonRecord | null {
+function canvasTransformFromProps(props: JsonRecord[]): JsonRecord | null {
   const value = (name: string) => props.find((p) => p.name === name)?.value;
-  const position = parseVec3(value("position"));
-  const rotation = parseVec3(value("rotation"));
-  const scale = parseVec3(value("scale"));
-  if (position && rotation && scale) {
-    const rotDeg = rotation.map((r) => (r * 180) / Math.PI) as Vec3;
-    const out: JsonRecord = {
-      position: vec3Literal(position),
-      rotation_degrees: vec3Literal(rotDeg),
-      scale: vec3Literal(scale),
-      source: "inspector (rotation read in radians at 3 decimals)",
-    };
-    const order = value("rotation_order");
-    if (order === undefined || order === 2) out.transform = transformLiteral(basisFromEulerScale(rotDeg, scale), position);
-    else out.rotation_order = order;
-    return out;
-  }
-  // 2D / Control: report what the inspector has.
   const out: JsonRecord = {};
   for (const name of ["position", "rotation", "scale", "skew", "size"]) {
     const v = value(name);
@@ -102,14 +76,7 @@ function localTransformFromProps(props: JsonRecord[]): JsonRecord | null {
   return Object.keys(out).length > 0 ? { ...out, source: "inspector" } : null;
 }
 
-export interface SnapshotNode {
-  pos?: Vec3;
-  rot?: Vec3;
-  scale?: Vec3;
-  entry: JsonRecord;
-}
-
-async function snapshotIndex(client: InspectNodeClient): Promise<Map<string, SnapshotNode> | { error: string }> {
+async function snapshotIndex(client: InspectNodeClient): Promise<Map<string, JsonRecord> | { error: string }> {
   const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
   if (missing) return { error: missing.error };
   let result: unknown;
@@ -126,16 +93,11 @@ async function snapshotIndex(client: InspectNodeClient): Promise<Map<string, Sna
     : asRecord((Array.isArray(root?.results) ? root!.results : []).find((r) => asRecord(r)?.op === "GetWorldSnapshot"));
   const nodes = Array.isArray(payload?.nodes) ? payload!.nodes : null;
   if (!nodes) return { error: "the world snapshot returned no node list" };
-  const index = new Map<string, SnapshotNode>();
+  const index = new Map<string, JsonRecord>();
   for (const raw of nodes) {
     const entry = asRecord(raw);
     if (!entry || typeof entry.path !== "string") continue;
-    index.set(normalizeNodePath(entry.path), {
-      pos: parseVec3(entry.pos) ?? undefined,
-      rot: parseVec3(entry.rot_deg) ?? undefined,
-      scale: parseVec3(entry.scale) ?? undefined,
-      entry,
-    });
+    index.set(normalizeNodePath(entry.path), entry);
   }
   return index;
 }
@@ -165,22 +127,32 @@ export async function inspectNodeFields(client: InspectNodeClient, args: Inspect
   };
   const unavailable: Record<string, string> = {};
 
-  if (derived.includes("transform")) {
-    const local = localTransformFromProps(props);
+  const wantsLocal = derived.includes("transform");
+  const wantsWorld = derived.includes("global_transform");
+  const has3DPosition = props.some((p) => p.name === "position" && p.type_name === "TYPE_VECTOR3");
+  if (wantsLocal && !has3DPosition) {
+    const local = canvasTransformFromProps(props);
     if (local) out.transform = local;
     else unavailable.transform = "this node has no position/rotation/scale (not a Node3D, Node2D or Control)";
   }
-  if (derived.includes("warnings")) out.warnings = Array.isArray(data.warnings) ? data.warnings : [];
-
-  if (derived.includes("global_transform")) {
-    const native = await readSceneNodeTransform(client, normalizeNodePath(String(data.node_path ?? args.path)));
-    if ("error" in native) unavailable.global_transform = native.error;
-    else out.global_transform = {
-      origin: vec3Literal(native.origin),
-      transform: native.transform,
-      source: "native scene transform (Node3D inheritance, top_level and rotation order respected)",
-    };
+  if (wantsWorld || (wantsLocal && has3DPosition)) {
+    const nodePath = normalizeNodePath(String(data.node_path ?? args.path));
+    const scenePath = asRecord(root.provenance)?.scenePath;
+    const native = await readSceneNodeTransform(client, nodePath, typeof scenePath === "string" && scenePath ? scenePath : undefined);
+    if (wantsLocal && has3DPosition) {
+      if ("error" in native) unavailable.transform = native.error;
+      else out.transform = { ...native.local, source: "native Node3D local transform" };
+    }
+    if (wantsWorld) {
+      if ("error" in native) unavailable.global_transform = native.error;
+      else out.global_transform = {
+        origin: native.worldOrigin,
+        transform: native.transform,
+        source: "native scene transform (Node3D inheritance, top_level and rotation order respected)",
+      };
+    }
   }
+  if (derived.includes("warnings")) out.warnings = Array.isArray(data.warnings) ? data.warnings : [];
 
   if (derived.some((f) => SNAPSHOT_FIELDS.has(f))) {
     const nodePath = normalizeNodePath(String(data.node_path ?? args.path));
@@ -188,14 +160,13 @@ export async function inspectNodeFields(client: InspectNodeClient, args: Inspect
     if (!(index instanceof Map)) {
       for (const f of derived.filter((d) => SNAPSHOT_FIELDS.has(d))) unavailable[f] = `world snapshot unavailable: ${index.error}`;
     } else {
-      const map = index;
-      const node = map.get(nodePath);
+      const node = index.get(nodePath);
       if (derived.includes("scene_file_path")) {
-        if (node) out.scene_file_path = typeof node.entry.scene_file === "string" ? node.entry.scene_file : null;
+        if (node) out.scene_file_path = typeof node.scene_file === "string" ? node.scene_file : null;
         else unavailable.scene_file_path = `the world snapshot does not list ${nodePath}`;
       }
       if (derived.includes("aabb")) {
-        if (node?.entry.aabb) out.aabb = node.entry.aabb;
+        if (node?.aabb) out.aabb = node.aabb;
         else unavailable.aabb = node ? "the node has no visual bounds" : `the world snapshot does not list ${nodePath}`;
       }
     }

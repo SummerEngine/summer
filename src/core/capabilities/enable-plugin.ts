@@ -66,7 +66,14 @@ export function interpretEnablePluginResult(raw: unknown): Record<string, unknow
       ...(code && FAILURE_HINTS[code] ? { hint: FAILURE_HINTS[code] } : {}),
     };
   }
-  if (entry.alreadyEnabled === true) return { ok: true, enabled: true, alreadyEnabled: true, ...(addonPath ? { addonPath } : {}) };
+  const saveFailure = typeof entry.projectSettingsSaveError === "number" && entry.projectSettingsSaveError !== 0
+    ? {
+        projectSettingsSaveError: entry.projectSettingsSaveError,
+        persisted: false,
+        warning: "The plugin is enabled in this editor, but project.godot was not saved. Resolve the save error and save the project settings before relying on a fresh game or editor.",
+      }
+    : {};
+  if (entry.alreadyEnabled === true) return { ok: true, enabled: true, alreadyEnabled: true, ...(addonPath ? { addonPath } : {}), ...saveFailure };
   if (entry.enabled === true) {
     return {
       ok: true,
@@ -74,6 +81,7 @@ export function interpretEnablePluginResult(raw: unknown): Record<string, unknow
       ...(addonPath ? { addonPath } : {}),
       autoloadsRegistered: Array.isArray(entry.autoloadsRegistered) ? entry.autoloadsRegistered : [],
       ...(typeof entry.elapsedMs === "number" ? { elapsedMs: entry.elapsedMs } : {}),
+      ...saveFailure,
     };
   }
   // Older engines: { ok: true, deferred: true } means "scheduled", not "loaded".

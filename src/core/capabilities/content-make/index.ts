@@ -458,11 +458,12 @@ export async function contentMake(input: ContentMakeInput, deps: ContentMakeDeps
   // studying_reference: once per reference on this computer, then reused by every piece that copies it
   const studyCache = join(cacheDir, "references", `${ref.referenceId}.study.json`);
   let study = input.replan ? null : readJson<Study>(join(workDir, "study.json")) ?? readJson<Study>(studyCache);
-  if (!study || study.referenceId !== ref.referenceId || !existsSync(study.file)) {
+  const savedReferenceFile = study?.referenceId === ref.referenceId && existsSync(study.file) ? study.file : undefined;
+  if (!study || !savedReferenceFile || study.version !== 2) {
     deps.progress("study", `Studying the reference: ${ref.title}`);
     await make.stage("study", "Cutting the reference into its shots");
     try {
-      study = await studyReference(ref, await referenceVideo(ref, cacheDir, input.referenceFile));
+      study = await studyReference(ref, await referenceVideo(ref, cacheDir, input.referenceFile ?? savedReferenceFile));
     } catch (error) {
       return fail("study", error);
     }

@@ -102,6 +102,38 @@ describe("repo-lint: tool-dispatch registry", () => {
     ]);
   });
 
+  it.each(["$&", "$$", "$`", "$'", "$1", "", "literal output"])(
+    "writes unique replacement text literally through CLI dispatch: %j",
+    async (replacement) => {
+      const sha = "d".repeat(64);
+      const { ctx, calls } = fakeEngineContext({
+        readProjectFile: async () => ({
+          ok: true,
+          data: { content: "before OLD after", encoding: "utf-8", sha256: sha },
+        }),
+      });
+
+      await dispatchTool("replace-text", {
+        path: "res://literal.txt",
+        old_text: "OLD",
+        new_text: replacement,
+        replace_all: false,
+      }, ctx);
+
+      expect(calls).toEqual([
+        {
+          method: "executeIdentityBoundOps",
+          args: [[{
+            op: "WriteFile",
+            path: "res://literal.txt",
+            content: `before ${replacement} after`,
+            expectedSha256: sha,
+          }]],
+        },
+      ]);
+    }
+  );
+
   it("appends SaveScene to scene mutations and dispatches it as its own request", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool(
@@ -121,6 +153,15 @@ describe("repo-lint: tool-dispatch registry", () => {
     for (const call of calls) {
       expect((call.args[1] as Record<string, unknown>).scenePath).toBe("res://main.tscn");
     }
+  });
+
+  it("keeps the plugin save warning through the public tool dispatch", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ results: [{ op: "EnableEditorPlugin", ok: true, enabled: true, projectSettingsSaveError: 12 }] }),
+    });
+    await expect(dispatchTool("enable-plugin", { plugin: "quest_tools" }, ctx)).resolves.toMatchObject({
+      ok: true, enabled: true, projectSettingsSaveError: 12, persisted: false,
+    });
   });
 
   it("surfaces engine op failures as errors instead of masking them", async () => {

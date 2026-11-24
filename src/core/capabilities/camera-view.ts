@@ -75,11 +75,14 @@ export function buildCameraBookmarkOp(args: CameraBookmarkArgs): Record<string, 
       "position and look_at go together: pass both as Godot literals (\"Vector3(x, y, z)\") for an explicit pose, or omit both to capture the CURRENT editor 3D viewport camera. Nothing was sent."
     );
   }
+  if (args.fov !== undefined && (!Number.isFinite(args.fov) || args.fov < 1 || args.fov > 179)) {
+    throw new ToolInputError("fov must be in the range 1..179 degrees.");
+  }
   if (position && lookAt) {
     op.position = position;
     op.look_at = lookAt;
+    if (args.fov !== undefined) op.fov = args.fov;
   }
-  if (args.fov !== undefined) op.fov = args.fov;
   return op;
 }
 

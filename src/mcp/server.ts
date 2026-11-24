@@ -1,5 +1,6 @@
-import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer, type RegisteredTool, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../core/api-client.js";
 import type { EngineSelection } from "../core/engine.js";
@@ -315,15 +316,16 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta, sig
     registeredToolCount += 1;
     const args = [...registration];
     const cap = OUTPUT_CAPS.get(name);
-    const shapeAt = cap === undefined ? -1 : rawShapeIndex(args);
-    if (shapeAt > 0) args[shapeAt] = withMaxCharactersArg(name, args[shapeAt] as Record<string, never>);
+    const shapeAt = rawShapeIndex(args);
+    const capped = cap !== undefined && shapeAt > 0;
+    if (capped) args[shapeAt] = withMaxCharactersArg(name, args[shapeAt] as Record<string, never>);
     // Schema-less tools receive only the SDK's `extra` — never record that as
     // the tool's arguments (see registrationHasInputSchema).
     const hasInputSchema = registrationHasInputSchema(args);
 
     args[lastIdx] = async (...handlerArgs: unknown[]) => {
       let maxCharacters = cap;
-      if (shapeAt > 0 && handlerArgs[0] && typeof handlerArgs[0] === "object") {
+      if (capped && handlerArgs[0] && typeof handlerArgs[0] === "object") {
         const { maxCharacters: requested, ...rest } = handlerArgs[0] as Record<string, unknown>;
         if (typeof requested === "number") maxCharacters = requested;
         handlerArgs = [rest, ...handlerArgs.slice(1)];
@@ -450,7 +452,15 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta, sig
       return result;
     };
 
-    return original(...args);
+    if (shapeAt < 0) return original(...args);
+    // The SDK advertises raw field shapes as closed but drops unknown keys when it
+    // converts them to a Zod object. Register that same shape with strict parsing.
+    const inputSchema = z.object(args[shapeAt] as z.ZodRawShape).strict();
+    return server.registerTool(name, {
+      description: typeof args[1] === "string" ? args[1] : undefined,
+      inputSchema,
+      annotations: shapeAt + 1 < lastIdx ? args[shapeAt + 1] as ToolAnnotations : undefined,
+    }, args[lastIdx] as ToolCallback<typeof inputSchema>);
   };
   return () => registeredToolCount;
 }

@@ -1,7 +1,7 @@
 /** Actual shipped GDScript + both render routes, without a GPU/editor window.
  * Opt in: SUMMER_EDITOR_BIN=/path/to/Summer npx vitest run <this file>.
- * The render response uses fixture pixels; this checks scene-load failure,
- * not rendering. A missing target retains a Subject node, as the editor's
+ * The render response uses fixture pixels. Godot reads the actual geometry
+ * and scene-load state. A missing target retains a Subject node, as the editor's
  * MissingNode fallback does (verified separately against a real editor).
  */
 import { execFileSync } from "node:child_process";
@@ -10,7 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { OK_JPEG } from "../../../test-helpers/seeing-engine.js";
-import { debugViews, shotSheet, type SeeingClient } from "./seeing.js";
+import { parseVector3 } from "./math.js";
+import { debugViews, frameNodes, shotSheet, type SeeingClient } from "./seeing.js";
 
 const binary = process.env.SUMMER_EDITOR_BIN;
 
@@ -61,6 +62,38 @@ func check():
       },
     };
   }
+
+  it("frames a millimetre-scale mesh using the bounds from Godot", async () => {
+    const scenePath = "res://marker.tscn";
+    writeFileSync(join(project, "marker.tscn"), `[gd_scene format=3]
+[sub_resource type="BoxMesh" id="Box"]
+size = Vector3(0.012, 0.008, 0.001)
+[node name="Scene" type="Node3D"]
+[node name="Marker" type="MeshInstance3D" parent="."]
+position = Vector3(0.00045, 1.59953, 0.00039)
+mesh = SubResource("Box")
+`);
+    const client = engine();
+    const runProbe = client.executeOps.bind(client);
+    let camera: Record<string, unknown> | undefined;
+    client.executeOps = async (ops) => {
+      if (ops[0]?.scene_path !== scenePath) return runProbe(ops);
+      camera = ops[0];
+      return { results: [{ ok: true, image_base64: OK_JPEG.toString("base64"), width: 64, height: 64, mime: "image/jpeg" }] };
+    };
+
+    const result = await frameNodes(client, { scenePath, nodes: ["Marker"], direction: "front", aspect: 1, fov: 5, fill: 0.8 });
+    expect(result.ok).toBe(true);
+    const target = parseVector3(String(camera?.camera_look_at), "look_at");
+    const position = parseVector3(String(camera?.camera_position), "position");
+    // The front face limits a square view. Its full width occupies 80% of the frame.
+    const distance = 0.001 / 2 + 0.012 / (2 * 0.8 * Math.tan(2.5 * Math.PI / 180));
+    const center = [0.00045, 1.59953, 0.00039];
+    for (let i = 0; i < 3; i++) {
+      expect(target[i]).toBeCloseTo(center[i]!, 6);
+      expect(position[i]).toBeCloseTo(center[i]! + (i === 2 ? distance : 0), 6);
+    }
+  }, 20_000);
 
   const pose = { camera_position: "Vector3(0, 1, 7)", camera_look_at: "Vector3(0, 0, 0)" };
   for (const route of ["debug_views", "shot_sheet"] as const) {

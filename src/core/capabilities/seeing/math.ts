@@ -243,11 +243,6 @@ export function formatVector3(v: Vec3): string {
   return `Vector3(${f(v[0])}, ${f(v[1])}, ${f(v[2])})`;
 }
 
-export function roundVec(v: Vec3, digits = 3): Vec3 {
-  const k = 10 ** digits;
-  return [Math.round(v[0] * k) / k, Math.round(v[1] * k) / k, Math.round(v[2] * k) / k];
-}
-
 /** Rotate `v` about +Y by `degrees` (counter-clockwise seen from above). */
 export function rotateY(v: Vec3, degrees: number): Vec3 {
   const a = rad(degrees);

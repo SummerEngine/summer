@@ -16,9 +16,11 @@ const ASPECT = 16 / 9;
 
 describe("candidate poses per shot type", () => {
   it("establishing: a 12 x 3 ring around the subject at the target fill", () => {
-    const c = generateCandidates({ shot: "establishing", subject: ROW, aspect: ASPECT });
+    const fov = 55.0047;
+    const c = generateCandidates({ shot: "establishing", subject: ROW, aspect: ASPECT, fov });
     expect(c).toHaveLength(36);
     for (const cand of c) {
+      expect(cand.fov).toBe(fov);
       expect(cand.look_at).toEqual(aabbCenter(ROW));
       expect(frameFill(cand, ASPECT, ROW)).toBeCloseTo(SHOT_DEFAULTS.establishing.fill, 2);
       expect(cand.position[1]).toBeGreaterThan(aabbCenter(ROW)[1]);

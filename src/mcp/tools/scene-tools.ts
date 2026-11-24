@@ -30,16 +30,13 @@ const finiteVector3 = z.tuple([finiteNumber, finiteNumber, finiteNumber]);
 export function registerSceneTools(server: McpServer): void {
   server.tool(
     "summer_create_scene",
-    `Create a new empty scene file. Writes a minimal .tscn through the identity-bound engine with a create-only guard: it fails if the path already exists, and it never touches the currently open scene.
+    `Create a new empty .tscn in the selected project. Pass a new res:// path. An existing file stays intact and the current editor scene stays open.
 
-The new scene is on disk but NOT opened. Call summer_open_scene to start editing it, then summer_add_node to build it out.
+rootType accepts a concrete native Node class such as Camera3D. To use a registered GDScript class, open its script in the selected editor and save any edits first. Its constructor must accept zero arguments, including when inherited. The scene stores the concrete native Node base with that script attached.
 
-rootType must be a concrete native Node class. Node3D, Node2D, Control and Node work on older editors; other roots need an editor advertising GetClassInfo. Unknown names, Resources and abstract classes are refused before writing a file. For a project class_name, create its native base and attach the script. verified:true confirms both the validated root class and the exact root name/type in the file read back. Class checks do not open, instantiate or modify a scene.
+Unknown, abstract and non-Node roots fail before writing. If the editor lacks current constructor metadata, the tool returns class_verification_unavailable and leaves the destination free. Other scripting languages currently lack verified constructor support. On editors that use an offscreen preview for class lookup, stop a running game if it blocks the preview.
 
-Recommended workflow:
-1) Call summer_get_project_context
-2) Call summer_create_scene with a new res:// path
-3) Call summer_open_scene with that path`,
+A verified result confirms that the editor read back the expected scene text. Call summer_open_scene with the new path to edit it, then summer_add_node to add children.`,
     createSceneInputShape,
     async (args) => withEngine(async (client) => createScene(client, args))
   );

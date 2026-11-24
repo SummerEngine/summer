@@ -2355,12 +2355,13 @@
     {
       "id": "skill/multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d1ba8c2895e91430a890819ca002b42d269ae2f19c70e534eceeedcf7d4fcbbe",
+      "version": "1.0.1",
+      "content_hash": "e80e814ec51585563c4292c0e7e14602beb381bf174ac57d4bceefcd0159430d",
       "summary": "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
         "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "the user wants online play in a game sold on Steam, itch.io or their own store listing",
         "deciding how a multiplayer Summer game is structured before writing networking code",
         "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
       ],
@@ -2482,8 +2483,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "6d1e94b0fe7cd4a8d492f6168b033417315828d282e18049b8365ba3d957d1e3",
+      "version": "1.0.3",
+      "content_hash": "3caf0a108d6b949df72a7c431a744bc4e0c9ff8091bb4046114127c8e65405c9",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -7212,9 +7213,9 @@
     {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "bd6c59df3479e5d60c0dac5f61dee6cde3da59054122add68bd344ffe4bc167e",
-      "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
+      "version": "1.2.0",
+      "content_hash": "45937b7f6107f77d824c0952bc6bc2259f7897117437ef4dc96144e287890c4a",
+      "summary": "Connect a signal and verify its local or inherited declaration in the saved scene. The receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
         "\"when the button is pressed, call my function\"",
@@ -8039,7 +8040,7 @@
       "id": "tool/generate-sfx-choices",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "cc583f4378e6fa60a864a5bbae0b7d3ddb5b30962a443432d5bc4a7581fd5fb3",
+      "content_hash": "c7b22b1333b10c1e8a2226dc04d4efc7a677f5ec2a2f57885f2fc8bb6b74c527",
       "summary": "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default.",
       "use_when": [
         "the first sound effect in a chat, after the person said yes to three versions to pick from",
@@ -8753,9 +8754,9 @@
     {
       "id": "tool/import-from-url",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "c9df60fadce2263a91127d6bbbe3bcfb192d6b63d5822e331bd18e4f032e5d2b",
-      "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
+      "version": "1.0.3",
+      "content_hash": "15088ca3dbaf688d8615f26f7b21dd035b5e573a979865292c4c776fa6fe28d5",
+      "summary": "Download one file from a public HTTPS URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
         "\"grab this .glb from the link and add it to my project\"",
@@ -8787,9 +8788,9 @@
     {
       "id": "tool/import-from-url-batch",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "0acf3a0be036c3b63793d907bdcf7cdf1fc86564f585a53b753ec70f24589968",
-      "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
+      "version": "1.0.3",
+      "content_hash": "1fee925086da7458773c0d3f853522b42bd08423c9a05b71fddd363293b77d47",
+      "summary": "Download multiple files by public HTTPS URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
         "\"download the model plus its three textures together\"",
@@ -8905,13 +8906,14 @@
     {
       "id": "tool/inspect-asset",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "fb2ab84e0984f7baa5e07e65c1935dc656c00740615572c22dfb9e8aba8caaec",
+      "version": "1.1.0",
+      "content_hash": "cf776605e9bb0a0823efd0a9a11c04e3bdf8e795770c75166cf68aedb4c7f911",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
         "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
-        "reading the Marker3D anchors or collision shapes a kit piece ships with"
+        "reading the Marker3D anchors or collision shapes a kit piece ships with",
+        "inspecting repeated 3D MultiMesh geometry with its instance transforms and drawn-prefix triangle count"
       ],
       "facets": {
         "lifecycle": [
@@ -9635,8 +9637,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "d7cfa0f0503c31c526545c6ff5a28756820586a8a102dd4ae31acb0f52a3dff3",
+      "version": "1.0.2",
+      "content_hash": "30c4aee3174f7f8a3d96ede80a56633288ad28c1d70bb9b847b5386a6884ba73",
       "summary": "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -9948,7 +9950,7 @@
       "id": "tool/replace-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "0fb4ae84243f7d860bf9965add882f0e013445f27649abee91ffcc4681856de5",
+      "content_hash": "813a9e29ac8cc8e67c93b7e69fdad29ee003951a04cef0919f6712927d1b7652",
       "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
@@ -10586,7 +10588,7 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7322a8ec389c209d41c7fe0b56f47c8e8b42616d19044d9b070d7ff6721ab5f9",
+      "content_hash": "a59a8603e2eb9e8bb57d93120889e2385156845082ecd00cb811ce6a3ce06919",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",
@@ -10789,8 +10791,8 @@
       "id": "tool/snapshot-diff",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "996761994942d2099ccfa3e5352a59fe3eb9cc3c8637a5c1f1718625dcbe657d",
-      "summary": "Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.",
+      "content_hash": "3a46e2642b117de7349a94d3e4adb7adc314a0b2aa1716236ef729ba9ce70ad8",
+      "summary": "Compare captured node paths, tracked fields and count changes across two scene snapshots.",
       "use_when": [
         "verifying a mutation batch against the snapshot_id taken before it",
         "\"what changed in the scene after that script ran?\"",
@@ -11395,7 +11397,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "8f8dab1d735156630961e3bbef0b5e8985eb7f9e8e933a173aae163c56fbe9e1",
+      "content_hash": "0176f412e102badbf9a63e1672d0e231e5ddaa794584aa8112866d05af046a2e",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

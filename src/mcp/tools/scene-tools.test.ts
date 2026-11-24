@@ -306,6 +306,44 @@ describe("single-op dispatch contract (engine 0.5.60+)", () => {
     expect(body.results.map((entry: { op: string }) => entry.op)).toEqual(["SetProp", "SaveScene"]);
   });
 
+  it("keeps the failing item, successful prefix and skipped tail in a full batch failure", async () => {
+    const executeIdentityBoundOps = vi.fn().mockResolvedValue({
+      status: "error",
+      results: [
+        { ok: true, op: "SetProp", meta: { applied: true } },
+        { ok: false, op: "RemoveNode", error: "node not found: Missing" },
+        { ok: false, op: "AddNode", failure_reason: "skipped", error: "skipped (previous op failed)" },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps } as never);
+    const result = await sceneTool("summer_batch").handler({
+      scenePath: "res://main.tscn",
+      ops: [{ op: "SetProp" }, { op: "RemoveNode" }, { op: "AddNode" }],
+    }) as { isError: boolean; content: { text: string }[] };
+    expect(result.isError).toBe(true);
+    const text = result.content[0]!.text;
+    expect(text).toContain("ops[1] RemoveNode: node not found: Missing");
+    expect(text).toContain("1 earlier op(s) already applied (SetProp)");
+    expect(text).toContain("Skipped: AddNode");
+    expect(text).toContain("Not sent: SaveScene");
+    expect(executeIdentityBoundOps).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an uncertain save uncertain while reporting the earlier confirmed edit", async () => {
+    const executeIdentityBoundOps = vi.fn()
+      .mockResolvedValueOnce({ status: "ok", results: [{ ok: true, op: "SetProp" }] })
+      .mockResolvedValueOnce({ terminalState: "timed_out" });
+    vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps } as never);
+    const result = await sceneTool("summer_batch").handler({
+      scenePath: "res://main.tscn", ops: [{ op: "SetProp" }],
+    }) as { isError: boolean; content: { text: string }[] };
+    expect(result.isError).toBe(true);
+    const text = result.content[0]!.text;
+    expect(text).toContain("final state is unknown");
+    expect(text).toContain("1 earlier op(s) already applied");
+    expect(text).not.toContain("NOT saved");
+  });
+
   it("reports an applied mutation followed by a failed save honestly", async () => {
     const executeIdentityBoundOps = vi.fn(async (ops: Record<string, unknown>[]) => {
       if (ops.some((op) => op.op === "SaveScene")) {

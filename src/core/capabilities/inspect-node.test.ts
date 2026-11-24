@@ -42,9 +42,17 @@ const snapshot = {
 };
 
 function client() {
+  let path = "";
   return {
-    inspectNode: vi.fn(async (path: string) => inspector(path)),
-    executeOps: vi.fn(async () => snapshot),
+    inspectNode: vi.fn(async (value: string) => { path = value; return inspector(value); }),
+    executeOps: vi.fn(async (ops: Record<string, unknown>[]) => {
+      if (ops[0]?.op !== "RunSceneScript") return snapshot;
+      const origin = path === "Logic/Marker" ? [0, 1, 0] : [10, 0, -2];
+      const transform = path === "Logic/Marker"
+        ? "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)"
+        : "Transform3D(0, 0, 2, 0, 2, 0, -2, 0, 0, 10, 0, -2)";
+      return { ok: true, results: [{ ok: true, op: "RunSceneScript", result: { ok: true, origin, position: [1, 0, 0], transform, parent_transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)", independent_geometry: [] } }] };
+    }),
   };
 }
 
@@ -70,12 +78,13 @@ describe("summer_inspect_node fields", () => {
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(800);
   });
 
-  it("global_transform composes the parent chain; scene_file_path and aabb come from the world snapshot", async () => {
+  it("global_transform reads the native transform; scene_file_path and aabb come from the world snapshot", async () => {
     const c = client();
     const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["global_transform", "scene_file_path", "aabb"] })) as {
       data: Record<string, unknown> & { global_transform: { origin: string; transform: string } };
     };
     expect(c.executeOps).toHaveBeenCalledWith([{ op: "GetWorldSnapshot" }]);
+    expect(c.executeOps.mock.calls.some(([ops]) => ops[0]?.op === "RunSceneScript")).toBe(true);
     // House3 at x=10 turned 90 degrees about Y with scale 2: local (1,0,0) lands at (10, 0, -2).
     expect(result.data.global_transform.origin).toBe("Vector3(10, 0, -2)");
     expect(result.data.global_transform.transform).toBe("Transform3D(0, 0, 2, 0, 2, 0, -2, 0, 0, 10, 0, -2)");
@@ -91,12 +100,13 @@ describe("summer_inspect_node fields", () => {
     expect(result.data.global_transform.origin).toBe("Vector3(0, 1, 0)");
   });
 
-  it("says when the snapshot fields are unavailable on an engine without GetWorldSnapshot", async () => {
+  it("says when the required native transform and snapshot reads are unavailable", async () => {
     const c = { ...client(), getEngineCapabilities: () => ({ opKinds: ["AddNode"] }) };
-    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["global_transform", "warnings"] })) as {
+    const result = (await inspectNodeFields(c, { path: "House3/Door", fields: ["global_transform", "aabb", "warnings"] })) as {
       data: { unavailable: Record<string, string>; warnings: string[] };
     };
-    expect(result.data.unavailable.global_transform).toContain("GetWorldSnapshot");
+    expect(result.data.unavailable.global_transform).toContain("RunSceneScript");
+    expect(result.data.unavailable.aabb).toContain("GetWorldSnapshot");
     expect(result.data.warnings).toEqual(["no collision shape"]);
     expect(c.executeOps).not.toHaveBeenCalled();
   });

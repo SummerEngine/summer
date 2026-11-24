@@ -278,6 +278,7 @@ interface NodeBounds {
   path: string;
   resolved: string;
   geometryCount: number;
+  independentGeometry: string[];
   xform: Xform;
   parent: Xform;
   position: Vec3;
@@ -294,6 +295,7 @@ function parseBounds(record: unknown): NodeBounds {
     path: String(r.path ?? ""),
     resolved: String(r.resolved ?? ""),
     geometryCount: typeof r.geometry_count === "number" ? r.geometry_count : 0,
+    independentGeometry: Array.isArray(r.independent_geometry) ? r.independent_geometry.map(String) : [],
     xform: xformFromArray(r.xform),
     parent: xformFromArray(r.parent_xform),
     position: (Array.isArray(r.position) ? r.position : [0, 0, 0]) as Vec3,
@@ -1047,6 +1049,9 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
   };
   if (length(worldDelta) < 1e-6) {
     return { ok: true, ...base, moved: false, moved_by: [0, 0, 0], saved: false, note: "Already in place; nothing was changed." };
+  }
+  if (subject.independentGeometry.length) {
+    return fail(tool, "independent_subject_geometry", `Visible geometry does not inherit the subject's transform: ${subject.independentGeometry.join(", ")}`);
   }
   const position = localPositionAfter(subject, worldDelta);
   const receipt = await executeSceneMutation(client, args.scenePath, [

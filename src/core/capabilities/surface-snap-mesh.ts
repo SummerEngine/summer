@@ -34,6 +34,8 @@
  * scene only; the mutation is an ordinary SetProp + SaveScene sent by
  * surface-snap.ts.
  */
+import { SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { asRecord, type JsonRecord } from "../util/json.js";
 import { extractOpError } from "./engine-receipt.js";
@@ -187,6 +189,8 @@ func run(_ctx):
 	var skipped = {"screen_space": 0, "not_mesh": 0}
 	var sub_faces = PackedVector3Array()
 	for it in _mesh_items(subject, root, null, skipped):
+		if not _inherits_3d(it[0], subject):
+			return _fail("independent_subject_geometry", "visible geometry does not inherit the subject's transform: " + _rel(root, it[0]))
 		sub_faces.append_array(it[1] * it[0].mesh.get_faces())
 	if sub_faces.size() < 3:
 		return _fail("no_subject_mesh", "the subject has no visible mesh triangles to measure")
@@ -311,9 +315,7 @@ func run(_ctx):
 		return _done(stats, false)
 	var shift = best - gap
 	var world_delta = d * shift
-	var parent_basis = Basis.IDENTITY
-	if not subject.top_level and subject.get_parent() != null:
-		parent_basis = _xf(subject.get_parent(), root).basis
+	var parent_basis = _parent_xf(subject, root).basis
 	if absf(parent_basis.determinant()) < 0.0000001:
 		return _fail("singular_parent", "the subject's parent transform is singular")
 	var after = subject.position + parent_basis.inverse() * world_delta
@@ -519,71 +521,32 @@ func _rel(root, n):
 	return String(root.get_path_to(n))
 
 
-# Scene-space transform: Node3D.transform accumulated up to and including root.
-func _xf(node, root):
-	var t = Transform3D.IDENTITY
-	var cur = node
-	while cur != null:
-		if cur is Node3D:
-			t = cur.transform * t
-			if cur.top_level and cur != root:
-				break
-		if cur == root:
-			break
-		cur = cur.get_parent()
-	return t
-
-
-func _visible(node, root):
-	var cur = node
-	while cur != null:
-		if cur is Node3D and not cur.visible:
-			return false
-		if cur == root:
-			break
-		cur = cur.get_parent()
-	return true
-
+${SCENE_SPACE_GDSCRIPT}
 
 # Visible MeshInstance3D nodes under start (inclusive) with their scene-space
 # transform; exclude is a subtree root to skip.
 func _mesh_items(start, root, exclude, skipped):
-	var base_xf = Transform3D.IDENTITY
-	var base_vis = true
-	if start != root and start.get_parent() != null:
-		base_xf = _xf(start.get_parent(), root)
-		base_vis = _visible(start.get_parent(), root)
 	var out = []
-	var stack = [[start, base_xf, base_vis]]
+	var stack = [start]
 	var visited = 0
 	while stack.size() > 0:
 		visited += 1
 		if visited > MAX_NODES:
 			skipped["node_budget"] = true
 			break
-		var item = stack.pop_back()
-		var n = item[0]
+		var n = stack.pop_back()
 		if exclude != null and n == exclude:
 			continue
-		var t = item[1]
-		var vis = item[2]
-		if n is Node3D:
-			if n.top_level and n != root:
-				t = n.transform
-			else:
-				t = t * n.transform
-			vis = vis and n.visible
-		if vis and n is GeometryInstance3D:
+		if n is GeometryInstance3D and _visible(n, root):
 			if n is MeshInstance3D:
 				if n.mesh != null:
 					if _screen_space(n):
 						skipped["screen_space"] += 1
 					else:
-						out.append([n, t])
+						out.append([n, _xf(n, root)])
 			else:
 				skipped["not_mesh"] += 1
-		for c in n.get_children():
-			stack.append([c, t, vis])
+		stack.append_array(n.get_children())
 	return out
 
 

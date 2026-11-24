@@ -27,6 +27,8 @@
  * only that scene's bodies are in the editor's physics space.
  */
 
+import { SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
 /** Placeholder for the argument literal; appears exactly once in the source. */
@@ -158,66 +160,27 @@ func _rel(root, n):
 	return String(root.get_path_to(n))
 
 
-# Scene-space transform: Node3D.transform accumulated up to and including root.
-func _xf(node, root):
-	var t = Transform3D.IDENTITY
-	var cur = node
-	while cur != null:
-		if cur is Node3D:
-			t = cur.transform * t
-			if cur.top_level and cur != root:
-				break
-		if cur == root:
-			break
-		cur = cur.get_parent()
-	return t
-
-
-func _visible(node, root):
-	var cur = node
-	while cur != null:
-		if cur is Node3D and not cur.visible:
-			return false
-		if cur == root:
-			break
-		cur = cur.get_parent()
-	return true
-
+${SCENE_SPACE_GDSCRIPT}
 
 # Visible GeometryInstance3D descendants of start (inclusive) with their
 # scene-space transform and local AABB: the bounds definition AlignDistribute3D
 # uses. exclude holds subtree roots to skip.
 func _geoms(start, root, exclude):
-	var base_xf = Transform3D.IDENTITY
-	var base_vis = true
-	if start != root and start.get_parent() != null:
-		base_xf = _xf(start.get_parent(), root)
-		base_vis = _visible(start.get_parent(), root)
 	var out = []
-	var stack = [[start, base_xf, base_vis]]
+	var stack = [start]
 	var visited = 0
 	while stack.size() > 0:
 		visited += 1
 		if visited > MAX_GEOMS:
 			break
-		var item = stack.pop_back()
-		var n = item[0]
+		var n = stack.pop_back()
 		if exclude.has(n):
 			continue
-		var t = item[1]
-		var vis = item[2]
-		if n is Node3D:
-			if n.top_level and n != root:
-				t = n.transform
-			else:
-				t = t * n.transform
-			vis = vis and n.visible
-		if vis and n is GeometryInstance3D:
+		if n is GeometryInstance3D and _visible(n, root):
 			var bb = n.get_aabb()
 			if bb.size != Vector3.ZERO:
-				out.append([n, t, bb])
-		for c in n.get_children():
-			stack.append([c, t, vis])
+				out.append([n, _xf(n, root), bb])
+		stack.append_array(n.get_children())
 	return out
 
 
@@ -315,10 +278,11 @@ func _cmd_bounds(root, active, args):
 				excluded_subjects.append(String(ex))
 		var geoms = _geoms(n, root, exclude)
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_xf(n, root))}
-		if n != root and n.get_parent() != null:
-			rec["parent_xform"] = _xf12(_xf(n.get_parent(), root))
-		else:
-			rec["parent_xform"] = _xf12(Transform3D.IDENTITY)
+		rec["parent_xform"] = _xf12(_parent_xf(n, root))
+		rec["independent_geometry"] = []
+		for g in geoms:
+			if not _inherits_3d(g[0], n):
+				rec["independent_geometry"].append(_rel(root, g[0]))
 		rec["position"] = _raw3(n.position)
 		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
@@ -744,45 +708,44 @@ func _collect(top):
 	var markers = []
 	var shapes = []
 	var unsupported = []
-	var stack = [[top, Transform3D.IDENTITY, true, true]]
+	var frame = _xf(top, top)
+	if frame.basis.determinant() == 0.0:
+		return {"meshes": [], "geoms": [], "markers": [], "shapes": [], "unsupported": [], "singular_root": true}
+	var inverse = frame.affine_inverse()
+	var stack = [top]
 	while stack.size() > 0:
-		var it = stack.pop_back()
-		var n = it[0]
-		var t = it[1]
-		var vis = it[2]
+		var n = stack.pop_back()
 		if n is Node3D:
-			if not it[3]:
-				t = t * n.transform
-			vis = vis and n.visible
-		if n is GeometryInstance3D:
-			var bb = n.get_aabb()
-			if bb.size != Vector3.ZERO:
-				if vis:
-					geoms.append([n, t, bb])
-				if n is MeshInstance3D and n.mesh != null:
-					meshes.append([n, t, bb, vis, n.mesh])
-			if n is MultiMeshInstance3D and n.multimesh != null and n.multimesh.mesh != null:
-				if n.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
-					unsupported.append([String(top.get_path_to(n)), vis])
-				else:
-					meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis, n.multimesh.mesh])
-		elif n.is_class("GridMap"):
-			var cells = n.get_meshes()
-			for index in range(0, cells.size(), 2):
-				var mesh = cells[index + 1]
-				var bb = mesh.get_aabb()
-				if bb.size == Vector3.ZERO:
-					continue
-				var cell_transform = t * cells[index]
-				meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
-				if vis:
-					geoms.append([n, cell_transform, bb])
-		elif n is Marker3D:
-			markers.append([n, t])
-		elif n is CollisionShape3D:
-			shapes.append([n, t])
-		for c in n.get_children():
-			stack.append([c, t, vis, false])
+			var t = inverse * _xf(n, top)
+			var vis = _visible(n, top)
+			if n is GeometryInstance3D:
+				var bb = n.get_aabb()
+				if bb.size != Vector3.ZERO:
+					if vis:
+						geoms.append([n, t, bb])
+					if n is MeshInstance3D and n.mesh != null:
+						meshes.append([n, t, bb, vis, n.mesh])
+				if n is MultiMeshInstance3D and n.multimesh != null and n.multimesh.mesh != null:
+					if n.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
+						unsupported.append([String(top.get_path_to(n)), vis])
+					else:
+						meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis, n.multimesh.mesh])
+			elif n.is_class("GridMap"):
+				var cells = n.get_meshes()
+				for index in range(0, cells.size(), 2):
+					var mesh = cells[index + 1]
+					var bb = mesh.get_aabb()
+					if bb.size == Vector3.ZERO:
+						continue
+					var cell_transform = t * cells[index]
+					meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
+					if vis:
+						geoms.append([n, cell_transform, bb])
+			elif n is Marker3D:
+				markers.append([n, t])
+			elif n is CollisionShape3D:
+				shapes.append([n, t])
+		stack.append_array(n.get_children())
 	var by_path = func(a, b): return String(top.get_path_to(a[0])) < String(top.get_path_to(b[0]))
 	var by_mesh = func(a, b):
 		if a[0] == b[0] and a.size() > 5 and b.size() > 5:
@@ -928,6 +891,8 @@ func _cmd_inspect_asset(args):
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
 	var col = _collect(inst)
+	if col.get("singular_root", false):
+		return _fail("singular_asset_root", "the asset root has a singular transform")
 	var analysis_error = _mesh_analysis_error(col)
 	if analysis_error != null:
 		return analysis_error
@@ -1084,9 +1049,7 @@ func _cmd_ports(root, args):
 		if p.has("position"):
 			p["position"] = _raw3(p["position"])
 			p["direction"] = _raw3(p["direction"])
-	var parent_xf = Transform3D.IDENTITY
-	if sub != root and sub.get_parent() != null:
-		parent_xf = _xf(sub.get_parent(), root)
+	var parent_xf = _parent_xf(sub, root)
 	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root)), "parent_xform": _xf12(parent_xf)}
 
 

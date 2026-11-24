@@ -95,6 +95,28 @@ describe("summer_replace_node: scene swap through ops that persist", () => {
     expect(fake.liveChildren("House3/G_f2_door")).toEqual(["Wall", "DoorSlot", "Sign"]);
   });
 
+  it("keeps an omitted identity transform when the new prefab root has an authored pose", async () => {
+    const old = HOUSE.replace(/^transform = .*$/m, "");
+    const posed = "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 4, -2)";
+    const fake = engine(old, { scenes: { ...SCENES, [NEW]: { ...SCENES[NEW], rootTransform: posed } } });
+    const result = await replaceNodePersisted(fake, { scenePath: SCENE, path: "House3/G_f2_door", scene: NEW });
+    expect(result).toMatchObject({ ok: true, persisted: true, props_copied: ["visible", "transform"] });
+    expect(findTscnNode(fake.savedScene(), "House3/G_f2_door")?.props).toContainEqual({
+      key: "transform", value: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)",
+    });
+  });
+
+  it("retains the original when the required pose override is refused", async () => {
+    const old = HOUSE.replace(/^transform = .*$/m, "");
+    const fake = engine(old, {
+      scenes: { ...SCENES, [NEW]: { ...SCENES[NEW], rootTransform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, 1)" } },
+      unknownProps: ["transform"],
+    });
+    const result = await replaceNodePersisted(fake, { scenePath: SCENE, path: "House3/G_f2_door", scene: NEW });
+    expect(result).toMatchObject({ ok: false, failure_reason: "pose_copy_failed", rolled_back: true });
+    expect(findTscnNode(fake.savedScene(), "House3/G_f2_door")?.instancePath).toBe(OLD);
+  });
+
   it("re-owns the descendants below a moved child (the engine's ReparentNode leaves them unowned)", async () => {
     const fake = engine();
     await replaceNodePersisted(fake, { scenePath: SCENE, path: "House3/G_f2_door", scene: NEW });

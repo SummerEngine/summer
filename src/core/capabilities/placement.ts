@@ -29,6 +29,7 @@ import { executeSceneMutation, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { SNAP_TO_SURFACE_FALLBACK } from "./engine-fallbacks.js";
 import { buildRunSceneScriptOp } from "./scene-script.js";
+import { readSceneNodeTransform } from "./scene-space.js";
 import { buildPlacementScript } from "./placement-script.js";
 import { executePlacementBatch, summarizeTrace } from "./placement-batch.js";
 import {
@@ -45,7 +46,6 @@ import {
   dot,
   isFiniteVec3,
   length,
-  localPositionAfterWorldDelta,
   normalize,
   parseGodotTransform,
   rotationAbout,
@@ -58,7 +58,6 @@ import {
   signedAxisVector,
   sub,
   toGodotTransform,
-  toGodotVector3,
   xformCompose,
   xformFromArray,
   xformInverse,
@@ -282,7 +281,6 @@ interface NodeBounds {
   independentGeometry: string[];
   xform: Xform;
   parent: Xform;
-  position: Vec3;
   /** The node's local transform as Godot writes it (var_to_str), for an
    *  exact restore. */
   transformStr?: string;
@@ -299,7 +297,6 @@ function parseBounds(record: unknown): NodeBounds {
     independentGeometry: Array.isArray(r.independent_geometry) ? r.independent_geometry.map(String) : [],
     xform: xformFromArray(r.xform),
     parent: xformFromArray(r.parent_xform),
-    position: (Array.isArray(r.position) ? r.position : [0, 0, 0]) as Vec3,
     transformStr: typeof r.transform_str === "string" ? r.transform_str : undefined,
     intervals: Array.isArray(r.intervals) ? (r.intervals as Array<[number, number]>) : undefined,
     reach: typeof r.reach === "number" ? r.reach : undefined,
@@ -1048,9 +1045,11 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
   if (subject.independentGeometry.length) {
     return fail(tool, "independent_subject_geometry", `Visible geometry does not inherit the subject's transform: ${subject.independentGeometry.join(", ")}`);
   }
-  const position = localPositionAfterWorldDelta(subject.position, subject.parent.basis, worldDelta);
+  const plan = await readSceneNodeTransform(client, args.subject, args.scenePath, false, worldDelta);
+  if ("error" in plan) return fail(tool, plan.failureReason ?? "transform_read_failed", plan.error);
+  const translation = plan.translation;
   const receipt = await executeSceneMutation(client, args.scenePath, [
-    { op: "SetProp", path: args.subject, key: "position", value: toGodotVector3(position) },
+    { op: "SetProp", path: args.subject, key: "position", value: translation.literal },
   ]);
   const failed = mutationFailure(tool, receipt);
   if (failed) return failed;
@@ -1061,7 +1060,7 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
     ...base,
     moved: true,
     moved_by: roundVec(worldDelta),
-    position: roundVec(position),
+    position: roundVec(translation.value),
     saved: true,
   };
   if (!after.ok) {

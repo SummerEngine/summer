@@ -44,7 +44,8 @@ const IDENTITY12 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
 function probeArgs(op: Op): Op {
   const source = String(op.script_source);
   const line = source.split("\n").find((l) => l.startsWith("const ARGS_B64 = "))!;
-  const literal = JSON.parse(line.slice("const ARGS_B64 = ".length)) as string;
+  const literal = line ? JSON.parse(line.slice("const ARGS_B64 = ".length)) as string
+    : /Marshalls\.base64_to_utf8\("([^"]+)"\)/.exec(source)![1]!;
   return JSON.parse(Buffer.from(literal, "base64").toString("utf8")) as Op;
 }
 
@@ -497,6 +498,19 @@ describe("summer_place_adjacent", () => {
     expect(mutations).toEqual([]);
   });
 
+  it("preserves the scene when Godot cannot represent the requested movement", async () => {
+    const intervals: Array<[number, number]> = [[0, 1], [0, 1], [0, 1]];
+    const { client, mutations } = mockClient([
+      () => ({ ok: true, space: "world", dirs: WORLD_DIRS, nodes: [bounds("Piece", intervals), bounds("Wall", intervals)] }),
+      () => ({ ok: false, failure_reason: "translation_not_representable", error: "Cannot reproduce the world movement." }),
+    ]);
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Piece", reference: "Wall", axis: "x", side: "max",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "translation_not_representable" });
+    expect(mutations).toEqual([]);
+  });
+
   it("computes face-to-face deltas with per-axis alignment", () => {
     const subject: Array<[number, number]> = [[-0.5, 0.5], [0, 3], [-0.25, 0.05]];
     const reference: Array<[number, number]> = [[-1, 1], [0, 3], [-0.2, 0]];
@@ -523,7 +537,10 @@ describe("summer_place_adjacent", () => {
       ...before,
       nodes: [bounds("./Facade/Window", [[1, 2], [0, 3], [-0.3, 0]], { parent_xform: parent }), bounds("./Facade/Wall", [[-1, 1], [0, 3], [-0.2, 0]])],
     };
-    const { client, mutations, probeCalls } = mockClient([() => before, () => after]);
+    const { client, mutations, probeCalls } = mockClient([() => before, (args) => {
+      expect(args.world_delta).toEqual([1.5, 0, -0.05]);
+      return { ok: true, origin: [0, 0, 0], position: [0, 0, 1], transform: "Transform3D()", translated_position: "Vector3(0.05, 0, 2.5)" };
+    }, () => after]);
     const result = await placeAdjacent(
       client,
       placeAdjacentArgsSchema.parse({
@@ -557,6 +574,7 @@ describe("summer_place_adjacent", () => {
     const read = { ok: true, space: "world", dirs: WORLD_DIRS };
     const { client, mutations } = mockClient([
       () => ({ ...read, nodes: paths.map((path) => bounds(path, intervals)) }),
+      () => ({ ok: true, origin: [0, 0, 0], position: [0, 0, 0], transform: "Transform3D()", translated_position: "Vector3(1, 0, 0)" }),
       () => ({ ...read, nodes: paths.map((path) => bounds(path, missing.includes(path) ? null : intervals)) }),
     ]);
 

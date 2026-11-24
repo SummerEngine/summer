@@ -1659,10 +1659,10 @@ export async function repeatAlong(client: PlacementClient, args: RepeatAlongArgs
     template: args.template,
     parent: args.parent,
     count: positions.length,
-    spacing: round(spacing),
-    direction: roundVec(direction, 4),
-    first: roundVec(positions[0]!),
-    last: roundVec(positions[positions.length - 1]!),
+    spacing,
+    direction,
+    first: positions[0]!,
+    last: positions[positions.length - 1]!,
   }, ["created", "renamed", "failures"]) as PlacementResult;
 }
 

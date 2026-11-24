@@ -326,7 +326,7 @@ read a full tree — a 102-node scene returns only 61 nodes at the defaults.`,
 
   server.tool(
     "summer_import_from_url",
-    `Download a file from a URL and import it into the project. Triggers Godot's full import pipeline — generates .import files, extracts textures from .glb models, creates materials.
+    `Download a file from a public HTTPS URL and import it into the project. Triggers Godot's full import pipeline — generates .import files, extracts textures from .glb models, creates materials.
 
 Use this for:
 - 3D models (.glb, .gltf, .obj)
@@ -334,9 +334,11 @@ Use this for:
 - Audio (.ogg, .wav, .mp3)
 - Video (.mp4, .mov, .webm, .ogv): Summer Engine plays only Ogg Theora, so any other video is converted to .ogv first and lands at the path with .ogv; the answer names it.
 
+Use a public HTTPS URL on port 443. The engine refuses HTTP, local/private addresses and URL credentials with unsafe_url.
+
 The path is auto-inferred from the URL filename if not specified. After import, the asset is immediately usable in scenes.`,
     {
-      url: z.string().describe("HTTP(S) URL to download from"),
+      url: z.string().describe("Public HTTPS URL on port 443; local/private addresses and URL credentials are refused."),
       path: z.string().optional().describe("Target path in project, e.g. 'res://assets/player.glb'. Auto-inferred from URL if omitted."),
     },
     async ({ url, path }) =>
@@ -345,10 +347,10 @@ The path is auto-inferred from the URL filename if not specified. After import, 
 
   server.tool(
     "summer_import_from_url_batch",
-    "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time. A video (.mp4, .mov, .webm) is converted to Ogg Theora first and lands at its path with .ogv.",
+    "Download multiple files from public HTTPS URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time. A video (.mp4, .mov, .webm) is converted to Ogg Theora first and lands at its path with .ogv. Use public HTTPS URLs on port 443. The engine refuses HTTP, local/private addresses and URL credentials with unsafe_url.",
     {
       imports: z.array(z.object({
-        url: z.string().describe("URL to download"),
+        url: z.string().describe("Public HTTPS URL on port 443; local/private addresses and URL credentials are refused."),
         path: z.string().describe("Target path in project"),
       })).describe("Array of {url, path} objects"),
     },

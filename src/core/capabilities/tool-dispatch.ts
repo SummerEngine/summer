@@ -1286,7 +1286,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     const content = replaceAll
       ? current.content.split(oldText).join(newText)
-      : current.content.replace(oldText, newText);
+      : current.content.replace(oldText, () => newText);
     if (content === current.content) {
       return { ok: true, noOp: true, path: safePath, sha256: current.sha256, matches };
     }
@@ -1536,11 +1536,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
   }),
-  entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
+  entry("summer_import_from_url", "Download one file by public HTTPS URL through Godot's import pipeline", true, async (args, ctx) => {
     const path = optStr(args, "path");
     return requireEngineSuccess(await importUrls(await ctx.engine(), [{ url: str(args, "url"), ...(path ? { path } : {}) }], { batch: false }));
   }),
-  entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
+  entry("summer_import_from_url_batch", "Download multiple files by public HTTPS URL in one operation", true, async (args, ctx) => {
     if (!Array.isArray(args.imports)) {
       throw new ToolDispatchError("imports must be an array of {url, path} objects");
     }

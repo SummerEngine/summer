@@ -320,3 +320,48 @@ describe("events helpers", () => {
     expect(result).toMatchObject({ matched: true, polls: 1 });
   });
 });
+
+
+describe("native poll gap metadata", () => {
+  const gap = { since: 2, oldest_retained: 46 };
+
+  it("normalizes a top-level gap without counting it as a ring event", () => {
+    const page = parsePollPage({ ok: true, gap, events: [{ seq: 46, kind: "op.applied" }] });
+    expect(page.events).toEqual([{ seq: 46, kind: "op.applied" }]);
+    expect(page.frames).toEqual([{ kind: "sys.gap", data: gap }]);
+  });
+
+  it("preserves it on a matching wait result", async () => {
+    const { client, deps } = scripted([{ ok: true, gap, since: 2, next_seq: 46, events: [{ seq: 46, kind: "scene.saved" }] }]);
+    expect(await waitForEvent(client, { since: 2, kinds: ["scene.saved"] }, deps)).toMatchObject({
+      matched: true, timed_out: false, gap, events: [{ seq: 46, kind: "scene.saved" }],
+    });
+  });
+
+  it("retains the warning through later empty pages until timeout", async () => {
+    const { client, deps } = scripted([
+      { ok: true, gap, since: 2, next_seq: 80, events: [], hold: 250 },
+      { ok: true, since: 80, next_seq: 80, events: [], timed_out: true },
+    ]);
+    expect(await waitForEvent(client, { since: 2, kinds: ["play.started"], timeout_seconds: 1 }, deps)).toMatchObject({
+      matched: false, timed_out: true, gap, events: [], next_seq: 80, polls: 2,
+    });
+  });
+
+  it("preserves it on a paged recent read", async () => {
+    const { client } = scripted([{ ok: true, gap, since: 2, next_seq: 46, last_seq: 557, truncated: true, events: [{ seq: 46, kind: "op.applied" }] }]);
+    expect(await recentEvents(client, { since: 2, limit: 1 })).toMatchObject({
+      gap, count: 1, next_seq: 46, last_seq: 557, truncated: true,
+    });
+  });
+
+  it("prefers the native warning if a legacy adapter also supplies a gap frame", async () => {
+    const { client, deps } = scripted([{ ok: true, gap, next_seq: 46, events: [
+      { kind: "sys.gap", data: { since: 99, oldest_retained: 101 } },
+      { seq: 46, kind: "op.applied" },
+    ] }]);
+    const result = await waitForEvent(client, { since: 2 }, deps);
+    expect(result).toMatchObject({ gap, events: [{ seq: 46, kind: "op.applied" }] });
+    expect(parsePollPage({ gap, events: [{ kind: "sys.gap", data: gap }] }).frames).toHaveLength(1);
+  });
+});

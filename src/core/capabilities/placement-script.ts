@@ -28,7 +28,7 @@
  * only that scene's bodies are in the editor's physics space.
  */
 
-import { SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+import { REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
@@ -136,10 +136,7 @@ func _vec(a):
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
 
 
-# Compare each rounded Vector3 to the original double-precision request.
-func _distance_to_request(v: Vector3, a):
-	return sqrt(pow(v.x - a[0], 2) + pow(v.y - a[1], 2) + pow(v.z - a[2], 2))
-
+${REQUEST_DISTANCE_GDSCRIPT}
 
 func _plan_transform(root, args):
 	var node = _node(root, args["path"])

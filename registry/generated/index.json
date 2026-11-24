@@ -9950,7 +9950,7 @@
       "id": "tool/replace-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "0fb4ae84243f7d860bf9965add882f0e013445f27649abee91ffcc4681856de5",
+      "content_hash": "813a9e29ac8cc8e67c93b7e69fdad29ee003951a04cef0919f6712927d1b7652",
       "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",

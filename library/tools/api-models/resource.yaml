@@ -3,7 +3,7 @@ kind: tool
 version: 1.0.0
 summary: The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.
 use_when:
-  - choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API
+  - choosing a model for an image, 3D, video, voice, dialogue, sound, music or motion asset through the Summer API
   - checking what a Summer API model costs or takes as input
 do_not_use_when:
   - generating inside a running Summer Engine project with the asset tools
@@ -47,6 +47,7 @@ input_schema:
         - dialogue
         - sound
         - music
+        - motion
       description: Only this kind.
   additionalProperties: false
 authority:

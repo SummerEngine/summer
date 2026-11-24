@@ -160,7 +160,7 @@ const exit = (code: number) => {
 const modelsCommand = new Command("models")
   .description("The Summer API's curated game-dev models, with input and price; one model with its id (no sign-in needed)")
   .argument("[model]", "A model id or alias, e.g. 3d/default")
-  .option("--capability <capability>", "Only one kind: image, 3d, video, voice, dialogue, sound or music")
+  .option("--capability <capability>", "Only one kind: image, 3d, video, voice, dialogue, sound, music or motion")
   .option("--json", "JSON (the default when stdout is not a terminal)")
   .action(async (model: string | undefined, opts: { capability?: string } & JsonOption) =>
     exit(

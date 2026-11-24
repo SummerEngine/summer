@@ -590,7 +590,7 @@ describe("summer_batch spatial ops", () => {
 });
 
 describe("summer_batch description tells the truth about undo", () => {
-  it("promises one undo step only when nothing forces a split, and one per chunk otherwise", () => {
+  it("explains per-edit Undo and keeps request counts separate from Undo history", () => {
     let description = "";
     registerSceneTools({
       tool(name: string, desc: string) {
@@ -600,8 +600,8 @@ describe("summer_batch description tells the truth about undo", () => {
     } as never);
     expect(description).not.toContain("grouped into one undo step");
     expect(description).not.toContain("undo everything with a single Ctrl+Z.");
-    expect(description).toContain("ONE undo step");
-    expect(description).toContain("EACH chunk is its own undo step");
+    expect(description).toContain("separate undo steps for edits in the same engine request");
+    expect(description).not.toMatch(/each chunk is its own undo step|N \+ 2 requests and undo steps/i);
   });
 });
 

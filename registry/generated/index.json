@@ -1292,7 +1292,7 @@
       "id": "skill/debug",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "5506e2e64770b083afa10e147350f3968769acc3b2d2fda2a6b7f91a8521bf1f",
+      "content_hash": "7e565142e4cdae25fe90dca39f2f7f40c4b63d9efe027715a5237981c316dd23",
       "summary": "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -3740,7 +3740,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "c186909620b78c13d0df3ea13b7889739b185e743881df25df34e7fe2645a137",
+      "content_hash": "ec2e8dfd623913b45b7278a04fc37ab46514aab53e87c5782550d737fe9b46b5",
       "summary": "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -6978,11 +6978,11 @@
     {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "0ba437873ed75942b3ac5199b2dcc4c2b0bbd73f015b38414fa4106b5f995ba3",
-      "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
+      "version": "1.1.1",
+      "content_hash": "cfd092a664b3963656cc2042ce4211ac1d94ca8cc0ae18d1fae4875b5dab78f8",
+      "summary": "Run engine ops in order in one call. Edits can take separate undo steps. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
-        "multi-node builds that should undo as one step (no single-only ops in the list)",
+        "multi-node builds with ordered edits",
         "reaching engine ops that have no dedicated tool",
         "placing many kit pieces, one InstantiateScene op per piece with its position and rotation, read back with receipt summary"
       ],

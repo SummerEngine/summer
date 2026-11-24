@@ -122,6 +122,9 @@ describe("seeing math — engine conventions", () => {
 });
 
 describe("parseVector3 / formatVector3", () => {
+  it("rejects coordinates outside the numeric range before constructing a pose", () => {
+    expect(() => parseVector3("Vector3(1e999, 0, 0)", "eye")).toThrow(/finite coordinates/);
+  });
   it("round-trips Godot literals", () => {
     expect(parseVector3("Vector3(1, -2.5, 3e1)", "p")).toEqual([1, -2.5, 30]);
     expect(formatVector3([1.23456, -0, 2])).toBe("Vector3(1.235, 0, 2)");

@@ -27,6 +27,7 @@ import {
   exactCrop,
   fitDistance,
   letterbox,
+  formatPoseVector,
   formatVector3,
   mergeAabbs,
   normalize,
@@ -316,12 +317,13 @@ async function resolvePoses(client: SeeingClient, items: Array<{ args: PoseArgs;
   return out;
 }
 
-function poseLiteral(pose: CameraPose): string {
-  return `position ${formatVector3(pose.position)}, look_at ${formatVector3(pose.look_at)}, fov ${Math.round(pose.fov * 10) / 10}`;
+function poseRecord(pose: CameraPose) {
+  return { position: formatPoseVector(pose.position), look_at: formatPoseVector(pose.look_at), fov: pose.fov };
 }
 
-function poseRecord(pose: CameraPose): Record<string, unknown> {
-  return { position: formatVector3(pose.position), look_at: formatVector3(pose.look_at), fov: Math.round(pose.fov * 100) / 100 };
+function poseLiteral(pose: CameraPose): string {
+  const { position, look_at, fov } = poseRecord(pose);
+  return `position ${position}, look_at ${look_at}, fov ${fov}`;
 }
 
 function sizeFor(edge: number, aspect: number): [number, number] {
@@ -512,9 +514,10 @@ async function nativeRender(
 ): Promise<NativeRender> {
   const op: Record<string, unknown> = { op: "ScenePreview", scene_path: input.scenePath, framing: input.framing, size: input.size };
   if (input.pose) {
-    op.camera_position = formatVector3(input.pose.position);
-    op.camera_look_at = formatVector3(input.pose.look_at);
-    op.fov = input.pose.fov;
+    const { position, look_at, fov } = poseRecord(input.pose);
+    op.camera_position = position;
+    op.camera_look_at = look_at;
+    op.fov = fov;
   } else if (input.fov !== undefined) {
     op.fov = input.fov;
   }
@@ -815,7 +818,7 @@ function viewCheckReceipt(check: ViewCheck): Record<string, unknown> {
     ok: !check.problem,
     ...(check.problem ? { reason: check.problem.reason, detail: check.problem.detail, ...(check.problem.blockers ? { blockers: check.problem.blockers } : {}) } : {}),
     sight_lines: check.requestedSummary,
-    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatVector3(check.alternative.from), fov: check.alternative.fov, ...poseRecord(check.alternative.pose) } } : {}),
+    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatVector3(check.alternative.from), ...poseRecord(check.alternative.pose) } } : {}),
   };
 }
 

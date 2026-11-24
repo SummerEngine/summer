@@ -242,6 +242,24 @@ describe("summer_debug_views", () => {
 describe("summer_zoom", () => {
   const pose = { camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", fov: 50 };
 
+  it("uses the same precise camera pose for a mark, its crop, and the reusable receipt", async () => {
+    const camera = { camera_position: "Vector3(0, 0, 6)", camera_look_at: "Vector3(0.0004, 0, 5.9996)", fov: 55.12345 };
+    const engine = fakeEngine({
+      projectRoot: project,
+      native: (op) => ({
+        ok: true,
+        framing: op.framing,
+        image_base64: OK_JPEG.toString("base64"),
+        marks: [{ id: 1, path: "Target", class: "MeshInstance3D", screen_rect: { x: 400, y: 200, w: 100, h: 100 } }],
+      }),
+    });
+    const result = (await zoom(engine, { scenePath: "res://square.tscn", ...camera, mark: 1 })) as SeeingSuccess;
+    expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", marks: true, ...camera });
+    expect(result.ok).toBe(true);
+    expect(result.receipt.pose).toEqual({ position: camera.camera_position, look_at: camera.camera_look_at, fov: camera.fov });
+    expect(result.caption).toContain("look_at Vector3(0.0004, 0, 5.9996), fov 55.12345");
+  });
+
   it("renders the exact sub-frustum of a region", async () => {
     const engine = fakeEngine({ projectRoot: project });
     const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0 })) as SeeingSuccess;

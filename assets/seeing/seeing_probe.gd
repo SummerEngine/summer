@@ -349,7 +349,8 @@ func _analyze() -> void:
 			cams.push_front(spawn)
 		if not cams.is_empty():
 			var cam := cams[0] as Camera3D
-			info["camera"] = {"path": _rel(cam), "position": _arr(cam.global_position), "forward": _arr(-cam.global_transform.basis.z.normalized()), "fov": cam.fov}
+			var camera_pose := cam.get_camera_transform()
+			info["camera"] = {"path": _rel(cam), "position": _arr(camera_pose.origin), "forward": _arr(-camera_pose.basis.z), "fov": cam.fov}
 		_result["spawn"] = info
 	var key := _key_light()
 	if not key.is_empty():

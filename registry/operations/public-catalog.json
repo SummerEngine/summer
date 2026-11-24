@@ -6214,6 +6214,10 @@
               "openai/gpt-image-2",
               "gemini-flash",
               "fal-ai/gemini-25-flash-image",
+              "gpt-image-2.6-flare",
+              "openai/gpt-image-2.6/flare/text-to-image",
+              "gpt-image-2.6-sunburst",
+              "openai/gpt-image-2.6/sunburst/text-to-image",
               "gpt-image-2.5",
               "openai/gpt-image-2.5/sunburst/text-to-image",
               "gpt-image-2.5-sunburst",
@@ -39766,6 +39770,12 @@
             "description": "Exact checksum returned by projects.list_templates.",
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
+          },
+          "maxSizeBytes": {
+            "description": "Maximum ZIP bytes the destination editor supports. Omit for the legacy 128 MiB limit; use a larger value only for an editor with that import capability.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1610612736
           }
         },
         "required": [
@@ -39948,7 +39958,7 @@
               "sizeBytes": {
                 "type": "integer",
                 "exclusiveMinimum": 0,
-                "maximum": 134217728
+                "maximum": 1610612736
               },
               "projectFile": {
                 "type": "string"
@@ -40181,6 +40191,12 @@
       "input": {
         "type": "object",
         "properties": {
+          "maxSizeBytes": {
+            "description": "Maximum ZIP bytes the destination editor supports. Omit for the legacy 128 MiB limit; use a larger value only for an editor with that import capability.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1610612736
+          },
           "type": {
             "type": "string",
             "enum": [
@@ -40382,7 +40398,7 @@
                 "sizeBytes": {
                   "type": "integer",
                   "exclusiveMinimum": 0,
-                  "maximum": 134217728
+                  "maximum": 1610612736
                 }
               },
               "required": [

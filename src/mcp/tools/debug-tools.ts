@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../server.js";
 import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+import { asRecord } from "../../core/util/json.js";
 import { shapeEngineLogResponse } from "../../core/log-filters.js";
 import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
 import { withConsoleScope } from "../../core/capabilities/console-read.js";
@@ -142,7 +143,7 @@ Output is post-processed for token economy: consecutive identical messages colla
 
 Use after summer_get_diagnostics indicates console issues, or to check what your print() statements said.`,
     {
-      max_lines: z.number().optional().default(100).describe("Max lines to return after dedupe (default 100)"),
+      max_lines: z.number().optional().default(100).describe("Max lines to return after level filtering and dedupe (default 100)"),
       filter: z.string().optional().describe("Only return lines containing this string"),
       type: z.enum(["error", "warning", "std", "editor"]).optional().describe("Filter by message type at the engine level"),
       errors_only: z.boolean().optional().default(true).describe("Drop info/std noise, keep errors and warnings (default true)"),
@@ -154,8 +155,21 @@ Use after summer_get_diagnostics indicates console issues, or to check what your
         const op: Record<string, unknown> = { op: "GetConsoleOutput", max_lines };
         if (filter) op.filter = filter;
         if (type) op.type = type;
-        const engineResult = await client.executeOps([op]);
+        let engineResult = await client.executeOps([op]);
         if (raw) return engineResult;
+        if (!type && (errors_only || strict_errors)) {
+          const envelope = asRecord(engineResult);
+          const consoleRow = Array.isArray(envelope?.results)
+            ? asRecord(envelope.results.find((row) => asRecord(row)?.op === "GetConsoleOutput"))
+            : envelope;
+          const total = asRecord(consoleRow?.summary)?.total;
+          // Older engines cap ALL severities before we drop std/editor rows.
+          // Re-read the retained log, then apply the requested severity/page
+          // limit locally. This also works with their incorrect truncated flag.
+          if (typeof total === "number" && Number.isSafeInteger(total) && total > max_lines) {
+            engineResult = await client.executeOps([{ ...op, max_lines: total }]);
+          }
+        }
         const { result } = shapeEngineLogResponse(engineResult, {
           errorsOnly: errors_only,
           errorsOnlyStrict: strict_errors,

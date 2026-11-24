@@ -237,7 +237,7 @@ export function buildAgentPlaybook(
     // summer_batch forwards each {op, ...} verbatim to the engine, so
     // engine ops that have no dedicated tool are still reachable.
     rawOpsViaBatch: [
-      "summer_batch runs an array of raw engine ops in one undo group; each op is passed through untouched, so newer engine ops with no dedicated tool are still callable.",
+      "summer_batch runs an array of raw engine ops. Edits can take separate undo steps. You can also call newer engine ops that have no dedicated tool.",
       "RunVerification (hidden probe instance): summer_batch ops:[{op:'RunVerification', probe_source:'<gdscript>', max_seconds:20}]. probe_source extends SummerProbeBase and uses report(name, value)/save_frame(name)/press(action)/key(keycode)/finish(); returns {ok, results, frames, out_dir} or {ok:false, failure_reason: spawn_failed|timeout|bad_args|no_project|probe_not_node}. save_frame REQUIRES a name argument.",
       "SimulateInput (drive the RUNNING game — summer_play first): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}], sent ALONE as the only op. failure_reason 'not_running' = start the game first; 'unsupported' = the running game build predates the handler — use RunVerification instead.",
       "SINGLE-OP CONTRACT: the engine rejects any multi-op batch containing SaveScene, InstantiateScene, ReplaceNode, SimulateInput, ViewportSnapshot, GameSnapshot, GetRuntimeSceneTree, GetRuntimeNode, the runtime-control ops (SetRuntimeProp, CallRuntimeMethod, SpawnRuntimeScene, FreeRuntimeNode, RuntimeAnimation, RuntimeAnimationTree, GetRuntimeBones, GamePause, GameStep, GameSpeed, SimulateInputScript, InputRecordStart, InputRecordStop, InputReplay, GameProbe), Run*/Import* or Git* ops (failure_reason 'unsupported_transport', nothing executes). summer_batch splits these into sequential requests for you; when composing raw batches keep them as their own call anyway.",
@@ -248,7 +248,7 @@ export function buildAgentPlaybook(
       "scenePersistence.saved only says the SaveScene ran. Trust verified:true, which a tool sets only after reading the saved file back.",
       "Searching project files needs no raw op: summer_grep wraps the engine's Grep op and adds context lines and a result cap.",
       "You do not need an engine op to run a shell command: your own host already has a shell. The engine binary that runs project scripts is at OS.get_executable_path() (on macOS, /Applications/Summer.app/Contents/MacOS/Summer); see the summer-cli headless-scripting skill.",
-      "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
+      "These runtime ops leave the edited scene’s undo history unchanged.",
     ],
     // Scene scripting: when one GDScript beats a chain of CRUD ops.
     scripting: [

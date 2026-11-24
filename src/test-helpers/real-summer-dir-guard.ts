@@ -12,7 +12,7 @@
  */
 import { readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 /** Rewritten by the running engine / a live MCP server, never by tests. */
 const LIVE_PROCESS_FILES = new Set(["mcp.log", "user.json", "auth-token", "credential-metadata.json", "api-token", "api-port"]);
@@ -23,8 +23,9 @@ const LIVE_PROCESS_FILES = new Set(["mcp.log", "user.json", "auth-token", "crede
  * an open editor. Tests never write there (they resolve the store through the
  * fake HOME), so a changed heartbeat is a warning, like the other live files.
  */
-function isLiveProcessFile(path: string): boolean {
-  return LIVE_PROCESS_FILES.has(path) || /^instances\/[^/]+\.json$/.test(path);
+export function isLiveProcessFile(path: string, separator: string = sep): boolean {
+  const normalized = separator === "/" ? path : path.split(separator).join("/");
+  return LIVE_PROCESS_FILES.has(normalized) || /^instances\/[^/]+\.json$/.test(normalized);
 }
 
 type Snapshot = Map<string, string>;

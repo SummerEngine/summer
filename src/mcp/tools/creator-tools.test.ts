@@ -1,9 +1,13 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setSummerDirForTests } from "../../core/store.js";
+import { setSummerDirForTests, writeStoreJson } from "../../core/store.js";
+import * as exportCapability from "../../core/capabilities/export-game.js";
+import * as captureCapability from "../../core/capabilities/capture-gameplay.js";
+import * as syncCapability from "../../core/capabilities/sync-items.js";
 import { registerCreatorTools } from "./creator-tools.js";
+import { buildZip } from "../../test-helpers/summer-bundle-fixture.js";
 
 type Registered = {
   name: string;
@@ -56,6 +60,70 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
+  const projectTools = [
+    ["summer_export_game", () => vi.spyOn(exportCapability, "exportGame")],
+    ["summer_capture_gameplay", () => vi.spyOn(captureCapability, "captureGameplay")],
+    ["summer_sync_items", () => vi.spyOn(syncCapability, "syncItems")],
+  ] as const;
+
+  it.each(projectTools)("%s follows the current binding when project is omitted", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    let bound = join(root, "project-b");
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any, async () => bound);
+    const tool = getTool(tools, name);
+    await tool.handler({});
+    expect(operation).toHaveBeenLastCalledWith(expect.objectContaining({ project: bound }));
+
+    bound = join(root, "project-c");
+    await tool.handler({ project: "   " });
+    expect(operation).toHaveBeenLastCalledWith(expect.objectContaining({ project: bound }));
+  });
+
+  it.each(projectTools)("%s keeps an explicit project without resolving another editor", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    const bound = vi.fn(async () => { throw new Error("unreachable selected editor"); });
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any, bound);
+    const explicit = join(root, "project-a");
+    await getTool(tools, name).handler({ project: explicit });
+    expect(operation).toHaveBeenCalledWith(expect.objectContaining({ project: explicit }));
+    expect(bound).not.toHaveBeenCalled();
+  });
+
+  it.each(projectTools)("%s retains the core environment/cwd fallback when unbound", async (name, spy) => {
+    const operation = spy().mockResolvedValue({ ok: true } as never);
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    await getTool(tools, name).handler({});
+    expect(operation.mock.calls[0][0].project).toBeUndefined();
+  });
+
+  it("describes the fields the upload preview actually returns for each format", async () => {
+    const file = join(root, "web.zip");
+    await writeFile(file, buildZip([{ name: "index.html", data: Buffer.from("<title>Fixture</title>") }]));
+    await writeStoreJson("oauth-token", { schemaVersion: 1, accessToken: "fixture-local-only", expiresAt: "2099-01-01T00:00:00Z" });
+    vi.stubEnv("SUMMER_GATEWAY_URL", "http://127.0.0.1:17656");
+    const fetch = vi.fn(async () => Response.json({ id: GAME_ID, name: "Fixture", supportedPlatforms: ["ios"] }));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const { server, tools } = createFakeServer();
+      registerCreatorTools(server as any);
+      const tool = getTool(tools, "summer_publish_build");
+      const result = parseResult(await tool.handler({ gameId: GAME_ID, file, platform: "web", clientVersion: "v1.0.0", confirm: false }));
+      expect(result).toMatchObject({ status: "confirmation_required", target: { gameId: GAME_ID, file, platform: "web", clientVersion: "v1.0.0" } });
+      expect(result.target).not.toHaveProperty("sha256");
+      expect(result).not.toHaveProperty("warnings");
+      expect(fetch.mock.calls).toHaveLength(1);
+      expect(tool.description).toContain("Bundles include a SHA-256 digest");
+      expect(tool.description).toContain("Web builds and downloads identify the file, platform, size and version");
+      const descriptor = await readFile(new URL("../../../library/tools/publish-build/resource.yaml", import.meta.url), "utf8");
+      expect(descriptor).toContain("exact upload target returned by the confirm=false preview");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("returns structured failures from summer_publish_build", async () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);

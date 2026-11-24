@@ -70,7 +70,6 @@ export async function executeOpsChunked(
   singleOnly: ReadonlySet<string>
 ): Promise<unknown> {
   const chunks = chunkOpsForDispatch(ops, singleOnly);
-  if (chunks.length === 1) return send(chunks[0]!);
 
   const receipts: unknown[] = [];
   const combinedResults: JsonRecord[] = [];
@@ -81,30 +80,42 @@ export async function executeOpsChunked(
     if (Array.isArray(envelope.results)) {
       combinedResults.push(...(envelope.results as JsonRecord[]));
     }
-    if (extractOpError(receipt)) {
-      const failedKind = String(chunks[i]![0]?.op ?? "batch");
-      const appliedOps = chunks.slice(0, i).flat().map((op) => String(op.op ?? ""));
+    const error = extractOpError(receipt);
+    if (chunks.length === 1 && (!error || ops.length === 1)) return receipt;
+    if (error) {
+      const rows = Array.isArray(envelope.results) ? envelope.results as JsonRecord[] : [];
+      const failedIndex = rows.findIndex((row) => row.ok === false);
+      const failedOp = rows[failedIndex];
+      const index = chunks.slice(0, i).reduce((n, chunk) => n + chunk.length, 0) + failedIndex;
+      const kind = String(failedOp?.op ?? chunks[i]![failedIndex]?.op ?? "batch");
+      // No per-op result means the outcome can be unknown. Keep the lifecycle
+      // explanation and classifier without attributing it to a particular op.
+      const cause = failedOp
+        ? `ops[${index}] ${kind}: ${failedOp.error || envelope.error || "Engine request failed."}`
+        : extractOpError({ ...envelope, failure_reason: undefined, failureReason: undefined }) ?? error;
+      const appliedOps = combinedResults.filter((row) => row.ok === true && asRecord(row.meta)?.applied !== false);
       const notSent = chunks.slice(i + 1).flat().map((op) => String(op.op ?? ""));
-      const baseError =
-        (typeof envelope.error === "string" && envelope.error) || `Engine request failed (${failedKind}).`;
-      const honestError =
-        appliedOps.length > 0
-          ? `${baseError} NOTE: ${appliedOps.length} earlier op(s) already applied (${appliedOps.join(", ")})` +
-            (failedKind === "SaveScene"
-              ? " — the scene is modified in the editor but NOT saved to disk. Fix the problem, then call summer_save_scene."
-              : ".") +
-            (notSent.length > 0 ? ` Not sent: ${notSent.join(", ")}.` : "")
-          : baseError;
+      const skipped = rows.filter((row) => row.failure_reason === "skipped" || row.failureReason === "skipped");
+      const notes = [cause];
+      if (appliedOps.length > 0) {
+        notes.push(`${appliedOps.length} earlier op(s) already applied (${appliedOps.map((row) => row.op).join(", ")}).`);
+        if (kind === "SaveScene" || notSent.includes("SaveScene")) {
+          notes.push("The edits were NOT saved by this batch.");
+        }
+      }
+      if (skipped.length > 0) notes.push(`Skipped: ${skipped.map((row) => row.op).join(", ")}.`);
+      if (notSent.length > 0) notes.push(`Not sent: ${notSent.join(", ")}.`);
       return {
         ...envelope,
-        error: honestError,
+        error: notes.join(" "),
         results: combinedResults,
         receipts,
+        ...(receipts.length > 1 && { undoGroup: false }),
       };
     }
   }
   const last = (receipts[receipts.length - 1] ?? {}) as JsonRecord;
-  return { ...last, results: combinedResults, requests: chunks.length, receipts };
+  return { ...last, undoGroup: false, results: combinedResults, requests: chunks.length, receipts };
 }
 
 /** Scene mutation entry point: appends the transaction-boundary SaveScene, then

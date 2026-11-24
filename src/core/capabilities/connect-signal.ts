@@ -21,8 +21,8 @@
  *      method), CONNECT_PERSIST)` — an existing non-persistent connection of
  *      the same pair (an earlier ConnectSignal) is replaced by a persistent one;
  *   3. SaveScene — the run marked the tab unsaved; this leaves it clean;
- *   4. read the file back and find the [connection] line. Missing is
- *      failure_reason not_persisted (persisted:false), never success.
+ *   4. verify the saved local declaration or the matching edge in the saved
+ *      instance/base scene graph for an already-connected pair.
  */
 import { z } from "zod";
 import { missingEngineOpResult, resolveSingleOnlyOps, type CapabilityAdvertisingClient } from "../capability-skew.js";
@@ -90,6 +90,37 @@ func _flags(emitter: Node, callable: Callable) -> int:
 			return int(c["flags"])
 	return -1
 
+# Read packed declarations without running constructors or adding nodes to the tree.
+func _relative_to_instance(path: String, instance: String) -> String:
+	if path == instance:
+		return "."
+	if path.begins_with(instance + "/"):
+		return path.trim_prefix(instance + "/")
+	return ""
+
+func _declaring_scene(state: SceneState, source_path: String, target_path: String) -> Dictionary:
+	while state != null:
+		for i in state.get_connection_count():
+			if state.get_connection_signal(i) != SIGNAL_NAME or state.get_connection_method(i) != METHOD:
+				continue
+			if String(state.get_connection_source(i)).trim_prefix("./") != source_path or String(state.get_connection_target(i)).trim_prefix("./") != target_path:
+				continue
+			if state.get_connection_unbinds(i) == 0 and state.get_connection_binds(i).is_empty():
+				return {"scene": state.get_path(), "flags": state.get_connection_flags(i)}
+		for i in range(1, state.get_node_count()):
+			var instance := state.get_node_instance(i)
+			if instance == null:
+				continue
+			var path := String(state.get_node_path(i)).trim_prefix("./")
+			var from := _relative_to_instance(source_path, path)
+			var to := _relative_to_instance(target_path, path)
+			if from != "" and to != "":
+				var saved := _declaring_scene(instance.get_state(), from, to)
+				if not saved.is_empty():
+					return saved
+		state = state.get_base_scene_state()
+	return {}
+
 func run(ctx):
 	var root: Node = ctx.get_scene_root()
 	if root == null:
@@ -121,7 +152,14 @@ func run(ctx):
 	var flags := _flags(emitter, callable)
 	if flags < 0 or (flags & Object.CONNECT_PERSIST) == 0:
 		return {"ok": false, "failure_reason": "connect_failed", "flags": flags, "error": "The connection is not persistent after connect() (flags " + str(flags) + ")."}
-	return {"ok": true, "previous": previous, "flags": flags, "from": str(root.get_path_to(emitter)), "to": str(root.get_path_to(receiver)), "method_exists": receiver.has_method(METHOD)}
+	var source_path := str(root.get_path_to(emitter))
+	var target_path := str(root.get_path_to(receiver))
+	var result := {"ok": true, "previous": previous, "flags": flags, "from": source_path, "to": target_path, "method_exists": receiver.has_method(METHOD)}
+	if previous == "persistent":
+		var packed := ResourceLoader.load(TARGET_SCENE, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as PackedScene
+		if packed != null:
+			result.declaration = _declaring_scene(packed.get_state(), source_path, target_path)
+	return result
 `;
 }
 
@@ -304,7 +342,19 @@ export async function connectSignalPersisted(client: ConnectSignalClient, args: 
     (Array.isArray(savedResults) ? savedResults.map((r) => asRecord(r)) : []).find((r) => r?.op === "SaveScene")?.meta
   );
   const tabClean = typeof saveMeta?.dirty === "boolean" ? { tab_clean: !saveMeta.dirty } : {};
-  if (!line) {
+  // The probe never changes an existing persistent callable. Its fresh PackedScene
+  // read is evidence for an inherited edge if the saved root still matches.
+  const declaration = asRecord(outcome.declaration);
+  const inherited = !line && outcome.previous === "persistent" && typeof declaration?.scene === "string" &&
+    declaration.scene !== "" && declaration.scene !== scenePath ? declaration : null;
+  if (inherited && before.sha256 !== after.sha256) {
+    return readbackFailure(
+      "scene_verification_changed",
+      `Could not confirm that ${scenePath} still matches the scene Godot checked for the inherited connection. Run summer_connect_signal again to verify the saved scene.`,
+      { verified: false, ...tabNote }
+    );
+  }
+  if (!line && !inherited) {
     return readbackFailure(
       "not_persisted",
       `summer_connect_signal did NOT persist (persisted:false): the saved ${scenePath} has no [connection signal="${signal}" from="${from}" to="${to}" method="${method}"] line ` +
@@ -323,13 +373,13 @@ export async function connectSignalPersisted(client: ConnectSignalClient, args: 
     verified: true,
     scenePath,
     connection: { signal, from, to, method },
-    line: line.raw,
+    ...(line ? { line: line.raw } : { already_connected: true, declaration: inherited }),
     ...(outcome.previous === "not_persistent" ? { replaced_non_persistent: true } : {}),
-    via: "RunSceneScript: emitter.connect(signal, Callable(receiver, method), CONNECT_PERSIST), then SaveScene",
+    via: inherited ? "Godot SceneState read from the saved scene and its dependencies" : "RunSceneScript: emitter.connect(signal, Callable(receiver, method), CONNECT_PERSIST), then SaveScene",
     ...(persistence ? { scenePersistence: { ...persistence, verified: true } } : {}),
     ...tabClean,
     ...tabNote,
     ...(warnings.length ? { warnings } : {}),
-    undo: "One Ctrl+Z in that scene reverts the connection (the scene script's undo step).",
+    ...(inherited ? {} : { undo: "One Ctrl+Z in that scene reverts the connection (the scene script's undo step)." }),
   };
 }

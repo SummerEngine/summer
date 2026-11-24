@@ -1,7 +1,7 @@
 id: tool/connect-signal
 kind: tool
-version: 1.1.0
-summary: Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.
+version: 1.2.0
+summary: Connect a signal and verify its local or inherited declaration in the saved scene. The receiver should define the target method.
 use_when:
   - wiring events like body_entered, pressed, or timeout
   - '"when the button is pressed, call my function"'

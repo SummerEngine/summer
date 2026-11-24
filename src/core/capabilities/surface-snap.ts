@@ -20,7 +20,7 @@
  *    (_solve_physics compares p_gap with hit_travel instead of with the swept
  *    distance from the backed-off start). So on gap_exceeds_hit_travel with a
  *    start overlap this module lifts the subject against the cast direction
- *    by the overlap depth plus a margin (exact local position from the saved
+ *    by the overlap depth plus a margin (exact local position from the live target
  *    scene), snaps again from there, and keeps the result only when it
  *    settles back on a node the subject was sunk into. Otherwise the original
  *    position is restored and the failure is reported.
@@ -43,16 +43,13 @@ import { extractOpError } from "./engine-receipt.js";
 import { STARCAST_FALLBACK } from "./engine-fallbacks.js";
 import {
   applyMat3,
-  IDENTITY3,
   invertMat3,
-  mulMat3,
-  parseTransform3D,
   vec3Literal,
   vec3LiteralExact,
-  type Mat3,
   type Vec3,
 } from "./math3d.js";
-import { findTscnNode, isSceneCreatedNode, normalizeNodePath, parentNodePath, parseTscn } from "./tscn.js";
+import { readSceneNodeTransform } from "./scene-space.js";
+import { normalizeNodePath } from "./tscn.js";
 import { measureMeshSnap, type MeshSnapMeasure } from "./surface-snap-mesh.js";
 
 /** Clearance added above the support before the second sweep. */
@@ -171,46 +168,17 @@ interface LiftPlan {
   lifted: Vec3;
 }
 
-/** Local position of the subject and the world basis of its parent, read
- *  from the saved .tscn (exact floats). Ancestors without a transform line
- *  are identity; an ancestor the file does not list (a node inside an
- *  instanced scene) makes the plan unavailable. */
+/** Read the current target scene, including inherited and instanced parents. */
 async function planLift(client: SnapClient, args: SnapToSurfaceArgs, lift: number): Promise<LiftPlan | { reason: string }> {
-  const read = asRecord(await client.readProjectFile(args.scenePath, 1_000_000));
-  const content = asRecord(read?.data)?.content;
-  if (read?.ok === false || typeof content !== "string" || asRecord(read?.data)?.truncated === true) {
-    return { reason: `${args.scenePath} could not be read back as a whole text scene` };
-  }
-  const parsed = parseTscn(content);
-  const subjectPath = normalizeNodePath(args.subjectPath);
-  const subject = findTscnNode(parsed, subjectPath);
-  if (!subject || !isSceneCreatedNode(subject)) {
-    return { reason: `${subjectPath} is not a node the scene file creates (it may live inside an instanced scene)` };
-  }
-  const local = (node: ReturnType<typeof findTscnNode>) => {
-    const raw = node?.props.find((p) => p.key === "transform")?.value;
-    return raw ? parseTransform3D(raw) : { basis: IDENTITY3, origin: [0, 0, 0] as Vec3 };
-  };
-  const own = local(subject);
-  if (!own) return { reason: `${subjectPath} has a transform the planner cannot read` };
-  if (subject.props.some((p) => p.key === "top_level" && p.value.trim() === "true")) {
-    return { reason: `${subjectPath} is top_level` };
-  }
-  const chain: Mat3[] = [];
-  for (let p = parentNodePath(subjectPath); p !== null; p = parentNodePath(p)) {
-    const node = findTscnNode(parsed, p);
-    if (!node) return { reason: `ancestor ${p} is not listed in the scene file` };
-    const t = local(node);
-    if (!t) return { reason: `ancestor ${p} has a transform the planner cannot read` };
-    chain.unshift(t.basis);
-  }
-  const parentBasis = chain.reduce((acc, basis) => mulMat3(acc, basis), IDENTITY3);
-  const inverse = invertMat3(parentBasis);
+  const native = await readSceneNodeTransform(client, args.subjectPath, args.scenePath, true);
+  if ("error" in native) return { reason: native.error };
+  if (native.independentGeometry.length) return { reason: `visible geometry does not inherit the subject's transform: ${native.independentGeometry.join(", ")}` };
+  const inverse = invertMat3(native.parentBasis);
   if (!inverse) return { reason: "the parent transform is singular" };
   const length = Math.hypot(...args.direction);
   const worldDelta = args.direction.map((d) => (-d / length) * lift) as Vec3;
   const localDelta = applyMat3(inverse, worldDelta);
-  const original = own.origin;
+  const original = native.position;
   return { original, lifted: [original[0] + localDelta[0], original[1] + localDelta[1], original[2] + localDelta[2]] };
 }
 
@@ -290,12 +258,20 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
   const send = (ops: JsonRecord[], options: JsonRecord = {}) =>
     executeOpsChunked((chunk) => client.executeIdentityBoundOps(chunk, { ...options, scenePath: args.scenePath }), ops, singleOnly);
 
+  // The native visual AABB seat is applied before its triangle evidence is available.
+  // Capture Godot’s exact live local transform, including any unsaved edit, for rollback.
+  const start = await measureMeshSnap(client, { ...args, captureTransform: true });
+  const originalTransform = start.ok ? start.transform : undefined;
+  if (!originalTransform && (start.ok || start.failure_reason !== "engine_lacks_op")) {
+    const error = start.ok ? "The starting transform could not be read." : start.error;
+    return { ok: false, error, results: [{ op: "SnapToSurface", ok: false, failure_reason: start.ok ? "snap_start_unavailable" : start.failure_reason, error }] };
+  }
   const first = await send(sceneMutationOps([op]));
   if (!extractOpError(first)) {
     const seated = snapResult(first);
     // A seat on visual AABBs may rest on a box above the real surface: check it on triangles.
     if (seated?.evidence === "visual_aabb") {
-      const checked = await snapOnVisibleMesh(client, args, send, { engineResult: seated });
+      const checked = await snapOnVisibleMesh(client, args, send, { originalTransform, engineResult: seated });
       return checked.receipt ?? withMeshNote(first, checked.note);
     }
     return first;
@@ -304,7 +280,7 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
   const reason = typeof failed?.failure_reason === "string" ? failed.failure_reason : "";
   let meshFallback: JsonRecord | undefined;
   if (failed && failed.evidence === "visual_aabb" && MESH_FALLBACK_FAILURES.has(reason)) {
-    const mesh = await snapOnVisibleMesh(client, args, send, { engineFailure: failed });
+    const mesh = await snapOnVisibleMesh(client, args, send, { originalTransform, engineFailure: failed });
     if (mesh.receipt) return mesh.receipt;
     meshFallback = mesh.note;
   }
@@ -332,7 +308,7 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
     });
   }
 
-  // Save first: the lift is computed from the exact transform in the file.
+  // Preserve the original scene before automatic recovery.
   const preSave = await send([{ op: "SaveScene" }]);
   if (extractOpError(preSave)) {
     return failureEnvelope(first, failed, args, diagnosis, { meshFallback, lift, liftNote: "the scene could not be saved before lifting" });
@@ -396,6 +372,7 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
 type Send = (ops: JsonRecord[], options?: JsonRecord) => Promise<unknown>;
 
 interface MeshContext {
+  originalTransform?: string;
   /** The engine's visual_aabb failure this replaces. */
   engineFailure?: JsonRecord;
   /** The engine's visual_aabb seat this checks (already applied and saved). */
@@ -432,6 +409,20 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     if (context.engineResult && probeRan) await send([{ op: "SaveScene" }]);
     return { note };
   };
+  const refuseEdgeBudget = async (message: string, correctionApplied: boolean) => {
+    const changed = correctionApplied || (context.engineResult !== undefined && context.engineResult.changed !== false);
+    let rollbackError: string | null = null;
+    if (changed) {
+      rollbackError = context.originalTransform
+        ? extractOpError(await send(sceneMutationOps([{ op: "SetProp", path: args.subjectPath, key: "transform", value: context.originalTransform }])))
+        : "the original transform was unavailable";
+    }
+    const error = message + (rollbackError
+      ? ` The starting transform could not be restored and saved: ${rollbackError}.`
+      : " The subject is at its starting transform. Use a simpler collision shape to snap this mesh.");
+    return { receipt: { ok: false, error, results: [{ op: "SnapToSurface", ok: false, failure_reason: "mesh_edge_budget_exceeded", original_transform_preserved: !rollbackError, error }] } };
+  };
+  if (!measure.ok && measure.failure_reason === "mesh_edge_budget_exceeded") return refuseEdgeBudget(measure.error, false);
   if (!measure.ok) return finish({ failure_reason: measure.failure_reason, error: measure.error });
   if (!measure.found || typeof measure.shift !== "number" || typeof measure.travel !== "number" || typeof measure.position_after !== "string") {
     return finish({
@@ -454,6 +445,7 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     if (extractOpError(setReceipt)) return finish({ failure_reason: "mutation_failed", error: `SetProp position failed: ${extractOpError(setReceipt)}` });
   }
   const verify = moved ? await measureMeshSnap(client, probeArgs) : measure;
+  if (!verify.ok && verify.failure_reason === "mesh_edge_budget_exceeded") return refuseEdgeBudget(verify.error, moved);
   const finalGap = verify.ok && verify.found && typeof verify.travel === "number" ? verify.travel : undefined;
   if (moved && finalGap !== undefined && Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE) {
     const restored = typeof measure.position === "string" && !extractOpError(await send([position(measure.position)]));
@@ -490,7 +482,7 @@ function meshSnapResult(
 ): JsonRecord {
   const travel = measure.travel ?? 0;
   const warnings: string[] = [
-    "evidence visual_mesh: the contact was measured between visible triangles (the subject's vertices cast along the direction onto the support's triangles, and the support's vertices under it back onto the subject's); no collider was used.",
+    "evidence visual_mesh: the contact was measured between visible triangles (the subject's vertices cast along the direction onto the support's triangles, and the support's vertices back onto the subject's, with projected edge crossings checked); no collider was used.",
   ];
   if (travel < -MESH_SNAP_TOLERANCE) warnings.push(`The subject started ${round3(-travel)} m inside ${measure.support || "its support"}; it was lifted out.`);
   if (measure.subject_colliders === 0) warnings.push("The subject has no enabled collider: physics bodies will not rest on it and physics queries do not see it.");

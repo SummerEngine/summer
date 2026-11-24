@@ -52,6 +52,18 @@ func check():
 	var mesh = MeshInstance3D.new()
 	mesh.mesh = tube
 	inner.add_child(mesh)
+	var flat_instances = MultiMesh.new()
+	flat_instances.mesh = tube
+	var flat = MultiMeshInstance3D.new()
+	flat.multimesh = flat_instances
+	inner.add_child(flat)
+	var lib = MeshLibrary.new()
+	lib.create_item(0)
+	lib.set_item_mesh(0, tube)
+	var grid = GridMap.new()
+	grid.mesh_library = lib
+	grid.set_cell_item(Vector3i.ZERO, 0)
+	inner.add_child(grid)
 	var named_world = World3D.new()
 	for n in ["Left", "Right"]:
 		var view = viewport(scene, n, false)
@@ -70,6 +82,8 @@ func check():
 			inspect(p, scene, "Left/Piece", "Right/Piece"),
 			p._resolve_port(scene, subject, 0, 10000, false).loops.size(),
 			p._resolve_port(scene, mesh, 0, 10000, false).loops.size(),
+			p._resolve_port(scene, grid, 0, 10000, false).loops.size(),
+			p._resolve_port(scene, flat, 0, 10000, false).fail.failure_reason,
 			p._resolve_port(scene, subject, "Port", 10000, true).others_total
 		])
 	var output = FileAccess.open("res://result.json", FileAccess.WRITE)
@@ -83,7 +97,7 @@ func check():
       env: { HOME: project, XDG_CONFIG_HOME: project, XDG_DATA_HOME: project, APPDATA: project, PATH: process.env.PATH },
       timeout: 30_000,
     });
-    const expected = ["ok", "different_world_3d", "different_world_3d", "ok", 0, 2, 0];
+    const expected = ["ok", "different_world_3d", "different_world_3d", "ok", 0, 2, 2, "unsupported_multimesh_format", 0];
     expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual([expected, expected]);
   } finally {
     rmSync(project, { recursive: true, force: true });

@@ -121,6 +121,51 @@ describe("summer_connect_signal persists the connection and verifies it", () => 
     expect(String(result.error)).toContain('signal="timeout"');
   });
 
+  it.each([
+    { previous: "persistent", declaration: { scene: "res://piece.scn", flags: 3 }, changed: false, expected: "success" },
+    { previous: "persistent", declaration: {}, changed: false, expected: "not_persisted" },
+    { previous: "none", declaration: { scene: "res://piece.scn", flags: 3 }, changed: false, expected: "not_persisted" },
+    { previous: "persistent", declaration: { scene: "res://piece.scn", flags: 3 }, changed: true, expected: "scene_verification_changed" },
+  ])("requires an existing, saved inherited edge ($previous, $expected)", async ({ previous, declaration, changed, expected }) => {
+    const fake = engine();
+    const send = fake.executeIdentityBoundOps.bind(fake);
+    vi.spyOn(fake, "executeIdentityBoundOps").mockImplementation(async (ops, options) => {
+      if (ops[0]?.op !== "RunSceneScript") return send(ops, options);
+      return { results: [{ op: "RunSceneScript", ok: true, result: {
+        ok: true, previous, declaration, flags: 35, from: "Clock", to: "Door", method_exists: true,
+      } }] };
+    });
+    if (expected === "success") {
+      // Editors that return only the scene text can still prove it was unchanged.
+      vi.spyOn(fake, "readProjectFile").mockResolvedValue({ ok: true, data: { content: LEVEL } });
+    }
+    if (changed) {
+      const read = fake.readProjectFile.bind(fake);
+      vi.spyOn(fake, "readProjectFile").mockImplementationOnce(read).mockResolvedValue({
+        ok: true, data: { content: LEVEL, sha256: "another_revision" },
+      });
+    }
+    const result = await connectSignalPersisted(fake, ARGS);
+    if (expected === "success") {
+      expect(result).toMatchObject({ already_connected: true, verified: true, persisted: true, declaration });
+      expect(result).not.toHaveProperty("line");
+      expect(result).not.toHaveProperty("undo");
+    } else {
+      expect(result).toMatchObject({ ok: false, verified: false, failure_reason: expected });
+    }
+  });
+
+  it("reports the final save failure even if a pre-existing inherited declaration was observed", async () => {
+    const fake = engine();
+    const send = fake.executeIdentityBoundOps.bind(fake);
+    vi.spyOn(fake, "executeIdentityBoundOps").mockImplementationOnce(send)
+      .mockResolvedValueOnce({ results: [{ op: "RunSceneScript", ok: true, result: {
+        ok: true, previous: "persistent", declaration: { scene: "res://piece.scn", flags: 3 }, flags: 35,
+      } }] })
+      .mockResolvedValueOnce({ results: [{ op: "SaveScene", ok: false, error: "disk full" }] });
+    expect(await connectSignalPersisted(fake, ARGS)).toMatchObject({ ok: false, verified: false, persisted: false });
+  });
+
   it("an unknown signal is a structured failure; the tab is saved clean and nothing is connected", async () => {
     const fake = engine(LEVEL, { unknownSignals: ["tick"] });
     const result = await connectSignalPersisted(fake, { ...ARGS, signal: "tick" });

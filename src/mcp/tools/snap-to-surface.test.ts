@@ -14,6 +14,15 @@ import { parseTransform3D } from "../../core/capabilities/math3d.js";
 
 const SCENE = "res://town.tscn";
 
+function scriptArgs(source: string): Record<string, unknown> {
+  const line = source.split("\n").find(l => l.startsWith("const ARGS_B64 = "))!;
+  return JSON.parse(Buffer.from(JSON.parse(line.slice("const ARGS_B64 = ".length)), "base64").toString("utf8")) as Record<string, unknown>;
+}
+
+function initialTransform(local: number[]) {
+  return { ok: true, found: false, transform: `Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, ${local.join(", ")})` };
+}
+
 /**
  * A one-axis fake of SurfaceSnapOps::snap_to_surface for a downward cast:
  * the subject (origin at its centre, half height H) lives under a parent
@@ -111,6 +120,15 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, ${x}, ${y}, ${z})
         this.local = [Number(match[1]), Number(match[2]), Number(match[3])];
         return { ok: true, op: "SetProp" };
       }
+      case "RunSceneScript":
+        if (String(op.script_source).includes("independent_geometry")) {
+          return { ok: true, op: "RunSceneScript", result: {
+            ok: true, origin: [2 * this.local[0], this.worldY(), 2 * this.local[2]], position: this.local,
+            transform: `Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, ${2 * this.local[0]}, ${this.worldY()}, ${2 * this.local[2]})`,
+            parent_transform: "Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0.5, 0)", independent_geometry: [],
+          } };
+        }
+        return { ok: true, op: "RunSceneScript", result: initialTransform(this.local) };
       case "Starcast3D": {
         const bottom = this.worldY() - this.half;
         const contacts = this.starcastContacts ?? this.supports.filter((s) => bottom <= s.top + 0.001).map((s) => s.path);
@@ -189,8 +207,8 @@ describe("summer_snap_to_surface: sunk props", () => {
     expect(fake.worldY() - fake.half).toBeCloseTo(0, 9);
     expect(fake.savedLocalY()).toBeCloseTo(-0.1775, 9);
     // The local lift was mapped through the parent's 2x scale (0.035 local for 0.07 world).
-    expect(fake.sent[3]![0]).toEqual({ op: "SetProp", path: "./Props/Bottle", key: "position", value: "Vector3(1.25, -0.1675, 2)" });
-    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D", "SaveScene", "SetProp+SnapToSurface", "SaveScene"]);
+    expect(fake.sent.flat().find(op => op.op === "SetProp")).toEqual({ op: "SetProp", path: "./Props/Bottle", key: "position", value: "Vector3(1.25, -0.1675, 2)" });
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "Starcast3D", "SaveScene", "RunSceneScript", "SetProp+SnapToSurface", "SaveScene"]);
   });
 
   it("refuses to lift deeper than the subject's own extent, names the support and says what to do", async () => {
@@ -202,7 +220,7 @@ describe("summer_snap_to_surface: sunk props", () => {
     expect(String(snap.next_step)).toContain("Raise it about 0.465 m");
     expect(result.error).toContain("Ground/Floor");
     expect(result.error).toContain("Next step:");
-    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "Starcast3D"]);
     expect(fake.savedLocalY()).toBe(-0.4);
   });
 
@@ -218,7 +236,7 @@ describe("summer_snap_to_surface: sunk props", () => {
   });
 
   it("still lifts on an engine without Starcast3D when the contact is behind the start pose", async () => {
-    const fake = new FakeSnapEngine(SUNK_5CM, FLOOR, 0.145, { opKinds: ["SnapToSurface", "SetProp", "SaveScene"] });
+    const fake = new FakeSnapEngine(SUNK_5CM, FLOOR, 0.145, { opKinds: ["SnapToSurface", "SetProp", "SaveScene", "RunSceneScript"] });
     const result = (await snapToSurface(fake, args())) as { results: Array<Record<string, unknown>> };
     expect(result.results.find((r) => r.op === "SnapToSurface")).toMatchObject({ ok: true, supportPath: "Ground/Floor" });
     expect(fake.ops()).not.toContain("Starcast3D");
@@ -232,7 +250,7 @@ describe("summer_snap_to_surface: failures name the obstacle and the next step",
     expect(result.ok).toBe(false);
     expect(result.results[0]).toMatchObject({ failure_reason: "overlap_recovery_exceeded", start_overlap: true, blocking: ["Ground/Floor"] });
     expect(String(result.results[0]!.next_step)).toContain("Move it clear of Ground/Floor");
-    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "Starcast3D"]);
   });
 
   it("a gap larger than the distance to the surface (no overlap) is explained, not lifted", async () => {
@@ -241,13 +259,13 @@ describe("summer_snap_to_surface: failures name the obstacle and the next step",
     expect(result.ok).toBe(false);
     expect(result.results[0]).toMatchObject({ failure_reason: "gap_exceeds_hit_travel", start_overlap: false });
     expect(String(result.results[0]!.next_step)).toContain("Pass gap of at most 0.02");
-    expect(fake.ops()).toEqual(["SnapToSurface", "Starcast3D"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "Starcast3D"]);
   });
 
   it("a normal snap is unchanged: one SnapToSurface, one SaveScene, no starcast", async () => {
     const fake = new FakeSnapEngine(-0.1675, FLOOR);
     await snapToSurface(fake, args());
-    expect(fake.ops()).toEqual(["SnapToSurface", "SaveScene"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "SaveScene"]);
     expect(fake.worldY() - fake.half).toBeCloseTo(0, 9);
   });
 
@@ -330,8 +348,8 @@ class FakeMeshSnapEngine {
   }
 
   private probe(source: string): Record<string, unknown> {
-    const line = source.split("\n").find((l) => l.startsWith("const ARGS_B64 = "))!;
-    const args = JSON.parse(Buffer.from(JSON.parse(line.slice("const ARGS_B64 = ".length)) as string, "base64").toString("utf8")) as Record<string, unknown>;
+    const args = scriptArgs(source);
+    if (args.capture_transform) return initialTransform(this.local);
     this.probes.push(args);
     this.unsaved = true; // RunSceneScript marks the tab unsaved after every run
     const travel = this.bottom() - this.planeTop;
@@ -383,6 +401,13 @@ class FakeMeshSnapEngine {
         this.unsaved = false;
         return { ok: true, op: "SaveScene" };
       case "SetProp": {
+        if (op.key === "transform") {
+          const t = parseTransform3D(String(op.value));
+          if (!t) return { ok: false, op: "SetProp", error: "bad transform" };
+          this.local = t.origin;
+          this.unsaved = true;
+          return { ok: true, op: "SetProp" };
+        }
         const match = /^Vector3\(([^,]+),([^,]+),([^)]+)\)$/.exec(String(op.value).replace(/\s/g, ""));
         if (op.key !== "position" || !match) return { ok: false, op: "SetProp", error: "bad SetProp" };
         this.local = [Number(match[1]), Number(match[2]), Number(match[3])];
@@ -459,9 +484,9 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     expect(fake.savedLocalY()).toBeCloseTo(-0.2725, 9);
     expect(fake.unsaved).toBe(false);
     // Engine op, measure, one SetProp with the probe's position, verify, save. No starcast.
-    expect(fake.ops()).toEqual(["SnapToSurface", "RunSceneScript", "SetProp", "RunSceneScript", "SaveScene"]);
-    expect(fake.sent[2]![0]).toEqual({ op: "SetProp", path: "./Props/Fern", key: "position", value: "Vector3(1.25, -0.2725, 2)" });
-    const probeOp = fake.sent[1]![0]!;
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "RunSceneScript", "SetProp", "RunSceneScript", "SaveScene"]);
+    expect(fake.sent[3]![0]).toEqual({ op: "SetProp", path: "./Props/Fern", key: "position", value: "Vector3(1.25, -0.2725, 2)" });
+    const probeOp = fake.sent[2]![0]!;
     expect(probeOp).toMatchObject({ op: "RunSceneScript", undo: "none", checkpoint: false });
     expect(fake.probes[0]).toEqual({ scene_path: SCENE, subject: "./Props/Fern", direction: [0, -1, 0], max_distance: 20, gap: 0 });
   });
@@ -487,7 +512,7 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
       before: { origin: [2.5, -0.01, 4] },
     });
     expect(fake.bottom()).toBeCloseTo(0, 9);
-    expect(fake.ops()).toEqual(["SnapToSurface", "SaveScene", "RunSceneScript", "SetProp", "RunSceneScript", "SaveScene"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "SaveScene", "RunSceneScript", "SetProp", "RunSceneScript", "SaveScene"]);
   });
 
   it("keeps a visual_aabb seat the triangles confirm: one read, a clean save, no SetProp", async () => {
@@ -495,8 +520,28 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     const result = (await snapToSurface(fake, fernArgs())) as { results: Array<Record<string, unknown>> };
     const snap = result.results.find((r) => r.op === "SnapToSurface")!;
     expect(snap).toMatchObject({ evidence: "visual_mesh", engine: { note: "the engine's AABB seat matches the triangles" }, verify: { final_gap: 0, ok: true } });
-    expect(fake.ops()).toEqual(["SnapToSurface", "SaveScene", "RunSceneScript", "SaveScene"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "SaveScene", "RunSceneScript", "SaveScene"]);
     expect(fake.unsaved).toBe(false);
+  });
+
+  it.each([0, 1])("restores the live starting transform on an edge budget refusal at read %i", async (read) => {
+    const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0.42 });
+    // The editor contains an unsaved pose that differs from the file.
+    fake.local[1] = 0.123456789;
+    fake.probeOverride[read] = () => ({ ok: false, failure_reason: "mesh_edge_budget_exceeded", error: "too many crossing edges" });
+    const result = await snapToSurface(fake, fernArgs());
+    expect(result).toMatchObject({ ok: false, results: [{ failure_reason: "mesh_edge_budget_exceeded", original_transform_preserved: true }] });
+    expect(fake.local[1]).toBe(0.123456789);
+    expect(fake.savedLocalY()).toBe(0.123456789);
+    expect(fake.unsaved).toBe(false);
+  });
+
+  it("refuses the edge budget before any correction when the native operation failed", async () => {
+    const fake = new FakeMeshSnapEngine(FLOATING_3_5CM);
+    fake.probeOverride[0] = () => ({ ok: false, failure_reason: "mesh_edge_budget_exceeded", error: "too many crossing edges" });
+    expect(await snapToSurface(fake, fernArgs())).toMatchObject({ ok: false, results: [{ original_transform_preserved: true }] });
+    expect(fake.ops()).not.toContain("SetProp");
+    expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
   });
 
   it("when the triangles show no support either, reports the engine failure with mesh_fallback and the diagnosis", async () => {
@@ -510,7 +555,7 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
       mesh_fallback: { failure_reason: "surface_not_found" },
       start_overlap: true,
     });
-    expect(fake.ops()).toEqual(["SnapToSurface", "RunSceneScript", "Starcast3D"]);
+    expect(fake.ops()).toEqual(["RunSceneScript", "SnapToSurface", "RunSceneScript", "Starcast3D"]);
     expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
   });
 

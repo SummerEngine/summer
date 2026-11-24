@@ -644,16 +644,23 @@ describe("spatial dispatch entries", () => {
     expect(calls).toEqual([]);
   });
 
-  it("snap-to-surface sends the mutation then SaveScene, identity-bound to the exact scene", async () => {
-    const { ctx, calls } = fakeEngineContext();
+  it("snap-to-surface captures the pose, snaps, then saves in separate requests bound to the same scene", async () => {
+    const executeIdentityBoundOps = vi.fn(async (ops: Array<{ op: string }>, _options: { scenePath: string }) => ({
+      ok: true,
+      results: ops.map(({ op }) => op === "RunSceneScript"
+        ? { op, ok: true, result: { ok: true, found: false, transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" } }
+        : { op, ok: true }),
+    }));
+    const { ctx, calls } = fakeEngineContext({ executeIdentityBoundOps });
     await dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: " ./Crate " }, ctx);
-    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps", "executeIdentityBoundOps"]);
-    expect(calls[0]!.args[0]).toEqual([
-      { op: "SnapToSurface", subject_path: "./Crate", direction: [0, -1, 0], max_distance: 20, gap: 0, align_up: false },
+    expect(calls).toEqual([]);
+    expect(executeIdentityBoundOps.mock.calls.map(([ops]) => ops)).toEqual([
+      [expect.objectContaining({ op: "RunSceneScript", checkpoint: false, undo: "none" })],
+      [{ op: "SnapToSurface", subject_path: "./Crate", direction: [0, -1, 0], max_distance: 20, gap: 0, align_up: false }],
+      [{ op: "SaveScene" }],
     ]);
-    expect(calls[1]!.args[0]).toEqual([{ op: "SaveScene" }]);
-    for (const call of calls) {
-      expect((call.args[1] as Record<string, unknown>).scenePath).toBe("res://a.tscn");
+    for (const [, options] of executeIdentityBoundOps.mock.calls) {
+      expect(options.scenePath).toBe("res://a.tscn");
     }
   });
 

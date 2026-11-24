@@ -822,22 +822,25 @@ func _asset_sprite_aabb(sprite):
 
 
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
-func _collect(top, same_world_geometry = false, inspecting_asset = false):
-	var world = _placement_world(top) if same_world_geometry else null
+func _collect(top, scene_root = null, inspecting_asset = false):
+	var world = _placement_world(top) if scene_root != null else null
 	var meshes = []
 	var geoms = []
 	var markers = []
 	var shapes = []
 	var unsupported = []
 	var frame = _xf(top, top)
-	if frame.basis.determinant() == 0.0:
+	var scene_frame = _xf(top, scene_root) if scene_root != null else frame
+	if frame.basis.determinant() == 0.0 or scene_frame.basis.determinant() == 0.0:
 		return {"meshes": [], "geoms": [], "markers": [], "shapes": [], "unsupported": [], "singular_root": true}
 	var inverse = frame.affine_inverse()
+	var scene_inverse = scene_frame.affine_inverse() if scene_root != null else inverse
 	var stack = [top]
 	while stack.size() > 0:
 		var n = stack.pop_back()
-		if n is Node3D and (not same_world_geometry or _placement_world(n) == world):
-			var t = inverse * _xf(n, top)
+		if n is Node3D and (scene_root == null or _placement_world(n) == world):
+			var to_piece = scene_inverse if scene_root != null and not _inherits_3d(n, top) else inverse
+			var t = to_piece * _xf(n, top)
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
@@ -1013,7 +1016,7 @@ func _cmd_inspect_asset(args):
 
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
-	var col = _collect(inst, false, true)
+	var col = _collect(inst, null, true)
 	if col.get("singular_root", false):
 		return _fail("singular_asset_root", "the asset root has a singular transform")
 	var analysis_error = _mesh_analysis_error(col)
@@ -1145,7 +1148,7 @@ func _resolve_port(root, node, port, budget, want_others, moving_subject = null)
 	# An open-loop port: every loop of the node in its own frame, plus the
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
-	var col = _collect(node, true)
+	var col = _collect(node, root)
 	var analysis_error = _mesh_analysis_error(col, true)
 	if analysis_error != null:
 		return {"fail": analysis_error}

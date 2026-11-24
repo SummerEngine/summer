@@ -111,12 +111,12 @@ func _run():
 		errors.append("independent parent spaces")
 	if bounds["nodes"][2]["independent_geometry"] != ["Parent/Plain/Independent"]:
 		errors.append("independent geometry must name visible plain child only")
+	await _check_world_bounds(placement, errors)
 	var inspector = load("res://transform.gd").new()
 	top.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0.75, 1, 0), Vector3(0, 0, 1)), Vector3(0.00025, 0, 0))
 	var inspected: Dictionary = inspector.run(ctx)
 	if inspected.get("local", {}).get("transform") != var_to_str(top.transform) or inspected.get("world_origin") != var_to_str(top.global_position):
 		errors.append("inspection lost a sheared local basis or a sub-millimetre origin")
-	await _check_world_bounds(placement, errors)
 	var f := FileAccess.open("res://result.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify({"errors": errors, "observations": observations, "bounds": bounds}))
 	f.close()

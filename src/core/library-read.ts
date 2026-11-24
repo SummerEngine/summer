@@ -363,8 +363,8 @@ function linksOf(body: string, entry: LibraryIndexEntry, fromFile: string, entri
   return relativeLinkTargets(body).map((target) => ({ target, id: resolveLibraryLink(entry, fromFile, target, { entries, packageRoot: root }) }));
 }
 
-function linksSection(links: Array<{ target: string; id: string | null }>): string {
-  const lines = ["--- linked files (load each with summer_read_library and the id after the arrow) ---"];
+function linksSection(links: Array<{ target: string; id: string | null }>, readTool: string): string {
+  const lines = [`--- linked files (load each with ${readTool} and the id after the arrow) ---`];
   for (const link of links) lines.push(`${link.target} -> ${link.id ?? "(not shipped with this package)"}`);
   return lines.join("\n");
 }
@@ -454,6 +454,7 @@ export async function readLibraryEntry(
 ): Promise<LibraryReadResult> {
   const entries = deps.entries ?? loadLibraryIndex();
   const root = deps.packageRoot ?? PACKAGE_ROOT;
+  const { read: readTool, search: searchTool } = deps.docsTools ?? { read: "summer_read_library", search: "summer_search_library" };
   let entry = resolveEntry(requestedId, entries);
   let linkedFile: string | undefined;
   if (!entry) {
@@ -476,8 +477,8 @@ export async function readLibraryEntry(
       nearest,
       hint:
         (nearest.length > 0
-          ? `No library entry has id "${requestedId}". Nearest by search: ${nearest.join(", ")}. Ids are <kind>/<slug>; use summer_search_library to find the right one.`
-          : `No library entry has id "${requestedId}" and nothing similar was found. Ids are <kind>/<slug>; use summer_search_library.`) +
+          ? `No library entry has id "${requestedId}". Nearest by search: ${nearest.join(", ")}. Ids are <kind>/<slug>; use ${searchTool} to find the right one.`
+          : `No library entry has id "${requestedId}" and nothing similar was found. Ids are <kind>/<slug>; use ${searchTool}.`) +
         " A file an entry links loads by <entry id>/<link as written> (inside library/ only).",
     };
   }
@@ -520,7 +521,7 @@ export async function readLibraryEntry(
       }
     })();
     const sections: string[] = [
-      `${entry.id}/${linkedFile} — a file shipped with ${entry.id} (${entry.kind} v${entry.version ?? "?"}, ${entry.status ?? "stable"}). The entry itself: summer_read_library id "${entry.id}".`,
+      `${entry.id}/${linkedFile} — a file shipped with ${entry.id} (${entry.kind} v${entry.version ?? "?"}, ${entry.status ?? "stable"}). The entry itself: ${readTool} id "${entry.id}".`,
     ];
     let links: Array<{ target: string; id: string | null }> = [];
     if (part === "resource") {
@@ -534,7 +535,7 @@ export async function readLibraryEntry(
       sections.push(`--- ${libPath} ---\n${text}`);
       if (extension === ".md" || extension === ".markdown") {
         links = linksOf(text, entry, linkedFile, entries, root);
-        if (links.length > 0) sections.push(linksSection(links));
+        if (links.length > 0) sections.push(linksSection(links, readTool));
       }
     }
     sections.push(footer);
@@ -591,7 +592,7 @@ export async function readLibraryEntry(
   const sections: string[] = [header(entry, slug, related, hostedText !== null)];
   if (part === "skill" || part === "all") {
     sections.push(`--- ${bodyTitle} ---\n${body}`);
-    if (links.length > 0) sections.push(linksSection(links));
+    if (links.length > 0) sections.push(linksSection(links, readTool));
     if (hostedError !== undefined) {
       sections.push(
         `--- hosted text not loaded ---\nThe full current text of this skill is the resource ${entry.hosted_resource} on the hosted Summer Engine MCP, and it could not be read: ${hostedError}\nThe body above is only the local summary: load the full text before you act (here after the fix, or as the \`${slug}\` MCP prompt or resource in a host connected to the hosted Summer Engine MCP).`

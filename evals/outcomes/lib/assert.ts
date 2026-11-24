@@ -322,6 +322,17 @@ const missing = (what: string, detail?: unknown): Outcome => ({
   detail: detail === undefined ? { missing: what } : { missing: what, ...(detail as object) },
 });
 
+function selectBounds(snap: Snapshot, selector: string): Array<{ path: string; box: Aabb }> | Outcome {
+  const bounds: Array<{ path: string; box: Aabb }> = [];
+  for (const node of selectSnap(snap, selector)) {
+    if (node.aabb === undefined) continue;
+    const box = parseAabb(node.aabb);
+    if (!box) return missing("aabb", { selector, path: node.path });
+    bounds.push({ path: node.path, box });
+  }
+  return bounds;
+}
+
 function needSnap(ev: Evidence): Snapshot | Outcome {
   return ev.snap ?? missing("snap", ev.snap_error ? { error: ev.snap_error } : undefined);
 }
@@ -391,22 +402,21 @@ export const PREDICATES: Record<string, PredicateFn> = {
     const snap = needSnap(ev);
     if (isOutcome(snap)) return snap;
     const selector = str(args, "selector");
-    const nodes = selectSnap(snap, selector).filter((n) => n.aabb);
+    const nodes = selectBounds(snap, selector);
+    if (isOutcome(nodes)) return nodes;
     if (nodes.length === 0) return { pass: false, reason: "no_match", detail: { selector } };
     const min = Array.isArray(args.min) ? (args.min as number[]) : null;
     const max = Array.isArray(args.max) ? (args.max as number[]) : null;
     const size = (args.size ?? {}) as Record<string, [number, number]>;
     const failures: unknown[] = [];
-    for (const n of nodes) {
-      const box = parseAabb(n.aabb);
-      if (!box) continue;
+    for (const { path, box } of nodes) {
       const axes: Array<keyof Vec3> = ["x", "y", "z"];
       axes.forEach((k, i) => {
-        if (min && box.pos[k] < min[i]! - 1e-6) failures.push({ path: n.path, axis: k, below_min: box.pos[k] });
-        if (max && box.pos[k] + box.size[k] > max[i]! + 1e-6) failures.push({ path: n.path, axis: k, above_max: box.pos[k] + box.size[k] });
+        if (min && box.pos[k] < min[i]! - 1e-6) failures.push({ path, axis: k, below_min: box.pos[k] });
+        if (max && box.pos[k] + box.size[k] > max[i]! + 1e-6) failures.push({ path, axis: k, above_max: box.pos[k] + box.size[k] });
         const range = size[k];
         if (range && (box.size[k] < range[0] - 1e-6 || box.size[k] > range[1] + 1e-6)) {
-          failures.push({ path: n.path, axis: k, size: box.size[k], range });
+          failures.push({ path, axis: k, size: box.size[k], range });
         }
       });
     }
@@ -416,20 +426,19 @@ export const PREDICATES: Record<string, PredicateFn> = {
   no_overlap(args, ev) {
     const snap = needSnap(ev);
     if (isOutcome(snap)) return snap;
-    const a = selectSnap(snap, str(args, "a")).filter((n) => n.aabb);
-    const b = selectSnap(snap, str(args, "b")).filter((n) => n.aabb);
+    const a = selectBounds(snap, str(args, "a"));
+    if (isOutcome(a)) return a;
+    const b = selectBounds(snap, str(args, "b"));
+    if (isOutcome(b)) return b;
     const tol = num(args, "tol", 0);
     if (a.length === 0 || b.length === 0) {
       return { pass: false, reason: "no_match", detail: { a: a.length, b: b.length } };
     }
     const overlaps: Array<[string, string]> = [];
     for (const na of a) {
-      const boxA = parseAabb(na.aabb);
-      if (!boxA) continue;
       for (const nb of b) {
         if (na.path === nb.path) continue;
-        const boxB = parseAabb(nb.aabb);
-        if (boxB && aabbIntersects(boxA, boxB, tol)) overlaps.push([na.path, nb.path]);
+        if (aabbIntersects(na.box, nb.box, tol)) overlaps.push([na.path, nb.path]);
       }
     }
     return { pass: overlaps.length === 0, reason: "overlap", detail: { a: a.length, b: b.length, tol, overlaps: overlaps.slice(0, 20) } };
@@ -441,11 +450,12 @@ export const PREDICATES: Record<string, PredicateFn> = {
     const selector = str(args, "selector");
     const groundY = num(args, "ground_y", 0);
     const eps = num(args, "eps", 0.05);
-    const nodes = selectSnap(snap, selector).filter((n) => n.aabb);
+    const nodes = selectBounds(snap, selector);
+    if (isOutcome(nodes)) return nodes;
     if (nodes.length === 0) return { pass: false, reason: "no_match", detail: { selector } };
     const floating = nodes
-      .map((n) => ({ path: n.path, base_y: parseAabb(n.aabb)?.pos.y }))
-      .filter((n) => n.base_y === undefined || Math.abs(n.base_y - groundY) > eps);
+      .map(({ path, box }) => ({ path, base_y: box.pos.y }))
+      .filter((n) => Math.abs(n.base_y - groundY) > eps);
     return { pass: floating.length === 0, reason: "floating", detail: { selector, matched: nodes.length, ground_y: groundY, eps, floating: floating.slice(0, 20) } };
   },
 
@@ -627,10 +637,10 @@ export const PREDICATES: Record<string, PredicateFn> = {
       const live = byName.get(g.name);
       const a = parseAabb(g.aabb);
       const b = parseAabb(live?.aabb);
-      return { name: g.name, iou: a && b ? Math.round(aabbIoU(a, b) * 1000) / 1000 : 0 };
+      return { name: g.name, iou: a && b ? aabbIoU(a, b) : 0 };
     });
     const mean = per.reduce((s, p) => s + p.iou, 0) / per.length;
-    return { pass: mean >= minMean - 1e-9, reason: "gold_mismatch", detail: { mean_iou: Math.round(mean * 1000) / 1000, min: minMean, per_name: per } };
+    return { pass: mean >= minMean - 1e-9, reason: "gold_mismatch", detail: { mean_iou: mean, min: minMean, per_name: per } };
   },
 
   /** `tscn:` inline checks from the design tables, generalized: a property on

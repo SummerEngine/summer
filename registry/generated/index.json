@@ -2355,12 +2355,13 @@
     {
       "id": "skill/multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d1ba8c2895e91430a890819ca002b42d269ae2f19c70e534eceeedcf7d4fcbbe",
+      "version": "1.0.1",
+      "content_hash": "e80e814ec51585563c4292c0e7e14602beb381bf174ac57d4bceefcd0159430d",
       "summary": "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
         "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "the user wants online play in a game sold on Steam, itch.io or their own store listing",
         "deciding how a multiplayer Summer game is structured before writing networking code",
         "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
       ],
@@ -2482,8 +2483,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "6d1e94b0fe7cd4a8d492f6168b033417315828d282e18049b8365ba3d957d1e3",
+      "version": "1.0.3",
+      "content_hash": "3caf0a108d6b949df72a7c431a744bc4e0c9ff8091bb4046114127c8e65405c9",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -8753,9 +8754,9 @@
     {
       "id": "tool/import-from-url",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "c9df60fadce2263a91127d6bbbe3bcfb192d6b63d5822e331bd18e4f032e5d2b",
-      "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
+      "version": "1.0.3",
+      "content_hash": "15088ca3dbaf688d8615f26f7b21dd035b5e573a979865292c4c776fa6fe28d5",
+      "summary": "Download one file from a public HTTPS URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
         "\"grab this .glb from the link and add it to my project\"",
@@ -8787,9 +8788,9 @@
     {
       "id": "tool/import-from-url-batch",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "0acf3a0be036c3b63793d907bdcf7cdf1fc86564f585a53b753ec70f24589968",
-      "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
+      "version": "1.0.3",
+      "content_hash": "1fee925086da7458773c0d3f853522b42bd08423c9a05b71fddd363293b77d47",
+      "summary": "Download multiple files by public HTTPS URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
         "\"download the model plus its three textures together\"",
@@ -8905,13 +8906,14 @@
     {
       "id": "tool/inspect-asset",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "44f5e9a36efc013f26f1685fb7fa74096d75e7a41f8e498b2ded2f5a1e281848",
+      "version": "1.1.0",
+      "content_hash": "96f5b5ad0068a19dcffb0fc688a4ea45a1bad88979f488af722f52ce1eecff92",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
         "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
-        "reading the Marker3D anchors or collision shapes a kit piece ships with"
+        "reading the Marker3D anchors or collision shapes a kit piece ships with",
+        "inspecting repeated 3D MultiMesh geometry with its instance transforms and drawn-prefix triangle count"
       ],
       "facets": {
         "lifecycle": [
@@ -10586,7 +10588,7 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7322a8ec389c209d41c7fe0b56f47c8e8b42616d19044d9b070d7ff6721ab5f9",
+      "content_hash": "a59a8603e2eb9e8bb57d93120889e2385156845082ecd00cb811ce6a3ce06919",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",

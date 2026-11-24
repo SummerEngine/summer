@@ -72,12 +72,26 @@ export interface Probe {
 }
 
 export async function probe(file: string): Promise<Probe> {
-  const { stdout } = await run("ffprobe", ["-v", "error", "-show_entries", "stream=codec_type,width,height,avg_frame_rate:format=duration", "-of", "json", file]);
-  const parsed = JSON.parse(stdout) as { streams?: Array<{ codec_type?: string; width?: number; height?: number; avg_frame_rate?: string }>; format?: { duration?: string } };
+  const { stdout } = await run("ffprobe", [
+    "-v", "error", "-show_entries", "stream=codec_type,width,height,avg_frame_rate:stream_side_data=rotation:format=duration", "-of", "json", file,
+  ]);
+  const parsed = JSON.parse(stdout) as {
+    streams?: Array<{
+      codec_type?: string;
+      width?: number;
+      height?: number;
+      avg_frame_rate?: string;
+      side_data_list?: Array<{ rotation?: number }>;
+    }>;
+    format?: { duration?: string };
+  };
   const video = parsed.streams?.find((stream) => stream.codec_type === "video");
+  const rotation = video?.side_data_list?.find((side) => side.rotation !== undefined)?.rotation ?? 0;
+  // FFmpeg applies the display matrix before the crop filter.
+  const quarterTurn = Math.abs(Math.abs(rotation) % 180 - 90) < 1;
   return {
-    width: video?.width ?? 0,
-    height: video?.height ?? 0,
+    width: (quarterTurn ? video?.height : video?.width) ?? 0,
+    height: (quarterTurn ? video?.width : video?.height) ?? 0,
     duration: Number(parsed.format?.duration ?? 0),
     hasAudio: Boolean(parsed.streams?.some((stream) => stream.codec_type === "audio")),
     fps: rate(video?.avg_frame_rate),

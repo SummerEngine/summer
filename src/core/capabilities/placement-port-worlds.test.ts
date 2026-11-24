@@ -41,7 +41,17 @@ func check():
 	var scene = Node3D.new()
 	var subject = piece(scene, "Subject")
 	var shared = viewport(scene, "Shared", false)
-	piece(shared, "Target")
+	var target = piece(shared, "Target")
+	target.get_node("Port").top_level = true
+	piece(subject, "Carrier")
+	var fixed_marker = piece(subject, "FixedMarker")
+	fixed_marker.get_node("Port").top_level = true
+	var fixed_carrier = piece(subject, "FixedCarrier")
+	fixed_carrier.top_level = true
+	var plain = Node.new()
+	plain.name = "Plain"
+	subject.add_child(plain)
+	piece(plain, "Piece")
 	var own = viewport(scene, "Own", true)
 	piece(own, "Target")
 	var inner = viewport(subject, "Inner", true)
@@ -77,6 +87,10 @@ func check():
 			await process_frame
 		observations.append([
 			inspect(p, scene, "Subject", "Shared/Target"),
+			inspect(p, scene, "Subject", "Shared/Target", "Carrier/Port"),
+			inspect(p, scene, "Subject", "Shared/Target", "FixedMarker/Port"),
+			inspect(p, scene, "Subject", "Shared/Target", "FixedCarrier/Port"),
+			inspect(p, scene, "Subject", "Shared/Target", "Plain/Piece/Port"),
 			inspect(p, scene, "Subject", "Own/Target"),
 			inspect(p, scene, "Subject", "Shared/Target", "Inner/Nested/Port"),
 			inspect(p, scene, "Left/Piece", "Right/Piece"),
@@ -97,7 +111,8 @@ func check():
       env: { HOME: project, XDG_CONFIG_HOME: project, XDG_DATA_HOME: project, APPDATA: project, PATH: process.env.PATH },
       timeout: 30_000,
     });
-    const expected = ["ok", "different_world_3d", "different_world_3d", "ok", 0, 2, 2, "unsupported_multimesh_format", 0];
+    const detached = "independent_subject_port";
+    const expected = ["ok", "ok", detached, detached, detached, "different_world_3d", "different_world_3d", "ok", 0, 2, 2, "unsupported_multimesh_format", 1];
     expect(JSON.parse(readFileSync(join(project, "result.json"), "utf8"))).toEqual([expected, expected]);
   } finally {
     rmSync(project, { recursive: true, force: true });

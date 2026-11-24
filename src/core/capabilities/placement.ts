@@ -894,7 +894,7 @@ function chooseHit(
   if (typeof read.visual_origin_inside === "number" && read.visual_origin_inside > 0) {
     warnings.push(`ray_origin_inside_${read.visual_origin_inside}_visual_bounds_ignored`);
   }
-  if (read.visual_truncated === true) warnings.push("visual_scan_truncated_at_20000_nodes");
+  if (read.visual_truncated === true) warnings.push("visual_geometry_scan_incomplete");
   if (evidence === "visual_aabb") return { hit: visual, evidence: visual ? "visual_aabb" : undefined, warnings };
   if (physics) {
     const nearerVisual =

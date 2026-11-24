@@ -7,6 +7,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
 
 
+- 3D measurement, visual raycasts and placement include visible meshes beyond 20,000 scene nodes. A scan that runs out of budget reports the limit before its partial bounds can guide placement.
 - **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
 - Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
 - **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.

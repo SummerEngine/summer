@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { getClient } from "../server.js";
 import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../core/log-filters.js";
 import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
@@ -343,6 +344,7 @@ sending because local paths and stack traces may appear.`,
       include_doctor,
     }) => {
       const artifact = await createDebugReportArtifact({
+        connectEngine: () => getClient({ launch: false }),
         issue,
         outputPath: output_path,
         includePlaySession: include_play_session,

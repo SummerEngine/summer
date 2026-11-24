@@ -9676,7 +9676,7 @@
       "id": "tool/raycast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ebd29435c93b0650d712a35f2f1def29708a032dddb629207f9132d1f586e91a",
+      "content_hash": "fb7381ac587dc1b32c3da5111fc36b6b9b7a1d9d07126d4a966cdf75590c92ab",
       "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
       "use_when": [
         "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",

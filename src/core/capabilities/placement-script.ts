@@ -375,11 +375,29 @@ func _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclu
 		var path = ""
 		if col is Node:
 			path = _rel(root, col) if (col == root or root.is_ancestor_of(col)) else String(col.get_path())
-		return {"available": true, "hit": true, "path": path, "point": hit.get("position"), "normal": hit.get("normal"), "skipped": skipped}
+		return {"available": true, "hit": true, "collider": col, "path": path, "point": hit.get("position"), "normal": hit.get("normal"), "skipped": skipped}
 	return {"available": true, "hit": false, "skipped": skipped, "gave_up": true}
 
 
-func _vis_ray(geoms, origin, dir, dist):
+# Godot scenes can put the mesh under the body or the generated body under
+# its mesh. A nested body represents a separate object in either layout.
+func _visual_of_hit_collider(visual, collider):
+	if not (collider is CollisionObject3D):
+		return false
+	if collider.is_ancestor_of(visual):
+		var parent = visual.get_parent()
+		while not (parent is CollisionObject3D):
+			parent = parent.get_parent()
+		return parent == collider
+	if visual.is_ancestor_of(collider):
+		var parent = collider.get_parent()
+		while not (parent is GeometryInstance3D or parent is CollisionObject3D):
+			parent = parent.get_parent()
+		return parent == visual
+	return false
+
+
+func _vis_ray(geoms, origin, dir, dist, hit_collider):
 	var best_t = INF
 	var best = null
 	var best_axis = -1
@@ -419,7 +437,7 @@ func _vis_ray(geoms, origin, dir, dist):
 		if tmin < 0.0:
 			inside += 1
 			continue
-		if tmin <= dist and tmin < best_t:
+		if tmin <= dist and tmin < best_t and not _visual_of_hit_collider(g[0], hit_collider):
 			best_t = tmin
 			best = g[0]
 			best_axis = axis
@@ -491,7 +509,7 @@ func _cmd_raycast(root, active, args):
 			return _geometry_scan_limit(root, scan_root)
 		out["visual_truncated"] = true
 		return out
-	var vis = _vis_ray(geoms, origin, dir, dist)
+	var vis = _vis_ray(geoms, origin, dir, dist, phys.get("collider"))
 	if vis.get("hit", false):
 		out["visual"] = {"path": _rel(root, vis["node"]), "point": _raw3(vis["point"]), "normal": _raw3(vis["normal"]), "distance": vis["t"]}
 	out["visual_origin_inside"] = vis.get("inside", 0)

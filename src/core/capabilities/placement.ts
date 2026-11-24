@@ -933,7 +933,7 @@ export async function raycast(client: PlacementClient, args: RaycastArgs): Promi
     hit: Boolean(chosen.hit),
     ...(chosen.hit ? { evidence: chosen.evidence, ...hitOut(chosen.hit) } : {}),
     ...(chosen.fallback ? { fallback: true, fallback_reason: chosen.fallback } : {}),
-    ...(chosen.nearerVisual ? { nearer_visual_only: hitOut(chosen.nearerVisual) } : {}),
+    ...(chosen.nearerVisual ? { nearer_visual_only: { ...hitOut(chosen.nearerVisual), evidence: "visual_aabb" } } : {}),
     origin: roundVec(args.origin),
     direction: roundVec(normalize(args.direction), 4),
     physics_available: read.physics_available === true,
@@ -1339,7 +1339,7 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   const hit = chosen.hit;
   const warnings = [...chosen.warnings];
   if (chosen.fallback) warnings.push(`surface_found_by_visual_aabb (${chosen.fallback}): the normal is an AABB face normal`);
-  if (chosen.nearerVisual) warnings.push(`mesh_only_geometry_nearer_than_hit: ${chosen.nearerVisual.path}`);
+  if (chosen.nearerVisual) warnings.push(`visual_aabb_nearer_than_hit: ${chosen.nearerVisual.path}`);
   let n = normalize(hit.normal);
   // The piece mounts on the side the ray came from, also when the ray hit a
   // back face whose normal points away from it.

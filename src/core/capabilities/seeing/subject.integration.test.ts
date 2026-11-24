@@ -63,7 +63,7 @@ func check():
     };
   }
 
-  it("frames a millimetre-scale mesh using the bounds from Godot", async () => {
+  it.each([5, 50])("frames a millimetre-scale mesh at %i degrees using the bounds from Godot", async (fov) => {
     const scenePath = "res://marker.tscn";
     writeFileSync(join(project, "marker.tscn"), `[gd_scene format=3]
 [sub_resource type="BoxMesh" id="Box"]
@@ -82,16 +82,23 @@ mesh = SubResource("Box")
       return { results: [{ ok: true, image_base64: OK_JPEG.toString("base64"), width: 64, height: 64, mime: "image/jpeg" }] };
     };
 
-    const result = await frameNodes(client, { scenePath, nodes: ["Marker"], direction: "front", aspect: 1, fov: 5, fill: 0.8 });
+    const result = await frameNodes(client, { scenePath, nodes: ["Marker"], direction: "front", aspect: 1, fov, fill: 0.8 });
     expect(result.ok).toBe(true);
     const target = parseVector3(String(camera?.camera_look_at), "look_at");
     const position = parseVector3(String(camera?.camera_position), "position");
-    // The front face limits a square view. Its full width occupies 80% of the frame.
-    const distance = 0.001 / 2 + 0.012 / (2 * 0.8 * Math.tan(2.5 * Math.PI / 180));
     const center = [0.00045, 1.59953, 0.00039];
-    for (let i = 0; i < 3; i++) {
-      expect(target[i]).toBeCloseTo(center[i]!, 6);
-      expect(position[i]).toBeCloseTo(center[i]! + (i === 2 ? distance : 0), 6);
+    for (let i = 0; i < 3; i++) expect(target[i]).toBeCloseTo(center[i]!, 6);
+    expect(position[0]).toBeCloseTo(center[0]!, 6);
+    expect(position[1]).toBeCloseTo(center[1]!, 6);
+    const frontDepth = position[2] - (center[2]! + 0.001 / 2);
+    const widthAtUnitDepth = 2 * Math.tan(fov * Math.PI / 360);
+    const depthForFill = 0.012 / (0.8 * widthAtUnitDepth);
+    if (depthForFill > 0.05) {
+      expect(frontDepth).toBeCloseTo(depthForFill, 6);
+    } else {
+      expect(frontDepth).toBeGreaterThan(0.05);
+      expect(frontDepth).toBeLessThan(0.05001);
+      expect(result).toMatchObject({ receipt: { requested_fill: 0.8, projected_fill: expect.closeTo(0.012 / (frontDepth * widthAtUnitDepth), 4) } });
     }
   }, 20_000);
 

@@ -26,6 +26,7 @@ import {
   DIRECTION_PRESETS,
   exactCrop,
   fitDistance,
+  frameFill,
   letterbox,
   formatPoseVector,
   formatVector3,
@@ -627,8 +628,12 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   const options = args.from ? viewOptions(box, center, fromDir, fov, aspect, fill) : [];
   const pose = options[0]?.pose ?? fittedPose(box, center, normalize(fromDir), fov, aspect, fill);
   const size = sizeFor(edge, aspect);
+  const projectedFill = frameFill(pose, aspect, box);
 
   const lines: string[] = [];
+  if (projectedFill > 0 && projectedFill < fill - 1e-4) {
+    lines.push(`The near clipping plane limits the projected bounds to ${(100 * projectedFill).toFixed(1)}% of the frame at this lens (requested ${100 * fill}%).`);
+  }
   let framing = "free";
   if (bookmark) {
     const saved = firstResult(
@@ -703,6 +708,8 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
       nodes,
       pose: poseRecord(pose),
       bounds: { center: formatPoseVector(center), size: formatPoseVector(box.size) },
+      requested_fill: fill,
+      projected_fill: projectedFill,
       environment_used: env,
       ...(bookmark ? { bookmark } : {}),
       ...(marks ? { marks: marks.marks.map((m) => ({ ...m, ...(occlusion.get(m.id) ? { visibility: occlusion.get(m.id) } : {}) })) } : {}),

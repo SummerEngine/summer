@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  aabbCorners,
+  add,
   applyLowAngleRule,
   directionFromAngles,
   exactCrop,
@@ -13,6 +15,7 @@ import {
   project,
   rayDirection,
   rotateY,
+  scale,
   screenBox,
   thirdsYawOffset,
   type Aabb,
@@ -62,6 +65,17 @@ describe("seeing math — engine conventions", () => {
       const pose: CameraPose = { position: [center[0] + toCam[0] * d, center[1] + toCam[1] * d, center[2] + toCam[2] * d], look_at: center, fov: 55 };
       close(frameFill(pose, 16 / 9, box), fill, 1e-3);
     }
+  });
+
+  it("keeps every corner beyond the near plane when fitting an oblique view about an offset aim", () => {
+    const box: Aabb = { position: [-0.006, -0.004, -0.02], size: [0.012, 0.008, 0.04] };
+    const aim = [0, -0.002, 0.003] as const;
+    const direction = directionFromAngles(28, 17);
+    const d = fitDistance(box, aim, direction, 75, 16 / 9, 0.8);
+    const pose = { position: add(aim, scale(direction, d)), look_at: aim, fov: 75 };
+    const nearest = Math.min(...aabbCorners(box).map((point) => project(pose, 16 / 9, point).depth));
+    expect(nearest).toBeGreaterThan(0.05);
+    expect(nearest).toBeLessThan(0.05001);
   });
 
   it("screenBox reports corners behind the lens instead of a bogus box", () => {

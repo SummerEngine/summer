@@ -140,7 +140,7 @@ describe("summer tool command", () => {
     ]);
     expect(exitCode).toBe(1);
     expect(printed.ok).toBe(false);
-    expect(printed.error).toBe("Engine request failed (AddNode).");
+    expect(printed.error).toBe("ops[0] AddNode: parent not found: Nope Not sent: SaveScene.");
     expect((printed.results as Array<{ error?: string }>)[0]?.error).toBe("parent not found: Nope");
   });
 

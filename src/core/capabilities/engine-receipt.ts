@@ -3,7 +3,13 @@
  * (src/mcp/tools/with-engine.ts and src/core/capabilities/tool-dispatch.ts).
  */
 
-export type OpResult = {
+type FailureDiagnostics = {
+  call_error_detail?: string;
+  animations?: string[];
+  rejected?: Array<{ index: number; failure_reason?: string; error?: string }>;
+};
+
+export type OpResult = FailureDiagnostics & {
   [key: string]: unknown;
   op?: string;
   ok?: boolean;
@@ -13,7 +19,7 @@ export type OpResult = {
   errorClass?: string;
   failureReason?: string;
   failure_reason?: string;
-  results?: Array<{
+  results?: Array<FailureDiagnostics & {
     [key: string]: unknown;
     ok?: boolean;
     op?: string;
@@ -114,7 +120,8 @@ export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;
   const firstFailed = op.results?.find((r) => r.ok === false);
-  const diagnostics = scriptFailureDetails(firstFailed ?? op);
+  const failedRow = firstFailed ?? op;
+  const diagnostics = scriptFailureDetails(failedRow);
   // The engine stamps failure classifiers on the envelope OR per-op inside
   // results[] (the batch gate does the latter) — read both.
   const failureReason = getFailureReason(op) ?? (firstFailed ? getFailureReason(firstFailed) : undefined);
@@ -129,6 +136,12 @@ export function extractOpError(result: unknown): string | null {
       {
         error: message,
         ...(failureReason ? { failure_reason: failureReason } : {}),
+        ...(failureReason && failedRow.op !== "RunEditorScript" && failedRow.op !== "RunSceneScript" ? {
+          // Runtime failures may carry these fields on the failed row or on a flat receipt.
+          call_error_detail: firstFailed?.call_error_detail ?? op.call_error_detail,
+          animations: firstFailed?.animations ?? op.animations,
+          rejected: firstFailed?.rejected ?? op.rejected,
+        } : {}),
         ...(typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error !== message
           ? { op_error: firstFailed.error }
           : {}),

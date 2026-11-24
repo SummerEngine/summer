@@ -60,7 +60,7 @@ describe("registration", () => {
 });
 
 describe("summer_world_snapshot", () => {
-  it("submits a single GetWorldSnapshot op with only the provided params", async () => {
+  it("includes 2D nodes by default in a scene snapshot", async () => {
     const executeOps = vi.fn().mockResolvedValue({
       ok: true,
       results: [{ ok: true, op: "GetWorldSnapshot", snapshot_id: "snap-1" }],
@@ -72,7 +72,7 @@ describe("summer_world_snapshot", () => {
 
     expect(result.isError).toBeUndefined();
     // max_nodes caps what is LISTED; the engine snapshot (the diff baseline) stays whole.
-    expect(executeOps).toHaveBeenCalledWith([{ op: "GetWorldSnapshot", scene_path: "res://main.tscn" }]);
+    expect(executeOps).toHaveBeenCalledWith([{ op: "GetWorldSnapshot", include_2d: true, scene_path: "res://main.tscn" }]);
   });
 
   it("maps an unknown-op failure (no capability advert) to the engine-too-old hint", async () => {

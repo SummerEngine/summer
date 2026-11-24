@@ -314,13 +314,13 @@ describe("scene-scripting and perception dispatch entries", () => {
   it("world-snapshot and snapshot-diff dispatch single ops and surface failures", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool("world-snapshot", { max_nodes: 100 }, ctx);
-    await dispatchTool("world-snapshot", { max_nodes: 6000 }, ctx);
+    await dispatchTool("world-snapshot", { include_2d: false, max_nodes: 6000 }, ctx);
     await dispatchTool("snapshot-diff", { from_id: "snap-1" }, ctx);
     // max_nodes caps the LISTED entries; the stored snapshot (the diff
     // baseline) is never capped below the engine default.
     expect(calls.map((call) => call.args[0])).toEqual([
-      [{ op: "GetWorldSnapshot" }],
-      [{ op: "GetWorldSnapshot", max_nodes: 6000 }],
+      [{ op: "GetWorldSnapshot", include_2d: true }],
+      [{ op: "GetWorldSnapshot", include_2d: false, max_nodes: 6000 }],
       [{ op: "DiffWorldSnapshot", from_id: "snap-1" }],
     ]);
     const failing = fakeEngineContext({

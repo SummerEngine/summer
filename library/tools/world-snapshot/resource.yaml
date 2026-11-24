@@ -46,6 +46,10 @@ surfaces:
 input_schema:
   type: object
   properties:
+    include_2d:
+      type: boolean
+      default: true
+      description: Include 2D nodes in the snapshot and its diff baseline (default true). Set false to omit CanvasItem nodes in mixed scenes. The engine still includes them when the scene root is a CanvasItem.
     scene_path:
       type: string
       description: Scene to snapshot, e.g. 'res://main.tscn'. Omit for the currently edited scene.

@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- World snapshots include 2D nodes under mixed scene roots on released editors, so subtree and class filters can find those nodes. Set `include_2d: false` to omit 2D nodes under a mixed root.
+
 - Asset inspection includes visible Sprite3D bounds and the selected frame of each AnimatedSprite3D when measuring a saved scene, including framed textures and billboards.
 
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.

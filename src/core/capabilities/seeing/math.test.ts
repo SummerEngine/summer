@@ -17,6 +17,7 @@ import {
   thirdsYawOffset,
   type Aabb,
   type CameraPose,
+  type Vec3,
 } from "./math.js";
 
 const close = (a: number, b: number, eps = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -33,6 +34,18 @@ describe("seeing math — engine conventions", () => {
     const b = lookAtBasis([0, 10, 0], [0, 0, 0]);
     expect(Number.isFinite(b.x[0])).toBe(true);
     close(b.z[1], 1);
+  });
+
+  it.each<readonly [string, Vec3, Vec3, boolean]>([
+    ["below", [0, 0, 0], [0.045, 1, 0], false],
+    ["above", [0, 0, 0], [0.0447, 1, 0], true],
+    ["equal, looking up", [0, 0, 0], [0.044754, 1, 0], false],
+    ["equal, looking down", [0, 0, 0], [0.044754, -1, 0], false],
+    ["equal after rounding the position and target", [109.1250001, 9.00000002, -0.875], [109.16975411, 10.00000001, -0.875], false],
+  ])("matches the native camera roll at the float32 pole cutoff (%s)", (_case, position, target, alternateUp) => {
+    const basis = lookAtBasis(position, target);
+    // In the XY plane, world +Y produces a right axis along +Z.
+    close(basis.x[2], alternateUp ? 0 : 1);
   });
 
   it("project and rayDirection are inverse through the screen", () => {

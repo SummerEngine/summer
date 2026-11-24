@@ -82,11 +82,25 @@ export interface Basis3 {
   z: Vec3;
 }
 
+// ScenePreview chooses its up axis from (target - position).normalized() in
+// Godot Vector3 precision. A one-ulp difference here can rotate the frame 90°.
+function cameraForward(position: Vec3, target: Vec3): Vec3 {
+  const f32 = Math.fround;
+  const x = f32(f32(target[0]) - f32(position[0]));
+  const y = f32(f32(target[1]) - f32(position[1]));
+  const z = f32(f32(target[2]) - f32(position[2]));
+  const squaredXY = f32(f32(x * x) + f32(y * y));
+  const squaredLength = f32(squaredXY + f32(z * z));
+  const magnitude = f32(Math.sqrt(squaredLength));
+  if (magnitude === 0) return [0, 0, 0];
+  return [f32(x / magnitude), f32(y / magnitude), f32(z / magnitude)];
+}
+
 export function lookAtBasis(position: Vec3, target: Vec3): Basis3 {
-  const forward = normalize(sub(target, position));
-  // Same guard as the engine: looking_at refuses an up parallel to the view.
-  const up: Vec3 = Math.abs(dot(forward, [0, 1, 0])) > 0.999 ? [0, 0, -1] : [0, 1, 0];
-  const z = scale(forward, -1);
+  const forward = cameraForward(position, target);
+  const up: Vec3 = Math.abs(forward[1]) > Math.fround(0.999) ? [0, 0, -1] : [0, 1, 0];
+  // Keep project() and rayDirection() inverse in JS double precision.
+  const z = normalize(scale(forward, -1));
   const x = normalize(cross(up, z));
   const y = cross(z, x);
   return { x, y, z };

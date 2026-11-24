@@ -1004,10 +1004,14 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 	return out
 
 
+# Match the float cutoff in native ScenePreview; GDScript float is a double.
+const CAMERA_POLE_LIMIT := Vector3(0.0, 0.999, 0.0).y
+
+
 func _look_basis(pos: Vector3, look: Vector3) -> Basis:
 	var fwd := (look - pos).normalized()
 	var up := Vector3.UP
-	if absf(fwd.dot(up)) > 0.999:
+	if absf(fwd.y) > CAMERA_POLE_LIMIT:
 		up = Vector3(0, 0, -1)
 	return Basis.looking_at(fwd, up)
 

@@ -27,7 +27,7 @@ const out = z.string().min(1).optional().describe("A folder on this computer: sa
 
 export const apiModelsInputShape = {
   model: modelId.optional().describe("One model id or alias; without it, every model."),
-  capability: z.enum(["image", "3d", "video", "voice", "dialogue", "sound", "music"]).optional().describe("Only this kind."),
+  capability: z.enum(["image", "3d", "video", "voice", "dialogue", "sound", "music", "motion"]).optional().describe("Only this kind."),
 };
 export const apiEstimateInputShape = { model: modelId, input: modelInput };
 export const apiRunInputShape = {

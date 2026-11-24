@@ -32754,7 +32754,7 @@
         "type": "object",
         "properties": {
           "capability": {
-            "description": "Only this kind: image, 3d, video, voice, dialogue, sound or music.",
+            "description": "Only this kind: image, 3d, video, voice, dialogue, sound, music or motion.",
             "type": "string",
             "enum": [
               "image",

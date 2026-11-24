@@ -6324,10 +6324,10 @@
       "id": "tool/api-models",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "73c3ac25cbe1a46f1e4584f081c9b0d06eee3f76f17cdf356b49d4b380e1638b",
+      "content_hash": "ce781725b5109a711c8d01b53f13ed327e76a53f1202e8c791f189e3fc89816b",
       "summary": "The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.",
       "use_when": [
-        "choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API",
+        "choosing a model for an image, 3D, video, voice, dialogue, sound, music or motion asset through the Summer API",
         "checking what a Summer API model costs or takes as input"
       ],
       "facets": {

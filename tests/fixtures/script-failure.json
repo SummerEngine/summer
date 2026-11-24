@@ -1,0 +1,51 @@
+{
+  "terminalState": "failed",
+  "errorClass": "fatal",
+  "status": "error",
+  "results": [
+    {
+      "boot_errors": [],
+      "checkpoint": {
+        "error": "No per-edit checkpoint: per-edit rewind is off. In a Summer chat, the turn's own checkpoint still covers this change, so the person can undo the whole turn from the chat.",
+        "ok": false,
+        "reason": "checkpoint_capability_disabled"
+      },
+      "error": "The editor script ran but raised 1 error(s) (0 script, 1 engine, 0 shader). See `errors`.",
+      "errors": [
+        "ERROR|core/variant/variant_utility.cpp:1023|push_error|AUDIT_EXPECTED_DIAGNOSTIC|"
+      ],
+      "exit_code": 1,
+      "failure_reason": "engine_error",
+      "line_offset": 2,
+      "no_rewind_point": true,
+      "no_rewind_reason": "No per-edit checkpoint: per-edit rewind is off. In a Summer chat, the turn's own checkpoint still covers this change, so the person can undo the whole turn from the chat. (checkpoint_capability_disabled) The editor script still ran. Without a per-edit checkpoint, check the result yourself; do not make your own checkpoint for this.",
+      "normalizations": [
+        "prepended `extends EditorScript` (the source had no extends line)",
+        "prepended `@tool` (an EditorScript must be a tool script to run)"
+      ],
+      "ok": false,
+      "op": "RunEditorScript",
+      "out_dir": "<OWNED_PROJECT>/.godot/summer_editor_script/<OWNED_RUN>",
+      "output": [],
+      "ran": true,
+      "result": {
+        "boot_errors": [],
+        "elapsed_ms": 1928,
+        "error": "The editor script ran but raised 1 error(s) (0 script, 1 engine, 0 shader). See `errors`.",
+        "errors": [
+          "ERROR|core/variant/variant_utility.cpp:1023|push_error|AUDIT_EXPECTED_DIAGNOSTIC|"
+        ],
+        "errors_truncated": 0,
+        "failure_reason": "engine_error",
+        "ok": false,
+        "op": "RunEditorScript",
+        "output": [],
+        "output_truncated": 0,
+        "ran": true,
+        "stderr": [],
+        "stderr_truncated": 0
+      },
+      "stderr": []
+    }
+  ]
+}

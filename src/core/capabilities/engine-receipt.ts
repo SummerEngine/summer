@@ -4,6 +4,8 @@
  */
 
 export type OpResult = {
+  [key: string]: unknown;
+  op?: string;
   ok?: boolean;
   status?: string;
   error?: string;
@@ -12,6 +14,7 @@ export type OpResult = {
   failureReason?: string;
   failure_reason?: string;
   results?: Array<{
+    [key: string]: unknown;
     ok?: boolean;
     op?: string;
     error?: string;
@@ -59,6 +62,42 @@ const TERMINAL_STATE_MESSAGES: Record<string, string> = {
   canceled: "Operation canceled (terminalState: canceled). Nothing was applied.",
 };
 
+/** Only script diagnostics cross the failure boundary, never the raw child or
+ *  script return value. SceneScript.result is user data, not diagnostics. */
+function scriptFailureDetails(row: Record<string, unknown>): Record<string, unknown> {
+  if (row.op !== "RunEditorScript" && row.op !== "RunSceneScript") return {};
+  const child = row.op === "RunEditorScript" && row.result && typeof row.result === "object" && !Array.isArray(row.result)
+    && (row.result as Record<string, unknown>).op === "RunEditorScript"
+    ? row.result as Record<string, unknown> : undefined;
+  const value = (key: string) => row[key] === undefined ? child?.[key] : row[key];
+  const out: Record<string, unknown> = {};
+  for (const key of ["errors", "boot_errors", "stderr", "normalizations"]) {
+    const lines = value(key);
+    if (Array.isArray(lines)) out[key] = lines.filter((line) => typeof line === "string");
+  }
+  const parseErrors = value("parse_errors");
+  if (Array.isArray(parseErrors)) {
+    out.parse_errors = parseErrors.flatMap((entry) => {
+      if (!entry || typeof entry !== "object" || typeof entry.message !== "string") return [];
+      return [{
+        ...(Number.isInteger(entry.line) ? { line: entry.line } : {}),
+        ...(Number.isInteger(entry.column) ? { column: entry.column } : {}),
+        message: entry.message,
+      }];
+    });
+  }
+  for (const key of ["line_offset", "lines_truncated", "errors_truncated", "stderr_truncated", "exit_code"]) {
+    const number = value(key);
+    if (typeof number === "number" && Number.isInteger(number)) out[key] = number;
+  }
+  for (const key of ["ran", "rolled_back", "budget_enforced", "budget_exceeded", "no_rewind_point"]) {
+    const flag = value(key);
+    if (typeof flag === "boolean") out[key] = flag;
+  }
+  if (typeof value("hint") === "string") out.hint = value("hint");
+  return out;
+}
+
 /**
  * Decide whether an engine result envelope represents a FAILURE, and if so
  * return a model-visible message. Returns null only for genuine success.
@@ -75,25 +114,29 @@ export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;
   const firstFailed = op.results?.find((r) => r.ok === false);
+  const diagnostics = scriptFailureDetails(firstFailed ?? op);
   // The engine stamps failure classifiers on the envelope OR per-op inside
   // results[] (the batch gate does the latter) — read both.
   const failureReason = getFailureReason(op) ?? (firstFailed ? getFailureReason(firstFailed) : undefined);
 
   // Classified failures are rendered as JSON so callers can reliably read
   // failure_reason instead of scraping a sentence. A plain-text "Hint:" line may
-  // follow the JSON in the final tool text. Unclassified failures stay plain.
+  // follow the JSON in the final tool text. Script diagnostics also need JSON
+  // when an older engine omits the classifier; other unclassified failures stay plain.
   const classify = (message: string): string => {
-    if (!failureReason) return message;
+    if (!failureReason && Object.keys(diagnostics).length === 0) return message;
     return JSON.stringify(
       {
         error: message,
-        failure_reason: failureReason,
+        ...(failureReason ? { failure_reason: failureReason } : {}),
         ...(typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error !== message
           ? { op_error: firstFailed.error }
           : {}),
-        ...(typeof firstFailed?.op === "string" ? { op: firstFailed.op } : {}),
+        ...(typeof firstFailed?.op === "string" ? { op: firstFailed.op }
+          : Object.keys(diagnostics).length > 0 && typeof op.op === "string" ? { op: op.op } : {}),
         ...(typeof op.terminalState === "string" ? { terminalState: op.terminalState } : {}),
         ...(typeof op.errorClass === "string" ? { errorClass: op.errorClass } : {}),
+        ...diagnostics,
       },
       null,
       2

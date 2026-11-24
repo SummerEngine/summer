@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Script failures include their diagnostics.** Editor and scene script errors now keep native error messages, parse locations, boot diagnostics and rollback state in MCP replies, so agents can act on the failure without retrieving a missing field.
+
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 
 ## [4.9.2] - 2026-11-12

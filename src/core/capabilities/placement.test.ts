@@ -903,6 +903,32 @@ describe("summer_repeat_along", () => {
     expect(() => repeatPositions({ start: [0, 0, 0], end: [100, 0, 0], spacing: 0.1, align: "start" })).toThrow(/limit is 64/);
   });
 
+  it("keeps small parent-local spacing, endpoints and direction components in the receipt", async () => {
+    const { client } = mockClient(() => ({ ok: true }), {
+      mutationResults: (ops) => ops.map((op) => ({
+        ok: true,
+        op: op.op,
+        ...(op.op === "InstantiateScene" ? { meta: { nodePath: `Scaled/${String(op.name)}` } } : {}),
+      })),
+    });
+    const result = await repeatAlong(client, repeatAlongArgsSchema.parse({
+      scenePath: "res://row.tscn",
+      template: "res://piece.tscn",
+      parent: "Scaled",
+      start: [4e-7, 0, 0],
+      direction: [1, 4e-6, 0],
+      count: 3,
+      spacing: 4e-7,
+    }));
+    const [dx, dy] = result.direction as number[];
+    const [x, y] = result.last as number[];
+    expect(result).toMatchObject({ ok: true, count: 3, spacing: 4e-7, first: [4e-7, 0, 0] });
+    expect(dx).toBeCloseTo(1 / Math.hypot(1, 4e-6), 14);
+    expect(dy).toBeCloseTo(4e-6 / Math.hypot(1, 4e-6), 16);
+    expect(x).toBeCloseTo(1.2e-6, 15);
+    expect(y).toBeCloseTo(3.2e-12, 20);
+  });
+
   it("instances every copy with its transform and returns a compact receipt", async () => {
     const { client, mutations } = mockClient(() => ({ ok: true }), {
       mutationResults: (ops) =>

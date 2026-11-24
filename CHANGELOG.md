@@ -22,6 +22,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Zooming in on narrow seams preserves the requested strip and centres it between the image bars.
 - **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.
 - Saved game input recordings use the requested `save_as` filename under `.summer/replays/`. Unsupported names fail before stopping the recording instead of being silently rewritten.
+- Repeated scene placements keep their planned spacing, endpoints and direction in the receipt, even when nearby copies have very small coordinates relative to their parent.
 
 
 - Connecting mesh ports on pipes under scaled, rotated parents now aligns their opening planes and measures the requested gap along the target opening’s outward normal.

@@ -9901,7 +9901,7 @@
       "id": "tool/repeat-along",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "288d19a98e7618cb4662d4bcc740fde3fe6d67415f3117bfc24f836854b1ac2b",
+      "content_hash": "8ed739fc67cc0c2502b22a048ccf9c2f46264465b8d1c85e94d8f34f62598e5b",
       "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
       "use_when": [
         "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",

@@ -2355,12 +2355,13 @@
     {
       "id": "skill/multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d1ba8c2895e91430a890819ca002b42d269ae2f19c70e534eceeedcf7d4fcbbe",
+      "version": "1.0.1",
+      "content_hash": "e80e814ec51585563c4292c0e7e14602beb381bf174ac57d4bceefcd0159430d",
       "summary": "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
         "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "the user wants online play in a game sold on Steam, itch.io or their own store listing",
         "deciding how a multiplayer Summer game is structured before writing networking code",
         "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
       ],
@@ -2482,8 +2483,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "6d1e94b0fe7cd4a8d492f6168b033417315828d282e18049b8365ba3d957d1e3",
+      "version": "1.0.3",
+      "content_hash": "3caf0a108d6b949df72a7c431a744bc4e0c9ff8091bb4046114127c8e65405c9",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",

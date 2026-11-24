@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Port connections and surface attachments ask Godot to verify the full local transform before writing. They now work under small, invertible parent scales and leave the scene untouched when the requested pose would lose precision.
+
 - World snapshots include 2D nodes under mixed scene roots on released editors, so subtree and class filters can find those nodes. Set `include_2d: false` to omit 2D nodes under a mixed root.
 
 - Asset inspection includes visible Sprite3D bounds and the selected frame of each AnimatedSprite3D when measuring a saved scene, including framed textures and billboards.

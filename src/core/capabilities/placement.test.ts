@@ -33,7 +33,7 @@ import {
   type RawLoop,
 } from "./placement.js";
 import { PLACEMENT_ARGS_TOKEN, buildPlacementScript, encodeScriptArgs, placementProbeTemplate } from "./placement-script.js";
-import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
+import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, toGodotTransform, xformFromArray, type Vec3 } from "./placement-math.js";
 
 type Op = Record<string, unknown>;
 type Probe = (args: Op) => Op;
@@ -49,16 +49,24 @@ function probeArgs(op: Op): Op {
   return JSON.parse(Buffer.from(literal, "base64").toString("utf8")) as Op;
 }
 
+function identityParentPlan(args: Op, original = toGodotTransform(xformFromArray(IDENTITY12))): Op {
+  const desired = (args.desired as Vec3[]).flat();
+  return { ok: true, local_transform: toGodotTransform(xformFromArray(desired)), original_transform: original };
+}
+
 /** A client whose RunSceneScript answers come from `probe` (one per call, or
  *  the same function every time) and whose mutations succeed. */
-function mockClient(probes: Probe | Probe[], options: { mutationResults?: (ops: Op[]) => Op[]; lacks?: string[] } = {}) {
+function mockClient(probes: Probe | Probe[], options: { mutationResults?: (ops: Op[]) => Op[]; lacks?: string[]; planTransform?: Probe } = {}) {
   const queue = Array.isArray(probes) ? [...probes] : null;
   const probeCalls: Op[] = [];
   const mutations: Op[][] = [];
   const executeIdentityBoundOps = vi.fn(async (ops: Op[], _options?: Op) => {
     if (ops[0]!.op === "RunSceneScript") {
       probeCalls.push(ops[0]!);
-      const answer = (queue ? queue.shift()! : (probes as Probe))(probeArgs(ops[0]!));
+      const args = probeArgs(ops[0]!);
+      const answer = args.cmd === "plan_transform"
+        ? (options.planTransform ?? identityParentPlan)(args)
+        : (queue ? queue.shift()! : probes as Probe)(args);
       return { status: "ok", terminalState: "applied", results: [{ ok: true, op: "RunSceneScript", ran: true, result: answer }] };
     }
     mutations.push(ops);
@@ -203,7 +211,7 @@ describe("hostile inputs never become GDScript", () => {
       }
     }
     expect(source).toContain('if cmd == "blockers":');
-    expect(source).toContain('rec["transform_str"] = var_to_str(n.transform)');
+    expect(source).toContain('"original_transform": var_to_str(node.transform)');
     expect(source).toContain('"cull_back": acc[4] / acc[0]');
     // Open-loop ports travel as raw loops; placement.ts orders them (orderLoops).
     expect(source).toContain('var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}');
@@ -671,7 +679,6 @@ describe("summer_attach_to_surface", () => {
   const shutterBounds = (extra: Op = {}) =>
     bounds("Lane2/ShutterWin", [[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], {
       xform: [1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6],
-      transform_str: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)",
       ...extra,
     });
   const shutterRead = (hit: Op = { path: "House2/Back/B0_w3", point: [2, 2.35, 0], normal: [0, 0, 1], distance: 3 }) => ({
@@ -687,6 +694,36 @@ describe("summer_attach_to_surface", () => {
         ? { ok: true, op: op.op, evidence: "physics", supportPath, finalGap: 0, gapErrorBound: 0.0001, after: { origin } }
         : { ok: true, op: op.op }
     );
+
+  it("refuses an unrepresentable full attachment pose before turning or saving the piece", async () => {
+    const { client, mutations } = mockClient(() => shutterRead(), {
+      planTransform: (args) => {
+        expect(args).toMatchObject({ cmd: "plan_transform", path: "Lane2/ShutterWin", scene_path: "res://a.tscn" });
+        return { ok: false, failure_reason: "transform_not_representable", error: "The parent cannot represent the requested pose." };
+      },
+    });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "transform_not_representable" });
+    expect(mutations).toHaveLength(0);
+  });
+
+  it("uses Godot's verified attachment transform and restores its captured local literal after a failed seat", async () => {
+    const preseat = "Transform3D(0.000009123456, 0, -0.000004765432, 0, 0.00001, 0, 0.000004765432, 0, 0.000009123456, 2, 1.1, 0.25)";
+    const original = "Transform3D(0.000009123, 0, -0.000004767, 0, 0.00001, 0, 0.000004767, 0, 0.000009123, 2, 1.1000003, 0.61)";
+    const { client, mutations } = mockClient(() => shutterRead(), {
+      planTransform: () => ({ ok: true, local_transform: preseat, original_transform: original }),
+      mutationResults: seatAt([2, 1.1, 0.32], "Duct/Brace"),
+    });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3",
+    }));
+    expect(result).toMatchObject({ ok: false, restored: true, saved: false });
+    expect(mutations[0]![0]).toMatchObject({ op: "SetProp", key: "transform", value: preseat });
+    expect(mutations[1]).toEqual([{ op: "SetProp", path: "Lane2/ShutterWin", key: "transform", value: original }]);
+    expect(mutations.flat().some(op => op.op === "SaveScene")).toBe(false);
+  });
 
   it("keeps the piece's height with a ray and seats its back face, not its origin", async () => {
     const { client, mutations, probeCalls } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
@@ -739,7 +776,10 @@ describe("summer_attach_to_surface", () => {
         { ok: true, origin: [2, 1.1, 0.6], direction: [0, 0, -1], physics_available: true, physics: { path: "House2/Back/B0_w3", point: [2, 1.1, 0], normal: [0, 0, 1], distance: 0.6 } },
       ],
     };
-    const { client, mutations } = mockClient(() => read, { mutationResults: seatAt([2, 1.1, 0.33], "Lane2/Duct/Brace_3") });
+    const { client, mutations } = mockClient(() => read, {
+      mutationResults: seatAt([2, 1.1, 0.33], "Lane2/Duct/Brace_3"),
+      planTransform: (args) => identityParentPlan(args, "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)"),
+    });
     const result = await attachToSurface(
       client,
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3" })
@@ -829,7 +869,7 @@ describe("summer_attach_to_surface", () => {
         ),
     });
     const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
-    expect(probeArgs(probeCalls[1]!)).toMatchObject({ cmd: "blockers", path: "Lane2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 });
+    expect(probeCalls.map(probeArgs)).toContainEqual(expect.objectContaining({ cmd: "blockers", path: "Lane2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 }));
     expect(result).toMatchObject({
       ok: false,
       failure_reason: "overlap_recovery_exceeded",
@@ -964,6 +1004,19 @@ describe("summer_connect_ports", () => {
     );
     portAfter.forEach((v, k) => expect(v).toBeCloseTo([0, 3, 0][k]!));
     expect(basisMulVec(xform.basis, [0, 1, 0])[1]).toBeCloseTo(-1);
+  });
+
+  it("keeps the scene untouched when Godot cannot represent the join", async () => {
+    const { client, mutations } = mockClient(() => ({
+      ok: true, xform: IDENTITY12,
+      subject_port: { kind: "marker", position: [1, 0, 0], direction: [0, 0, 1] },
+      target_port: { kind: "marker", position: [0, 2, 0], direction: [0, 0, -1] },
+    }), { planTransform: () => ({ ok: false, failure_reason: "transform_not_representable", error: "Lossy parent" }) });
+    const result = await connectPorts(client, connectPortsArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Piece", subjectPort: "Out", target: "Pipe", targetPort: "In",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "transform_not_representable", saved: false });
+    expect(mutations).toEqual([]);
   });
 
   it("applies one SetProp transform, saves, and verifies the joint", async () => {

@@ -1339,6 +1339,18 @@ export interface FrameShotArgs {
 
 const GRID_COLS = 24;
 
+// Render at the requested lens aspect before sampling into integer grid cells.
+// Four to five source pixels per column keep the candidate renders small.
+function imageCheckSize(aspect: number): [number, number] {
+  const minWidth = GRID_COLS * 4;
+  let size: [number, number] = [minWidth, Math.round(minWidth / aspect)];
+  for (let width = minWidth + 1; width <= GRID_COLS * 5 && size[0] / size[1] !== aspect; width++) {
+    const height = Math.round(width / aspect);
+    if (Math.abs(width / height - aspect) < Math.abs(size[0] / size[1] - aspect)) size = [width, height];
+  }
+  return size;
+}
+
 function readKeyLight(result: Record<string, unknown>): { path: string; direction: Vec3 } | undefined {
   const raw = result.key_light as { path?: unknown; direction?: unknown } | undefined;
   if (!raw || !Array.isArray(raw.direction) || raw.direction.length < 3) return undefined;
@@ -1496,9 +1508,8 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
         ...(c.eye ? { eye: { min: c.eye.min, max: c.eye.max, ...(c.eye.target !== undefined ? { target: c.eye.target } : {}), stand: [...c.eye.stand] } } : {}),
       })),
       measure: { aspect, grid_cols: GRID_COLS, grid_rows: gridRows, subject_occludes: shot === "corridor", near_lens_radius: 0.3, sweep_radius: 0.15 },
-      // A 4x4-pixel-per-cell beauty render per candidate, for the featureless
-      // area and near/far value checks.
-      image_check: { size: [GRID_COLS * 4, gridRows * 4] },
+      // Sample each candidate at the aspect used by the physics rays.
+      image_check: { size: imageCheckSize(aspect) },
     },
   }));
   await pass2.dispose();

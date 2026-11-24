@@ -4,10 +4,11 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
+- Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
 
 
 - **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
+- Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
 - **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.
 - Saved game input recordings use the requested `save_as` filename under `.summer/replays/`. Unsupported names fail before stopping the recording instead of being silently rewritten.
 
@@ -32,6 +33,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
 - Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
+
+- A failed surface attachment now names blocking objects in the piece’s own 3D world, including when the piece is inside a private SubViewport.
 
 ## [4.9.2] - 2026-11-12
 

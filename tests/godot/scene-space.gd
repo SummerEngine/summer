@@ -17,6 +17,31 @@ func _mesh(parent: Node, label: String) -> MeshInstance3D:
 	n.position = Vector3(1, 2, 3)
 	return n
 
+func _check_world_bounds(probe, errors: Array):
+	var scene := Node3D.new()
+	var piece := _mesh(scene, "Piece")
+	for own in [false, true]:
+		var view := SubViewport.new()
+		view.name = "Private" if own else "Shared"
+		view.own_world_3d = own
+		piece.add_child(view)
+		var geometry := _mesh(view, "Geometry")
+		geometry.position.x = 100.0 if own else 18.0
+	for attached in [false, true]:
+		if attached:
+			root.add_child(scene)
+			await process_frame
+		var shared = probe._cmd_bounds(scene, attached, {"nodes": [{"path": "Piece"}, {"path": "Piece/Shared/Geometry"}]})
+		if not shared.ok or shared.nodes[0].geometry_count != 2 or shared.nodes[0].intervals[0] != [0.5, 18.5]:
+			errors.append("bounds must include inherited-world geometry and ignore private-world geometry")
+		var foreign = probe._cmd_bounds(scene, attached, {"nodes": [{"path": "Piece"}, {"path": "Piece/Private/Geometry"}]})
+		if foreign.get("failure_reason") != "different_world_3d":
+			errors.append("cannot compare bounds from different worlds")
+		var private_only = probe._cmd_bounds(scene, attached, {"nodes": [{"path": "Piece/Private/Geometry"}]})
+		if not private_only.ok or private_only.nodes[0].intervals[0] != [99.5, 100.5]:
+			errors.append("bounds must use the subject's own private world")
+	scene.free()
+
 func _run():
 	var scene := Node3D.new()
 	scene.name = "Scene"
@@ -86,6 +111,7 @@ func _run():
 		errors.append("independent parent spaces")
 	if bounds["nodes"][2]["independent_geometry"] != ["Parent/Plain/Independent"]:
 		errors.append("independent geometry must name visible plain child only")
+	await _check_world_bounds(placement, errors)
 	var f := FileAccess.open("res://result.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify({"errors": errors, "observations": observations, "bounds": bounds}))
 	f.close()

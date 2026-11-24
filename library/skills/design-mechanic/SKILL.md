@@ -1,6 +1,6 @@
 ---
 name: design-mechanic
-description: "Design one mechanic in detail (input, feedback, failure modes, tunables) as a doc plus a script stub."
+description: "Design one game mechanic, document it and draft a script stub."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: gameplay-mechanics

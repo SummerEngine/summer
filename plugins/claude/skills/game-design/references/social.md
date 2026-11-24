@@ -1,0 +1,48 @@
+# Character, social play and learning
+
+When several people are involved, record who decides, who acts, who understands the outcome, and who gets to participate next. Ask privately when one player's explanation might stand in for the whole group's. For a narrative or learning goal, observe what the player does with the information in a *new* situation.
+
+| Genre and question | Small experiment and decision |
+|---|---|
+| **Branching narrative / visual novel.** Do choices need more branches? | Stop at one decision and ask what the player expects the protagonist to express or risk. Keep both branches convergent but let an existing character acknowledge the chosen stance later. If players recognize their decision and its meaning, test acknowledgment before authoring another ending. If they expect different events, inspect how the options set that expectation. |
+| **Dating / relationship sim.** Do players understand a relationship or a scoring rule? | Present an unscored situation involving the same person's previously expressed preference and a competing need. Ask what response the player expects and why. If they can only recall which icon raised a meter, test an in-character reaction. Keep transparent numerical optimization if solving it is the game's promise. |
+| **Social simulation.** Does an unexpected NPC reaction need simpler AI? | Replay one incident. Establish who witnessed it, who learned of it later, and what the player could have observed. Expose one existing link in that chain. If the reaction becomes predictable but players still dislike its severity, tune the response. Preserve delayed explanation in a mystery. |
+| **Tabletop roleplaying.** Is a quiet player missing an ability or an invitation to act? | Revisit one obstacle with the same characters and rules. Give the quiet player the first opportunity to describe an approach and observe whether it changes the shared situation. If they contribute readily, test turn-taking. If they describe an action the rules cannot resolve, examine adjudication or character options. |
+| **Cooperative puzzle / campaign.** Can one expert solve the whole group’s turn? | Have each player privately predict the next move before discussion. Try one room where one participant privately sees a clue another can act on. If both gain a decision and still understand the solution, retain the division of information. Preserve shared planning for groups who value solving aloud together. |
+| **Social deduction.** Are accusations based on interpretable behavior? | At a vote, have players privately name one action that changed their belief. Add one public, ambiguous consequence to a repeated round. If reasons diversify and people can still plausibly bluff, the evidence helped. If the event identifies the role by itself, weaken its specificity. |
+| **Party / asynchronous social game.** Are players waiting because suspense is fun or because they lose track of their turn? | Compare one short round with the same rules and a visible current-player marker. Watch whether bystanders can rejoin without a recap and whether anyone still enjoys watching a reveal. If confusion clears, keep the marker. If turns are understandable yet empty, test simultaneous commitment. |
+| **MOBA / team objective.** Would another objective create useful team play? | Replay one existing objective from two roles. Ask each player when they could tell help was needed and what they gave up to join. If the call arrived after commitment, test an earlier cue. If both already had time and reason to cooperate, investigate role incentives before adding another map event. |
+| **Asymmetric multiplayer.** Is the weaker side powerless or scoring success in a different currency? | Swap teams and compare complete rounds from identical starts. Ask each role to name its last meaningful response. If the same role consistently loses that response early, test one earlier signal or a recovery action. Different win conditions and a scary pursuer can justify different powers. |
+| **MMO / persistent world.** Can the advertised noncombat role support a session? | Try a first sale as a cartographer. Find an ordinary starting map, survey a missing landmark and offer the result to a buyer. If all the contracts require a landmark locked behind another role, test one survey with ordinary access and a buyer who values it. For a role that relies on a guide, give the cartographer a way to find one and try the session again. |
+| **Educational / serious game.** Is winning evidence of learning? | Identify a real decision the learner should later make. Paper-prototype the activity and try a fresh case afterwards with score prompts removed. If players win by matching icons and cannot explain or transfer the choice, change what the loop rewards. If the objective is factual recall, use a new recall task as the comparison. |
+| **Training simulation.** Does fidelity change the decision being trained? | Simplify one visual or procedural detail while keeping the relevant cues, time, and tradeoff intact. Give an unfamiliar scenario and ask what action the learner would take and why. Keep detail whose removal changes judgment. A visually convincing simulation still needs evidence of transfer to its intended setting. |
+| **Alternate-reality / collaborative mystery.** Can a late arrival contribute? | Give a fresh participant the group's last solved fact and its open question. Watch whether they can pursue a lead independently. If so, test a short community recap. If they still stall on the same inference as everyone else, revise the clue. |
+| **Location-based group play.** Can two teammates contribute while apart and resume together? | In a paper test, send one player to sketch a mural and another to find a matching street sign. Give both the current map and simulate one shortcut closing after they split. Ask them to mark where and when they expect to compare their finds. If they cannot agree with the information they have, test one place where either can leave a message the other can find. |
+| **Battle royale.** Does an early elimination support the squad's session? | Follow one early loss through the survivor's next decision. Ask the eliminated player what they can still contribute and what the survivor can perceive. Try one existing map ping during spectating. If the pair can coordinate and both enjoy that role, keep it. If the eliminated player chiefly wants another attempt, test the time to rejoin instead. |
+
+## Test what a player remembers about a companion
+
+A printmaker helps the player assemble a field journal. During a short scene, the printmaker shows up with an ink color based on a detail the player mentioned earlier. At the end, the player can use the last blank page to save a sample from that printmaker or finish a set of their own samples. Keep both choices equal in score. In a comparison, have the printmaker offer the same ink without referring to that earlier detail. After the journal is complete, ask why the player chose the page and which earlier moment they remembered. The page choice alone cannot tell you whether they cared about the printmaker, the color or a complete set.
+
+## A four-player phone mystery with one ending
+
+**Creator.** “Four friends read different letters over the phone. The one with the timetable always announces the solution. Does the game need four endings?”
+
+**First question.** “Just before the timetable reader announced the solution, what clue in someone else’s letter could have changed who the group suspected?”
+
+The creator says everyone already guesses privately. Only the timetable reader can rule anyone out. The other letters repeat the public story. The creator wants friends to reason aloud and need each other. Keep one ending for this test. Give the three other readers evidence that can change a deduction.
+
+**Play the paper case.** One of four couriers boarded a train carrying a stolen mailbag. Everyone gets the same list. Ada took the 8:10 eastbound, Ben the 8:10 westbound, Cy the 8:40 eastbound, and Dee the 8:40 westbound. Give each friend one private slip.
+
+| Reader | What their slip says |
+|---|---|
+| Timetable clerk | “The first bell called the 8:10 departures. The second called the 8:40s.” |
+| Porter | “I saw the stolen bag go through a carriage door as the second bell rang.” |
+| Electrician | “During repairs, the eastbound gate had a blue lamp. The westbound gate had an amber one.” |
+| Witness | “I couldn’t read the gate sign, but I remember the amber light on the bag’s brass buckle as the courier passed through.” |
+
+Keep the usual phone call and private guesses. The porter and clerk can narrow the list to Cy or Dee. The electrician and witness can narrow it to Ben or Dee. Together they can identify Dee. Remove any one of the four slips and two candidates remain possible from the supplied evidence.
+
+**Find out who did the reasoning.** Give a fresh group the same case with all four facts on the clerk’s slip and public information on the other slips. Listen for who asks a question, rules someone out, or challenges a guess before the solution is announced. Afterwards ask each friend privately what they figured out and whose clue helped. Keep the split if several friends make deductions they can explain. If three people simply dictate their facts and wait for the clerk to reason, keep the same clues and test whether giving others time to propose a theory before a final accusation changes participation. Neither version requires writing another ending.
+
+Keep the phone call and the timing of the accusation in both trials. Those conditions determine when each friend can change what the others suspect.

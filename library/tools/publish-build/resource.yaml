@@ -1,6 +1,6 @@
 id: tool/publish-build
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: "Upload an export to the creator's store game, confirm-gated: a bundle as a Build with its per-platform checks, or a web or native download."
 use_when:
   - '"upload my game to summer.games"'
@@ -9,10 +9,10 @@ use_when:
   - '"release version 1.2.0 of my game"'
   - '"ship this exported build to the live channel"'
   - uploading the .zip from summer_export_game as a new Build
-  - uploading a web build or a macOS or Windows download from summer_export_game format download
+  - uploading an existing Web, macOS, Windows or Linux ZIP built by any tool
 do_not_use_when:
   - the user has not approved the exact upload target returned by the confirm=false preview
-  - the game is not exported yet — summer_export_game first
+  - the user wants to build an archive from source — use the project’s export tool first
   - store page text, art or price — store.update_listing, store.set_art (hosted, after summer login --store)
   - making the build live — summer_go_live
   - what players get now — store.status
@@ -44,7 +44,7 @@ input_schema:
       description: The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them.
     file:
       type: string
-      description: Exported .zip. Defaults to the last summer_export_game result.
+      description: Path to an existing Summer Games export or platform ZIP. Defaults to the last summer_export_game result.
     clientVersion:
       type: string
       description: Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version.
@@ -59,7 +59,7 @@ input_schema:
         - macos-universal
         - windows-x64
         - linux-x64
-      description: "Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."
+      description: "Set for a platform-specific ZIP. Omit for a Summer Games export bundle. A saved download export supplies its own platform."
     confirm:
       type: boolean
       default: false

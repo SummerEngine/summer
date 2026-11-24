@@ -627,6 +627,15 @@ describe("summer_frame_nodes checks an explicit from (a camera behind a backdrop
     expect(new Set(options.map((o) => `${o.from.join(",")}|${o.fov}`)).size).toBe(options.length);
   });
 
+  it("keeps the subject centre and requested lens for a small target", () => {
+    const center = [0.00045, 1.59953, 0.00039] as const;
+    const box = { position: [-0.00555, 1.59553, -0.00011] as const, size: [0.012, 0.008, 0.001] as const };
+    const options = viewOptions(box, center, [0, 0, 1], 5.0047, 1, 0.8);
+    for (const option of options) expect(option.pose.look_at).toEqual(center);
+    expect(options[0]!.pose.position.slice(0, 2)).toEqual(center.slice(0, 2));
+    expect(options[0]!.pose.fov).toBe(5.0047);
+  });
+
   it("judgeViewOptions picks the cheapest valid alternative", () => {
     const box = { position: [-1, 0, -1] as const, size: [2, 2, 2] as const };
     const options = viewOptions(box, [0, 1, 0], [0, 0, 1], 50, 16 / 9, 0.8);

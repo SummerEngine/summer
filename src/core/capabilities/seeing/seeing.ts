@@ -32,7 +32,6 @@ import {
   mergeAabbs,
   normalize,
   parseVector3,
-  roundVec,
   scale,
   type Aabb,
   type CameraPose,
@@ -493,7 +492,7 @@ function readSubjects(result: Record<string, unknown>): SubjectBounds[] {
 
 function aabbLine(box: Aabb): string {
   const c = aabbCenter(box);
-  return `center ${formatVector3(c)}, size ${formatVector3(box.size)}`;
+  return `center ${formatPoseVector(c)}, size ${formatPoseVector(box.size)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -625,16 +624,15 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   const empty = subjects.filter((s) => !s.has_geometry).map((s) => s.path);
   const box = mergeAabbs(subjects.map((s) => s.aabb));
   const center = aabbCenter(box);
-  const toCamera = normalize(fromDir);
-  const dist = fitDistance(box, center, toCamera, fov, aspect, fill);
-  const pose: CameraPose = { position: roundVec(add(center, scale(toCamera, dist))), look_at: roundVec(center), fov };
+  const options = args.from ? viewOptions(box, center, fromDir, fov, aspect, fill) : [];
+  const pose = options[0]?.pose ?? fittedPose(box, center, normalize(fromDir), fov, aspect, fill);
   const size = sizeFor(edge, aspect);
 
   const lines: string[] = [];
   let framing = "free";
   if (bookmark) {
     const saved = firstResult(
-      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, position: formatVector3(pose.position), look_at: formatVector3(pose.look_at), fov }])
+      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, ...poseRecord(pose) }])
     );
     if (saved.ok === false) return fail(String(saved.failure_reason ?? "bookmark_save_failed"), String(saved.error ?? "SaveCameraBookmark failed"));
     framing = `bookmark:${bookmark}`;
@@ -647,7 +645,6 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
 
   // One physics pass for both checks: an explicit `from` is measured exactly
   // as given (plus the nearby alternatives), and marks get an occlusion test.
-  const options = args.from ? viewOptions(box, center, toCamera, fov, aspect, fill) : [];
   const markList = marks?.marks.map((m) => ({ id: m.id, path: m.path })) ?? [];
   let viewCheck: ViewCheck | undefined;
   let occlusion = new Map<number, MarkVisibility>();
@@ -683,7 +680,7 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   const env = String(render.meta.environment_used ?? "unknown");
   const header =
     `Framed ${nodes.join(", ")} in ${scenePath} with the REAL environment (${env}); ${render.image!.width ?? size[0]}x${render.image!.height ?? size[1]}. ` +
-    `Pose: ${poseLiteral(pose)} (from ${args.from ? formatVector3(fromDir) : (args.direction ?? "iso")}, fill ${fill}).`;
+    `Pose: ${poseLiteral(pose)} (from ${args.from ? formatPoseVector(fromDir) : (args.direction ?? "iso")}, fill ${fill}).`;
   const marksBlock = marks ? formatMarksWithOcclusion(marks, occlusion) : [];
   if (occlusionNote) marksBlock.push(occlusionNote);
   const caption = capCaption([
@@ -705,7 +702,7 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
       scenePath,
       nodes,
       pose: poseRecord(pose),
-      bounds: { center: formatVector3(center), size: formatVector3(box.size) },
+      bounds: { center: formatPoseVector(center), size: formatPoseVector(box.size) },
       environment_used: env,
       ...(bookmark ? { bookmark } : {}),
       ...(marks ? { marks: marks.marks.map((m) => ({ ...m, ...(occlusion.get(m.id) ? { visibility: occlusion.get(m.id) } : {}) })) } : {}),
@@ -729,6 +726,11 @@ export interface ViewOption {
   /** Closeness to the request: degrees turned + half the fov added. */
   cost: number;
   pose: CameraPose;
+}
+
+function fittedPose(box: Aabb, center: Vec3, unitDirection: Vec3, fov: number, aspect: number, fill: number): CameraPose {
+  const distance = fitDistance(box, center, unitDirection, fov, aspect, fill);
+  return { position: add(center, scale(unitDirection, distance)), look_at: center, fov };
 }
 
 /**
@@ -760,8 +762,8 @@ export function viewOptions(box: Aabb, center: Vec3, toCamera: Vec3, fov: number
   const out: ViewOption[] = [];
   for (const r of raw) {
     if (out.some((o) => Math.abs(o.fov - r.fov) < 0.01 && Math.hypot(o.from[0] - r.dir[0], o.from[1] - r.dir[1], o.from[2] - r.dir[2]) < 1e-3)) continue;
-    const d = fitDistance(box, center, r.dir, r.fov, aspect, fill);
-    out.push({ tag: r.tag, from: roundVec(r.dir, 4), fov: Math.round(r.fov * 100) / 100, cost: r.cost, pose: { position: roundVec(add(center, scale(r.dir, d))), look_at: roundVec(center), fov: Math.round(r.fov * 100) / 100 } });
+    const pose = fittedPose(box, center, r.dir, r.fov, aspect, fill);
+    out.push({ tag: r.tag, from: r.dir, fov: r.fov, cost: r.cost, pose });
   }
   return out;
 }
@@ -807,7 +809,7 @@ function viewCheckLines(check: ViewCheck): string[] {
   const a = check.alternative;
   lines.push(
     a
-      ? `nearest valid pose (${a.tag}): summer_frame_nodes from:"${formatVector3(a.from)}"${a.fov !== check.requestedFov ? ` fov:${a.fov}` : ""} -> ${poseLiteral(a.pose)}.`
+      ? `nearest valid pose (${a.tag}): summer_frame_nodes from:"${formatPoseVector(a.from)}"${a.fov !== check.requestedFov ? ` fov:${a.fov}` : ""} -> ${poseLiteral(a.pose)}.`
       : `no valid pose found among ${check.checked - 1} nearby alternatives (wider lens, turned around the nodes, raised/lowered): try summer_frame_shot shot:"detail" for a measured view.`
   );
   return lines;
@@ -818,7 +820,7 @@ function viewCheckReceipt(check: ViewCheck): Record<string, unknown> {
     ok: !check.problem,
     ...(check.problem ? { reason: check.problem.reason, detail: check.problem.detail, ...(check.problem.blockers ? { blockers: check.problem.blockers } : {}) } : {}),
     sight_lines: check.requestedSummary,
-    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatVector3(check.alternative.from), ...poseRecord(check.alternative.pose) } } : {}),
+    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatPoseVector(check.alternative.from), ...poseRecord(check.alternative.pose) } } : {}),
   };
 }
 
@@ -1538,7 +1540,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   const best = top[0]!;
   if (bookmark) {
     const saved = firstResult(
-      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, position: formatVector3(best.pose.position), look_at: formatVector3(best.pose.look_at), fov: Math.round(best.pose.fov * 100) / 100 }])
+      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, ...poseRecord(best.pose) }])
     );
     if (saved.ok === false) return fail(String(saved.failure_reason ?? "bookmark_save_failed"), String(saved.error ?? "SaveCameraBookmark failed"));
     lines.push(`saved best as bookmark "${bookmark}"${saved.overwritten === true ? " (replaced its previous pose)" : ""}.`);

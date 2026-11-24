@@ -197,8 +197,12 @@ static func _arr(v: Vector3, digits := 3) -> Array:
 	return [snappedf(v.x, step), snappedf(v.y, step), snappedf(v.z, step)]
 
 
+static func _coordinates(v: Vector3) -> Array:
+	return [v.x, v.y, v.z]
+
+
 static func _aabb_dict(box: AABB) -> Dictionary:
-	return {"position": _arr(box.position), "size": _arr(box.size)}
+	return {"position": _coordinates(box.position), "size": _coordinates(box.size)}
 
 
 # Lenient path resolution, the same spellings ScenePreview accepts: a path
@@ -343,14 +347,14 @@ func _analyze() -> void:
 			_fail("node_not_found", "Spawn node not found or not a Node3D: " + spawn_path)
 			return
 		var s3 := spawn as Node3D
-		var info := {"path": spawn_path, "origin": _arr(s3.global_position), "forward": _arr(-s3.global_transform.basis.z.normalized())}
+		var info := {"path": spawn_path, "origin": _coordinates(s3.global_position), "forward": _coordinates(-s3.global_transform.basis.z.normalized())}
 		var cams := spawn.find_children("*", "Camera3D", true, false)
 		if spawn is Camera3D:
 			cams.push_front(spawn)
 		if not cams.is_empty():
 			var cam := cams[0] as Camera3D
 			var camera_pose := cam.get_camera_transform()
-			info["camera"] = {"path": _rel(cam), "position": _arr(camera_pose.origin), "forward": _arr(-camera_pose.basis.z), "fov": cam.fov}
+			info["camera"] = {"path": _rel(cam), "position": _coordinates(camera_pose.origin), "forward": _coordinates(-camera_pose.basis.z), "fov": cam.fov}
 		_result["spawn"] = info
 	var key := _key_light()
 	if not key.is_empty():
@@ -1337,9 +1341,9 @@ func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array
 
 
 func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, adjustments: Array) -> Dictionary:
-	rec["position"] = _arr(pos)
-	rec["look_at"] = _arr(look)
-	rec["fov"] = snappedf(fov, 0.01)
+	rec["position"] = _coordinates(pos)
+	rec["look_at"] = _coordinates(look)
+	rec["fov"] = fov
 	# The real camera height: the first solid surface straight below the final
 	# pose (null: nothing below it, the world edge). Eye poses already carry the
 	# walkable surface they stand on.

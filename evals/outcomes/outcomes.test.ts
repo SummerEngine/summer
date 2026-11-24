@@ -171,6 +171,22 @@ script = ExtResource("1")
 `);
   const ev = evidence({ snap, tscn });
 
+  it.each([
+    [0.8996, false],
+    [0.9, true],
+    [0.9004, true],
+  ])("compares the full-precision mean IoU %s to the threshold", (iou, pass) => {
+    const cube = box("Cube", "Cube", 0, 0, 0);
+    const shift = (1 - iou) / (1 + iou);
+    const gold = [box("Cube", "Cube", shift, 0, 0)];
+    const result = evaluateAssertion(
+      { id: "iou", predicate: "gold_iou", args: { min: 0.9 }, required: true },
+      evidence({ snap: snapshot({ nodes: [cube] }), gold }),
+    );
+    expect(result.pass).toBe(pass);
+    expect((result.detail as { mean_iou: number }).mean_iou).toBeCloseTo(iou, 10);
+  });
+
   it("selectors match by name glob, class: and path: with alternation", () => {
     const node = { name: "Wall_North", path: "Grid/Wall_North", class: "MeshInstance3D" };
     expect(matchSelector("Wall*|Floor*", node)).toBe(true);

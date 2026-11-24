@@ -874,7 +874,7 @@ describe("the kernel's back-face, lens and transparency rules (source contract)"
   const kernel = loadKernelSource();
 
   it("reads the side of each hit with a front-faces-only ray and keeps transparent bodies out of the sweeps", () => {
-    expect(kernel).toMatch(/func _is_back\([\s\S]*?q\.hit_back_faces = false/);
+    expect(kernel).toMatch(/func _ray\([\s\S]*?q\.hit_back_faces = false/);
     expect(kernel).toContain("const LAYER_SEE := 8");
     // The thick sweeps use class masks only, never LAYER_SEE.
     expect(kernel).toMatch(/var sweep_hard_mask := LAYER_HARD\n/);
@@ -912,7 +912,7 @@ describe("the kernel's back-face, lens and transparency rules (source contract)"
     expect(floor).toContain('return {"y": box.position.y, "source": "lowest_point", "rays": n * n, "hits": 0}');
     const at = kernel.slice(kernel.indexOf("func _floor_at("), kernel.indexOf("func _walkable_floor("));
     // Horizontal, met from above on its drawn side, with headroom for the eye.
-    expect(at).toContain("(hit[\"normal\"] as Vector3).y > 0.7 and not _is_back(p, Vector3.DOWN, flags)");
+    expect(at).toContain("(hit[\"normal\"] as Vector3).y > 0.7 and not bool(hit[\"back\"])");
     expect(at).toContain("_ray(p + Vector3.UP * 0.05, p + Vector3.UP * height, EYE_GROUND_MASK).is_empty()");
     // Eye placement measures from the same walkable surface, for the stand and under the lens.
     expect(kernel).toContain("ref = _floor_at(stand.x, stand.z, stand.y + 0.1, stand.y - 6.0, lo)");

@@ -1,0 +1,4 @@
+[gd_scene format=3]
+[node name="Prefab" type="Node3D"]
+[node name="NativeChild" type="Marker3D" parent="."]
+position=Vector3(0.5,0.3,0.7)

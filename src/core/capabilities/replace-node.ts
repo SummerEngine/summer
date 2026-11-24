@@ -20,7 +20,9 @@
  *   1. read + parse the saved .tscn (which children the scene added under the
  *      node, which properties it overrides, its sibling index);
  *   2. InstantiateScene / AddNode at the same parent under a temporary name;
- *   3. SetProp every copyable property override (transform, visibility, ...);
+ *   3. SetProp copyable overrides, then compare the effective spatial poses
+ *      in Godot and restore any difference. Rebind incoming direct Node references
+ *      before moving children or removing the original;
  *   4. ReparentNode each scene-added child onto the new node (local
  *      transforms kept), then re-parent each deeper scene-added descendant in
  *      place — the engine's ReparentNode re-owns only the node it moves, and
@@ -41,6 +43,8 @@ import { asRecord, type JsonRecord } from "../util/json.js";
 import { executeOpsChunked, safeProjectPath, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError } from "./engine-receipt.js";
 import { REPLACE_NODE_FALLBACK } from "./engine-fallbacks.js";
+import { prepareReplacementPose } from "./replace-node-pose.js";
+import { incomingNodeReferences, missingNodeReferences, rebindNodeReferences, type NodeReference } from "./replace-node-references.js";
 import { reownInPlaceOps } from "./scene-batch.js";
 import { isReadbackFailure, readSavedScene as readSceneFile, readbackFailure, type ReadbackFailure } from "./scene-readback.js";
 import {
@@ -167,6 +171,7 @@ interface Plan {
   type?: string;
   /** Scene-created descendants of the old node that must survive. */
   keptNodes: TscnNode[];
+  nodeReferences?: NodeReference[];
   oldTransform?: string;
   fileIndex: number;
 }
@@ -221,6 +226,8 @@ function verifyAgainstSaved(after: ParsedTscn, plan: Plan): Verification {
     .filter((kept) => !after.nodes.some((n) => n.path === kept.path && isSceneCreatedNode(n)))
     .map((kept) => kept.path);
   if (missing.length > 0) problems.push(`children missing from the saved file: ${missing.join(", ")}`);
+  const missingRefs = missingNodeReferences(after, plan.target, plan.nodeReferences ?? []);
+  if (missingRefs.length) problems.push(`exported Node references missing from the saved file: ${missingRefs.map((ref) => `${ref.owner}:${ref.key}`).join(", ")}`);
   return { persisted: problems.length === 0, problems, warnings, saved };
 }
 
@@ -333,8 +340,11 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
   }
   const parent = node.parent;
 
+  const nodeReferences = incomingNodeReferences(before.parsed, target, keptNodes.map((kept) => kept.path));
+  plan.nodeReferences = nodeReferences;
+
   // Capability pre-flight for every op this path sends.
-  for (const op of [scene !== undefined ? "InstantiateScene" : "AddNode", "SetProp", "ReparentNode", "MoveNode", "RemoveNode"]) {
+  for (const op of [scene !== undefined ? "InstantiateScene" : "AddNode", "SetProp", "ReparentNode", "MoveNode", "RemoveNode", "RunSceneScript"]) {
     const missing = missingEngineOpResult(client, op, REPLACE_NODE_FALLBACK);
     if (missing) return { ...missing };
   }
@@ -435,6 +445,27 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
     if (notCopied.length) notCarriedOver.props = notCopied;
   }
 
+  const pose = await prepareReplacementPose(client, scenePath, target, newPath, propsCopied);
+  if ("error" in pose) return rollbackNew("pose_unavailable", `Cannot compare the replacement pose: ${pose.error}.`);
+
+  if (pose.overrides.length) {
+    const receipt = await send(pose.overrides.map(({ key, value }) => ({ op: "SetProp", path: newPath, key, value })));
+    const error = extractOpError(receipt);
+    if (error) return rollbackNew("pose_copy_failed", `Cannot preserve the replacement pose: ${error}.`);
+    for (const { key } of pose.overrides) {
+      if (!propsCopied.includes(key)) propsCopied.push(key);
+    }
+  }
+
+  if (nodeReferences.length) {
+    const rebound = await rebindNodeReferences(client, scenePath, target, newPath, nodeReferences);
+    if (rebound.ok !== true) {
+      const message = `Exported Node references could not be rebound: ${String(rebound.error)}`;
+      if (rebound.unchanged === true) return rollbackNew("node_reference_rebind_failed", message);
+      return failure("replace_partially_applied", `${message}. The old and temporary nodes remain in the editor; the scene was not saved. Inspect the references before removing ${newPath}.`, { persisted: false, verified: false });
+    }
+  }
+
   // 4 + 5. Move children, restore ownership below them, take the old slot, drop the old node, take its name.
   const rebase = (path: string) => (path === target ? newPath : `${newPath}${path.slice(target.length)}`);
   const structure: JsonRecord[] = [
@@ -449,14 +480,16 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
     const results = opResults(moved);
     const applied = results.filter((r) => r.ok !== false).length;
     const removedOld = results.some((r, i) => r.ok !== false && structure[i]?.op === "RemoveNode");
-    if (applied === 0) {
+    if (applied === 0 && nodeReferences.length === 0) {
       return rollbackNew("replace_failed", `Replacement stopped before anything moved: ${extractOpError(moved)}.`);
     }
     return failure(
       "replace_partially_applied",
       `summer_replace_node stopped after ${applied} of ${structure.length} steps: ${extractOpError(moved)}. ` +
         `Applied in the editor only, NOT saved (${scenePath} on disk still holds the original node). ` +
-        (removedOld
+        (nodeReferences.length
+          ? `Exported Node references already point to the replacement. Inspect them before removing ${newPath}; the old node ${removedOld ? "has been removed" : "remains"}.`
+          : removedOld
           ? `The old node is gone and the new one is at ${newPath}: rename it with summer_set_prop name "${node.name}", then summer_save_scene.`
           : `The new node is at ${newPath} next to the old one: undo with Ctrl+Z in the editor, or move the children back and remove ${newPath}.`),
       { persisted: false, applied_steps: structure.slice(0, applied).map((op) => String(op.op)) }
@@ -481,6 +514,7 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
     replaced: { from, to: scene ?? `type ${type}` },
     ...(directChildren.length ? { moved_children: directChildren.map((c) => c.name) } : {}),
     ...(propsCopied.length ? { props_copied: propsCopied } : {}),
+    ...(nodeReferences.length ? { node_references_rebound: nodeReferences } : {}),
     ...(Object.keys(notCarriedOver).length ? { not_carried_over: notCarriedOver } : {}),
   };
   if (!verification.persisted) return notPersistedFailure(plan, verification, extra);
@@ -497,6 +531,6 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
     ...extra,
     verification: verification.saved,
     ...(warnings.length ? { warnings } : {}),
-    undo: "Sent as separate engine requests: undoing it in the editor takes one Ctrl+Z per step (create, properties, move/remove).",
+    undo: "Sent as separate engine requests: undoing it in the editor takes one Ctrl+Z per step (create, properties, references when present, move/remove).",
   };
 }

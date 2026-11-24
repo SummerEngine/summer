@@ -305,6 +305,12 @@ uploaded pack, and every letter on iPhone was a box.
    # Prints one "PACK res://..." line per file in the pack mounted with --main-pack.
    func _init() -> void:
        _walk("res://")
+       for path in OS.get_cmdline_user_args():
+           if not (ResourceLoader.load(path) is Font):
+               push_error("Missing or invalid packed font: " + path)
+               quit(1)
+               return
+           print("FONT ", path)
        quit()
 
    func _walk(dir: String) -> void:
@@ -331,17 +337,28 @@ uploaded pack, and every letter on iPhone was a box.
    Every raw file must print its line. No line means the file is not in the
    pack, whatever the preset says. List `server.pck` the same way for files
    the authority reads.
-4. `grep -rn SystemFont --include=*.gd --include=*.tscn --include=*.tres .`
-   must find nothing on a path phone players reach, fallbacks included.
-5. After publishing, open the game on an iPhone in the Summer Games app and
-   look at the title and one menu: letters, not boxes. An agent can't do
-   this step; report it as **not run** and ask the user.
+4. Follow the fonts used by the theme, control overrides, rich text and
+   scripts, including styles and fallback faces. Bundle each custom face
+   under `res://`. An imported font can have a different filename inside
+   the pack. Pass the original resource paths to the listing script after
+   `--` (for example, `-- res://fonts/Title.ttf`). Each face must print a
+   `FONT` line.
+   For raw font bytes, check the packed path in step 3 and exercise the
+   game's font loader. A system font installed on the creator's computer
+   can hide a missing face. Phone UI and its fallbacks must work without
+   `SystemFont`.
+5. Before promotion, open that exported build on each shipping target in a
+   clean player environment. On iPhone use the Summer Games app. Read the
+   title, menu buttons and representative text from each supported script,
+   including any symbols that need a fallback. Record the build, target and
+   a screenshot or observation. A missing font or boxed letter fails the
+   check. Report any untested target as **not run**.
 
-**Fix.** Add each missing file to the summer.games preset's non-resource
-filter (for example `fonts/*.bin`), or import it as a resource instead.
-Ship the font in the project (an imported `.ttf`/`.otf`, or raw bytes that
-step 3 proves are packed) and fall back to `ThemeDB.fallback_font`, Summer's
-built-in font, never to `SystemFont`. Export again and rerun steps 3 and 5.
+**Fix.** Reference the imported font from the theme or control that uses it.
+Include dynamically loaded fonts in the client export preset. For raw files
+add a matching non-resource filter on that preset. Use a bundled fallback
+or Summer's built-in `ThemeDB.fallback_font` for characters it covers. Export again and repeat
+the pack and rendering checks.
 
 ### 9. Export with the Summer version line the Summer Games apps run
 
@@ -440,19 +457,23 @@ see which scene starts.
 
 ### 14. Browser play uses Compatibility
 
-**Why.** Browser exports always use Compatibility (WebGL 2). A saved Forward+
-setting or a browser with WebGPU must not select another renderer. Sunrunner's
-old browser upload selected Forward+ and delivered an uncompressed 52 MB runtime.
+**Why.** Summer 0.8.8 Web exports and the 0.8.8 shared player use Compatibility
+(WebGL 2), even for a project authored with Forward+ or Mobile. A previously
+published ZIP or pinned shared player keeps its own runtime. For example, the
+0.8.0 shared player can select WebGPU on supported browsers.
 
-**Check it.** Boot the exact browser ZIP or shared-template player. Observe
-`Compatibility` in the startup log, then reach the first playable scene without
-script errors. Inspect the runtime's transferred size and encoding in the
-browser Network panel. Check the game's materials: Forward+-only effects may
-be absent. A local preview does not prove the live delivery headers.
+**Check it.** Boot the exact browser ZIP or shared player. For a shared player,
+record the template version in the play URL. Look for `Compatibility` in the
+startup log, reach the first playable scene and try an input. Check the console
+for script errors and inspect any materials that use Forward+-only effects. On
+the deployed URL, check the Wasm response's `Content-Encoding` and the
+transferred size in the browser Network panel.
 
-**Fix.** Back up the current upload and replace it with a verified Compatibility
-export. Keep the old version for rollback. Older editors can still offer JSPI
-or WebGPU; do not select them for browser exports. Native renderers are unchanged.
+**Fix.** If the renderer is wrong, prepare a Compatibility export or select a
+shared template set that requires Compatibility. Verify the replacement in a
+browser before publishing and keep the previous version for rollback. If the
+deployed Wasm is uncompressed, check the host's compression settings and
+repeat the network check.
 
 ## Add a check after every incident
 

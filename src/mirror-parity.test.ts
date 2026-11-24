@@ -104,7 +104,7 @@ function definitionsOf(helper: string): string[] {
   const pattern = new RegExp(`^(?:export )?(?:async )?function ${helper}\\(`, "m");
   return walk(srcRoot)
     .filter((file) => pattern.test(readFileSync(file, "utf8")))
-    .map((file) => relative(srcRoot, file));
+    .map((file) => relative(srcRoot, file).replace(/\\/g, "/"));
 }
 
 describe("repo-lint: tool-dispatch <-> mcp/tools share one helper copy", () => {

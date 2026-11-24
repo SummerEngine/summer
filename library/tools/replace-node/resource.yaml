@@ -1,6 +1,6 @@
 id: tool/replace-node
 kind: tool
-version: 1.1.0
+version: 1.1.1
 summary: Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.
 use_when:
   - swapping a placeholder for a prefab or changing a body type

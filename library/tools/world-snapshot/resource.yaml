@@ -52,7 +52,7 @@ input_schema:
     max_nodes:
       type: integer
       exclusiveMinimum: 0
-      description: Most node entries to return (default 200). The engine still snapshots the whole scene for the diff baseline; the result says when the list is cut (truncated, next_offset).
+      description: Most node entries to return (default 200). The engine stores up to 4000 node entries by default. A larger max_nodes raises that cap. engine_truncated indicates an incomplete diff baseline; next_offset pages the captured entries.
     offset:
       type: integer
       minimum: 0

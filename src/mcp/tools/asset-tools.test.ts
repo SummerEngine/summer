@@ -188,7 +188,10 @@ describe("registerAssetTools", () => {
     }));
     globalThis.fetch = fetchMock as any;
     executeOpsMock.mockResolvedValue({ results: [{ ok: true }] });
-    executeIdentityBoundOpsMock.mockResolvedValue({ results: [{ ok: true }, { ok: true }] });
+    executeIdentityBoundOpsMock.mockImplementation(async (ops: Array<{ op: string }>) => ({
+      status: "ok",
+      results: ops.map((op) => ({ ok: true, op: op.op })),
+    }));
 
     const { server, tools } = createFakeServer();
     registerAssetTools(server as any);
@@ -207,7 +210,8 @@ describe("registerAssetTools", () => {
         path: "res://assets/models/iron_sword.glb",
       },
     ]);
-    expect(executeIdentityBoundOpsMock).toHaveBeenCalledWith(
+    expect(executeIdentityBoundOpsMock).toHaveBeenNthCalledWith(
+      1,
       [
         {
           op: "InstantiateScene",
@@ -215,8 +219,12 @@ describe("registerAssetTools", () => {
           scene: "res://assets/models/iron_sword.glb",
           name: "HeroSword",
         },
-        { op: "SaveScene" },
       ],
+      { scenePath: "res://main.tscn" },
+    );
+    expect(executeIdentityBoundOpsMock).toHaveBeenNthCalledWith(
+      2,
+      [{ op: "SaveScene" }],
       { scenePath: "res://main.tscn" },
     );
 

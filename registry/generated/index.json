@@ -8907,7 +8907,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "50689530c30ef79796c8313af10484b2281523b39bcd22a0456277cf0ec13bed",
+      "content_hash": "e285d3ebc842d8a59805b541bff565ad33748980dee86b062a1aa1e308f51d9e",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",

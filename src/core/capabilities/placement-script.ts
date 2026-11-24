@@ -757,8 +757,36 @@ func _loop_raw(lp):
 	return rec
 
 
+# SpriteBase3D fills its drawing AABB on tree entry. Both sprite types draw the
+# selected texture through the same native path. A static preview never plays
+# an animation or enters the authored node, its scripts or children.
+func _asset_sprite_aabb(sprite):
+	var texture
+	if sprite is AnimatedSprite3D:
+		var frames = sprite.sprite_frames
+		if frames == null or not frames.has_animation(sprite.animation) or sprite.frame >= frames.get_frame_count(sprite.animation):
+			return AABB()
+		texture = frames.get_frame_texture(sprite.animation, sprite.frame)
+	else:
+		texture = sprite.texture
+	if texture == null:
+		return AABB()
+	var preview = Sprite3D.new()
+	preview.visible = false
+	preview.texture = texture
+	if sprite is Sprite3D:
+		for property in ["region_enabled", "region_rect", "hframes", "vframes", "frame"]:
+			preview.set(property, sprite.get(property))
+	for property in ["centered", "offset", "pixel_size", "axis", "billboard"]:
+		preview.set(property, sprite.get(property))
+	Engine.get_main_loop().root.add_child(preview, false, Node.INTERNAL_MODE_BACK)
+	var bounds = preview.get_aabb()
+	preview.free()
+	return bounds
+
+
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
-func _collect(top, same_world_geometry = false):
+func _collect(top, same_world_geometry = false, inspecting_asset = false):
 	var world = _placement_world(top) if same_world_geometry else null
 	var meshes = []
 	var geoms = []
@@ -777,6 +805,8 @@ func _collect(top, same_world_geometry = false):
 			var vis = _visible(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
+				if inspecting_asset and vis and (n is Sprite3D or n is AnimatedSprite3D) and not n.is_inside_tree():
+					bb = _asset_sprite_aabb(n)
 				if bb.size != Vector3.ZERO:
 					if vis:
 						geoms.append([n, t, bb])
@@ -947,7 +977,7 @@ func _cmd_inspect_asset(args):
 
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
-	var col = _collect(inst)
+	var col = _collect(inst, false, true)
 	if col.get("singular_root", false):
 		return _fail("singular_asset_root", "the asset root has a singular transform")
 	var analysis_error = _mesh_analysis_error(col)

@@ -162,9 +162,30 @@ describe("buildGameInputOp", () => {
   it("record_start / record_stop carry only their own parameters", () => {
     expect(buildGameInputOp({ action: "record_start", include_motion: true }).op).toEqual({ op: "InputRecordStart", include_motion: true });
     expect(buildGameInputOp({ action: "record_stop", save_as: "res://.summer/replays/run1.json", instance: "a" }).op).toEqual({
-      op: "InputRecordStop", save_as: "res://.summer/replays/run1.json", instance: "a",
+      op: "InputRecordStop", save_as: "run1", instance: "a",
     });
     expect(() => buildGameInputOp({ action: "record_stop", save_as: "../escape.json" })).toThrow(/res:\/\//);
+  });
+
+  it("maps supported recording paths to the native ID without silent filename changes", () => {
+    for (const name of ["run_1-2", "a".repeat(64)]) {
+      expect(buildGameInputOp({ action: "record_stop", save_as: ` res://.summer/replays/${name}.json ` }).op).toEqual({
+        op: "InputRecordStop", save_as: name,
+      });
+    }
+    expect(buildGameInputOp({ action: "record_stop" }).op).toEqual({ op: "InputRecordStop" });
+  });
+
+  it.each([
+    "res://elsewhere/run.json",
+    "res://.summer/replays/sub/run.json",
+    "res://.summer/replays/../run.json",
+    "res://.summer/replays/run",
+    "res://.summer/replays/run.extra.json",
+    "res://.summer/replays/.json",
+    `res://.summer/replays/${"a".repeat(65)}.json`,
+  ])("refuses a recording path the native ID writer cannot preserve: %s", (save_as) => {
+    expect(() => buildGameInputOp({ action: "record_stop", save_as })).toThrow(/save_as must be res:\/\//);
   });
 
   it("replay needs a recording or inline events and passes seed through", () => {

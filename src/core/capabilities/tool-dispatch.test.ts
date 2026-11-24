@@ -1266,6 +1266,14 @@ describe("runtime control dispatch entries (runtime control)", () => {
     expect(calls[6]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
   });
 
+  it("sends the native recording ID for a requested public save path", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("game-input", { action: "record_stop", save_as: "res://.summer/replays/run1.json" }, ctx);
+    expect(calls).toEqual([{ method: "executeOps", args: [[{ op: "InputRecordStop", save_as: "run1" }], undefined, expect.any(Number)] }]);
+    await expect(dispatchTool("game-input", { action: "record_stop", save_as: "res://elsewhere/run1.json" }, ctx)).rejects.toThrow(/save_as/);
+    expect(calls).toHaveLength(1);
+  });
+
   it("play refuses an offscreen instance before sending on an engine that provably lacks the runtime-control wave", async () => {
     const { ctx, calls } = fakeEngineContext({
       getEngineCapabilities: () => ({ opKinds: ["PlayGame", "StopGame"] }),

@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Saved game input recordings use the requested `save_as` filename under `.summer/replays/`. Unsupported names fail before stopping the recording instead of being silently rewritten.
+
 - Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
 
 - **Your agent now asks where your multiplayer game will be sold before it builds anything.** The `multiplayer` skill says up front that Summer multiplayer runs only when the game is played through Summer Games (summer.games, the desktop app and the phone apps). For Steam, itch.io or your own store listing it tells the agent to build custom networking that you host, and that a phone app exported from Project > Export cannot join Summer-hosted matches.

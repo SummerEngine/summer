@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
+
 - **Your agent now asks where your multiplayer game will be sold before it builds anything.** The `multiplayer` skill says up front that Summer multiplayer runs only when the game is played through Summer Games (summer.games, the desktop app and the phone apps). For Steam, itch.io or your own store listing it tells the agent to build custom networking that you host, and that a phone app exported from Project > Export cannot join Summer-hosted matches.
 - Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
 

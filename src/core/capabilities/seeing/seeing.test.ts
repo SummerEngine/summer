@@ -253,6 +253,21 @@ describe("summer_zoom", () => {
     expect(r.caption).toMatch(/Zoom x5\.0/);
   });
 
+  it.each([
+    { reference: [320, 192], region: [0.625, 0.125, 4 / 320, 0.75], rect: [34, 0, 4, 144] },
+    { reference: [192, 320], region: [0.125, 0.625, 0.75, 4 / 320], rect: [0, 21, 144, 4] },
+    { reference: [320, 192], region: [0.625, 0.125, 1 / 320, 0.75], rect: [35, 0, 1, 144] },
+    { reference: [192, 320], region: [0.125, 0.625, 0.75, 1 / 320], rect: [0, 22, 144, 1] },
+  ])("centres a thin crop at pixel size $rect inside the letterbox", async ({ reference, region, rect }) => {
+    const engine = fakeEngine({ projectRoot: project });
+    const result = (await zoom(engine, { ...pose, scenePath: "res://seams.tscn", reference_size: reference, region, max_size: 144 })) as SeeingSuccess;
+    expect(result.receipt.region_px).toEqual(rect.slice(2));
+    expect(result.receipt.letterboxed).toBe(true);
+    const [tile] = engine.configs[0]!.tiles as Array<Record<string, unknown>>;
+    expect(tile!.rect).toEqual(rect);
+    expect(tile!.pose).toMatchObject({ crop: [region[0], region[1], region[0]! + region[2]!, region[1]! + region[3]!] });
+  });
+
   it("resolves mark N with a marks render of the same pose, then zooms on its box", async () => {
     const engine = fakeEngine({
       projectRoot: project,

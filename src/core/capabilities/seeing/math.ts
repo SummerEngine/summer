@@ -334,8 +334,8 @@ export function letterbox(
     h = canvas[1];
     w = Math.round(h * regionAspect);
   }
-  w = Math.max(16, Math.min(canvas[0], w));
-  h = Math.max(16, Math.min(canvas[1], h));
+  w = Math.max(1, Math.min(canvas[0], w));
+  h = Math.max(1, Math.min(canvas[1], h));
   const x = Math.floor((canvas[0] - w) / 2);
   const y = Math.floor((canvas[1] - h) / 2);
   return { canvas, rect: [x, y, w, h], letterboxed: w < canvas[0] - 1 || h < canvas[1] - 1 };

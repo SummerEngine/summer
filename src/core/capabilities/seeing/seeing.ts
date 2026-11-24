@@ -392,6 +392,7 @@ function capCaption(lines: string[], limit = 4800): string {
 
 interface SlotPlan {
   tile: number;
+  view?: ViewMode;
   bookmark: string;
   capturePath: string;
 }
@@ -411,7 +412,7 @@ async function storeSlots(store: ShotStore | ShotStoreError, plans: SlotPlan[], 
       continue;
     }
     try {
-      written.push(await store.writeSlot(plan.bookmark, await readFile(plan.capturePath)));
+      written.push(await store.writeSlot(plan.bookmark, await readFile(plan.capturePath), plan.view));
     } catch (err) {
       notes.push(`slot for "${plan.bookmark}" not updated: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -999,7 +1000,7 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     const p = poses[i]!;
     const label = `${i + 1} ${labels[i]}${view !== "beauty" ? ` · ${view}` : ""}`;
     if (args.compare_previous && p.bookmark) {
-      const prev = store instanceof ShotStoreError ? null : await store.readSlot(p.bookmark);
+      const prev = store instanceof ShotStoreError ? null : await store.readSlot(p.bookmark, view);
       if (prev) {
         // Bookmark timestamps have one-second resolution: a pose saved in the
         // same second as the previous render counts as possibly newer.
@@ -1022,7 +1023,7 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
   // neither compare_previous nor update_previous asked for a new one).
   const keepBaseline = new Set<string>();
   if (policy === "create_if_missing" && !(store instanceof ShotStoreError)) {
-    for (const p of poses) if (p.bookmark && !keepBaseline.has(p.bookmark) && (await store.readSlot(p.bookmark))) keepBaseline.add(p.bookmark);
+    for (const p of poses) if (p.bookmark && !keepBaseline.has(p.bookmark) && (await store.readSlot(p.bookmark, view))) keepBaseline.add(p.bookmark);
   }
   const layout = layoutGrid(cells.length, aspect, edge, comparing ? 3 : undefined);
   const run0Dir = await makeProbeDir();
@@ -1035,12 +1036,12 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     const pose = poses[cell.shot]!;
     if (cell.kind === "shot") {
       const spec: TileSpec = { kind: "shot", rect, label: cell.label, view, pose: kernelPose(pose.pose) };
-      if (pose.bookmark && view === "beauty" && !(store instanceof ShotStoreError) && !keepBaseline.has(pose.bookmark) && !slotted.has(pose.bookmark)) {
+      if (pose.bookmark && !(store instanceof ShotStoreError) && !keepBaseline.has(pose.bookmark) && !slotted.has(pose.bookmark)) {
         slotted.add(pose.bookmark);
         spec.render_size = slotRenderSize(aspect, layout.tile);
         spec.capture_path = join(run0Dir, `slot-${index}.jpg`).replace(/\\/g, "/");
         spec.capture_max_edge = SHOT_MAX_EDGE;
-        slots.push({ tile: index, bookmark: pose.bookmark, capturePath: spec.capture_path });
+        slots.push({ tile: index, bookmark: pose.bookmark, view, capturePath: spec.capture_path });
       }
       nowTileOf.set(cell.shot, index);
       tiles.push(spec);

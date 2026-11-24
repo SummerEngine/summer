@@ -111,7 +111,7 @@ For "make this place beautiful", one screenshot is not enough evidence. Preview 
 ### The review loop
 
 1. **Bookmark the hero views** once: `summer_frame_shot` for each shot type that matters (an establishing wide, the player's eye at spawn, a corridor per street or lane, a low-angle hero of the landmark, a detail of the best prop). Read the score breakdown and the rejection counts; a pose a wall blocks never ranks, and neither does a camera behind or inside a one-sided wall (`behind_surface`, `inside_volume`: the renderer does not draw a wall's back, so that image would look through it). The top 3 are three different views (one per side while the score allows); the light term prefers side or front-side key light, the edge term penalises sky or void below the horizon.
-2. **After each change** (save first): one `summer_shot_sheet` of all hero bookmarks, `compare_previous:true` when judging a change. Each bookmark keeps exactly ONE previous render in `res://.summer/shots/<bookmark>.jpg`: the compare baseline. A `compare_previous:true` render replaces it after comparing; plain sheets, debug views and screenshots in between leave it alone (pass `update_previous:true` to reset it on purpose).
+2. **After each change** (save first): one `summer_shot_sheet` of all hero bookmarks, `compare_previous:true` when judging a change. Beauty comparisons use `res://.summer/shots/<bookmark>.jpg`. Each diagnostic view keeps its own baseline in `res://.summer/shots/views/<view>/<bookmark>.jpg`. A `compare_previous:true` render replaces it after comparing; plain sheets, debug views and screenshots in between leave it alone (pass `update_previous:true` to reset it on purpose).
 3. **Take the weakest shot** to `summer_debug_views`: lighting shows dead-dark areas and missing pools, unshaded shows flat texture and value clashes, wireframe shows floating or duplicated pieces.
 4. **Zoom into each problem** with `summer_zoom` before fixing it, and again after. Cite the mark or region in the claim.
 5. **Find new views** with `summer_frame_shot` whenever the layout changes; bookmark the winners so the sheet stays pose-stable.
@@ -126,7 +126,7 @@ For "make this place beautiful", one screenshot is not enough evidence. Preview 
 - **A level horizon**: no accidental roll; the horizon off the dead center for wide shots.
 - **Foreground framing**: something soft in front (foliage, a fence, a pipe, a doorframe) for depth, never covering the subject.
 
-Disk stays bounded: nothing is written except one previous-image slot per bookmark (created on its first clean render, replaced only as above) and explicit `save_to` copies; JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first); every file there is safe to delete.
+Disk stays bounded: nothing is written except one previous image per bookmark and shot-sheet view (created on its first clean render, replaced only as above) and explicit `save_to` copies; JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first); every file there is safe to delete.
 
 ## Runtime reads during playtests
 

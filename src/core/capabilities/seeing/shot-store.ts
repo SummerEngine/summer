@@ -2,10 +2,10 @@
  * Bounded image storage for the seeing tools: res://.summer/shots/.
  *
  * Inline images are the product; disk is a strictly bounded side channel.
- *   - Nothing is written unless a bookmark was rendered (its one before/after
+ *   - Nothing is written unless a bookmark was rendered (its before/after
  *     slot) or the caller passed save_to (one named copy).
- *   - One slot per bookmark: .summer/shots/<bookmark>.jpg, overwritten by the
- *     next render of that bookmark. Named copies: .summer/shots/saved/<name>.jpg.
+ *   - Beauty baselines use <bookmark>.jpg. Diagnostic views use views/<view>/<bookmark>.jpg.
+ *     Named copies use saved/<name>.jpg.
  *   - JPEG only, longest edge <= SHOT_MAX_EDGE, and the folder never holds more
  *     than SHOTS_MAX_TOTAL_BYTES: the oldest files are evicted first.
  *   - Writes never leave the folder: names are validated, the resolved path is
@@ -17,6 +17,7 @@ import { lstat, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "no
 import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
+import type { ViewMode } from "./seeing.js";
 import { analyzeJpegFrame } from "../frame-quality.js";
 
 export const SHOTS_DIR = join(".summer", "shots");
@@ -84,8 +85,10 @@ export class ShotStore {
     return new ShotStore(projectRoot, options);
   }
 
-  slotPath(bookmark: string): string {
-    return this.inside(join(this.root, `${checkName(bookmark, "bookmark name")}.jpg`));
+  slotPath(bookmark: string, view: ViewMode = "beauty"): string {
+    const name = `${checkName(bookmark, "bookmark name")}.jpg`;
+    const directory = view === "beauty" ? this.root : join(this.root, "views", checkName(view, "view"));
+    return this.inside(join(directory, name));
   }
 
   savedPath(name: string): string {
@@ -96,8 +99,8 @@ export class ShotStore {
     return `res://${relative(this.projectRoot, path).split(sep).join("/")}`;
   }
 
-  async readSlot(bookmark: string): Promise<ShotFile | null> {
-    const path = this.slotPath(bookmark);
+  async readSlot(bookmark: string, view: ViewMode = "beauty"): Promise<ShotFile | null> {
+    const path = this.slotPath(bookmark, view);
     await this.refuseSymlinks(path);
     try {
       const info = await lstat(path);
@@ -108,8 +111,8 @@ export class ShotStore {
     }
   }
 
-  async writeSlot(bookmark: string, jpeg: Uint8Array): Promise<ShotWrite> {
-    return this.write(this.slotPath(bookmark), jpeg);
+  async writeSlot(bookmark: string, jpeg: Uint8Array, view: ViewMode = "beauty"): Promise<ShotWrite> {
+    return this.write(this.slotPath(bookmark, view), jpeg);
   }
 
   async saveCopy(name: string, jpeg: Uint8Array): Promise<ShotWrite> {

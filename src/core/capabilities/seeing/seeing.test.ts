@@ -732,6 +732,35 @@ describe("previous-image slots are the compare baseline (a plain sheet must not 
     expect(r.caption).toContain("kept the existing previous image (compare baseline) of hero");
   });
 
+  it.each(["lighting", "unshaded", "normals", "overdraw", "wireframe"] as const)(
+    "keeps the %s baseline separate from existing beauty captures",
+    async (view) => {
+      const beauty = seedSlot();
+      const engine = fakeEngine({ projectRoot: project, bookmarks });
+      const args = { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }], view };
+      const path = join(project, ".summer", "shots", "views", view, "hero.jpg");
+
+      const first = (await shotSheet(engine, { ...args, compare_previous: true })) as SeeingSuccess;
+      expect(first.receipt.diffs).toBeUndefined();
+      expect(first.receipt.slots).toEqual([`res://.summer/shots/views/${view}/hero.jpg`]);
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      expect(readFileSync(beauty)).toEqual(BASELINE);
+
+      writeFileSync(path, BASELINE);
+      await shotSheet(engine, args);
+      expect(readFileSync(path)).toEqual(BASELINE);
+      const next = (await shotSheet(engine, { ...args, compare_previous: true })) as SeeingSuccess;
+      expect(next.receipt.diffs).toHaveLength(1);
+      const tiles = engine.configs.at(-1)!.tiles as Array<Record<string, unknown>>;
+      expect(tiles.filter((t) => t.kind === "prev" || t.kind === "diff").map((t) => t.image_path)).toEqual([path, path]);
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      writeFileSync(path, BASELINE);
+      await shotSheet(engine, { ...args, update_previous: true });
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      expect(readFileSync(beauty)).toEqual(BASELINE);
+    }
+  );
+
   it("update_previous:true or compare_previous:true replaces it; a missing slot is created", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, bookmarks });

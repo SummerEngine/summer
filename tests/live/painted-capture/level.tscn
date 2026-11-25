@@ -1,0 +1,47 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://painted/painted_world.gd" id="1"]
+[ext_resource type="Script" path="res://painted/painted_location.gd" id="2"]
+[ext_resource type="Script" path="res://player.gd" id="3"]
+
+[sub_resource type="Gradient" id="Gradient"]
+
+[sub_resource type="GradientTexture2D" id="Paint"]
+gradient = SubResource("Gradient")
+width = 96
+height = 64
+
+[sub_resource type="StandardMaterial3D" id="Green"]
+shading_mode = 0
+albedo_color = Color(0.02, 0.95, 0.03, 1)
+
+[sub_resource type="QuadMesh" id="Square"]
+material = SubResource("Green")
+size = Vector2(2, 2)
+
+[node name="World" type="Node3D"]
+script = ExtResource("1")
+player_path = NodePath("Player")
+start_location = NodePath("Village")
+shot_plan = [["first", Vector2(0, 0), 0.05, "full"], ["second", Vector2(0, 0), 0.05, "full"], ["third", Vector2(0, 0), 0.05, "full"]]
+
+[node name="Village" type="Node3D" parent="."]
+script = ExtResource("2")
+paint = SubResource("Paint")
+frame_whole = true
+
+[node name="PaintCamera" type="Camera3D" parent="Village"]
+position = Vector3(0, 0, 5)
+projection = 1
+size = 6.0
+keep_aspect = 0
+
+[node name="Painted" type="Node3D" parent="Village"]
+
+[node name="Marker" type="MeshInstance3D" parent="."]
+mesh = SubResource("Square")
+
+[node name="GameCamera" type="Camera3D" parent="."]
+
+[node name="Player" type="CharacterBody3D" parent="."]
+script = ExtResource("3")

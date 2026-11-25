@@ -20,6 +20,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Painted 2.5D rooms and full-frame proof shots keep the entire painting visible when the game window changes shape.
 - Walking through a painted-world door applies the destination camera’s near and far clip distances, so the player and room geometry remain visible at the authored depths.
 
+- Painted-world PNG captures report a failed write to the caller. Gameplay shot batches stop at the first failed JPEG and retain the frames already saved.
+
 - Port connections and surface attachments ask Godot to verify the full local transform before writing. They now work under small, invertible parent scales and leave the scene untouched when the requested pose would lose precision.
 
 - World snapshots include 2D nodes under mixed scene roots on released editors, so subtree and class filters can find those nodes. Set `include_2d: false` to omit 2D nodes under a mixed root.

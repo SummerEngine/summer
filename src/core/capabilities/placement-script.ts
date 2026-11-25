@@ -1215,6 +1215,47 @@ func _cmd_ports(root, args):
 
 # ---------------------------------------------------------------- blockers
 
+# SnapToSurface sweeps an explicitly selected shape on its own. Otherwise it
+# uses the enabled shapes registered with the subject's collision objects.
+# An owner may contribute several shapes, including generated polygon pieces.
+func _blocker_subject_shapes(root, subject, world, exclude):
+	var shapes = []
+	if subject is CollisionShape3D and subject.shape != null and not subject.disabled:
+		var parent = subject.get_parent()
+		while parent != null and not (parent is CollisionObject3D):
+			parent = parent.get_parent()
+		if parent != null:
+			exclude.append(parent.get_rid())
+		return [{"shape": subject.shape, "transform": _world_xf(subject, root)}]
+
+	var owners = 0
+	var slots = 0
+	var stack = [subject]
+	while not stack.is_empty():
+		var node = stack.pop_back()
+		if node is CollisionObject3D and _placement_world(node) == world:
+			exclude.append(node.get_rid())
+			for owner_id in node.get_shape_owners():
+				owners += 1
+				var count = node.shape_owner_get_shape_count(owner_id)
+				slots += count
+				# Native SnapToSurface bounds a subject to 256 owners, 512 slots and 256 enabled shapes.
+				if owners > 256 or slots > 512:
+					return null
+				if node.is_shape_owner_disabled(owner_id) or count == 0:
+					continue
+				var transform = _world_xf(node, root) * node.shape_owner_get_transform(owner_id)
+				for i in count:
+					var shape = node.shape_owner_get_shape(owner_id, i)
+					if shape != null:
+						if shapes.size() >= 256:
+							return null
+						shapes.append({"shape": shape, "transform": transform})
+		for child in node.get_children():
+			stack.append(child)
+	return shapes
+
+
 # What holds a node where it stands: the nodes it overlaps now, and the first
 # node it would touch moving along dir within dist. Physics (its enabled
 # collision shapes against bodies) when it has shapes and the scene is the
@@ -1233,17 +1274,10 @@ func _cmd_blockers(root, active, args):
 	var dist = float(args.get("max_distance", 1.0))
 	var mask = int(args.get("collision_mask", 4294967295))
 	var world = _placement_world(n)
-	var shapes = []
 	var ex: Array[RID] = []
-	var stack = [n]
-	while stack.size() > 0:
-		var cur = stack.pop_back()
-		if cur is CollisionObject3D and _placement_world(cur) == world:
-			ex.append(cur.get_rid())
-		if cur is CollisionShape3D and not cur.disabled and cur.shape != null and _placement_world(cur) == world:
-			shapes.append(cur)
-		for c in cur.get_children():
-			stack.append(c)
+	var shapes = _blocker_subject_shapes(root, n, world, ex)
+	if shapes == null:
+		return _fail("shape_scan_limit", "The subject exceeds the SnapToSurface shape collection limits. Narrow the subject subtree.")
 	var space = null
 	if active and shapes.size() > 0 and n.is_inside_tree() and world != null:
 		space = world.direct_space_state
@@ -1254,21 +1288,21 @@ func _cmd_blockers(root, active, args):
 		for cs in shapes:
 			var q = PhysicsShapeQueryParameters3D.new()
 			q.shape = cs.shape
-			q.transform = cs.global_transform
+			q.transform = cs.transform
 			q.collision_mask = mask
 			q.exclude = ex
 			for hit in space.intersect_shape(q, 8):
 				var col = hit.get("collider")
 				if col is Node:
 					var hp = _rel(root, col) if (col == root or root.is_ancestor_of(col)) else String(col.get_path())
-					if not overlaps.has(hp):
+					if overlaps.size() < 8 and not overlaps.has(hp):
 						overlaps.append(hp)
 			q.motion = dir * dist
 			var frac = space.cast_motion(q)
 			if frac.size() == 2 and frac[1] < 1.0 and frac[0] * dist < best:
 				var q2 = PhysicsShapeQueryParameters3D.new()
 				q2.shape = cs.shape
-				q2.transform = cs.global_transform.translated(dir * (dist * frac[1]))
+				q2.transform = cs.transform.translated(dir * (dist * frac[1]))
 				q2.collision_mask = mask
 				q2.exclude = ex
 				var info = space.get_rest_info(q2)

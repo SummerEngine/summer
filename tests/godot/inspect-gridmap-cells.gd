@@ -43,6 +43,22 @@ func _initialize():
 	example.visible = false
 	var hidden := inspect(example, "hidden")
 	assert(hidden.ok and hidden.triangles == 24 and hidden.analysis.triangles_analyzed == 0 and hidden.aabb == null)
+	example.visible = true
+	assert(example.get("baked_meshes").is_empty())
+	example.make_baked_meshes(false)
+	var baked_reference := Node3D.new()
+	for saved_mesh in example.get("baked_meshes"):
+		var part := MeshInstance3D.new()
+		part.mesh = saved_mesh
+		baked_reference.add_child(part)
+		part.owner = baked_reference
+	var drawn := inspect(baked_reference, "baked_reference")
+	var baked := inspect(example, "baked")
+	assert(baked.ok and baked.mesh_count > 0 and baked.triangles == drawn.triangles)
+	for row in baked.meshes:
+		assert(row.has("baked_mesh_index") and not row.has("grid_entry"))
+	assert(baked.aabb == drawn.aabb and baked.planes == drawn.planes)
+	baked_reference.free()
 	example.free()
 	control.free()
 	print("PLACEMENT_FIXTURE_OK")

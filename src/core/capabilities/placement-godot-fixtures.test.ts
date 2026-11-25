@@ -9,7 +9,7 @@ const binary = process.env.SUMMER_BIN;
 const directory = new URL("../../../tests/godot/", import.meta.url);
 const portFixtures = readdirSync(directory).filter((name) => name.startsWith("port-loop-") && name.endsWith(".gd")).sort();
 
-it.skipIf(!binary).each([...portFixtures, "placement-csg-bounds.gd", "placement-shadow-only.gd"])("matches native Godot in %s", (fixture) => {
+it.skipIf(!binary).each([...portFixtures, "inspect-gridmap-cells.gd", "placement-csg-bounds.gd", "placement-shadow-only.gd"])("matches native Godot in %s", (fixture) => {
   const project = mkdtempSync(join(tmpdir(), "summer-placement-"));
   try {
     writeFileSync(join(project, "project.godot"), "config_version=5\n");

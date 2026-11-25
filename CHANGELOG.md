@@ -24,6 +24,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
 - Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
 - Connecting mesh openings checks that the selected subject opening follows the moving piece and that its target stays put.
+- Rotated and scaled cylinders in painted-world blockouts start at the specified base centre.
 - Region zooms and debug views accept very close aiming points and report an error when the renderer cannot distinguish the target from the camera.
 - Placement checks use the original requested movement across long distances. A distant piece can reach a precise gap near the origin, and a gap that the saved position cannot represent is refused before writing.
 - Triangle-based surface snaps also verify the saved movement with Godot and restore the starting pose when the requested placement cannot be represented.

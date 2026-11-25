@@ -70,6 +70,8 @@ function viewportLabel(snap: CaptureResult): string {
   return "Editor viewport";
 }
 
+const CAMERA_3D_PLAYBACK = "During play, a viewport needs an active Camera3D to show its 3D world. Its 2D content and UI can still render without one.";
+
 const BLANK_VIEWPORT_ADVICE =
   "The engine reads the editor viewport texture as-is; right after a tab switch or a scene mutation it may not have been redrawn yet. This frame is NOT evidence about lights, cameras, materials, or scene content — do not fix anything based on it. Wait a moment and call summer_screenshot again (switching the editor tab or nudging the view forces a redraw), verify structure with summer_get_scene_tree / summer_inspect_node, or render the saved scene with target:\"scene\".";
 
@@ -450,7 +452,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                 const kind = snap.sceneKind?.kind ?? "unknown";
                 if (kind === "3d") {
                   warnings.push(
-                    "WARNING: this 3D scene has no Camera3D — it will render grey/black when played."
+                    `WARNING: the preview found no Camera3D in the saved scene. ${CAMERA_3D_PLAYBACK}`
                   );
                 } else if (kind === "2d" || kind === "none") {
                   notes.push(
@@ -459,7 +461,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                 } else {
                   const reason = snap.sceneKind?.reason ? ` (${snap.sceneKind.reason})` : "";
                   warnings.push(
-                    `WARNING: this scene has no camera of its own (the preview camera was synthesized) and the scene tree could not be read to tell 2D from 3D${reason}. If it is a 3D scene it will render grey/black when played; a 2D scene simply plays from the viewport origin.`
+                    `WARNING: this scene has no camera of its own (the preview camera was synthesized) and the scene tree could not be read to tell 2D from 3D${reason}. ${CAMERA_3D_PLAYBACK}`
                   );
                 }
               }

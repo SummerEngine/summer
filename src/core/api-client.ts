@@ -52,8 +52,8 @@ export type EngineSnapshot = {
    *  never fires and the tool works. */
   failureReason?: string;
   /** Scene-preview confession fields (P4.3). Populated only for target:"scene".
-   *  A scene with no Camera3D renders grey/black when played; the engine reports
-   *  whether it had to synthesize a camera/light so the model can warn honestly. */
+   *  The engine reports whether the saved scene contained a camera or light
+   *  for the preview. Runtime scripts can provide a camera during play. */
   sceneHasCamera?: boolean;
   sceneHadLight?: boolean;
   usedSyntheticCamera?: boolean;

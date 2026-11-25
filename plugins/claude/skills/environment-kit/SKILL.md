@@ -131,7 +131,9 @@ Three things the shape of those calls encodes:
 summer_inspect_resource(path="res://assets/kits/dungeon/wall.glb")
 ```
 
-Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial. If pivots are wrong, use the "Center to Origin" import option.
+Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial.
+
+If an imported piece has an offset pivot, create a reusable scene with a `Node3D` root and instance the GLB as its child. Move the **model child** until the chosen snap point coincides with the root origin. For example, if the bottom-back corner is at `(2, 0.75, 2.8)` in the new root's coordinates, subtract that vector from the child's position. Save the scene and place or rotate instances of it on the grid. This keeps the imported model linked to its source.
 
 ## Anti-patterns
 

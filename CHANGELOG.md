@@ -14,6 +14,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - First-person movement examples keep W and D aligned with the camera when a room or spawn parent is rotated.
 
+- The environment-kit guide shows how to put an imported model’s snap point at a reusable scene origin for placement and rotation.
+
 - The Blender painted-world guide applies named static modifiers in an export copy before baking the camera UVs, so generated and deformed surfaces sample the right part of the painting.
 
 - Painted rooms now display ordinary props such as `OutdoorTable` and `FootstepsSign`. The final name word identifies door and step slabs.

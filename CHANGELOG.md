@@ -57,6 +57,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
 
 - **Still-shot replacement in `content.make` no longer reuses occupied clip windows.** Computing occupied intervals now looks up each existing shot's duration from its original index in `cuts` instead of the filtered array index or the still shot's duration.
+- `content.make` finds native Windows media tools such as `ffmpeg.exe` and `magick.exe` on `PATH`.
 - Debugger reads and support reports preserve separate native error and warning records with the same text. Each record keeps its script stack and its own occurrence count.
 
 - **Script failures include their diagnostics.** Editor and scene script errors now keep native error messages, parse locations, boot diagnostics and rollback state in MCP replies, so agents can act on the failure without retrieving a missing field.

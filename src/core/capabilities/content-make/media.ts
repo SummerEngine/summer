@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { accessSync, constants, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { BuildToolError } from "../summer-bundle.js";
 
@@ -14,12 +14,32 @@ export const FPS = 30;
 export const W = 1080;
 export const H = 1920;
 
-/** Where a command is on PATH, or null. */
+function windowsPathEntries(path: string): string[] {
+  // A quoted Windows PATH entry can contain the separator itself.
+  const entries = path.matchAll(/(?:^|;)(?:"([^"]*)"|'([^']*)'|([^;]+))(?=;|$)/g);
+  return Array.from(entries, ([, doubleQuoted, singleQuoted, unquoted]) => doubleQuoted ?? singleQuoted ?? unquoted);
+}
+
+/** Finds an executable on PATH for a shell-free spawn. */
 export function which(command: string, path = process.env.PATH ?? ""): string | null {
-  for (const dir of path.split(delimiter)) {
+  const windows = process.platform === "win32";
+  const directories = windows ? windowsPathEntries(path) : path.split(delimiter);
+  // Windows spawn searches .com and .exe for a bare name, independently of PATHEXT.
+  const names = windows && !/\.(com|exe)$/i.test(command)
+    ? [command + ".com", command + ".exe"]
+    : [command];
+  for (const dir of directories) {
     if (!dir) continue;
-    const candidate = join(dir, command);
-    if (existsSync(candidate)) return candidate;
+    for (const name of names) {
+      const candidate = join(dir, name);
+      try {
+        if (!statSync(candidate, { throwIfNoEntry: false })?.isFile()) continue;
+        if (!windows) accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        // This path entry is inaccessible or the file cannot be executed.
+      }
+    }
   }
   return null;
 }
@@ -33,7 +53,11 @@ const INSTALL: Record<string, string> = {
 export function requireTools(names: readonly string[]): void {
   const missing = names.filter((name) => !which(name));
   if (missing.length) {
-    throw new BuildToolError("content_tool_missing", `content.make needs ${missing.join(" and ")} on this computer.`, INSTALL[missing[0]] ?? `Install ${missing[0]}, then run it again.`, undefined, { missing: `${missing.join(", ")} on this computer` });
+    const tools = missing.join(" and ");
+    const recovery = process.platform === "win32"
+      ? `Add the native Windows executables for ${tools} to PATH, then run it again.`
+      : INSTALL[missing[0]] ?? `Install ${missing[0]}, then run it again.`;
+    throw new BuildToolError("content_tool_missing", `content.make needs ${tools} on this computer.`, recovery, undefined, { missing: `${missing.join(", ")} on this computer` });
   }
 }
 

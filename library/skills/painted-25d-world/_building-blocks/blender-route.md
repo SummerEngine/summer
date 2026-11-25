@@ -17,6 +17,9 @@ scene, cam = bpy.context.scene, bpy.data.objects["PaintCamera"]
 for ob in bpy.data.collections["blockout"].objects:
     if ob.type != "MESH":
         continue
+    # A linked duplicate has its own world position but shares mesh UVs.
+    if ob.data.users > 1:
+        ob.data = ob.data.copy()
     me = ob.data
     uv = me.uv_layers.new(name="proj")
     uv.active = uv.active_render = True

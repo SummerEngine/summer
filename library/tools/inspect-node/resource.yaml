@@ -41,7 +41,7 @@ input_schema:
       items:
         type: string
       maxItems: 48
-      description: "Only these fields: property names or globs (e.g. 'position', 'surface_material_override/*') and the derived fields transform, global_transform, scene_file_path, aabb, warnings. Omit for every property."
+      description: "Only these fields: property names or globs (e.g. 'position', 'surface_material_override/*') and the derived fields transform, global_transform, scene_file_path, aabb, warnings. In transform, Node2D and Control report rotation in radians. Node3D reports rotation_degrees. Omit for every property."
     maxCharacters:
       type: integer
       minimum: 500

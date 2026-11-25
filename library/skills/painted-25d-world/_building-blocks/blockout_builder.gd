@@ -4,7 +4,7 @@ extends Node3D
 ## Spec: {"objects": [{"name", "kind", "color", "solid", ...}]}, metres, y up:
 ##   box    pos (centre), size [x, y, z], yaw / rot_x / rot_z (degrees), scale
 ##   prism  pos, size (a PrismMesh: the ridge along z), yaw / rot_x / rot_z
-##   cyl    pos (base centre), r_bot, r_top, height
+##   cyl    pos (base centre), r_bot, r_top, height, yaw / rot_x / rot_z (degrees), scale
 ##   sphere pos (centre), radius, sy (vertical squash), scale (multiplies the squashed mesh; a flat sphere has no solid volume)
 ##   poly   points [[x, z], ...], top, depth: flat ground or a quay, extruded down, two-sided collision
 ##   wall   segments [[[x, z], [x, z]], ...], height: invisible blockers along water and ledges (leave gaps at
@@ -58,7 +58,6 @@ func _walls(o: Dictionary) -> void:
 func _build(o: Dictionary) -> void:
 	var mesh: Mesh
 	var shape: Shape3D
-	var offset := Vector3.ZERO
 	var sphere_scale := Vector3.ONE
 	match o.kind:
 		"box":
@@ -80,7 +79,6 @@ func _build(o: Dictionary) -> void:
 			c.height = o.height
 			c.radial_segments = 24
 			mesh = c
-			offset.y = o.height / 2.0
 			var s := CylinderShape3D.new()
 			s.radius = maxf(o.r_top, o.r_bot)
 			s.height = o.height
@@ -125,12 +123,14 @@ func _build(o: Dictionary) -> void:
 		body.add_child(mi)
 		holder = body
 	if o.kind != "poly":
-		holder.position = _v(o.pos) + offset
+		holder.position = _v(o.pos)
 		holder.rotation_degrees = Vector3(o.get("rot_x", 0.0), o.get("yaw", 0.0), o.get("rot_z", 0.0))
 		if o.kind == "sphere":
 			mi.scale = sphere_scale
 		elif o.has("scale"):
 			holder.scale = _v(o.scale)
+		if o.kind == "cyl":
+			holder.position += holder.basis.y * (float(o.height) * 0.5)
 	add_child(holder)
 
 ## A flat polygon (x, z points) extruded from top down by depth, with side walls.

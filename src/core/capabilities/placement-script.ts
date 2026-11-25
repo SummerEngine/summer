@@ -216,12 +216,13 @@ func _placement_world(node):
 
 # Collect rendered geometry in this subtree. CSG operands contribute to the
 # root's evaluated mesh, but ordinary children of any operand still draw.
+# Return the usual geometry array on success, or a typed failure dictionary.
 func _geoms(start, root, exclude, world_source = null):
 	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
 	for excluded in exclude:
 		if excluded.is_ancestor_of(start):
-			return {"geoms": out}
+			return out
 	var stack = [start]
 	while stack.size() > 0:
 		var n = stack.pop_back()
@@ -236,15 +237,15 @@ func _geoms(start, root, exclude, world_source = null):
 				continue
 			var mesh = n.bake_static_mesh()
 			if mesh == null:
-				return {"fail": _fail("csg_visual_mesh_unavailable", "Godot has no evaluated visual mesh for " + _rel(root, n) + ". Open the scene, let the CSG update, then retry.")}
+				return _fail("csg_visual_mesh_unavailable", "Godot has no evaluated visual mesh for " + _rel(root, n) + ". Open the scene, let the CSG update, then retry.")
 			bb = mesh.get_aabb()
 		else:
 			bb = n.get_aabb()
 		if bb.size != Vector3.ZERO:
 			if out.size() >= MAX_GEOMS:
-				return {"fail": _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")}
+				return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")
 			out.append([n, _world_xf(n, root), bb])
-	return {"geoms": out}
+	return out
 
 
 func _corners(bb, t):
@@ -345,10 +346,9 @@ func _cmd_bounds(root, active, args):
 			if en != null and n.is_ancestor_of(en):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
-		var scan = _geoms(n, root, exclude, n)
-		if scan.has("fail"):
-			return scan["fail"]
-		var geoms = scan["geoms"]
+		var geoms = _geoms(n, root, exclude, n)
+		if geoms is Dictionary:
+			return geoms
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_world_xf(n, root))}
 		rec["parent_xform"] = _xf12(_parent_xf(n, root))
 		rec["independent_geometry"] = []
@@ -518,10 +518,9 @@ func _cmd_raycast(root, active, args):
 		if accept_under == null:
 			return _fail("bad_args", "from_subject needs a surface node")
 		origin = _world_xf(world_source, root).origin
-		var surface_scan = _geoms(accept_under, root, [], world_source)
-		if surface_scan.has("fail"):
-			return surface_scan["fail"]
-		var surface_geoms = surface_scan["geoms"]
+		var surface_geoms = _geoms(accept_under, root, [], world_source)
+		if surface_geoms is Dictionary:
+			return surface_geoms
 		if surface_geoms.is_empty():
 			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at in the subject's world: " + surface)
 		var iv = _intervals(surface_geoms, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
@@ -542,13 +541,13 @@ func _cmd_raycast(root, active, args):
 	if mode == "physics":
 		return out
 	var scan_root = accept_under if accept_under != null else root
-	var visual_scan = _geoms(scan_root, root, exclude_nodes, world_source)
-	if visual_scan.has("fail"):
+	var geoms = _geoms(scan_root, root, exclude_nodes, world_source)
+	if geoms is Dictionary:
 		if not phys.get("hit", false):
-			return visual_scan["fail"]
+			return geoms
 		out["visual_truncated"] = true
 		return out
-	var vis = _vis_ray(visual_scan["geoms"], origin, dir, dist, phys.get("collider"))
+	var vis = _vis_ray(geoms, origin, dir, dist, phys.get("collider"))
 	if vis.get("hit", false):
 		out["visual"] = {"path": _rel(root, vis["node"]), "point": _raw3(vis["point"]), "normal": _raw3(vis["normal"]), "distance": vis["t"]}
 	out["visual_origin_inside"] = vis.get("inside", 0)
@@ -1315,17 +1314,15 @@ func _cmd_blockers(root, active, args):
 		if best_path != "":
 			pout["first_contact"] = {"path": best_path, "distance": best}
 		return pout
-	var subject_scan = _geoms(n, root, [], n)
-	if subject_scan.has("fail"):
-		return subject_scan["fail"]
-	var subject_geoms = subject_scan["geoms"]
+	var subject_geoms = _geoms(n, root, [], n)
+	if subject_geoms is Dictionary:
+		return subject_geoms
 	var mine = _bounds_of(subject_geoms)
 	if mine == null:
 		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
-	var other_scan = _geoms(root, root, [n], n)
-	if other_scan.has("fail"):
-		return other_scan["fail"]
-	var other_geoms = other_scan["geoms"]
+	var other_geoms = _geoms(root, root, [n], n)
+	if other_geoms is Dictionary:
+		return other_geoms
 	for g in other_geoms:
 		var ob = _bounds_of([g])
 		if mine.intersects(ob):

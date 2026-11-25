@@ -47,7 +47,7 @@ func check():
 		var obj = MeshInstance3D.new()
 		obj.mesh = mesh
 		scene.add_child(obj)
-	results["limit_count"] = probe._geoms(scene, scene, []).size()
+	results["limit_count"] = probe._geoms(scene, scene, []).geoms.size()
 	box(scene, mesh, "Extra", 0)
 	results["dense"] = probe._cmd_bounds(scene, false, args)
 	results["dense_ray"] = probe._cmd_raycast(scene, false, ray)

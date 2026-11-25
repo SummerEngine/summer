@@ -7,10 +7,10 @@ import { buildPlacementScript } from "./placement-script.js";
 
 const binary = process.env.SUMMER_BIN;
 const directory = new URL("../../../tests/godot/", import.meta.url);
-const fixtures = readdirSync(directory).filter((name) => name.startsWith("port-loop-") && name.endsWith(".gd")).sort();
+const portFixtures = readdirSync(directory).filter((name) => name.startsWith("port-loop-") && name.endsWith(".gd")).sort();
 
-it.skipIf(!binary).each(fixtures)("matches native Godot in %s", (fixture) => {
-  const project = mkdtempSync(join(tmpdir(), "summer-port-loop-"));
+it.skipIf(!binary).each([...portFixtures, "placement-csg-bounds.gd"])("matches native Godot in %s", (fixture) => {
+  const project = mkdtempSync(join(tmpdir(), "summer-placement-"));
   try {
     writeFileSync(join(project, "project.godot"), "config_version=5\n");
     writeFileSync(join(project, "probe.gd"), buildPlacementScript({}));

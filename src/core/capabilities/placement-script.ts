@@ -214,33 +214,37 @@ func _placement_world(node):
 	return null
 
 
-# Visible GeometryInstance3D descendants of start (inclusive) with their
-# scene-space transform and local AABB: the bounds definition AlignDistribute3D
-# uses. exclude holds subtree roots to skip. A null result means the scan
-# exceeded the geometry limit. RunSceneScript enforces its own time budget.
+# Collect rendered geometry in this subtree. CSG operands contribute to the
+# root's evaluated mesh, but ordinary children of any operand still draw.
 func _geoms(start, root, exclude, world_source = null):
 	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
 	for excluded in exclude:
 		if excluded.is_ancestor_of(start):
-			return out
+			return {"geoms": out}
 	var stack = [start]
 	while stack.size() > 0:
 		var n = stack.pop_back()
 		if exclude.has(n):
 			continue
-		if n is GeometryInstance3D and _visible(n, root) and (world_source == null or _placement_world(n) == world):
-			var bb = n.get_aabb()
-			if bb.size != Vector3.ZERO:
-				if out.size() >= MAX_GEOMS:
-					return null
-				out.append([n, _world_xf(n, root), bb])
 		stack.append_array(n.get_children())
-	return out
-
-
-func _geometry_scan_limit(root, start):
-	return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")
+		if not (n is GeometryInstance3D) or not _visible(n, root) or (world_source != null and _placement_world(n) != world):
+			continue
+		var bb
+		if n.is_class("CSGShape3D"):
+			if not n.is_root_shape():
+				continue
+			var mesh = n.bake_static_mesh()
+			if mesh == null:
+				return {"fail": _fail("csg_visual_mesh_unavailable", "Godot has no evaluated visual mesh for " + _rel(root, n) + ". Open the scene, let the CSG update, then retry.")}
+			bb = mesh.get_aabb()
+		else:
+			bb = n.get_aabb()
+		if bb.size != Vector3.ZERO:
+			if out.size() >= MAX_GEOMS:
+				return {"fail": _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")}
+			out.append([n, _world_xf(n, root), bb])
+	return {"geoms": out}
 
 
 func _corners(bb, t):
@@ -341,9 +345,10 @@ func _cmd_bounds(root, active, args):
 			if en != null and n.is_ancestor_of(en):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
-		var geoms = _geoms(n, root, exclude, n)
-		if geoms == null:
-			return _geometry_scan_limit(root, n)
+		var scan = _geoms(n, root, exclude, n)
+		if scan.has("fail"):
+			return scan["fail"]
+		var geoms = scan["geoms"]
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_world_xf(n, root))}
 		rec["parent_xform"] = _xf12(_parent_xf(n, root))
 		rec["independent_geometry"] = []
@@ -513,12 +518,13 @@ func _cmd_raycast(root, active, args):
 		if accept_under == null:
 			return _fail("bad_args", "from_subject needs a surface node")
 		origin = _world_xf(world_source, root).origin
-		var sg = _geoms(accept_under, root, [], world_source)
-		if sg == null:
-			return _geometry_scan_limit(root, accept_under)
-		if sg.size() == 0:
+		var surface_scan = _geoms(accept_under, root, [], world_source)
+		if surface_scan.has("fail"):
+			return surface_scan["fail"]
+		var surface_geoms = surface_scan["geoms"]
+		if surface_geoms.is_empty():
 			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at in the subject's world: " + surface)
-		var iv = _intervals(sg, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
+		var iv = _intervals(surface_geoms, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
 		var closest = Vector3(clampf(origin.x, iv[0][0], iv[0][1]), clampf(origin.y, iv[1][0], iv[1][1]), clampf(origin.z, iv[2][0], iv[2][1]))
 		if (closest - origin).length() < 0.0001:
 			return _fail("subject_inside_surface_bounds", "the subject origin is inside the surface's bounds, so no direction toward it is defined; pass an explicit ray")
@@ -536,13 +542,13 @@ func _cmd_raycast(root, active, args):
 	if mode == "physics":
 		return out
 	var scan_root = accept_under if accept_under != null else root
-	var geoms = _geoms(scan_root, root, exclude_nodes, world_source)
-	if geoms == null:
+	var visual_scan = _geoms(scan_root, root, exclude_nodes, world_source)
+	if visual_scan.has("fail"):
 		if not phys.get("hit", false):
-			return _geometry_scan_limit(root, scan_root)
+			return visual_scan["fail"]
 		out["visual_truncated"] = true
 		return out
-	var vis = _vis_ray(geoms, origin, dir, dist, phys.get("collider"))
+	var vis = _vis_ray(visual_scan["geoms"], origin, dir, dist, phys.get("collider"))
 	if vis.get("hit", false):
 		out["visual"] = {"path": _rel(root, vis["node"]), "point": _raw3(vis["point"]), "normal": _raw3(vis["normal"]), "distance": vis["t"]}
 	out["visual_origin_inside"] = vis.get("inside", 0)
@@ -1275,15 +1281,17 @@ func _cmd_blockers(root, active, args):
 		if best_path != "":
 			pout["first_contact"] = {"path": best_path, "distance": best}
 		return pout
-	var subject_geoms = _geoms(n, root, [], n)
-	if subject_geoms == null:
-		return _geometry_scan_limit(root, n)
+	var subject_scan = _geoms(n, root, [], n)
+	if subject_scan.has("fail"):
+		return subject_scan["fail"]
+	var subject_geoms = subject_scan["geoms"]
 	var mine = _bounds_of(subject_geoms)
 	if mine == null:
 		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
-	var other_geoms = _geoms(root, root, [n], n)
-	if other_geoms == null:
-		return _geometry_scan_limit(root, root)
+	var other_scan = _geoms(root, root, [n], n)
+	if other_scan.has("fail"):
+		return other_scan["fail"]
+	var other_geoms = other_scan["geoms"]
 	for g in other_geoms:
 		var ob = _bounds_of([g])
 		if mine.intersects(ob):

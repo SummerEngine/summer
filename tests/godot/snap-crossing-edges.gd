@@ -110,6 +110,54 @@ func check_parent_write(units, mirrored, far):
 	fixture.free()
 	return {"actual_gap": gap}
 
+func check_grid_shelf(mode):
+	var fixture := Node3D.new()
+	root.add_child(fixture)
+	var rig := Node3D.new()
+	rig.name = "Rig"
+	fixture.add_child(rig)
+	rig.transform = Transform3D(Basis(Vector3.UP, 0.45), Vector3(13, 1, -6))
+	var grid := GridMap.new()
+	grid.name = "Shelf"
+	rig.add_child(grid)
+	grid.cell_size = Vector3(2, 2, 2)
+	grid.cell_scale = 0.85
+	var library := MeshLibrary.new()
+	var board := BoxMesh.new()
+	board.size = Vector3(3, 0.5, 3)
+	library.create_item(7)
+	library.set_item_mesh(7, board)
+	library.set_item_mesh_transform(7, Transform3D(Basis(Vector3.UP, 0.19), Vector3(0.1, 1.2, -0.2)))
+	if mode == "shadow" or mode == "baked_shadow":
+		library.set_item_mesh_cast_shadow(7, RenderingServer.SHADOW_CASTING_SETTING_SHADOWS_ONLY)
+	grid.mesh_library = library
+	var cell := Vector3i(-2, 1, 3)
+	grid.set_cell_item(cell, 7, grid.get_orthogonal_index_from_basis(Basis(Vector3.UP, PI / 2)))
+	var expected_pose: Transform3D = grid.global_transform * grid.get_meshes()[0]
+	var top: float = (expected_pose * board.get_aabb()).end.y
+	if mode == "baked_shadow":
+		grid.make_baked_meshes(false)
+		top = (grid.global_transform * grid.get("baked_meshes")[0].get_aabb()).end.y
+	if mode == "shadow":
+		top = 0.0
+	var center = expected_pose.origin
+	var subject = box(fixture, "Plank", Vector3.ONE, Vector3(center.x, 10, center.z))
+	var initial := var_to_str(subject.transform)
+	box(fixture, "Floor", Vector3(100, 1, 100), Vector3(0, -0.5, 0))
+	subject.position.y = 0.65 # Earlier editors can provisionally seat on the floor.
+	var probe = Probe.new()
+	probe.fixture = fixture
+	var hit = probe._measure(fixture, subject, {"direction": [0, -1, 0], "max_distance": 20, "gap": 0.15, "initial_transform": initial})
+	if not hit.get("found", false):
+		fixture.free()
+		return hit
+	subject.position = str_to_var(hit.position_after)
+	var bottom: float = (subject.global_transform * subject.get_aabb()).position.y
+	var row = {"support": hit.support, "actual_gap": bottom - top, "verified_gap": probe.run(null).get("travel")}
+	fixture.free()
+	return row
+
+
 func _initialize():
 	call_deferred("run")
 
@@ -125,6 +173,6 @@ func run():
 		check_case(true, offset, narrow, 0.17, GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY),
 	]
 	var file = FileAccess.open("res://result.json", FileAccess.WRITE)
-	file.store_string(JSON.stringify({"rows": rows, "slopes": [check_tessellated_slope(16), check_tessellated_slope(96)], "parents": [check_parent_write(1.0, false, false), check_parent_write(0.00005, false, false), check_parent_write(0.00005, true, false), check_parent_write(1.0, false, true)]}))
+	file.store_string(JSON.stringify({"rows": rows, "grids": [check_grid_shelf("drawn"), check_grid_shelf("shadow"), check_grid_shelf("baked_shadow")], "slopes": [check_tessellated_slope(16), check_tessellated_slope(96)], "parents": [check_parent_write(1.0, false, false), check_parent_write(0.00005, false, false), check_parent_write(0.00005, true, false), check_parent_write(1.0, false, true)]}))
 	file.close()
 	quit()

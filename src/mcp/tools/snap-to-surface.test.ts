@@ -579,6 +579,15 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
   });
 
+  it("restores the original pose if a fresh read contradicts a replayed GridMap sweep", async () => {
+    const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0 });
+    fake.probeOverride[0] = (answer) => ({ ...answer, correction_distance: 0 });
+    fake.probeOverride[1] = (answer) => ({ ...answer, travel: 0.05 });
+    const result = await snapToSurface(fake, fernArgs());
+    expect(result).toMatchObject({ ok: false, results: [{ failure_reason: "verify_mismatch", original_transform_preserved: true }] });
+    expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
+  });
+
   it("puts the prop back when the read after the move disagrees", async () => {
     const fake = new FakeMeshSnapEngine(FLOATING_3_5CM);
     fake.probeOverride[1] = (answer) => ({ ...answer, travel: 0.05 });

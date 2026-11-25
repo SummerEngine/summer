@@ -68,7 +68,7 @@ export interface SnapClient extends CapabilityAdvertisingClient {
 
 const RECOVERY_FAILURES = new Set(["gap_exceeds_hit_travel", "overlap_recovery_exceeded", "aligned_overlap_recovery_exceeded"]);
 /** These failures invalidate a provisional AABB seat or a subsequent triangle correction. */
-const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "translation_not_representable", "shadows_only_subject"]);
+const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "grid_mesh_budget_exceeded", "translation_not_representable", "shadows_only_subject"]);
 /** Engine failures with visual_aabb evidence that the visible-mesh measurement retries. */
 const MESH_FALLBACK_FAILURES = new Set(["overlap_recovery_exceeded", "gap_exceeds_hit_travel", "surface_not_found"]);
 /** A visible-mesh gap this close to the requested one needs no move. */
@@ -397,7 +397,8 @@ function withMeshNote(receipt: unknown, note: JsonRecord | undefined): unknown {
 async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, send: Send, context: MeshContext): Promise<{ receipt?: unknown; note?: JsonRecord }> {
   const probeArgs = { scenePath: args.scenePath, subjectPath: args.subjectPath, direction: args.direction, maxDistance: args.maxDistance, gap: args.gap };
   const nativeSupportPath = typeof context.engineResult?.supportPath === "string" ? context.engineResult.supportPath : undefined;
-  const measure = await measureMeshSnap(client, { ...probeArgs, nativeSupportPath });
+  const initialTransform = context.engineResult && context.engineResult.changed !== false ? context.originalTransform : undefined;
+  const measure = await measureMeshSnap(client, { ...probeArgs, nativeSupportPath, initialTransform });
   const probeRan = measure.ok || measure.failure_reason !== "engine_lacks_op";
   const finish = async (note: { failure_reason: string; error: string }, correctionApplied = false) => {
     if (measure.excluded_native_support) return refuseMeshPlacement({ ok: false, ...note }, correctionApplied);
@@ -435,15 +436,19 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     });
   }
   const position = (value: string) => ({ op: "SetProp", path: args.subjectPath, key: "position", value });
-  const moved = Math.abs(measure.shift) > MESH_SNAP_TOLERANCE;
+  const moved = (measure.correction_distance ?? Math.abs(measure.shift)) > MESH_SNAP_TOLERANCE;
   let setReceipt: unknown;
   if (moved) {
     setReceipt = await send([position(measure.position_after)]);
     if (extractOpError(setReceipt)) return finish({ failure_reason: "mutation_failed", error: `SetProp position failed: ${extractOpError(setReceipt)}` });
   }
-  const verify = moved ? await measureMeshSnap(client, probeArgs) : measure;
+  const replayed = measure.correction_distance !== undefined;
+  const verify = moved || replayed ? await measureMeshSnap(client, probeArgs) : measure;
   if (!verify.ok && MESH_ROLLBACK_FAILURES.has(verify.failure_reason)) return refuseMeshPlacement(verify, moved);
   const finalGap = verify.ok && verify.found && typeof verify.travel === "number" ? verify.travel : undefined;
+  if (replayed && (finalGap === undefined || Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE)) {
+    return refuseMeshPlacement({ ok: false, failure_reason: "verify_mismatch", error: "A fresh triangle sweep could not confirm the requested gap after replaying the original GridMap sweep." }, moved);
+  }
   if (moved && finalGap !== undefined && Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE) {
     const restored = typeof measure.position === "string" && !extractOpError(await send([position(measure.position)]));
     return finish({
@@ -513,7 +518,7 @@ function meshSnapResult(
     ...(slopeDeg !== undefined ? { slopeDeg } : {}),
     changed: moved || context.engineResult?.changed === true,
     before: { origin: roundVec3(asRecord(context.engineResult?.before)?.origin) ?? roundVec3(measure.origin_before) },
-    after: { origin: roundVec3(moved ? measure.origin_after : measure.origin_before) },
+    after: { origin: roundVec3(moved || measure.correction_distance !== undefined ? measure.origin_after : measure.origin_before) },
     evidenceDetails: {
       method: "visible_triangles",
       contactFrom: measure.contact_from,
@@ -528,7 +533,7 @@ function meshSnapResult(
     verify: {
       final_gap: finalGap !== undefined ? round4(finalGap) : null,
       ok: finalGap !== undefined && Math.abs(finalGap - args.gap) <= MESH_SNAP_VERIFY_TOLERANCE,
-      read: moved ? "after the move" : "the measurement itself (no move needed)",
+      read: moved || measure.correction_distance !== undefined ? "after the move" : "the measurement itself (no move needed)",
     },
     warnings,
   };

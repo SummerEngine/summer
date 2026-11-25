@@ -18,7 +18,8 @@ it.skipIf(!engine)("seats visible mesh edges on the first crossed shelf", () => 
     expect(run.error, run.stderr).toBeUndefined();
     expect(run.status, run.stdout + run.stderr).toBe(0);
     expect(run.stderr).not.toMatch(/(?:SCRIPT )?ERROR:/);
-    const { rows, slopes, parents } = JSON.parse(readFileSync(join(project, "result.json"), "utf8")) as {
+    const { rows, slopes, parents, grids } = JSON.parse(readFileSync(join(project, "result.json"), "utf8")) as {
+      grids: { support: string; actual_gap: number; verified_gap: number }[];
       rows: { support: string; contact: string; normal: number[]; mesh_height: number; verified_gap: number }[];
       parents: { actual_gap?: number; failure?: string }[];
       slopes: { support: string; mesh_gap: number; verified_gap: number }[];
@@ -30,6 +31,11 @@ it.skipIf(!engine)("seats visible mesh edges on the first crossed shelf", () => 
       expect(row.mesh_height).toBeCloseTo(i < 3 ? 3.15 : 0.15, 4);
       expect(row.verified_gap).toBeCloseTo(0.15, 4);
     });
+    expect(grids.map(row => row.support)).toEqual(["Rig/Shelf", "Floor", "Rig/Shelf"]);
+    for (const grid of grids) {
+      expect(grid.actual_gap).toBeCloseTo(0.15, 4);
+      expect(grid.verified_gap).toBeCloseTo(0.15, 4);
+    }
     expect(parents).toHaveLength(4);
     parents.slice(0, 3).forEach(row => expect(row.actual_gap).toBeCloseTo(0.15, 4));
     expect(parents[3]).toEqual({ failure: "translation_not_representable" });

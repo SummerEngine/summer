@@ -8,6 +8,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Asset inspection measures the saved baked mesh of a GridMap when present. Unbaked grids keep their per-cell mesh measurements.
 
+- Surface snapping now stops on drawn GridMap cells and stored baked surfaces, including raised platforms above an ordinary floor.
+
 - Visual measurements, rays, adjacent placement and surface snapping skip shadows-only casters and still count their visible children.
 
 - Screenshot captions distinguish a missing saved 3D camera from the 2D layers and UI that can remain visible during play.

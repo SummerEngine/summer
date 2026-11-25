@@ -42,8 +42,11 @@ def edges(o):
         else:
             r = o["radius"]; sy = o.get("sy", 1)
             rings = [(r * sy * math.sin(t), r * math.cos(t)) for t in (-0.9, -0.45, 0, 0.45, 0.9)]
-        for (hy, r) in rings:
-            pts = [(P[0] + r * math.cos(a * math.pi / 12), P[1] + hy, P[2] + r * math.sin(a * math.pi / 12)) for a in range(25)]
+        for height, radius in rings:
+            pts = []
+            for step in range(25):
+                angle = step * math.pi / 12
+                pts.append(w((radius * math.cos(angle), height, radius * math.sin(angle))))
             out += list(zip(pts, pts[1:]))
         return out
     if k == "poly":

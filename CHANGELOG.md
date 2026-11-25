@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Visual measurement, raycasts and adjacent placement use Godot’s evaluated CSG solid. Subtraction cutters no longer produce phantom ray hits or extra gaps.
+
 - The camera-rigs guide keeps the board centered when switching from overhead to an isometric view.
 
 - First-person movement examples keep W and D aligned with the camera when a room or spawn parent is rotated.

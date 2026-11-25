@@ -19,12 +19,13 @@ func _ready() -> void:
 	if paint == null:
 		return
 	paint_size = Vector2(paint_cam.size, paint_cam.size * paint.get_height() / float(paint.get_width()))
+	var frame := paint_cam.get_camera_transform()
 	var mat := ShaderMaterial.new()
 	mat.shader = PROJECTION
 	mat.set_shader_parameter("paint", paint)
-	mat.set_shader_parameter("paint_origin", paint_cam.global_position)
-	mat.set_shader_parameter("paint_right", paint_cam.global_basis.x)
-	mat.set_shader_parameter("paint_up", paint_cam.global_basis.y)
+	mat.set_shader_parameter("paint_origin", frame.origin)
+	mat.set_shader_parameter("paint_right", frame.basis.x)
+	mat.set_shader_parameter("paint_up", frame.basis.y)
 	mat.set_shader_parameter("paint_size", paint_size)
 	for mi in $Painted.find_children("*", "MeshInstance3D", true, false):
 		# door slabs and steps stick out of the walls in the blockout; the painting already shows them
@@ -37,8 +38,9 @@ func _ready() -> void:
 
 ## Where p sits in this frame's picture plane, in metres from the frame centre.
 func plane(p: Vector3) -> Vector2:
-	var d := p - paint_cam.global_position
-	return Vector2(d.dot(paint_cam.global_basis.x), d.dot(paint_cam.global_basis.y))
+	var frame := paint_cam.get_camera_transform()
+	var d := p - frame.origin
+	return Vector2(d.dot(frame.basis.x), d.dot(frame.basis.y))
 
 func _edge_color() -> Color:
 	var img := paint.get_image()

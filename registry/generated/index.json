@@ -2795,7 +2795,7 @@
       "id": "skill/painted-25d-world",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "d35af6c978c796fa5b69ffa00fe3b99b70b8eef31428f8c191e4595b6c4cb1d9",
+      "content_hash": "c1e6bc338438335fcadd3d80599bf2533e572e77b2e58b6943e8ba911b4fe2cd",
       "summary": "Build a 2D or 2.5D game as a painted world: a 3D blockout under one fixed camera, an AI paint-over projected onto it, sprite characters.",
       "use_when": [
         "the user asks for a 2D game, a 2.5D game, a top-down RPG, a cozy village or farming game, a dungeon crawler look, or a side-scroller — build the world as a painted 2.5D world, not from a 2D template",

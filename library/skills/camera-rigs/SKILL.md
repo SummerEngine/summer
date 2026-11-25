@@ -11,11 +11,14 @@ paths: ["**/*.tscn", "**/*.gd"]
 
 # Camera Rigs
 
-One rule above all: exactly ONE camera is active. In 3D that is the single
-`Camera3D` with `current = true`; two current cameras = flicker or the wrong
-view, and a scene with no current camera renders nothing in the game. In 2D a
-`Camera2D` is active when `enabled = true` (the default) and it is in the tree;
-with several enabled cameras, call `make_current()` on the one you want.
+Each viewport selects its own game camera. The first `Camera3D` in a viewport
+becomes current automatically. Call `make_current()` on a different camera to
+switch views. A split-screen game or minimap can have a current camera in each
+viewport.
+
+2D content also draws with the viewport's default canvas transform when there
+is no `Camera2D`. An enabled camera can take control of that transform. With
+several enabled cameras, use `make_current()` to choose the view.
 
 Trigger phrases: "black screen on play", "camera shows past the level edge",
 "jerky follow", "wrong FOV", "I need a top-down / isometric / orbit camera".
@@ -134,7 +137,8 @@ camera, not the game's.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Black screen | No current/enabled camera | 3D: `current = true` on exactly one; 2D: one enabled Camera2D in the tree |
+| Missing 3D scene or wrong camera angle | The game's viewport has no camera or has selected a different one | From a node in that viewport, inspect `get_viewport().get_camera_3d()`. Add a camera if it returns `null`, or call `make_current()` on the intended one. |
+| Missing 2D content | The canvas or active camera may place the content outside the viewport | Inspect `get_viewport().get_camera_2d()` on the content. A `null` result uses the viewport's canvas transform. Check the content's position and visibility. |
 | Camera inside geometry | Spawned inside a wall/player | Move it out; spring arm for 3P |
 | Jerky follow | Smoothing off/too slow | Enable smoothing, speed 6-10 |
 | Shows past level edge | No 2D limits | Set `limit_*` to level bounds |

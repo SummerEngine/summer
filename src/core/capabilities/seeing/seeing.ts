@@ -26,12 +26,13 @@ import {
   DIRECTION_PRESETS,
   exactCrop,
   fitDistance,
+  frameFill,
   letterbox,
+  formatPoseVector,
   formatVector3,
   mergeAabbs,
   normalize,
   parseVector3,
-  roundVec,
   scale,
   type Aabb,
   type CameraPose,
@@ -316,12 +317,13 @@ async function resolvePoses(client: SeeingClient, items: Array<{ args: PoseArgs;
   return out;
 }
 
-function poseLiteral(pose: CameraPose): string {
-  return `position ${formatVector3(pose.position)}, look_at ${formatVector3(pose.look_at)}, fov ${Math.round(pose.fov * 10) / 10}`;
+function poseRecord(pose: CameraPose) {
+  return { position: formatPoseVector(pose.position), look_at: formatPoseVector(pose.look_at), fov: pose.fov };
 }
 
-function poseRecord(pose: CameraPose): Record<string, unknown> {
-  return { position: formatVector3(pose.position), look_at: formatVector3(pose.look_at), fov: Math.round(pose.fov * 100) / 100 };
+function poseLiteral(pose: CameraPose): string {
+  const { position, look_at, fov } = poseRecord(pose);
+  return `position ${position}, look_at ${look_at}, fov ${fov}`;
 }
 
 function sizeFor(edge: number, aspect: number): [number, number] {
@@ -392,6 +394,7 @@ function capCaption(lines: string[], limit = 4800): string {
 
 interface SlotPlan {
   tile: number;
+  view?: ViewMode;
   bookmark: string;
   capturePath: string;
 }
@@ -411,7 +414,7 @@ async function storeSlots(store: ShotStore | ShotStoreError, plans: SlotPlan[], 
       continue;
     }
     try {
-      written.push(await store.writeSlot(plan.bookmark, await readFile(plan.capturePath)));
+      written.push(await store.writeSlot(plan.bookmark, await readFile(plan.capturePath), plan.view));
     } catch (err) {
       notes.push(`slot for "${plan.bookmark}" not updated: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -490,7 +493,7 @@ function readSubjects(result: Record<string, unknown>): SubjectBounds[] {
 
 function aabbLine(box: Aabb): string {
   const c = aabbCenter(box);
-  return `center ${formatVector3(c)}, size ${formatVector3(box.size)}`;
+  return `center ${formatPoseVector(c)}, size ${formatPoseVector(box.size)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -511,9 +514,10 @@ async function nativeRender(
 ): Promise<NativeRender> {
   const op: Record<string, unknown> = { op: "ScenePreview", scene_path: input.scenePath, framing: input.framing, size: input.size };
   if (input.pose) {
-    op.camera_position = formatVector3(input.pose.position);
-    op.camera_look_at = formatVector3(input.pose.look_at);
-    op.fov = input.pose.fov;
+    const { position, look_at, fov } = poseRecord(input.pose);
+    op.camera_position = position;
+    op.camera_look_at = look_at;
+    op.fov = fov;
   } else if (input.fov !== undefined) {
     op.fov = input.fov;
   }
@@ -621,16 +625,19 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   const empty = subjects.filter((s) => !s.has_geometry).map((s) => s.path);
   const box = mergeAabbs(subjects.map((s) => s.aabb));
   const center = aabbCenter(box);
-  const toCamera = normalize(fromDir);
-  const dist = fitDistance(box, center, toCamera, fov, aspect, fill);
-  const pose: CameraPose = { position: roundVec(add(center, scale(toCamera, dist))), look_at: roundVec(center), fov };
+  const options = args.from ? viewOptions(box, center, fromDir, fov, aspect, fill) : [];
+  const pose = options[0]?.pose ?? fittedPose(box, center, normalize(fromDir), fov, aspect, fill);
   const size = sizeFor(edge, aspect);
+  const projectedFill = frameFill(pose, aspect, box);
 
   const lines: string[] = [];
+  if (projectedFill > 0 && projectedFill < fill - 1e-4) {
+    lines.push(`The near clipping plane limits the projected bounds to ${(100 * projectedFill).toFixed(1)}% of the frame at this lens (requested ${100 * fill}%).`);
+  }
   let framing = "free";
   if (bookmark) {
     const saved = firstResult(
-      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, position: formatVector3(pose.position), look_at: formatVector3(pose.look_at), fov }])
+      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, ...poseRecord(pose) }])
     );
     if (saved.ok === false) return fail(String(saved.failure_reason ?? "bookmark_save_failed"), String(saved.error ?? "SaveCameraBookmark failed"));
     framing = `bookmark:${bookmark}`;
@@ -643,7 +650,6 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
 
   // One physics pass for both checks: an explicit `from` is measured exactly
   // as given (plus the nearby alternatives), and marks get an occlusion test.
-  const options = args.from ? viewOptions(box, center, toCamera, fov, aspect, fill) : [];
   const markList = marks?.marks.map((m) => ({ id: m.id, path: m.path })) ?? [];
   let viewCheck: ViewCheck | undefined;
   let occlusion = new Map<number, MarkVisibility>();
@@ -679,7 +685,7 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   const env = String(render.meta.environment_used ?? "unknown");
   const header =
     `Framed ${nodes.join(", ")} in ${scenePath} with the REAL environment (${env}); ${render.image!.width ?? size[0]}x${render.image!.height ?? size[1]}. ` +
-    `Pose: ${poseLiteral(pose)} (from ${args.from ? formatVector3(fromDir) : (args.direction ?? "iso")}, fill ${fill}).`;
+    `Pose: ${poseLiteral(pose)} (from ${args.from ? formatPoseVector(fromDir) : (args.direction ?? "iso")}, fill ${fill}).`;
   const marksBlock = marks ? formatMarksWithOcclusion(marks, occlusion) : [];
   if (occlusionNote) marksBlock.push(occlusionNote);
   const caption = capCaption([
@@ -701,7 +707,9 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
       scenePath,
       nodes,
       pose: poseRecord(pose),
-      bounds: { center: formatVector3(center), size: formatVector3(box.size) },
+      bounds: { center: formatPoseVector(center), size: formatPoseVector(box.size) },
+      requested_fill: fill,
+      projected_fill: projectedFill,
       environment_used: env,
       ...(bookmark ? { bookmark } : {}),
       ...(marks ? { marks: marks.marks.map((m) => ({ ...m, ...(occlusion.get(m.id) ? { visibility: occlusion.get(m.id) } : {}) })) } : {}),
@@ -725,6 +733,11 @@ export interface ViewOption {
   /** Closeness to the request: degrees turned + half the fov added. */
   cost: number;
   pose: CameraPose;
+}
+
+function fittedPose(box: Aabb, center: Vec3, unitDirection: Vec3, fov: number, aspect: number, fill: number): CameraPose {
+  const distance = fitDistance(box, center, unitDirection, fov, aspect, fill);
+  return { position: add(center, scale(unitDirection, distance)), look_at: center, fov };
 }
 
 /**
@@ -756,8 +769,8 @@ export function viewOptions(box: Aabb, center: Vec3, toCamera: Vec3, fov: number
   const out: ViewOption[] = [];
   for (const r of raw) {
     if (out.some((o) => Math.abs(o.fov - r.fov) < 0.01 && Math.hypot(o.from[0] - r.dir[0], o.from[1] - r.dir[1], o.from[2] - r.dir[2]) < 1e-3)) continue;
-    const d = fitDistance(box, center, r.dir, r.fov, aspect, fill);
-    out.push({ tag: r.tag, from: roundVec(r.dir, 4), fov: Math.round(r.fov * 100) / 100, cost: r.cost, pose: { position: roundVec(add(center, scale(r.dir, d))), look_at: roundVec(center), fov: Math.round(r.fov * 100) / 100 } });
+    const pose = fittedPose(box, center, r.dir, r.fov, aspect, fill);
+    out.push({ tag: r.tag, from: r.dir, fov: r.fov, cost: r.cost, pose });
   }
   return out;
 }
@@ -803,7 +816,7 @@ function viewCheckLines(check: ViewCheck): string[] {
   const a = check.alternative;
   lines.push(
     a
-      ? `nearest valid pose (${a.tag}): summer_frame_nodes from:"${formatVector3(a.from)}"${a.fov !== check.requestedFov ? ` fov:${a.fov}` : ""} -> ${poseLiteral(a.pose)}.`
+      ? `nearest valid pose (${a.tag}): summer_frame_nodes from:"${formatPoseVector(a.from)}"${a.fov !== check.requestedFov ? ` fov:${a.fov}` : ""} -> ${poseLiteral(a.pose)}.`
       : `no valid pose found among ${check.checked - 1} nearby alternatives (wider lens, turned around the nodes, raised/lowered): try summer_frame_shot shot:"detail" for a measured view.`
   );
   return lines;
@@ -814,7 +827,7 @@ function viewCheckReceipt(check: ViewCheck): Record<string, unknown> {
     ok: !check.problem,
     ...(check.problem ? { reason: check.problem.reason, detail: check.problem.detail, ...(check.problem.blockers ? { blockers: check.problem.blockers } : {}) } : {}),
     sight_lines: check.requestedSummary,
-    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatVector3(check.alternative.from), fov: check.alternative.fov, ...poseRecord(check.alternative.pose) } } : {}),
+    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatPoseVector(check.alternative.from), ...poseRecord(check.alternative.pose) } } : {}),
   };
 }
 
@@ -999,7 +1012,7 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     const p = poses[i]!;
     const label = `${i + 1} ${labels[i]}${view !== "beauty" ? ` · ${view}` : ""}`;
     if (args.compare_previous && p.bookmark) {
-      const prev = store instanceof ShotStoreError ? null : await store.readSlot(p.bookmark);
+      const prev = store instanceof ShotStoreError ? null : await store.readSlot(p.bookmark, view);
       if (prev) {
         // Bookmark timestamps have one-second resolution: a pose saved in the
         // same second as the previous render counts as possibly newer.
@@ -1022,7 +1035,7 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
   // neither compare_previous nor update_previous asked for a new one).
   const keepBaseline = new Set<string>();
   if (policy === "create_if_missing" && !(store instanceof ShotStoreError)) {
-    for (const p of poses) if (p.bookmark && !keepBaseline.has(p.bookmark) && (await store.readSlot(p.bookmark))) keepBaseline.add(p.bookmark);
+    for (const p of poses) if (p.bookmark && !keepBaseline.has(p.bookmark) && (await store.readSlot(p.bookmark, view))) keepBaseline.add(p.bookmark);
   }
   const layout = layoutGrid(cells.length, aspect, edge, comparing ? 3 : undefined);
   const run0Dir = await makeProbeDir();
@@ -1035,12 +1048,12 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     const pose = poses[cell.shot]!;
     if (cell.kind === "shot") {
       const spec: TileSpec = { kind: "shot", rect, label: cell.label, view, pose: kernelPose(pose.pose) };
-      if (pose.bookmark && view === "beauty" && !(store instanceof ShotStoreError) && !keepBaseline.has(pose.bookmark) && !slotted.has(pose.bookmark)) {
+      if (pose.bookmark && !(store instanceof ShotStoreError) && !keepBaseline.has(pose.bookmark) && !slotted.has(pose.bookmark)) {
         slotted.add(pose.bookmark);
         spec.render_size = slotRenderSize(aspect, layout.tile);
         spec.capture_path = join(run0Dir, `slot-${index}.jpg`).replace(/\\/g, "/");
         spec.capture_max_edge = SHOT_MAX_EDGE;
-        slots.push({ tile: index, bookmark: pose.bookmark, capturePath: spec.capture_path });
+        slots.push({ tile: index, bookmark: pose.bookmark, view, capturePath: spec.capture_path });
       }
       nowTileOf.set(cell.shot, index);
       tiles.push(spec);
@@ -1333,6 +1346,18 @@ export interface FrameShotArgs {
 
 const GRID_COLS = 24;
 
+// Render at the requested lens aspect before sampling into integer grid cells.
+// Four to five source pixels per column keep the candidate renders small.
+function imageCheckSize(aspect: number): [number, number] {
+  const minWidth = GRID_COLS * 4;
+  let size: [number, number] = [minWidth, Math.round(minWidth / aspect)];
+  for (let width = minWidth + 1; width <= GRID_COLS * 5 && size[0] / size[1] !== aspect; width++) {
+    const height = Math.round(width / aspect);
+    if (Math.abs(width / height - aspect) < Math.abs(size[0] / size[1] - aspect)) size = [width, height];
+  }
+  return size;
+}
+
 function readKeyLight(result: Record<string, unknown>): { path: string; direction: Vec3 } | undefined {
   const raw = result.key_light as { path?: unknown; direction?: unknown } | undefined;
   if (!raw || !Array.isArray(raw.direction) || raw.direction.length < 3) return undefined;
@@ -1490,9 +1515,8 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
         ...(c.eye ? { eye: { min: c.eye.min, max: c.eye.max, ...(c.eye.target !== undefined ? { target: c.eye.target } : {}), stand: [...c.eye.stand] } } : {}),
       })),
       measure: { aspect, grid_cols: GRID_COLS, grid_rows: gridRows, subject_occludes: shot === "corridor", near_lens_radius: 0.3, sweep_radius: 0.15 },
-      // A 4x4-pixel-per-cell beauty render per candidate, for the featureless
-      // area and near/far value checks.
-      image_check: { size: [GRID_COLS * 4, gridRows * 4] },
+      // Sample each candidate at the aspect used by the physics rays.
+      image_check: { size: imageCheckSize(aspect) },
     },
   }));
   await pass2.dispose();
@@ -1534,7 +1558,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   const best = top[0]!;
   if (bookmark) {
     const saved = firstResult(
-      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, position: formatVector3(best.pose.position), look_at: formatVector3(best.pose.look_at), fov: Math.round(best.pose.fov * 100) / 100 }])
+      await client.executeOps([{ op: "SaveCameraBookmark", name: bookmark, ...poseRecord(best.pose) }])
     );
     if (saved.ok === false) return fail(String(saved.failure_reason ?? "bookmark_save_failed"), String(saved.error ?? "SaveCameraBookmark failed"));
     lines.push(`saved best as bookmark "${bookmark}"${saved.overwritten === true ? " (replaced its previous pose)" : ""}.`);

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 680 260" role="img" aria-labelledby="title desc">
+  <title id="title">A keypad in two foyer value studies</title>
+  <desc id="desc">The poster strip behind the keypad changes from light gray to dark gray. All other shapes are identical.</desc>
+  <defs>
+    <g id="foyer">
+      <rect width="320" height="188" fill="#737373"/>
+      <path d="M0 0h320v16H0z" fill="#383838"/>
+      <path d="m0 22 70 14v117L0 180z" fill="#535353"/>
+      <path d="M0 180l70-27h250v35H0z" fill="#454545"/>
+      <path d="M10 47l46 8v86l-46 14z" fill="#252525"/>
+      <path d="m15 52 15 3v34H15zm20 4 16 3v30H35z" fill="#888"/>
+      <path d="M88 39h85v114H88z" fill="#474747"/>
+      <path d="M93 44h75v109H93z" fill="#2d2d2d"/>
+      <path d="M106 55h47v24h-47z" fill="#595959"/>
+      <path d="M153 100h9v3h-9z" fill="#a0a0a0"/>
+      <path d="M181 43h66v90h-66z" fill="#393939"/>
+      <path d="M184 46h60v83h-60z" fill="#919191"/>
+      <path d="m184 87 21-23 10 13 8-8 21 22v8h-60z" fill="#515151"/>
+      <circle cx="228" cy="58" r="6" fill="#cfcfcf"/>
+      <path d="M253 47h43v72h-43z" fill="#575757"/>
+      <path d="M258 53h33v20h-33z" fill="#9d9d9d"/>
+    </g>
+    <g id="keypad">
+      <rect x="187" y="98" width="15" height="21" rx="2" fill="#d5d5d5"/>
+      <path d="M190 101h9v3h-9z" fill="#777"/>
+      <path d="M190 107h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2zm-8 4h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2z" fill="#989898"/>
+    </g>
+  </defs>
+  <rect width="680" height="260" fill="#f4f3ef"/>
+  <g transform="translate(14 14)">
+    <use xlink:href="#foyer"/>
+    <path d="M184 96h60v26h-60z" fill="#cdcdcd"/>
+    <use xlink:href="#keypad"/>
+  </g>
+  <g transform="translate(346 14)">
+    <use xlink:href="#foyer"/>
+    <path d="M184 96h60v26h-60z" fill="#505050"/>
+    <use xlink:href="#keypad"/>
+  </g>
+  <g fill="#252525" font-family="sans-serif" font-size="16">
+    <text x="14" y="231">A · Original poster strip</text>
+    <text x="346" y="231">B · Darker poster strip</text>
+  </g>
+</svg>

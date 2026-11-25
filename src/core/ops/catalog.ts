@@ -126,7 +126,7 @@ function libraryTopics(): string[] {
   return [...new Set(slugs)].filter((word) => word.length > 2 && !/^\d/.test(word));
 }
 
-function descriptorSchema(toolName: string): Record<string, unknown> | null {
+export function toolInputSchema(toolName: string): Record<string, unknown> | null {
   const record = loadLibraryIndex().find((candidate) => candidate.kind === "tool" && candidate.mcp_tool_name === toolName);
   const slug = record?.id.replace(/^tool\//, "");
   if (!slug) return null;
@@ -141,9 +141,9 @@ function descriptorSchema(toolName: string): Record<string, unknown> | null {
 /** The input JSON Schema of a local operation, from its library descriptor (a split operation: cut from its tool's). */
 export function localInputSchema(op: string): Record<string, unknown> | null {
   const split = ENGINE_SPLIT_OPS[op];
-  if (split) return splitInputSchema(split, descriptorSchema(split.tool));
+  if (split) return splitInputSchema(split, toolInputSchema(split.tool));
   const toolName = localEntries().find((candidate) => candidate.name === op)?.mcpTool;
-  return toolName ? descriptorSchema(toolName) : null;
+  return toolName ? toolInputSchema(toolName) : null;
 }
 
 /**
@@ -239,13 +239,16 @@ export function localWireForm(op: string): Record<string, unknown> | null {
  */
 export function missingInput(schema: Record<string, unknown> | null, input: Record<string, unknown>): string | null {
   if (!schema) return null;
-  const properties = (schema.properties ?? {}) as Record<string, unknown>;
   const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
   const absent = required.find((field) => input[field] === undefined);
   if (absent) return `${absent}: required.`;
-  if (schema.additionalProperties === false) {
-    const unknown = Object.keys(input).find((field) => !(field in properties));
-    if (unknown) return `${unknown}: not a field of this operation.`;
-  }
-  return null;
+  return unknownInputField(schema, input);
+}
+
+/** Check only top-level field names so legacy tools can still supply their own defaults. */
+export function unknownInputField(schema: Record<string, unknown> | null, input: Record<string, unknown>): string | null {
+  if (schema?.additionalProperties !== false) return null;
+  const properties = (schema.properties ?? {}) as Record<string, unknown>;
+  const unknown = Object.keys(input).find((field) => !Object.hasOwn(properties, field));
+  return unknown === undefined ? null : `${unknown}: not a field of this operation.`;
 }

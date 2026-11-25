@@ -29,6 +29,7 @@ import { executeSceneMutation, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { SNAP_TO_SURFACE_FALLBACK } from "./engine-fallbacks.js";
 import { buildRunSceneScriptOp } from "./scene-script.js";
+import { readSceneNodeTransform } from "./scene-space.js";
 import { buildPlacementScript } from "./placement-script.js";
 import { executePlacementBatch, summarizeTrace } from "./placement-batch.js";
 import {
@@ -37,7 +38,7 @@ import {
   add,
   angleDegrees,
   axisIndex,
-  basisInverse,
+  basisNormalMatrix,
   basisMul,
   basisMulVec,
   basisDeterminant,
@@ -56,11 +57,7 @@ import {
   scale,
   signedAxisVector,
   sub,
-  toGodotTransform,
-  toGodotVector3,
-  xformCompose,
   xformFromArray,
-  xformInverse,
   xformMulPoint,
   type Basis3,
   type SignedAxis,
@@ -152,7 +149,7 @@ const NODE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_\- ]*$/;
 // Probe plumbing
 // ---------------------------------------------------------------------------
 
-function fail(tool: string, failureReason: string, error: string, extra: JsonRecord = {}): PlacementResult {
+function fail(tool: string, failureReason: string, error: string, extra: JsonRecord = {}): PlacementResult & { ok: false } {
   return { ok: false, tool, failure_reason: failureReason, error, ...extra };
 }
 
@@ -222,6 +219,21 @@ export async function runPlacementProbe(
   return result as PlacementResult;
 }
 
+/** Ask Godot to round-trip the writable local pose before issuing any mutation. */
+async function planLocalTransform(
+  client: PlacementClient, tool: string, scenePath: string, path: string, desiredWorld: Xform,
+): Promise<{ ok: true; localTransform: string; originalTransform: string } | (PlacementResult & { ok: false })> {
+  const plan = await runPlacementProbe(client, tool, {
+    cmd: "plan_transform", scene_path: scenePath, path, desired: [...desiredWorld.basis, desiredWorld.origin],
+  });
+  if (!plan.ok) return { ...plan, ok: false, saved: false };
+  const { local_transform: local, original_transform: original } = plan;
+  if (typeof local !== "string" || !parseGodotTransform(local) || typeof original !== "string" || !parseGodotTransform(original)) {
+    return fail(tool, "measurement_script_failed", "The placement probe returned an invalid transform.", { saved: false });
+  }
+  return { ok: true, localTransform: local, originalTransform: original };
+}
+
 function bytes(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
@@ -278,12 +290,8 @@ interface NodeBounds {
   path: string;
   resolved: string;
   geometryCount: number;
+  independentGeometry: string[];
   xform: Xform;
-  parent: Xform;
-  position: Vec3;
-  /** The node's local transform as Godot writes it (var_to_str), for an
-   *  exact restore. */
-  transformStr?: string;
   intervals?: Array<[number, number]>;
   reach?: number;
 }
@@ -294,10 +302,8 @@ function parseBounds(record: unknown): NodeBounds {
     path: String(r.path ?? ""),
     resolved: String(r.resolved ?? ""),
     geometryCount: typeof r.geometry_count === "number" ? r.geometry_count : 0,
+    independentGeometry: Array.isArray(r.independent_geometry) ? r.independent_geometry.map(String) : [],
     xform: xformFromArray(r.xform),
-    parent: xformFromArray(r.parent_xform),
-    position: (Array.isArray(r.position) ? r.position : [0, 0, 0]) as Vec3,
-    transformStr: typeof r.transform_str === "string" ? r.transform_str : undefined,
     intervals: Array.isArray(r.intervals) ? (r.intervals as Array<[number, number]>) : undefined,
     reach: typeof r.reach === "number" ? r.reach : undefined,
   };
@@ -316,12 +322,6 @@ function stripDotSlash(path: string): string {
 function isInside(inner: string, outer: string): boolean {
   if (outer === ".") return inner !== ".";
   return inner.startsWith(`${outer}/`);
-}
-
-/** World delta -> new parent-local position. */
-function localPositionAfter(bounds: NodeBounds, worldDelta: Vec3): Vec3 {
-  const localDelta = basisMulVec(basisInverse(bounds.parent.basis), worldDelta);
-  return add(bounds.position, localDelta);
 }
 
 // ---------------------------------------------------------------------------
@@ -366,11 +366,13 @@ interface PlaneRecord {
  *  piece's own frame (the frame of the asset root, or of the scene node with
  *  its own transform excluded), in discovery order. */
 export interface RawLoop {
+  source?: { mesh: number; loop: number };
   center: Vec3;
   direction: Vec3;
   radius: number;
   vertices?: number;
   mesh?: number;
+  instance?: number;
   max_dev?: number;
   direction_ambiguous?: boolean;
 }
@@ -502,6 +504,7 @@ function loopOut(loop: OrderedLoop): JsonRecord {
     id: loop.id,
     index: loop.index,
     ...(loop.mesh !== undefined ? { mesh: loop.mesh } : {}),
+    ...(loop.instance !== undefined ? { instance: loop.instance } : {}),
     center: roundVec(loop.center),
     direction: roundVec(loop.direction, 4),
     radius: round(loop.radius),
@@ -627,9 +630,10 @@ function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: Orde
   const warnings: string[] = [];
   if (analysis.truncated === true) {
     const analyzed = typeof analysis.triangles_analyzed === "number" ? analysis.triangles_analyzed : 0;
-    warnings.push(
-      `the triangle budget cut the analysis (${analyzed} of ${triangles} triangles): planes and open loops are incomplete; pass maxTriangles ${Math.min(300000, Math.max(triangles, 100))} for the whole mesh`
-    );
+    const next = triangles <= 300000
+      ? `pass maxTriangles ${Math.max(triangles, 100)} for the whole mesh`
+      : "the asset exceeds the maximum maxTriangles 300000; inspect smaller pieces for complete face and loop analysis";
+    warnings.push(`the triangle budget cut the analysis (${analyzed} of ${triangles} triangles): planes and open loops are incomplete; ${next}`);
   }
   return {
     aabb: probe.aabb ?? null,
@@ -888,7 +892,7 @@ function chooseHit(
   if (typeof read.visual_origin_inside === "number" && read.visual_origin_inside > 0) {
     warnings.push(`ray_origin_inside_${read.visual_origin_inside}_visual_bounds_ignored`);
   }
-  if (read.visual_truncated === true) warnings.push("visual_scan_truncated_at_20000_nodes");
+  if (read.visual_truncated === true) warnings.push("visual_geometry_scan_incomplete");
   if (evidence === "visual_aabb") return { hit: visual, evidence: visual ? "visual_aabb" : undefined, warnings };
   if (physics) {
     const nearerVisual =
@@ -927,7 +931,7 @@ export async function raycast(client: PlacementClient, args: RaycastArgs): Promi
     hit: Boolean(chosen.hit),
     ...(chosen.hit ? { evidence: chosen.evidence, ...hitOut(chosen.hit) } : {}),
     ...(chosen.fallback ? { fallback: true, fallback_reason: chosen.fallback } : {}),
-    ...(chosen.nearerVisual ? { nearer_visual_only: hitOut(chosen.nearerVisual) } : {}),
+    ...(chosen.nearerVisual ? { nearer_visual_only: { ...hitOut(chosen.nearerVisual), evidence: "visual_aabb" } } : {}),
     origin: roundVec(args.origin),
     direction: roundVec(normalize(args.direction), 4),
     physics_available: read.physics_available === true,
@@ -1045,9 +1049,14 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
   if (length(worldDelta) < 1e-6) {
     return { ok: true, ...base, moved: false, moved_by: [0, 0, 0], saved: false, note: "Already in place; nothing was changed." };
   }
-  const position = localPositionAfter(subject, worldDelta);
+  if (subject.independentGeometry.length) {
+    return fail(tool, "independent_subject_geometry", `Visible geometry does not inherit the subject's transform: ${subject.independentGeometry.join(", ")}`);
+  }
+  const plan = await readSceneNodeTransform(client, args.subject, args.scenePath, false, worldDelta);
+  if ("error" in plan) return fail(tool, plan.failureReason ?? "transform_read_failed", plan.error);
+  const translation = plan.translation;
   const receipt = await executeSceneMutation(client, args.scenePath, [
-    { op: "SetProp", path: args.subject, key: "position", value: toGodotVector3(position) },
+    { op: "SetProp", path: args.subject, key: "position", value: translation.literal },
   ]);
   const failed = mutationFailure(tool, receipt);
   if (failed) return failed;
@@ -1058,7 +1067,7 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
     ...base,
     moved: true,
     moved_by: roundVec(worldDelta),
-    position: roundVec(position),
+    position: roundVec(translation.value),
     saved: true,
   };
   if (!after.ok) {
@@ -1076,6 +1085,9 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
       if (k !== main && alignFor(args, name) !== "none") residuals[name] = round(remaining[k]!);
     });
     result.verify = { gap: round(achievedGap), residuals };
+  } else {
+    const missing = [s2, r2].filter((node) => !node.intervals).map((node) => node.resolved);
+    result.verify = { ok: false, error: `Could not measure the saved gap. No visible geometry bounds for ${missing.join(", ")}.` };
   }
   return result as PlacementResult;
 }
@@ -1290,18 +1302,16 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   if (args.surface && args.surface === args.subject) throw new ToolInputError("surface must not be the subject.");
   const missingSnap = missingEngineOpResult(client, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
   if (missingSnap) return { ...missingSnap, tool } as PlacementResult;
-  const ray = args.ray
-    ? { origin: args.ray.origin, direction: args.ray.direction }
-    : { origin: [0, 0, 0], direction: [0, 0, -1], from_subject: args.subject };
   const read = await runPlacementProbe(client, tool, {
     cmd: "multi",
     scene_path: args.scenePath,
     steps: [
-      // The subject's bounds along its OWN axes: where its back face is.
-      { cmd: "bounds", space_node: args.subject, nodes: [{ path: args.subject }] },
+      // Measure the proposed axis lengths before turning this frame onto the wall.
+      { cmd: "bounds", nodes: [{ path: args.subject, mount_frame: true }] },
       {
         cmd: "raycast",
-        ...ray,
+        from_subject: args.subject,
+        ...args.ray,
         surface: args.surface ?? "",
         exclude: [args.subject],
         max_distance: args.maxDistance,
@@ -1329,7 +1339,7 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   const hit = chosen.hit;
   const warnings = [...chosen.warnings];
   if (chosen.fallback) warnings.push(`surface_found_by_visual_aabb (${chosen.fallback}): the normal is an AABB face normal`);
-  if (chosen.nearerVisual) warnings.push(`mesh_only_geometry_nearer_than_hit: ${chosen.nearerVisual.path}`);
+  if (chosen.nearerVisual) warnings.push(`visual_aabb_nearer_than_hit: ${chosen.nearerVisual.path}`);
   let n = normalize(hit.normal);
   // The piece mounts on the side the ray came from, also when the ray hit a
   // back face whose normal points away from it.
@@ -1402,15 +1412,13 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   // then let SnapToSurface sweep it in over a short, bounded distance.
   const basis = scaledBasis(mount.rotation, basisScale(subject.xform.basis));
   const preseat: Xform = { basis, origin: add(plan.origin, scale(n, ATTACH_PRESEAT_CLEARANCE)) };
-  const local = xformCompose(xformInverse(subject.parent), preseat);
+  const transformPlan = await planLocalTransform(client, tool, args.scenePath, args.subject, preseat);
+  if (!transformPlan.ok) return transformPlan;
   const sweep = round(args.standoff + ATTACH_PRESEAT_CLEARANCE + ATTACH_SEAT_REACH, 4);
   const options = { scenePath: args.scenePath };
   const restore = async (): Promise<boolean> => {
-    const original = subject.transformStr && parseGodotTransform(subject.transformStr)
-      ? subject.transformStr
-      : toGodotTransform(xformCompose(xformInverse(subject.parent), subject.xform));
     const receipt = await client.executeIdentityBoundOps(
-      [{ op: "SetProp", path: args.subject, key: "transform", value: original }],
+      [{ op: "SetProp", path: args.subject, key: "transform", value: transformPlan.originalTransform }],
       options
     );
     return !extractOpError(receipt);
@@ -1430,7 +1438,7 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   };
 
   const receipt = await client.executeIdentityBoundOps([
-    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
+    { op: "SetProp", path: args.subject, key: "transform", value: transformPlan.localTransform },
     {
       op: "SnapToSurface",
       subject_path: args.subject,
@@ -1547,7 +1555,10 @@ export const repeatAlongArgsSchema = z.object({
   parent: nodePathSchema("Parent for the copies").describe("Parent for the copies; start/end/direction are in this parent's local space (same as position)."),
   start: vec3.describe("First copy's position [x, y, z] in the parent's space."),
   end: vec3.optional().describe("Line end. With spacing: as many copies as fit; with count: count copies spread from start to end."),
-  direction: nonZeroVec3.optional().describe("Instead of end: direction of the row; needs count and spacing."),
+  direction: vec3
+    .refine((v) => v.some((component) => component !== 0), "vector must be non-zero")
+    .optional()
+    .describe("Instead of end: direction of the row; needs count and spacing."),
   count: z.number().int().min(1).max(64).optional().describe("Number of copies (1-64)."),
   spacing: z.number().positive().max(1000).optional().describe("Distance between neighbouring copies' origins."),
   align: z
@@ -1570,6 +1581,13 @@ export type RepeatAlongArgs = z.output<typeof repeatAlongArgsSchema>;
 
 export const REPEAT_MAX_COPIES = 64;
 
+/** A direction is scale-free. Divide by the largest component before normalizing
+ * so even a subnormal or near-maximum input produces a finite unit vector. */
+function repeatDirection(v: Vec3): Vec3 {
+  const largest = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
+  return normalize([v[0] / largest, v[1] / largest, v[2] / largest]);
+}
+
 /** Copy positions for a repeat_along call. Exported for tests. */
 export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "direction" | "count" | "spacing" | "align">): {
   positions: Vec3[];
@@ -1586,10 +1604,10 @@ export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "d
     const total = length(span);
     if (args.count === 1) {
       const at = args.align === "end" ? args.end : args.align === "center" ? scale(add(start, args.end), 0.5) : start;
-      return { positions: [at], spacing: 0, direction: total > 1e-9 ? normalize(span) : [0, 0, 0] };
+      return { positions: [at], spacing: 0, direction: total > 0 ? repeatDirection(span) : [0, 0, 0] };
     }
-    if (total < 1e-9) throw new ToolInputError("start and end are the same point; pass count 1 or a longer line.");
-    const dir = normalize(span);
+    if (total === 0) throw new ToolInputError("start and end are the same point; pass count 1 or a longer line.");
+    const dir = repeatDirection(span);
     if (args.spacing !== undefined) {
       const n = Math.floor(total / args.spacing + 1e-9) + 1;
       if (n > REPEAT_MAX_COPIES) {
@@ -1610,7 +1628,7 @@ export function repeatPositions(args: Pick<RepeatAlongArgs, "start" | "end" | "d
   if (args.direction) {
     if (args.count === undefined) throw new ToolInputError("With direction, pass count.");
     if (args.count > 1 && args.spacing === undefined) throw new ToolInputError("With direction and count > 1, pass spacing.");
-    const dir = normalize(args.direction);
+    const dir = repeatDirection(args.direction);
     const spacing = args.spacing ?? 0;
     const positions = Array.from({ length: args.count }, (_, i) => add(start, scale(dir, i * spacing)));
     return { positions, spacing, direction: dir };
@@ -1652,10 +1670,10 @@ export async function repeatAlong(client: PlacementClient, args: RepeatAlongArgs
     template: args.template,
     parent: args.parent,
     count: positions.length,
-    spacing: round(spacing),
-    direction: roundVec(direction, 4),
-    first: roundVec(positions[0]!),
-    last: roundVec(positions[positions.length - 1]!),
+    spacing,
+    direction,
+    first: positions[0]!,
+    last: positions[positions.length - 1]!,
   }, ["created", "renamed", "failures"]) as PlacementResult;
 }
 
@@ -1726,6 +1744,7 @@ const OTHER_PORTS_SHOWN = 8;
 const PORT_CHOICES_SHOWN = 8;
 
 interface PortRead {
+  source?: RawLoop["source"];
   kind: string;
   position: Vec3;
   direction: Vec3;
@@ -1754,13 +1773,14 @@ function portOut(port: PortRead): JsonRecord {
 }
 
 /** An ordered loop in scene space, through its node's scene transform. */
-function loopPort(loop: OrderedLoop, nodeXf: Xform): PortRead {
+function loopPort(loop: OrderedLoop, nodeXf: Xform, normalMatrix: Basis3): PortRead {
   return {
     kind: "open_loop",
+    source: loop.source,
     id: loop.id,
     index: loop.index,
     position: xformMulPoint(nodeXf, loop.center),
-    direction: normalize(basisMulVec(nodeXf.basis, loop.direction)),
+    direction: normalize(basisMulVec(normalMatrix, loop.direction)),
     radius: loop.radius,
     ...(loop.direction_ambiguous ? { direction_ambiguous: true } : {}),
   };
@@ -1778,33 +1798,50 @@ export function resolveProbePort(
   selector: PortSelector,
   label: "subject" | "target",
   node: string,
-  withOthers: boolean
+  withOthers: boolean,
+  originalSource?: RawLoop["source"]
 ): { port: PortRead } | { failure: PlacementResult } {
   const record = asRecord(raw) ?? {};
   if (record.kind !== "open_loops") return { port: record as unknown as PortRead };
   const tool = "summer_connect_ports";
-  const loops = orderLoops((Array.isArray(record.loops) ? record.loops : []) as RawLoop[]);
-  const loop = findLoop(loops, selector);
+  const rawLoops = (Array.isArray(record.loops) ? record.loops : []) as RawLoop[];
+  const counts = new Map<number, number>();
+  const loops = orderLoops(rawLoops.map((loop) => {
+    if (loop.mesh === undefined) return loop;
+    const index = counts.get(loop.mesh) ?? 0;
+    counts.set(loop.mesh, index + 1);
+    return { ...loop, source: { mesh: loop.mesh, loop: index } };
+  }));
+  const unavailable = asRecord(record.unavailable_meshes) ?? {};
+  const available = loops.filter((candidate) => !unavailable[String(candidate.mesh)]);
+  const loop = originalSource
+    ? loops.find((candidate) => candidate.source?.mesh === originalSource.mesh && candidate.source.loop === originalSource.loop)
+    : findLoop(loops, selector);
   if (!loop) {
     const asked = selector.kind === "loop_index" ? `open-loop index ${selector.index}` : selector.kind === "loop_id" ? `open loop ${selector.id}` : `port ${selector.name}`;
     return {
       failure: fail(
         tool,
         "port_not_found",
-        `${asked} not found on the ${label} ${node} (${loops.length} open loop(s)). Pass an id from ${label}_ports, e.g. '${loops[0]?.id ?? "+Y"}', or a Marker3D name.`,
+        `${asked} not found on the ${label} ${node} (${loops.length} open loop(s)). Pass an id from ${label}_ports, e.g. '${available[0]?.id ?? "+Y"}', or a Marker3D name.`,
         {
-          [`${label}_ports`]: loops.slice(0, PORT_CHOICES_SHOWN).map((l) => ({ id: l.id, index: l.index, center: roundVec(l.center), direction: roundVec(l.direction, 4), radius: round(l.radius) })),
-          ...(loops.length > PORT_CHOICES_SHOWN ? { [`${label}_ports_total`]: loops.length } : {}),
+          [`${label}_ports`]: available.slice(0, PORT_CHOICES_SHOWN).map((l) => ({ id: l.id, index: l.index, center: roundVec(l.center), direction: roundVec(l.direction, 4), radius: round(l.radius) })),
+          ...(available.length > PORT_CHOICES_SHOWN ? { [`${label}_ports_total`]: available.length } : {}),
         }
       ),
     };
   }
+  const error = asRecord(unavailable[String(loop.mesh)]);
+  if (error) {
+    return { failure: fail(tool, String(error.failure_reason), String(error.error), { saved: false, port: loop.id }) };
+  }
   const nodeXf = xformFromArray(record.node_xform);
-  const port = loopPort(loop, nodeXf);
+  const normalMatrix = basisNormalMatrix(nodeXf.basis);
+  const port = loopPort(loop, nodeXf, normalMatrix);
   if (record.analysis_truncated === true) port.analysis_truncated = true;
   if (withOthers) {
-    port.others = loops.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf));
-    port.others_total = loops.length - 1;
+    port.others = available.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf, normalMatrix));
+    port.others_total = available.length - 1;
   }
   return { port };
 }
@@ -1903,7 +1940,6 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
   const sp = spRead.port;
   const tp = tpRead.port;
   const subjectXf = xformFromArray(read.xform);
-  const parentXf = xformFromArray(read.parent_xform);
   const { xform, rotation, joint, rollAxis } = connectTransform(subjectXf, sp, tp, args.gap, args.rollDegrees);
   const tilt = tiltDegrees(subjectXf, rotation);
   if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES && !args.allowTilt) {
@@ -1926,7 +1962,8 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
       }
     );
   }
-  const local = xformCompose(xformInverse(parentXf), xform);
+  const plan = await planLocalTransform(client, tool, args.scenePath, args.subject, xform);
+  if (!plan.ok) return plan;
   const warnings: string[] = [];
   for (const [label, port] of [["subject", sp], ["target", tp]] as const) {
     if (port.direction_ambiguous) warnings.push(`${label}_port_direction_ambiguous`);
@@ -1934,7 +1971,7 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
   }
   if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES) warnings.push("tilt_allowed");
   const receipt = await executeSceneMutation(client, args.scenePath, [
-    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
+    { op: "SetProp", path: args.subject, key: "transform", value: plan.localTransform },
   ]);
   const failed = mutationFailure(tool, receipt);
   if (failed) return failed;
@@ -1954,8 +1991,8 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
     warnings,
   };
   const after = await runPlacementProbe(client, tool, readArgs);
-  const sp2Read = after.ok ? resolveProbePort(after.subject_port, subjectSel, "subject", args.subject, true) : undefined;
-  const tp2Read = after.ok ? resolveProbePort(after.target_port, targetSel, "target", args.target, false) : undefined;
+  const sp2Read = after.ok ? resolveProbePort(after.subject_port, subjectSel, "subject", args.subject, true, sp.source) : undefined;
+  const tp2Read = after.ok ? resolveProbePort(after.target_port, targetSel, "target", args.target, false, tp.source) : undefined;
   const sp2 = sp2Read && "port" in sp2Read ? sp2Read.port : undefined;
   const tp2 = tp2Read && "port" in tp2Read ? tp2Read.port : undefined;
   const others = otherPortsOut(sp, sp2, { rotation, joint });

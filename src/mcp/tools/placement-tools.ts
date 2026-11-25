@@ -69,12 +69,16 @@ export function registerPlacementTools(server: McpServer): void {
 
 Returns (all in the asset root's own frame, the frame position/rotation apply in), the facing evidence first:
 - summary {aabb, origin {fraction, label e.g. "x:center y:min z:min"}, plane_pairs, port_like_loops [loop ids], triangles, mesh_count, anchor_count, collision_count, warnings?}. plane_pairs: the 2 largest pairs of opposite planes (a pair under 1% of the largest one's area is left out), each {larger, opposite (null for a single sheet), separation}; every plane {axis (e.g. "+z", only when the normal is within about 1 degree of it), normal, offset, area, one_sided}. one_sided true = its material culls back faces, so the plane is invisible from behind its normal: a single sheet that is one_sided faces along its normal and its back is the opposite axis. An oblique normal (no axis) means a baked yaw or a 45-degree corner face. warnings says when the triangle budget cut the analysis and which maxTriangles covers the whole mesh
-- aabb, origin, meshes [{path, tris, min, max}], triangles total
+- aabb, origin, meshes [{path, tris, min, max}], triangles total. mesh_count counts mesh rows: one per MeshInstance3D or MultiMeshInstance3D node, or per populated GridMap mesh cell, without deduplicating resources or counting individual MultiMesh instances. GridMap rows carry their node path and grid_entry index in Godot get_meshes() transform/mesh pairs. A 3D MultiMesh row also gives instances (allocated) and drawn_instances (visible_instance_count, or all for -1); tris includes only that drawn prefix. Analysis applies each instance transform; open loops identify its instance index. Visibility AABBs include custom_aabb and may conservatively enclose more than the drawn triangles. 2D MultiMesh transform data and the dummy renderer return explicit unsupported/unavailable diagnostics
 - planes: the 6 largest planar face groups {normal, offset, area, tris, cull_back, one_sided}; normals follow the triangle winding (outward faces). You decide the front; the tool does not label facing
-- open_loops: open boundary loops {id, index, mesh, center, direction (outward), radius, vertices, max_dev} in a stable order: grouped by the piece axis the direction is nearest (+X, -X, +Y, -Y, +Z, -Z; ~X/~Y/~Z when undecided), the outermost along that axis first, then by centre; never by radius. id names the loop by that order: "+Y" is the outermost loop facing +Y, "+Y#2" the next. summer_connect_ports accepts the id (or the index); the same id names the same loop on the placed node in any pose. detail "summary" (default) lists only port-like loops (radius over 2 cm with a partner loop facing more than 60 degrees away: the ends of a pipe, duct or bend; or the one opening of an end piece, such as an outlet's socket, on its bounding-box face) and says how many it omitted; detail "full" lists every loop, including the outline of flat sheets
+- open_loops: open boundary loops {id, index, mesh, center, direction (outward), radius, vertices, max_dev}. mesh is the zero-based row in the full meshes list, including hidden entries, before output truncation. Loops are in a stable order: grouped by the piece axis the direction is nearest (+X, -X, +Y, -Y, +Z, -Z; ~X/~Y/~Z when undecided), the outermost along that axis first, then by centre; never by radius. id names the loop by that order: "+Y" is the outermost loop facing +Y, "+Y#2" the next. summer_connect_ports accepts the id (or the index); the same id names the same loop on the placed node in any pose. detail "summary" (default) lists only port-like loops (radius over 2 cm with a partner loop facing more than 60 degrees away: the ends of a pipe, duct or bend; or the one opening of an end piece, such as an outlet's socket, on its bounding-box face) and says how many it omitted; detail "full" lists every loop, including the outline of flat sheets
 - anchors: Marker3D nodes {name, path, position, forward (-Z), up}
 - collision: CollisionShape3D nodes {path, shape, size/radius/height/faces, center, min, max}
 - analysis {triangles_analyzed, triangle_budget, truncated}; a "truncated" object when a list was cut to fit 5 KB
+
+Visible Sprite3D nodes and the saved frame of each visible AnimatedSprite3D contribute their Godot drawing bounds to aabb and origin. Inspection reads the selected animation and frame without playing it. The mesh rows, triangle counts, and planes describe the mesh geometry listed above.
+
+CSG scenes require a baked visual mesh. For procedural CSG the tool returns csg_visual_mesh_unavailable with the node path and recovery.
 
 maxTriangles 100-300000 (default 60000). Evidence is mesh_triangles. Uses the existing RunSceneScript op (in the live editor, read-only); an engine without it answers engine_lacks_op.`,
     inspectAssetArgsSchema.shape,
@@ -87,7 +91,7 @@ maxTriangles 100-300000 (default 60000). Evidence is mesh_triangles. Uses the ex
 
 Example: next module to the right, same base height, same front plane: {axis:"x", side:"max", gap:0, alignOtherAxes:{y:"min", z:"max"}}.
 
-Bounds are the visible GeometryInstance3D AABBs (the definition summer_align_distribute_3d uses; evidence visual_aabb). space "local" uses the reference's own axes for rotated facades. When the subject is inside the reference, its geometry is left out of the reference's bounds. One SetProp on position, one undo step, then the scene is saved; a fresh read verifies the achieved gap and residuals (verify). Returns {moved_by, position, verify:{gap, residuals}}. The scene must be open in the editor (any tab).`,
+Bounds are the visible GeometryInstance3D AABBs (the definition summer_align_distribute_3d uses; evidence visual_aabb). space "local" uses the reference's own axes for rotated facades. When the subject is inside the reference, its geometry is left out of the reference's bounds. One SetProp on position, one undo step, then the scene is saved; a fresh read verifies the achieved gap and residuals (verify). A measured result includes verify:{gap, residuals}. If either node loses its visible bounds after the save, saved stays true and verify reports {ok:false, error}. The scene must be open in the editor (any tab).`,
     placeAdjacentArgsSchema.shape,
     runPlacement(placeAdjacent)
   );
@@ -115,7 +119,7 @@ Returns {seated_on, final_gap (collider gap from SnapToSurface), back_face_gap (
     "summer_repeat_along",
     `Instance copies of one scene along a straight line in one call: wall clamps every 0.45 m, braces every 0.8 m, fence posts, a row of window modules. Give start plus end (with spacing or count) or start plus direction (with count and spacing); positions are in the parent's local space. align (start|center|end) places the leftover length when spacing does not divide the line. Each copy is an InstantiateScene (the engine runs each alone), named <namePrefix>_<n>; the copies' transforms (position, rotationDegrees, scale) are then set in one request and the scene is saved once: N copies cost N + 2 engine requests. At most 64 copies per call.
 
-Returns a compact receipt: {count, spacing, first, last, created [node paths], renamed, failures [{index, error}], saved}. Lists are cut to stay under 5 KB and the cut is declared.`,
+The receipt reports the planned spacing, first and last positions, and row direction in the parent's local space. It also includes count, created node paths, renamed nodes, failures and saved. Lists are cut to stay under 5 KB and the cut is declared.`,
     repeatAlongArgsSchema.shape,
     runPlacement(repeatAlong)
   );
@@ -137,7 +141,7 @@ One SetProp on transform, saved; a fresh read verifies {distance, angle_degrees,
     "summer_raycast",
     `Cast one ray from any point in an open scene, before anything is placed there: find the wall, floor or ceiling in front of a point and its normal. (summer_starcast casts from an existing node's bounds; this casts from an arbitrary origin.)
 
-evidence auto (default): physics first (collider hit: exact point and normal); if physics hits nothing, the nearest visible-mesh AABB hit, declared with fallback:true and fallback_reason. Physics needs the scene to be the active editor tab (only that scene's bodies are in the editor's physics space); otherwise auto falls back to visual AABBs. When physics hits but a mesh-only object is nearer, nearer_visual_only names it.
+evidence auto (default): physics first (collider hit: exact point and normal); if physics hits nothing, the nearest visible-mesh AABB hit, declared with fallback:true and fallback_reason. Physics needs the scene to be the active editor tab (only that scene's bodies are in the editor's physics space); otherwise auto falls back to visual AABBs. When another visual bound is nearer than the physics hit, nearer_visual_only reports its AABB entry point and box-face normal. The hit collider's own mesh is skipped. A visual bound can extend into empty space and can belong to an object with collision.
 
 Returns {hit, evidence, path, point, normal, distance, origin, direction, physics_available, warnings}. Read-only (RunSceneScript probe, undo "none"); never saves.`,
     raycastArgsSchema.shape,

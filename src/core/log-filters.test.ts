@@ -146,6 +146,26 @@ describe("shapeEngineLogResponse", () => {
     expect(summary?.totalOut).toBe(1);
   });
 
+  it.each(["error", "warning"])("preserves each native %s origin and occurrence count", (severity) => {
+    const row = (script: string, count: number) => ({
+      severity, error: "Same reason", error_descr: "", message: "Same reason", count,
+      file: "core/variant/variant_utility.cpp", line: 1023, function: "push_error",
+      callstack: [{ file: "res://scene.gd", line: 12, function: script }],
+    });
+    const errors = [row("alpha", 2), row("beta", 1), row("alpha", 5)];
+    const { entries, summary } = filterAndDedupe(errors);
+    expect(entries.map((entry) => entry.callstack[0]!.function)).toEqual(["alpha", "beta", "alpha"]);
+    expect(entries.map((entry) => entry.message)).toEqual(["Same reason (×2)", "Same reason", "Same reason (×5)"]);
+    expect(entries.map((entry) => entry.count)).toEqual([2, 1, 5]);
+    expect(summary.duplicatesCollapsed).toBe(0);
+  });
+
+  it("uses native counts without combining indistinguishable records when stacks are omitted", () => {
+    const second = { severity: "error", error: "Old build", error_descr: "", count: 2 };
+    const { entries } = filterAndDedupe([{ ...second, count: 1 }, second]);
+    expect(entries).toEqual([{ ...second, count: 1 }, { ...second, message: "Old build (×2)" }]);
+  });
+
   it("returns input unchanged when no log array is found", () => {
     const raw = { status: "ok", results: [{ ok: true }] };
     const { result, summary } = shapeEngineLogResponse(raw);

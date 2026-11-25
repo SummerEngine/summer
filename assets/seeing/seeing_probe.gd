@@ -103,6 +103,7 @@ var _material_flag_cache: Dictionary = {}
 
 # Render mode state.
 var _normals_world: World3D = null
+var _preview_camera: Camera3D
 
 
 func _ready() -> void:
@@ -121,30 +122,39 @@ func _ready() -> void:
 		return
 	_cfg = parsed
 	_result["renderer"] = RenderingServer.get_current_rendering_method()
+	var scene_path := String(_cfg.get("scene_path", ""))
+	var packed: PackedScene = load(scene_path) as PackedScene
+	# The editor can preserve a non-null MissingNode for an unavailable scene
+	# instance. Check the requested resource before rendering that placeholder.
+	if packed == null or packed.get_state().get_node_count() == 0:
+		_fail("scene_load_failed", "Could not load scene: " + scene_path)
+		return
 	_subject = get_parent().get_node_or_null(SUBJECT_NAME)
 	if _subject == null:
 		_fail("no_subject", "The wrapper scene has no Subject instance (the target scene failed to instantiate).")
 		return
-	var packed: PackedScene = load(String(_cfg.get("scene_path", ""))) as PackedScene
-	if packed != null and packed.get_state().get_node_count() > 0:
-		_scene_root_name = String(packed.get_state().get_node_name(0))
+	_scene_root_name = String(packed.get_state().get_node_name(0))
 	_result["scene_root_name"] = _scene_root_name
 	_result["stage"] = "configured"
+	_write_result()
+	get_viewport().disable_3d = true
+	# ScenePreview creates and selects its framing camera after adding this wrapper.
+	call_deferred("_start_preview")
+
+
+func _start_preview() -> void:
+	_preview_camera = get_viewport().get_camera_3d()
+	if _preview_camera == null:
+		_preview_camera = Camera3D.new()
+		add_child(_preview_camera)
 	var mode := String(_cfg.get("mode", ""))
 	if mode == "render":
 		_setup_render()
 		if _cfg.has("occlusion"):
-			# Deferred like the analyze pass; ScenePreview flushes it before the
-			# first draw, so result.json carries it when the image is read.
-			call_deferred("_render_occlusion")
+			_render_occlusion()
 	elif mode == "analyze":
-		get_viewport().disable_3d = true
 		_setup_image_checks()
-		_write_result()
-		# Deferred so CSG roots and @tool scripts that settle with call_deferred
-		# have run before the geometry is read. ScenePreview iterates the main
-		# loop after instantiating, which flushes this call.
-		call_deferred("_analyze")
+		_analyze()
 	else:
 		_fail("bad_mode", "Unknown seeing mode '" + mode + "'.")
 
@@ -192,8 +202,12 @@ static func _arr(v: Vector3, digits := 3) -> Array:
 	return [snappedf(v.x, step), snappedf(v.y, step), snappedf(v.z, step)]
 
 
+static func _coordinates(v: Vector3) -> Array:
+	return [v.x, v.y, v.z]
+
+
 static func _aabb_dict(box: AABB) -> Dictionary:
-	return {"position": _arr(box.position), "size": _arr(box.size)}
+	return {"position": _coordinates(box.position), "size": _coordinates(box.size)}
 
 
 # Lenient path resolution, the same spellings ScenePreview accepts: a path
@@ -338,13 +352,14 @@ func _analyze() -> void:
 			_fail("node_not_found", "Spawn node not found or not a Node3D: " + spawn_path)
 			return
 		var s3 := spawn as Node3D
-		var info := {"path": spawn_path, "origin": _arr(s3.global_position), "forward": _arr(-s3.global_transform.basis.z.normalized())}
+		var info := {"path": spawn_path, "origin": _coordinates(s3.global_position), "forward": _coordinates(-s3.global_transform.basis.z.normalized())}
 		var cams := spawn.find_children("*", "Camera3D", true, false)
 		if spawn is Camera3D:
 			cams.push_front(spawn)
 		if not cams.is_empty():
 			var cam := cams[0] as Camera3D
-			info["camera"] = {"path": _rel(cam), "position": _arr(cam.global_position), "forward": _arr(-cam.global_transform.basis.z.normalized()), "fov": cam.fov}
+			var camera_pose := cam.get_camera_transform()
+			info["camera"] = {"path": _rel(cam), "position": _coordinates(camera_pose.origin), "forward": _coordinates(-camera_pose.basis.z), "fov": cam.fov}
 		_result["spawn"] = info
 	var key := _key_light()
 	if not key.is_empty():
@@ -657,32 +672,23 @@ func _sphere(radius: float) -> RID:
 	return s
 
 
-func _ray(from: Vector3, to: Vector3, mask: int) -> Dictionary:
+func _ray(from: Vector3, to: Vector3, mask: int, read_side := false) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, to, mask)
 	q.hit_back_faces = true
-	return _state.intersect_ray(q)
+	var hit := _state.intersect_ray(q)
+	if read_side and not hit.is_empty():
+		hit["back"] = false
+		if (int(_geom(hit).get("flags", 0)) & FLAG_DOUBLE) == 0:
+			# Preserve the actual segment: a shorter ray can miss a small drawn
+			# triangle. A front face on a different surface can also lie behind it.
+			q.hit_back_faces = false
+			var front := _state.intersect_ray(q)
+			hit["back"] = front.is_empty() or front["rid"] != hit["rid"] or front["position"] != hit["position"]
+	return hit
 
 
 func _geom(hit: Dictionary) -> Dictionary:
 	return _body_geom.get((hit["rid"] as RID).get_id(), {})
-
-
-# Did a ray travelling along `dir` meet the surface at `point` from BEHIND?
-# Both physics servers report hit normals turned toward the ray, so the side
-# is read with a short FRONT-faces-only ray across the hit point instead: a
-# front face there means the side facing the camera is drawn. A double-sided
-# material is drawn from both sides and never counts as a back face.
-func _is_back(point: Vector3, dir: Vector3, flags: int) -> bool:
-	if flags & FLAG_DOUBLE:
-		return false
-	# Only the hit's own kind of surface: a glass pane 1 cm in front of a
-	# wall's back must not count as that wall's front.
-	var mask: int = LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
-	if (flags & FLAG_SEE) != 0:
-		mask = LAYER_SEE
-	var q := PhysicsRayQueryParameters3D.create(point - dir * 0.02, point + dir * 0.02, mask)
-	q.hit_back_faces = false
-	return _state.intersect_ray(q).is_empty()
 
 
 # What a line from `from` to `to` really crosses, in order, up to the first
@@ -703,14 +709,14 @@ func _walk(from: Vector3, to: Vector3, mask: int) -> Dictionary:
 	var dir := (to - from) / total
 	var start := from
 	for _step in 8:
-		var hit := _ray(start, to, mask | LAYER_SEE)
+		var hit := _ray(start, to, mask | LAYER_SEE, true)
 		if hit.is_empty():
 			break
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var cls := int(g.get("cls", CLASS_HARD))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		if flags & FLAG_SEE:
 			if not back and String(out["see"]) == "":
 				out["see"] = String(g.get("path", ""))
@@ -889,14 +895,13 @@ func _floor_at(x: float, z: float, top: float, bottom: float, height: float) -> 
 	var from := Vector3(x, top, z)
 	var to := Vector3(x, bottom, z)
 	for _step in 8:
-		var hit := _ray(from, to, EYE_GROUND_MASK)
+		var hit := _ray(from, to, EYE_GROUND_MASK, true)
 		if hit.is_empty():
 			return null
 		var p: Vector3 = hit["position"]
-		var flags := int(_geom(hit).get("flags", 0))
 		# Hit normals are turned toward the ray, so this only says "horizontal";
-		# _is_back says which side was met.
-		if (hit["normal"] as Vector3).y > 0.7 and not _is_back(p, Vector3.DOWN, flags):
+		# The paired front-only query says which side was met.
+		if (hit["normal"] as Vector3).y > 0.7 and not bool(hit["back"]):
 			if _ray(p + Vector3.UP * 0.05, p + Vector3.UP * height, EYE_GROUND_MASK).is_empty():
 				return p.y
 		from = p + Vector3.DOWN * 0.01
@@ -994,10 +999,14 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 	return out
 
 
+# Match the float cutoff in native ScenePreview; GDScript float is a double.
+const CAMERA_POLE_LIMIT := Vector3(0.0, 0.999, 0.0).y
+
+
 func _look_basis(pos: Vector3, look: Vector3) -> Basis:
 	var fwd := (look - pos).normalized()
 	var up := Vector3.UP
-	if absf(fwd.dot(up)) > 0.999:
+	if absf(fwd.y) > CAMERA_POLE_LIMIT:
 		up = Vector3(0, 0, -1)
 	return Basis.looking_at(fwd, up)
 
@@ -1005,6 +1014,11 @@ func _look_basis(pos: Vector3, look: Vector3) -> Basis:
 var _t_lens := 0
 var _t_sweep := 0
 var _t_grid := 0
+
+
+# ScenePreview's free camera extends the scene clip range for a long eye-to-aim distance.
+func _pose_far(pos: Vector3, look: Vector3) -> float:
+	return maxf(_preview_camera.far, pos.distance_to(look) * 10.0)
 
 
 func _measure_all(candidates: Array) -> Array:
@@ -1021,6 +1035,7 @@ func _measure_all(candidates: Array) -> Array:
 			var l := _vec(rec["look_at"])
 			cam.global_transform = Transform3D(_look_basis(p, l), p)
 			cam.fov = float(rec["fov"])
+			cam.far = _pose_far(p, l)
 	_result["measure_ms"] = {"lens": _t_lens / 1000, "sweeps": _t_sweep / 1000, "grid": _t_grid / 1000}
 	_measurements = out
 	return out
@@ -1048,8 +1063,7 @@ func _setup_image_checks() -> void:
 		var l := _vec((cand as Dictionary).get("look_at"), p + Vector3(0, 0, -1))
 		cam.global_transform = Transform3D(_look_basis(p, l), p)
 		cam.fov = float((cand as Dictionary).get("fov", 60.0))
-		cam.near = 0.05
-		cam.far = 1000.0
+		cam.near = _preview_camera.near
 		cam.current = true
 		_checks.append({"vp": sv, "cam": cam, "i": i, "done": false})
 		i += 1
@@ -1269,9 +1283,9 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	# surface met from BEHIND (culled: the image looks through it). Back faces
 	# of soft surfaces and transparent back faces are not drawn: the ray goes on.
 	var t_grid := Time.get_ticks_usec()
+	var far := _pose_far(pos, look)
 	var cols := int(spec.get("grid_cols", 16))
 	var rows := int(spec.get("grid_rows", 9))
-	var max_dist := float(spec.get("max_ray", 600.0))
 	var basis := _look_basis(pos, look)
 	var tan_v := tan(deg_to_rad(fov) * 0.5)
 	var tan_h := tan_v * aspect
@@ -1281,8 +1295,8 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		for i in cols:
 			var x := ((i + 0.5) / cols * 2.0 - 1.0) * tan_h
 			var y := (1.0 - (j + 0.5) / rows * 2.0) * tan_v
-			var dir := (basis * Vector3(x, y, -1.0)).normalized()
-			var cell := _grid_cell(pos, dir, max_dist, all_mask)
+			var depth_step := basis * Vector3(x, y, -1.0)
+			var cell := _grid_cell(pos, depth_step, far, all_mask)
 			codes += String(cell[0])
 			dists.append(cell[1])
 	rec["grid"] = codes
@@ -1305,18 +1319,19 @@ func _lens_problem(pos: Vector3, fwd: Vector3, lens_r: float) -> String:
 	return ""
 
 
-func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array:
-	var start := pos
-	var end := pos + dir * max_dist
+func _grid_cell(pos: Vector3, depth_step: Vector3, far: float, mask: int) -> Array:
+	var start := pos + depth_step * _preview_camera.near
+	var end := pos + depth_step * far
+	var dir := depth_step.normalized()
 	for _step in 6:
-		var hit := _ray(start, end, mask | LAYER_SEE)
+		var hit := _ray(start, end, mask | LAYER_SEE, true)
 		if hit.is_empty():
 			return [".", -1]
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var cls := int(g.get("cls", CLASS_HARD))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		var d := snappedf(pos.distance_to(point), 0.1)
 		if flags & FLAG_SEE:
 			if not back:
@@ -1331,9 +1346,9 @@ func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array
 
 
 func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, adjustments: Array) -> Dictionary:
-	rec["position"] = _arr(pos)
-	rec["look_at"] = _arr(look)
-	rec["fov"] = snappedf(fov, 0.01)
+	rec["position"] = _coordinates(pos)
+	rec["look_at"] = _coordinates(look)
+	rec["fov"] = fov
 	# The real camera height: the first solid surface straight below the final
 	# pose (null: nothing below it, the world edge). Eye poses already carry the
 	# walkable surface they stand on.
@@ -1348,7 +1363,7 @@ func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, a
 # Boxed in: geometry within arm's reach on all four horizontal sides AND
 # overhead. A camera there is inside a wall cavity, a prop or a solid block,
 # never a place to shoot from. (Ray normals cannot tell inside from outside:
-# the physics server reports normals facing the ray; _is_back reads the side.)
+# the physics server reports normals facing the ray; the front-only query reads the side.)
 func _enclosed(pos: Vector3, fwd: Vector3) -> bool:
 	return _enclosure_sides(pos, fwd) >= 5
 
@@ -1466,14 +1481,14 @@ func _sees_node(cam: Vector3, target: Vector3, own: String, mask: int) -> Dictio
 	var start := cam
 	var met_own_back := false
 	for _step in 8:
-		var hit := _ray(start, end, mask)
+		var hit := _ray(start, end, mask, true)
 		if hit.is_empty():
 			break
 		var point: Vector3 = hit["position"]
 		var g := _geom(hit)
 		var flags := int(g.get("flags", 0))
 		var path := String(g.get("path", ""))
-		var back := _is_back(point, dir, flags)
+		var back := bool(hit["back"])
 		var is_own := own == "." or path == own or path.begins_with(own + "/")
 		if is_own:
 			if not back:
@@ -1491,10 +1506,6 @@ func _sees_node(cam: Vector3, target: Vector3, own: String, mask: int) -> Dictio
 
 func _setup_render() -> void:
 	var vp := get_viewport()
-	# The preview viewport's own camera would render the whole scene once more,
-	# hidden behind the opaque grid. Turn its 3D pass off; the tiles below render
-	# through their own SubViewports that SHARE this world.
-	vp.disable_3d = true
 	var world: World3D = vp.find_world_3d()
 	var canvas_size := _vec2i(_cfg.get("canvas", [1024, 576]))
 	var layer := CanvasLayer.new()
@@ -1558,7 +1569,9 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 	var render_size := _vec2i(t.get("render_size", [int(rect.size.x), int(rect.size.y)]))
 	var view := String(t.get("view", "beauty"))
 	var sv := SubViewport.new()
-	sv.size = render_size
+	# Godot requires at least two viewport pixels per axis. Three samples give a
+	# one-pixel display strip a single centre texel when the texture is scaled.
+	sv.size = Vector2i(3 if render_size.x == 1 else render_size.x, 3 if render_size.y == 1 else render_size.y)
 	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	sv.transparent_bg = false
 	_apply_project_aa(sv)
@@ -1595,8 +1608,8 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 	var pos := _vec(pose.get("position"))
 	var look := _vec(pose.get("look_at"), pos + Vector3(0, 0, -1))
 	cam.global_transform = Transform3D(_look_basis(pos, look), pos)
-	var near := float(pose.get("near", 0.05))
-	var far := float(pose.get("far", 1000.0))
+	var near := float(pose.get("near", _preview_camera.near))
+	var far := float(pose.get("far", _pose_far(pos, look)))
 	var fov := float(pose.get("fov", 60.0))
 	var crop: Array = pose.get("crop", [])
 	if crop.size() == 4:
@@ -1610,7 +1623,11 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 		var u1 := float(crop[2])
 		var v1 := float(crop[3])
 		cam.projection = Camera3D.PROJECTION_FRUSTUM
-		cam.size = h_near * (v1 - v0)
+		var crop_width := w_near * (u1 - u0)
+		var crop_height := h_near * (v1 - v0)
+		# Keep the longer span of the requested window exact when its short
+		# dimension rounds to a whole output pixel.
+		cam.size = crop_width * sv.size.y / sv.size.x if crop_width >= crop_height else crop_height
 		cam.frustum_offset = Vector2(((u0 + u1) * 0.5 - 0.5) * w_near, (0.5 - (v0 + v1) * 0.5) * h_near)
 		cam.near = near
 		cam.far = far

@@ -30,7 +30,12 @@ async function creatorResult<T>(operation: () => Promise<T>) {
   }
 }
 
-export function registerCreatorTools(server: McpServer): void {
+export function registerCreatorTools(
+  server: McpServer,
+  boundProject: () => string | undefined | Promise<string | undefined> = () => undefined
+): void {
+  // Opening another project can rebind the session after these tools register.
+  const projectFor = async (project?: string) => project?.trim() ? project : await boundProject();
   server.tool(
     "summer_export_game",
     "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms, with or without a server; upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. The store targets the platforms in the bundle; when a game with a server declares others in summer.build.json, targetPlatformChange names the difference (nothing is refused), and alignDeclaration:true updates summer.build.json to the targets. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
@@ -53,8 +58,8 @@ export function registerCreatorTools(server: McpServer): void {
         .describe("A game with a server: set summer.build.json targetPlatforms to targets before exporting, so the project declares what it exports. Optional: the store targets the bundle's platforms either way, and the answer's targetPlatformChange names any difference."),
     },
     async ({ project, out, targets, format, debug, timeoutSeconds, alignDeclaration }) =>
-      creatorResult(() =>
-        exportGame({ project, out, targets, format, debug, alignDeclaration, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
+      creatorResult(async () =>
+        exportGame({ project: await projectFor(project), out, targets, format, debug, alignDeclaration, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
       )
   );
 
@@ -116,15 +121,15 @@ export function registerCreatorTools(server: McpServer): void {
         .optional()
         .describe("What to do after waitSeconds, in order; exactly one of press, key, action, click, drag, wait, shot per step."),
     },
-    async (args) => creatorResult(() => captureGameplay(args as CaptureGameplayInput))
+    async (args) => creatorResult(async () => captureGameplay({ ...args, project: await projectFor(args.project) } as CaptureGameplayInput))
   );
 
   server.tool(
     "summer_publish_build",
-    "Upload a game file to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. What the file is decides the upload. A store bundle from summer_export_game (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack and wait for Summer's automated checks on each platform (checks: passed, or failed with the code and the fix). A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. A game not made with Summer Engine takes two kinds of upload. Its server: a summer.bundle.v2 bundle whose server is a program (file; no clientVersion, the bundle's summer.build.json names the version) becomes a Build without a client; the answer carries buildId. Its clients: one archive per platform, each uploaded to that Build with buildId, platform (macos, windows or web), entry and clientVersion; the answer carries clientPackageId once Summer admitted it, or the store's own code and message when it did not. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and version continues the same upload. Going live is summer_go_live.",
+    "Upload an existing file to the creator's game on summer.games. Pass file for a Summer Games export bundle. For a platform-specific ZIP, pass file and platform (web, macos-universal, windows-x64 or linux-x64). The ZIP can come from any build tool. Without an explicit file, use the last summer_export_game result. Summer runs automated checks on the uploaded build. A game not made with Summer Engine takes two kinds of upload. Its server: a summer.bundle.v2 bundle whose server is a program (file; no clientVersion, the bundle's summer.build.json names the version) becomes a Build without a client; the answer carries buildId. Its clients: one archive per platform, each uploaded to that Build with buildId, platform (macos, windows or web), entry and clientVersion; the answer carries clientPackageId once Summer admitted it, or the store's own code and message when it did not. First call with confirm=false: it checks that the game exists for this account and returns the exact upload target and game name and id to show the user. Bundles include a SHA-256 digest and warn when the store page does not list the export's platforms. Web builds and downloads identify the file, platform, size and version. Set confirm only after the user approves that target. Needs \"summer login --store\". A retry with the same file and version continues the same upload. Going live is summer_go_live.",
     {
       gameId: z.string().optional().describe("The store game id (from games.list, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
-      file: z.string().optional().describe("The file to upload. A Summer Engine export (.zip; defaults to the last summer_export_game result). For a game not made with Summer Engine: first its server, a summer.bundle.v2 bundle whose server is a program (Summer's bundle tool for such games writes it; the answer carries buildId), then with buildId one client archive (.zip) per platform."),
+      file: z.string().optional().describe("Path to an existing Summer Games export or platform ZIP. Defaults to the last summer_export_game result. For a game not made with Summer Engine: first its server, a summer.bundle.v2 bundle whose server is a program (Summer's bundle tool for such games writes it; the answer carries buildId), then with buildId one client archive (.zip) per platform."),
       clientVersion: z
         .string()
         .optional()
@@ -146,7 +151,7 @@ export function registerCreatorTools(server: McpServer): void {
         .enum(["web", "macos-universal", "windows-x64", "linux-x64", "macos", "windows"])
         .optional()
         .describe(
-          "Without buildId, for web builds and native downloads: the store platform (web, macos-universal, windows-x64, linux-x64). Defaults to the last export's platform; omit for a bundle. With buildId: the platform of that Build's client (macos, windows or web)."
+          "Without buildId: set for a platform-specific ZIP (web, macos-universal, windows-x64 or linux-x64). Omit for a Summer Games export bundle. A saved download export supplies its own platform. With buildId: the platform of that Build's client (macos, windows or web)."
         ),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the exact upload."),
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
@@ -240,7 +245,7 @@ export function registerCreatorTools(server: McpServer): void {
       slugs: z.array(z.string()).max(500).optional().describe("Only these items (their slugs); the rest of the file is left out of the plan. Confirm a plan of more than 50 changed items one batch (from batches) at a time."),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the plan."),
     },
-    async (args) => creatorResult(() => syncItems({ ...args, face: "mcp" }))
+    async (args) => creatorResult(async () => syncItems({ ...args, project: await projectFor(args.project), face: "mcp" }))
   );
 
   server.tool(

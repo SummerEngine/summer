@@ -66,11 +66,40 @@ describe("summer_world_snapshot filters", () => {
     expect(shaped.truncated).toBe(false);
   });
 
+  it("identifies a missing filtered match when the engine truncated the baseline", () => {
+    const partial = { ...envelope.results[0]!, total_nodes: 4002, truncated: true };
+    const shaped = shapeWorldSnapshot(partial, { path_prefix: "Tail" });
+    expect(shaped).toMatchObject({
+      engine_truncated: true, truncated: true, matched_nodes: 0, returned_nodes: 0, next_offset: null,
+      total_nodes: 4002, note: expect.stringContaining("Increase max_nodes"),
+    });
+    expect(shapeWorldSnapshot(partial, { max_nodes: 5000 })).toMatchObject({
+      engine_truncated: true, next_offset: null, note: expect.stringContaining("only the captured node entries"),
+    });
+  });
+
   it("the engine baseline is never capped below its default; failures pass through", () => {
-    expect(buildWorldSnapshotOp({ max_nodes: 50 })).toEqual({ op: "GetWorldSnapshot" });
-    expect(buildWorldSnapshotOp({ max_nodes: 9000, scene_path: "res://a.tscn" })).toEqual({ op: "GetWorldSnapshot", scene_path: "res://a.tscn", max_nodes: 9000 });
+    expect(buildWorldSnapshotOp({ max_nodes: 50 })).toEqual({ op: "GetWorldSnapshot", include_2d: true });
+    expect(buildWorldSnapshotOp({ include_2d: false })).toEqual({ op: "GetWorldSnapshot", include_2d: false });
+    expect(buildWorldSnapshotOp({ max_nodes: 9000, scene_path: "res://a.tscn" })).toEqual({ op: "GetWorldSnapshot", include_2d: true, scene_path: "res://a.tscn", max_nodes: 9000 });
     const failure = { ok: false, results: [{ ok: false, op: "GetWorldSnapshot", error: "no edited scene" }] };
     expect(shapeWorldSnapshot(failure, { path_prefix: "A" })).toBe(failure);
+  });
+
+  it("can find a 2D child by class on editors that omit 2D rows by default", async () => {
+    const child = { path: "UI/Label", class: "Label" };
+    const client = {
+      async executeOps([op]: Array<{ include_2d?: boolean }>) {
+        const nodes = op?.include_2d ? [child] : [];
+        return { results: [{ ok: true, op: "GetWorldSnapshot", nodes, counts: { Label: 1 } }] };
+      },
+    };
+    const ctx = { engine: async () => client as never };
+    const byClass = { classes: ["Label"] };
+    const included = await dispatchTool("world-snapshot", byClass, ctx);
+    const excluded = await dispatchTool("world-snapshot", { ...byClass, include_2d: false }, ctx);
+    expect(included).toMatchObject({ results: [{ matched_nodes: 1, nodes: [child] }] });
+    expect(excluded).toMatchObject({ results: [{ matched_nodes: 0, nodes: [] }] });
   });
 
   it("the CLI face shapes the result the same way", async () => {

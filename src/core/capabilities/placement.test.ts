@@ -33,7 +33,7 @@ import {
   type RawLoop,
 } from "./placement.js";
 import { PLACEMENT_ARGS_TOKEN, buildPlacementScript, encodeScriptArgs, placementProbeTemplate } from "./placement-script.js";
-import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
+import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, toGodotTransform, xformFromArray, type Vec3 } from "./placement-math.js";
 
 type Op = Record<string, unknown>;
 type Probe = (args: Op) => Op;
@@ -44,20 +44,29 @@ const IDENTITY12 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
 function probeArgs(op: Op): Op {
   const source = String(op.script_source);
   const line = source.split("\n").find((l) => l.startsWith("const ARGS_B64 = "))!;
-  const literal = JSON.parse(line.slice("const ARGS_B64 = ".length)) as string;
+  const literal = line ? JSON.parse(line.slice("const ARGS_B64 = ".length)) as string
+    : /Marshalls\.base64_to_utf8\("([^"]+)"\)/.exec(source)![1]!;
   return JSON.parse(Buffer.from(literal, "base64").toString("utf8")) as Op;
+}
+
+function identityParentPlan(args: Op, original = toGodotTransform(xformFromArray(IDENTITY12))): Op {
+  const desired = (args.desired as Vec3[]).flat();
+  return { ok: true, local_transform: toGodotTransform(xformFromArray(desired)), original_transform: original };
 }
 
 /** A client whose RunSceneScript answers come from `probe` (one per call, or
  *  the same function every time) and whose mutations succeed. */
-function mockClient(probes: Probe | Probe[], options: { mutationResults?: (ops: Op[]) => Op[]; lacks?: string[] } = {}) {
+function mockClient(probes: Probe | Probe[], options: { mutationResults?: (ops: Op[]) => Op[]; lacks?: string[]; planTransform?: Probe } = {}) {
   const queue = Array.isArray(probes) ? [...probes] : null;
   const probeCalls: Op[] = [];
   const mutations: Op[][] = [];
   const executeIdentityBoundOps = vi.fn(async (ops: Op[], _options?: Op) => {
     if (ops[0]!.op === "RunSceneScript") {
       probeCalls.push(ops[0]!);
-      const answer = (queue ? queue.shift()! : (probes as Probe))(probeArgs(ops[0]!));
+      const args = probeArgs(ops[0]!);
+      const answer = args.cmd === "plan_transform"
+        ? (options.planTransform ?? identityParentPlan)(args)
+        : (queue ? queue.shift()! : probes as Probe)(args);
       return { status: "ok", terminalState: "applied", results: [{ ok: true, op: "RunSceneScript", ran: true, result: answer }] };
     }
     mutations.push(ops);
@@ -202,7 +211,7 @@ describe("hostile inputs never become GDScript", () => {
       }
     }
     expect(source).toContain('if cmd == "blockers":');
-    expect(source).toContain('rec["transform_str"] = var_to_str(n.transform)');
+    expect(source).toContain('"original_transform": var_to_str(node.transform)');
     expect(source).toContain('"cull_back": acc[4] / acc[0]');
     // Open-loop ports travel as raw loops; placement.ts orders them (orderLoops).
     expect(source).toContain('var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}');
@@ -248,6 +257,25 @@ describe("summer_inspect_asset", () => {
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(5 * 1024);
     expect(result.truncated).toMatchObject({ meshes: { total: 200 } });
     expect(result).toMatchObject({ ok: true, tool: "summer_inspect_asset", evidence: "mesh_triangles", mesh_count: 200 });
+  });
+
+  it("retains MultiMesh counts and per-instance loop identity", async () => {
+    const { client } = mockClient(() => ({
+      ok: true, mesh_count: 1, triangles: 24,
+      meshes: [{ path: "Batch", tris: 24, instances: 4, drawn_instances: 2 }],
+      planes: [], open_loops: [{ mesh: 0, instance: 1, center: [0, 0, 0], direction: [0, 1, 0], radius: 1 }],
+    }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://batch.tscn", detail: "full" }));
+    expect(result).toMatchObject({ summary: { mesh_count: 1, triangles: 24 }, meshes: [{ instances: 4, drawn_instances: 2 }], open_loops: [{ mesh: 0, instance: 1 }] });
+  });
+
+  it("does not promise complete analysis beyond the maximum triangle budget", async () => {
+    const { client } = mockClient(() => ({ ok: true, triangles: 300012, planes: [], open_loops: [], analysis: { triangles_analyzed: 100, truncated: true } }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://batch.tscn", maxTriangles: 100 }));
+    const warnings = String((result.summary as Record<string, unknown>).warnings);
+    expect(warnings).toContain("planes and open loops are incomplete");
+    expect(warnings).toContain("exceeds the maximum maxTriangles 300000");
+    expect(warnings).not.toContain("for the whole mesh");
   });
 
   it("rejects non-asset paths in the schema", () => {
@@ -437,7 +465,7 @@ describe("summer_raycast", () => {
       visual_origin_inside: 0,
     }));
     const result = await raycast(client, raycastArgsSchema.parse({ scenePath: "res://a.tscn", origin: [0, 1, 0], direction: [0, 0, -1] }));
-    expect(result).toMatchObject({ hit: true, evidence: "physics", path: "Wall", distance: 2, nearer_visual_only: { path: "Poster/Mesh" } });
+    expect(result).toMatchObject({ hit: true, evidence: "physics", path: "Wall", distance: 2, nearer_visual_only: { path: "Poster/Mesh", evidence: "visual_aabb" } });
     expect(result).not.toHaveProperty("fallback");
   });
 
@@ -464,6 +492,33 @@ describe("summer_raycast", () => {
 });
 
 describe("summer_place_adjacent", () => {
+  it("refuses to translate visible geometry that does not inherit the subject, before mutating or saving", async () => {
+    const { client, mutations } = mockClient(() => ({
+      ok: true, space: "world", dirs: WORLD_DIRS,
+      nodes: [
+        bounds("Group", [[0, 1], [0, 1], [0, 1]], { independent_geometry: ["Group/Plain/Mesh"] }),
+        bounds("Reference", [[3, 4], [0, 1], [0, 1]]),
+      ],
+    }));
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Group", reference: "Reference", axis: "x", side: "max" }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "independent_subject_geometry" });
+    expect(String(result.error)).toContain("Group/Plain/Mesh");
+    expect(mutations).toEqual([]);
+  });
+
+  it("preserves the scene when Godot cannot represent the requested movement", async () => {
+    const intervals: Array<[number, number]> = [[0, 1], [0, 1], [0, 1]];
+    const { client, mutations } = mockClient([
+      () => ({ ok: true, space: "world", dirs: WORLD_DIRS, nodes: [bounds("Piece", intervals), bounds("Wall", intervals)] }),
+      () => ({ ok: false, failure_reason: "translation_not_representable", error: "Cannot reproduce the world movement." }),
+    ]);
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Piece", reference: "Wall", axis: "x", side: "max",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "translation_not_representable" });
+    expect(mutations).toEqual([]);
+  });
+
   it("computes face-to-face deltas with per-axis alignment", () => {
     const subject: Array<[number, number]> = [[-0.5, 0.5], [0, 3], [-0.25, 0.05]];
     const reference: Array<[number, number]> = [[-1, 1], [0, 3], [-0.2, 0]];
@@ -490,7 +545,10 @@ describe("summer_place_adjacent", () => {
       ...before,
       nodes: [bounds("./Facade/Window", [[1, 2], [0, 3], [-0.3, 0]], { parent_xform: parent }), bounds("./Facade/Wall", [[-1, 1], [0, 3], [-0.2, 0]])],
     };
-    const { client, mutations, probeCalls } = mockClient([() => before, () => after]);
+    const { client, mutations, probeCalls } = mockClient([() => before, (args) => {
+      expect(args.world_delta).toEqual([1.5, 0, -0.05]);
+      return { ok: true, origin: [0, 0, 0], position: [0, 0, 1], transform: "Transform3D()", translated_position: "Vector3(0.05, 0, 2.5)" };
+    }, () => after]);
     const result = await placeAdjacent(
       client,
       placeAdjacentArgsSchema.parse({
@@ -512,6 +570,31 @@ describe("summer_place_adjacent", () => {
     expect(parseGodotVector3(String(mutations[0]![0]!.value))).toEqual([0.05, 0, 2.5]);
     expect(mutations[1]).toEqual([{ op: "SaveScene" }]);
     expect(result).toMatchObject({ ok: true, moved: true, saved: true, moved_by: [1.5, 0, -0.05], verify: { gap: 0, residuals: { y: 0, z: 0 } } });
+  });
+
+  it.each([
+    { missing: ["Window"] },
+    { missing: ["Wall"] },
+    { missing: ["Window", "Wall"] },
+  ])("reports an unverified saved gap when bounds disappear for $missing", async ({ missing }) => {
+    const intervals: Array<[number, number]> = [[0, 1], [0, 1], [0, 1]];
+    const paths = ["Window", "Wall"];
+    const read = { ok: true, space: "world", dirs: WORLD_DIRS };
+    const { client, mutations } = mockClient([
+      () => ({ ...read, nodes: paths.map((path) => bounds(path, intervals)) }),
+      () => ({ ok: true, origin: [0, 0, 0], position: [0, 0, 0], transform: "Transform3D()", translated_position: "Vector3(1, 0, 0)" }),
+      () => ({ ...read, nodes: paths.map((path) => bounds(path, missing.includes(path) ? null : intervals)) }),
+    ]);
+
+    const result = await placeAdjacent(client, placeAdjacentArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Window", reference: "Wall", axis: "x", side: "max",
+    }));
+
+    expect(result).toMatchObject({ ok: true, moved: true, saved: true });
+    expect(result.verify).toEqual({
+      ok: false, error: `Could not measure the saved gap. No visible geometry bounds for ${missing.join(", ")}.`,
+    });
+    expect(mutations.flat().map((op) => op.op)).toEqual(["SetProp", "SaveScene"]);
   });
 
   it("refuses a reference inside the subject and a subject without bounds", async () => {
@@ -562,7 +645,8 @@ describe("summer_attach_to_surface", () => {
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", surface: "./Wall", standoff: 0.02 })
     );
     const steps = probeArgs(probeCalls[0]!).steps as Op[];
-    expect(steps[0]).toMatchObject({ cmd: "bounds", space_node: "Lamp" });
+    expect(steps[0]).toMatchObject({ cmd: "bounds", nodes: [{ path: "Lamp", mount_frame: true }] });
+    expect(steps[0]).not.toHaveProperty("space_node");
     expect(steps[1]).toMatchObject({ cmd: "raycast", from_subject: "Lamp", surface: "./Wall", exclude: ["Lamp"] });
     const [setProp, snap] = mutations[0]!;
     expect(setProp).toMatchObject({ op: "SetProp", path: "Lamp", key: "transform" });
@@ -595,7 +679,6 @@ describe("summer_attach_to_surface", () => {
   const shutterBounds = (extra: Op = {}) =>
     bounds("Lane2/ShutterWin", [[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], {
       xform: [1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6],
-      transform_str: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)",
       ...extra,
     });
   const shutterRead = (hit: Op = { path: "House2/Back/B0_w3", point: [2, 2.35, 0], normal: [0, 0, 1], distance: 3 }) => ({
@@ -612,12 +695,44 @@ describe("summer_attach_to_surface", () => {
         : { ok: true, op: op.op }
     );
 
+  it("refuses an unrepresentable full attachment pose before turning or saving the piece", async () => {
+    const { client, mutations } = mockClient(() => shutterRead(), {
+      planTransform: (args) => {
+        expect(args).toMatchObject({ cmd: "plan_transform", path: "Lane2/ShutterWin", scene_path: "res://a.tscn" });
+        return { ok: false, failure_reason: "transform_not_representable", error: "The parent cannot represent the requested pose." };
+      },
+    });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "transform_not_representable" });
+    expect(mutations).toHaveLength(0);
+  });
+
+  it("uses Godot's verified attachment transform and restores its captured local literal after a failed seat", async () => {
+    const preseat = "Transform3D(0.000009123456, 0, -0.000004765432, 0, 0.00001, 0, 0.000004765432, 0, 0.000009123456, 2, 1.1, 0.25)";
+    const original = "Transform3D(0.000009123, 0, -0.000004767, 0, 0.00001, 0, 0.000004767, 0, 0.000009123, 2, 1.1000003, 0.61)";
+    const { client, mutations } = mockClient(() => shutterRead(), {
+      planTransform: () => ({ ok: true, local_transform: preseat, original_transform: original }),
+      mutationResults: seatAt([2, 1.1, 0.32], "Duct/Brace"),
+    });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3",
+    }));
+    expect(result).toMatchObject({ ok: false, restored: true, saved: false });
+    expect(mutations[0]![0]).toMatchObject({ op: "SetProp", key: "transform", value: preseat });
+    expect(mutations[1]).toEqual([{ op: "SetProp", path: "Lane2/ShutterWin", key: "transform", value: original }]);
+    expect(mutations.flat().some(op => op.op === "SaveScene")).toBe(false);
+  });
+
   it("keeps the piece's height with a ray and seats its back face, not its origin", async () => {
-    const { client, mutations } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
+    const { client, mutations, probeCalls } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
     const result = await attachToSurface(
       client,
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } })
     );
+    const steps = probeArgs(probeCalls[0]!).steps as Op[];
+    expect(steps[1]).toMatchObject({ from_subject: "Lane2/ShutterWin", origin: [2, 2.35, 3], direction: [0, 0, -1] });
     const t = parseGodotTransform(String(mutations[0]![0]!.value))!;
     // The ray is at y 2.35; the shutter keeps y 1.1. Its back face (0.2 behind
     // the origin) goes onto the wall at z 0: origin z 0.2, sent 5 cm in front.
@@ -661,7 +776,10 @@ describe("summer_attach_to_surface", () => {
         { ok: true, origin: [2, 1.1, 0.6], direction: [0, 0, -1], physics_available: true, physics: { path: "House2/Back/B0_w3", point: [2, 1.1, 0], normal: [0, 0, 1], distance: 0.6 } },
       ],
     };
-    const { client, mutations } = mockClient(() => read, { mutationResults: seatAt([2, 1.1, 0.33], "Lane2/Duct/Brace_3") });
+    const { client, mutations } = mockClient(() => read, {
+      mutationResults: seatAt([2, 1.1, 0.33], "Lane2/Duct/Brace_3"),
+      planTransform: (args) => identityParentPlan(args, "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)"),
+    });
     const result = await attachToSurface(
       client,
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3" })
@@ -751,7 +869,7 @@ describe("summer_attach_to_surface", () => {
         ),
     });
     const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
-    expect(probeArgs(probeCalls[1]!)).toMatchObject({ cmd: "blockers", path: "Lane2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 });
+    expect(probeCalls.map(probeArgs)).toContainEqual(expect.objectContaining({ cmd: "blockers", path: "Lane2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 }));
     expect(result).toMatchObject({
       ok: false,
       failure_reason: "overlap_recovery_exceeded",
@@ -818,11 +936,59 @@ describe("summer_repeat_along", () => {
     expect(byDirection.positions[2]![2]).toBeCloseTo(1.6);
   });
 
+  it.each([4e-10, Number.MIN_VALUE, Number.MAX_VALUE])("uses the same direction at magnitude %s", (component) => {
+    const args = repeatAlongArgsSchema.parse({
+      scenePath: "res://room.tscn", template: "res://piece.tscn", parent: "Scaled",
+      start: [0, 0, 0], direction: [component, -component, 0], spacing: 2, count: 2,
+    });
+    const row = repeatPositions(args);
+    expect(row.direction[0]).toBeCloseTo(Math.SQRT1_2, 13);
+    expect(row.direction[1]).toBeCloseTo(-Math.SQRT1_2, 13);
+    expect(row.positions[1]![0]).toBeCloseTo(Math.SQRT2, 13);
+    expect(row.positions[1]![1]).toBeCloseTo(-Math.SQRT2, 13);
+  });
+
+  it("distinguishes short local spans from coincident endpoints", () => {
+    const base = { start: [0, 0, 0] as Vec3, end: [4e-10, 0, 0] as Vec3, align: "start" as const };
+    expect(repeatPositions({ ...base, count: 2 }).positions).toEqual([[0, 0, 0], [4e-10, 0, 0]]);
+    expect(repeatPositions({ ...base, spacing: 2e-10 }).positions).toEqual([[0, 0, 0], [2e-10, 0, 0], [4e-10, 0, 0]]);
+    expect(repeatPositions({ ...base, count: 1 }).direction).toEqual([1, 0, 0]);
+    expect(repeatPositions({ ...base, count: 1, end: base.start }).direction).toEqual([0, 0, 0]);
+    expect(() => repeatPositions({ ...base, count: 2, end: base.start })).toThrow(/same point/);
+    expect(repeatAlongArgsSchema.shape.direction.safeParse([0, 0, 0]).success).toBe(false);
+  });
+
   it("rejects over-determined, under-determined and oversized rows", () => {
     expect(() => repeatPositions({ start: [0, 0, 0], end: [1, 0, 0], count: 2, spacing: 0.5, align: "start" })).toThrow(/not both/);
     expect(() => repeatPositions({ start: [0, 0, 0], end: [1, 0, 0], align: "start" })).toThrow(/spacing or count/);
     expect(() => repeatPositions({ start: [0, 0, 0], direction: [1, 0, 0], count: 3, align: "start" })).toThrow(/spacing/);
     expect(() => repeatPositions({ start: [0, 0, 0], end: [100, 0, 0], spacing: 0.1, align: "start" })).toThrow(/limit is 64/);
+  });
+
+  it("keeps small parent-local spacing, endpoints and direction components in the receipt", async () => {
+    const { client } = mockClient(() => ({ ok: true }), {
+      mutationResults: (ops) => ops.map((op) => ({
+        ok: true,
+        op: op.op,
+        ...(op.op === "InstantiateScene" ? { meta: { nodePath: `Scaled/${String(op.name)}` } } : {}),
+      })),
+    });
+    const result = await repeatAlong(client, repeatAlongArgsSchema.parse({
+      scenePath: "res://row.tscn",
+      template: "res://piece.tscn",
+      parent: "Scaled",
+      start: [4e-7, 0, 0],
+      direction: [1, 4e-6, 0],
+      count: 3,
+      spacing: 4e-7,
+    }));
+    const [dx, dy] = result.direction as number[];
+    const [x, y] = result.last as number[];
+    expect(result).toMatchObject({ ok: true, count: 3, spacing: 4e-7, first: [4e-7, 0, 0] });
+    expect(dx).toBeCloseTo(1 / Math.hypot(1, 4e-6), 14);
+    expect(dy).toBeCloseTo(4e-6 / Math.hypot(1, 4e-6), 16);
+    expect(x).toBeCloseTo(1.2e-6, 15);
+    expect(y).toBeCloseTo(3.2e-12, 20);
   });
 
   it("instances every copy with its transform and returns a compact receipt", async () => {
@@ -866,6 +1032,13 @@ describe("summer_repeat_along", () => {
 });
 
 describe("summer_connect_ports", () => {
+  it.each(["multimesh_backend_unavailable", "unsupported_multimesh_format"])("does not mutate after %s loop evidence", async (failure_reason) => {
+    const { client, mutations } = mockClient(() => ({ ok: false, failure_reason, error: "Triangle evidence unavailable" }));
+    const result = await connectPorts(client, connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "A", subjectPort: 0, target: "B", targetPort: 0 }));
+    expect(result).toMatchObject({ ok: false, failure_reason });
+    expect(mutations).toEqual([]);
+  });
+
   it("turns and moves the subject so the ports meet facing each other", () => {
     const subject = { basis: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3], origin: [5, 0, 0] as Vec3 };
     // Subject port points +y at its origin + (0, 1, 0); target port at (0, 3, 0) points +y.
@@ -879,6 +1052,19 @@ describe("summer_connect_ports", () => {
     );
     portAfter.forEach((v, k) => expect(v).toBeCloseTo([0, 3, 0][k]!));
     expect(basisMulVec(xform.basis, [0, 1, 0])[1]).toBeCloseTo(-1);
+  });
+
+  it("keeps the scene untouched when Godot cannot represent the join", async () => {
+    const { client, mutations } = mockClient(() => ({
+      ok: true, xform: IDENTITY12,
+      subject_port: { kind: "marker", position: [1, 0, 0], direction: [0, 0, 1] },
+      target_port: { kind: "marker", position: [0, 2, 0], direction: [0, 0, -1] },
+    }), { planTransform: () => ({ ok: false, failure_reason: "transform_not_representable", error: "Lossy parent" }) });
+    const result = await connectPorts(client, connectPortsArgsSchema.parse({
+      scenePath: "res://a.tscn", subject: "Piece", subjectPort: "Out", target: "Pipe", targetPort: "In",
+    }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "transform_not_representable", saved: false });
+    expect(mutations).toEqual([]);
   });
 
   it("applies one SetProp transform, saves, and verifies the joint", async () => {
@@ -1074,6 +1260,51 @@ describe("stable open-loop ports", () => {
       const port = (read as { port: { id: string; index: number; radius: number; direction: Vec3; others_total: number } }).port;
       expect(port).toMatchObject({ id: "+Y", index: 0, radius: 0.07, others_total: 3 });
       port.direction.forEach((v, k) => expect(v).toBeCloseTo([0, 1, 0][k]!));
+    }
+  });
+
+  it("preserves mesh port IDs and excludes fixed alternatives", () => {
+    const moving = { center: [0, 2, 0], direction: [0, 1, 0], radius: 1, mesh: 1 };
+    const fixed = { ...moving, center: [0, 0, 0], mesh: 0 };
+    const probe = {
+      kind: "open_loops", node_xform: xf12([0, 0, 0]), loops: [fixed, moving],
+      unavailable_meshes: { "0": { failure_reason: "independent_subject_port", error: "The fixed tube stays put." } },
+    };
+    const selected = resolveProbePort(probe, parsePortSelector("+Y"), "subject", "Piece", true);
+    if ("failure" in selected) throw new Error("the moving port must resolve");
+    expect(selected.port).toMatchObject({ id: "+Y", others: [], others_total: 0 });
+    for (const selector of ["+Y#2", 1]) {
+      expect(resolveProbePort(probe, parsePortSelector(selector), "subject", "Piece", true)).toMatchObject({
+        failure: { failure_reason: "independent_subject_port", saved: false, port: "+Y#2" },
+      });
+    }
+  });
+
+  it("verifies the chosen physical opening after another mesh crosses it in the sorted port list", () => {
+    const moving = { center: [0, 2, 0], direction: [0, 1, 0], radius: 1, mesh: 1 };
+    const fixed = { ...moving, center: [0, 0, 0], mesh: 0 };
+    const lower = { ...moving, center: [0, -2, 0], direction: [0, -1, 0] };
+    for (const selector of ["+Y", 0]) {
+      const initial = { kind: "open_loops", node_xform: xf12([0, 0, 0]), loops: [fixed, lower, moving] };
+      const selected = resolveProbePort(initial, parsePortSelector(selector), "subject", "Piece", true);
+      if ("failure" in selected) throw new Error("the fixture's opening was not found");
+      const reordered = { ...initial, loops: [{ ...fixed, center: [0, 3, 0] }, lower, moving] };
+      expect(resolveProbePort(reordered, parsePortSelector(selector), "subject", "Piece", true, selected.port.source))
+        .toMatchObject({ port: { id: "+Y#2", position: [0, 2, 0] } });
+      expect(resolveProbePort({ ...initial, loops: [fixed, lower] }, parsePortSelector(selector), "subject", "Piece", true, selected.port.source))
+        .toMatchObject({ failure: { failure_reason: "port_not_found" } });
+    }
+  });
+
+  it("keeps an open-loop normal perpendicular to both transformed ring tangents, with outward sign", () => {
+    // The opening lies in the local XZ plane. Its transformed tangent vectors
+    // are (2, 1, 0) and (0, 0, 1), so its outward normal is parallel to (-1, 2, 0).
+    for (const size of [1, -1, 0.00001]) {
+      const columns = [2, 1, 0, 0, 1, 0, 0, 0, 1].map((value) => value * size);
+      const read = resolveProbePort({ kind: "open_loops", loops: OUTLET_LOOPS, node_xform: xf12([0, 0, 0], columns) }, parsePortSelector("+Y"), "subject", "Outlet", true);
+      if ("failure" in read) throw new Error("the fixture’s +Y opening was not found");
+      const expected = [-1, 2, 0].map((value) => Math.sign(size) * value / Math.sqrt(5));
+      read.port.direction.forEach((value, axis) => expect(value).toBeCloseTo(expected[axis]!, 7));
     }
   });
 

@@ -76,6 +76,23 @@ describe("splitInstantiatePlacement", () => {
   });
 });
 
+describe("full batch undoGroup", () => {
+  it.each([{}, { position: [1, 2, 3] }])("keeps the final save's group on its individual receipt, %j", async (placement) => {
+    const send = vi.fn(async (ops: Op[]) => ({
+      status: "ok", undoGroup: ops[0]!.op === "SaveScene",
+      results: ops.map((op) => ({ ok: true, op: op.op, meta: { nodePath: "Frame/Piece" } })),
+    }));
+    const client = { executeOps: send, executeIdentityBoundOps: send };
+    const result = await runBatch(client, { scenePath: "res://main.tscn", ops: [piece("Piece", placement)] }) as {
+      undoGroup: boolean; receipts: { undoGroup: boolean }[];
+    };
+    expect(result.undoGroup).toBe(false);
+    expect(result.receipts.at(-1)?.undoGroup).toBe(true);
+    const single = await runBatch(client, { scenePath: "res://main.tscn", ops: [{ op: "SaveScene" }] });
+    expect(single).toMatchObject({ undoGroup: true });
+  });
+});
+
 describe("executePlacementBatch", () => {
   it("sets each piece's transform on the receipt's node path before any later op", async () => {
     const { send, requests } = fakeEngine({ renames: { "Facade/Wall": "Facade/Wall_1" } });

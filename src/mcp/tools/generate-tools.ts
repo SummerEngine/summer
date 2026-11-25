@@ -621,25 +621,20 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     "summer_generate_3d",
     `Generate a 3D model via Summer Engine Studio.
 
-Available models:
-  - "hunyuan" (default) — Hunyuan 3D v3.1 Pro, high quality
-  - "trellis" — Trellis 2, fast and detailed
-  - "meshy" — Meshy, legacy option
+Choose the generation kind to match the inputs:
+  - "text-to-3d" (default) requires 'prompt'. Studio selects a native text endpoint
+    or generates a reference image according to the model.
+  - "image-to-3d" requires 'imageUrl'.
+  - "multi-image-to-3d" takes 'imageUrls'. For models with directional views,
+    the array order is front, left, back, right. With all four views, use:
+    { kind: "multi-image-to-3d", imageUrls: [frontUrl, leftUrl, backUrl, rightUrl] }
 
-Model ids are an ALLOWLIST, not a passthrough. An unrecognised id is rejected
-with 400 listing the accepted ids.
+Use a registered Studio model ID, such as "hunyuan" (default), "trellis" or
+"meshy". Studio returns the accepted IDs when it rejects an unknown model.
 
-Available kinds:
-  - "text-to-3d" (default) — From text description. Requires 'prompt'.
-    Internally generates a 3D-optimized reference image first, then converts to 3D.
-  - "image-to-3d" — From your own image. Requires 'imageUrl'.
-  - "texture" — Generate textures for a model. Requires 'imageUrl'.
-
-Optional rig pass (image-to-3d only):
-  Set options.rig = true to add an auto-rig pass via Meshy v6. The result
-  job (poll via summer_check_job) will include rigAssetId — the asset ID
-  of the rigged glb. Use that rigAssetId with summer_generate_motion to
-  add animation clips. Adds ~60s to the job.
+To request a rig, set rig=true or options.rig=true. Poll the job with
+summer_check_job. When it returns a rigAssetId, pass that ID to
+summer_generate_motion to add animation clips.
 
 Example:
   summer_generate_3d({
@@ -672,20 +667,20 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       kind: z
         .string()
         .default("text-to-3d")
-        .describe("Generation type: text-to-3d, image-to-3d, texture"),
+        .describe("Use text-to-3d for a prompt, image-to-3d for imageUrl, or multi-image-to-3d for imageUrls"),
       model: z
         .string()
         .default("hunyuan")
-        .describe("Model: hunyuan (default), trellis, meshy, or any fal-ai model ID"),
+        .describe("Registered Studio model ID, e.g. hunyuan (default), trellis or meshy"),
       imageUrl: z
         .string()
         .optional()
-        .describe("Source image URL for image-to-3d or texture"),
+        .describe("Source image URL for image-to-3d"),
       imageUrls: z
         .array(z.string())
         .max(4)
         .optional()
-        .describe("Up to four views for multi-image-to-3d"),
+        .describe("Up to four image URLs for multi-image-to-3d. Directional models read them in front, left, back, right order."),
       title: z.string().optional().describe("Asset or character title"),
       idempotencyKey: z
         .string()
@@ -797,16 +792,17 @@ Known models (text-to-video):
   - "ltx" (default) — LTX Video, fast
   - "kling" — Kling 2 Master, high quality
   - "kling-turbo" — Kling 2.5 Turbo Pro
-  - "minimax" — MiniMax
+  - "minimax-h3-max" — MiniMax H3 Max
   - "veo3" — Google Veo 3, premium
 
 Known models (image-to-video, when imageUrl provided):
-  - "ltx" (default), "kling", "minimax"
+  - "ltx" (default), "kling", "minimax-h3-max"
 
 If imageUrl is provided, switches to image-to-video mode.
 Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
 
-Returns the generated video URL and asset metadata.
+Returns a queued jobId, not a finished video. Poll summer_check_job every 15-30 seconds
+until completed or failed; the completed job holds the generated video asset.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
@@ -816,7 +812,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       model: z
         .string()
         .default("ltx")
-        .describe("Model name: ltx, kling, kling-turbo, minimax, veo3 (or any new model)"),
+        .describe("Model key: ltx, kling, kling-turbo, minimax-h3-max, veo3, or another registered video model"),
       imageUrl: z
         .string()
         .optional()
@@ -859,9 +855,9 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     "summer_check_job",
     `Check the status of an async generation job.
 
-summer_generate_3d and summer_generate_motion return a jobId; call this with it
+summer_generate_3d, summer_generate_video and summer_generate_motion return a jobId; call this with it
 every 15-30 seconds until status is "completed" or "failed". A completed job
-carries the result: assetId (3D), rigAssetId (rig=true), animationAssetId or
+carries the result: assetId (3D or video), rigAssetId (rig=true), animationAssetId or
 result.assets (motion), with file URLs. Import with summer_import_asset_by_id.
 
 Status values: waiting, active, completed, failed, delayed, unknown.

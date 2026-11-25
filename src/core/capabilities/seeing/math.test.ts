@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  aabbCorners,
+  add,
   applyLowAngleRule,
   directionFromAngles,
   exactCrop,
@@ -13,10 +15,12 @@ import {
   project,
   rayDirection,
   rotateY,
+  scale,
   screenBox,
   thirdsYawOffset,
   type Aabb,
   type CameraPose,
+  type Vec3,
 } from "./math.js";
 
 const close = (a: number, b: number, eps = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -33,6 +37,18 @@ describe("seeing math — engine conventions", () => {
     const b = lookAtBasis([0, 10, 0], [0, 0, 0]);
     expect(Number.isFinite(b.x[0])).toBe(true);
     close(b.z[1], 1);
+  });
+
+  it.each<readonly [string, Vec3, Vec3, boolean]>([
+    ["below", [0, 0, 0], [0.045, 1, 0], false],
+    ["above", [0, 0, 0], [0.0447, 1, 0], true],
+    ["equal, looking up", [0, 0, 0], [0.044754, 1, 0], false],
+    ["equal, looking down", [0, 0, 0], [0.044754, -1, 0], false],
+    ["equal after rounding the position and target", [109.1250001, 9.00000002, -0.875], [109.16975411, 10.00000001, -0.875], false],
+  ])("matches the native camera roll at the float32 pole cutoff (%s)", (_case, position, target, alternateUp) => {
+    const basis = lookAtBasis(position, target);
+    // In the XY plane, world +Y produces a right axis along +Z.
+    close(basis.x[2], alternateUp ? 0 : 1);
   });
 
   it("project and rayDirection are inverse through the screen", () => {
@@ -62,6 +78,17 @@ describe("seeing math — engine conventions", () => {
       const pose: CameraPose = { position: [center[0] + toCam[0] * d, center[1] + toCam[1] * d, center[2] + toCam[2] * d], look_at: center, fov: 55 };
       close(frameFill(pose, 16 / 9, box), fill, 1e-3);
     }
+  });
+
+  it("keeps every corner beyond the near plane when fitting an oblique view about an offset aim", () => {
+    const box: Aabb = { position: [-0.006, -0.004, -0.02], size: [0.012, 0.008, 0.04] };
+    const aim = [0, -0.002, 0.003] as const;
+    const direction = directionFromAngles(28, 17);
+    const d = fitDistance(box, aim, direction, 75, 16 / 9, 0.8);
+    const pose = { position: add(aim, scale(direction, d)), look_at: aim, fov: 75 };
+    const nearest = Math.min(...aabbCorners(box).map((point) => project(pose, 16 / 9, point).depth));
+    expect(nearest).toBeGreaterThan(0.05);
+    expect(nearest).toBeLessThan(0.05001);
   });
 
   it("screenBox reports corners behind the lens instead of a bogus box", () => {
@@ -122,6 +149,9 @@ describe("seeing math — engine conventions", () => {
 });
 
 describe("parseVector3 / formatVector3", () => {
+  it("rejects coordinates outside the numeric range before constructing a pose", () => {
+    expect(() => parseVector3("Vector3(1e999, 0, 0)", "eye")).toThrow(/finite coordinates/);
+  });
   it("round-trips Godot literals", () => {
     expect(parseVector3("Vector3(1, -2.5, 3e1)", "p")).toEqual([1, -2.5, 30]);
     expect(formatVector3([1.23456, -0, 2])).toBe("Vector3(1.235, 0, 2)");

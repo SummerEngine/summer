@@ -16,6 +16,11 @@ Step 5 of the multiplayer sequence. It assumes the layout from
 `runtime-manifest.json`, `source-domains.json`, and the `client/`,
 `authority/` and `network/` folders.
 
+The summer.games bundle is the only export that has Summer multiplayer. A copy
+exported for Steam, itch.io or the person's own store listing, including the
+Android and iOS presets in **Project > Export**, cannot join a Summer-hosted
+World; `multiplayer` explains what to build for those.
+
 ## 1. What gets built
 
 **Project > Export**, preset **summer.games**, **Export Project** to a `.zip`
@@ -30,6 +35,11 @@ gives one file, the bundle, which becomes one Build:
 
 Players get `client.pck` on iOS, macOS or Windows (`targetPlatforms` in
 `summer.build.json`). Summer runs `server.pck` on Linux for every World.
+
+Summer 0.8.8 Web exports and its shared browser player use Compatibility
+(WebGL 2). Older published versions can still select WebGPU. Check the
+renderer and first playable scene in the exact browser build with
+`release-readiness` check 14.
 
 ## 2. The two export presets
 
@@ -309,7 +319,9 @@ the update. A wrong Game ID only fails under a real hosted launch, so
 nothing before this step catches it. Keep playing, signed in, for at least 3
 minutes: the game must not close and the player must stay signed in
 (`release-readiness` check 10). An agent can't do this; ask the user and
-record the result. The whole list of checks before a release is
+record the result. Run `release-readiness` check 8 on the exported client as well.
+Verify that the title and menus render using the fonts bundled for players.
+The whole list of checks before a release is
 `release-readiness`, and the creator docs have it at
 https://docs.summerengine.com/publishing/release-readiness.
 

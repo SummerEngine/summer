@@ -59,7 +59,9 @@ function text(result: unknown): string {
 const okReceipt = (ops: Array<Record<string, unknown>>) => ({
   status: "ok",
   terminalState: "applied",
-  results: ops.map((op) => ({ ok: true, op: String(op.op ?? "") })),
+  results: ops.map((op) => op.op === "RunSceneScript"
+    ? { ok: true, op: "RunSceneScript", result: { ok: true, found: false, transform: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" } }
+    : { ok: true, op: String(op.op ?? "") }),
 });
 
 /** Client whose identity-bound calls are recorded; executeOps is a trap. */
@@ -230,6 +232,7 @@ describe("old engine with no capability advert (per-op unknown op)", () => {
     mockClient({
       executeIdentityBoundOps: vi.fn(async (ops: Record<string, unknown>[]) => {
         calls.push(ops);
+        if (ops[0]?.op === "RunSceneScript") return okReceipt(ops);
         return {
           ok: false,
           results: [{ ok: false, op: "SnapToSurface", error: "unknown op: SnapToSurface" }],
@@ -240,7 +243,10 @@ describe("old engine with no capability advert (per-op unknown op)", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("doesn't support SnapToSurface yet");
     expect(text(result)).toContain("unknown op: SnapToSurface");
-    expect(calls).toEqual([[expect.objectContaining({ op: "SnapToSurface" })]]);
+    expect(calls).toEqual([
+      [expect.objectContaining({ op: "RunSceneScript", checkpoint: false, undo: "none" })],
+      [expect.objectContaining({ op: "SnapToSurface" })],
+    ]);
   });
 });
 
@@ -310,11 +316,12 @@ describe("summer_test_placement", () => {
 });
 
 describe("summer_snap_to_surface", () => {
-  it("sends the mutation then one SaveScene as separate identity-bound requests and returns only the snap receipt", async () => {
+  it("captures the initial transform, snaps, then saves in separate identity-bound requests", async () => {
     const { calls, optionsSeen } = mockClient();
     const result = (await tool("summer_snap_to_surface").handler({ ...ARGS.summer_snap_to_surface })) as Response;
     expect(result.isError).toBeUndefined();
     expect(calls).toEqual([
+      [expect.objectContaining({ op: "RunSceneScript", checkpoint: false, undo: "none" })],
       [{ op: "SnapToSurface", subject_path: "./Props/Crate", direction: [0, -1, 0], max_distance: 20, gap: 0.01, align_up: false }],
       [{ op: "SaveScene" }],
     ]);

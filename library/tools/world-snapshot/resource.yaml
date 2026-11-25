@@ -46,13 +46,17 @@ surfaces:
 input_schema:
   type: object
   properties:
+    include_2d:
+      type: boolean
+      default: true
+      description: Include 2D nodes in the snapshot and its diff baseline (default true). Set false to omit CanvasItem nodes in mixed scenes. The engine still includes them when the scene root is a CanvasItem.
     scene_path:
       type: string
       description: Scene to snapshot, e.g. 'res://main.tscn'. Omit for the currently edited scene.
     max_nodes:
       type: integer
       exclusiveMinimum: 0
-      description: Most node entries to return (default 200). The engine still snapshots the whole scene for the diff baseline; the result says when the list is cut (truncated, next_offset).
+      description: Most node entries to return (default 200). The engine stores up to 4000 node entries by default. A larger max_nodes raises that cap. engine_truncated indicates an incomplete diff baseline; next_offset pages the captured entries.
     offset:
       type: integer
       minimum: 0

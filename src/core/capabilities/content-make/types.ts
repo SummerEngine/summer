@@ -54,6 +54,7 @@ export interface CaptionStyle {
 }
 
 export interface Study {
+  version: 2;
   referenceId: string;
   file: string;
   duration: number;

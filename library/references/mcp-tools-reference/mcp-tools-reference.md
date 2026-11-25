@@ -180,7 +180,7 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 
 ### Seeing (5)
 
-Preview. Judge a 3D environment the way a player and an artist would. Every image comes back inline (one grid image per call, never N images) with a compact caption; renders are offscreen copies of the SAVED scene with its REAL WorldEnvironment and lights; nothing in the scene, the open tab or the undo history changes. Disk is bounded: only one previous-image slot per rendered bookmark plus explicit `save_to` copies, JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first). The `verifying-scenes` skill carries the environment review loop.
+Preview. Judge a 3D environment the way a player and an artist would. Every image comes back inline (one grid image per call, never N images) with a compact caption; renders are offscreen copies of the SAVED scene with its REAL WorldEnvironment and lights; nothing in the scene, the open tab or the undo history changes. Disk is bounded: one comparison image per bookmark and shot-sheet view plus explicit `save_to` copies, JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first). The `verifying-scenes` skill carries the environment review loop.
 
 | Tool | Use |
 |---|---|

@@ -5,6 +5,7 @@
  */
 import type { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";
+import { executeSceneMutation } from "./engine-ops.js";
 import { importUrls, ogvResPath } from "./video-ogv.js";
 
 /** An asset record as returned by the Summer gateway asset APIs. */
@@ -167,15 +168,14 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
   let addedToScene = false;
   let sceneReceipt: unknown = null;
   if (parent && asset.type === "3d_model") {
-    sceneReceipt = await client.executeIdentityBoundOps([
+    sceneReceipt = await executeSceneMutation(client, scenePath!, [
       {
         op: "InstantiateScene",
         parent,
         scene: importPath,
         name: sanitizeNodeName(name || asset.title),
       },
-      { op: "SaveScene" },
-    ], { scenePath });
+    ]);
     const placementReceipts =
       (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
     const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);

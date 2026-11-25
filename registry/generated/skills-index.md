@@ -1,6 +1,6 @@
 # Summer skills
 
-> 138 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 139 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -20,6 +20,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [debug](#debug) (1)
 - [deployment](#deployment) (3)
 - [editor](#editor) (1)
+- [game-design](#game-design) (1)
 - [gameplay](#gameplay) (6)
 - [level-design](#level-design) (3)
 - [multiplayer](#multiplayer) (16)
@@ -169,6 +170,12 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [*driving-the-editor-ui*](./driving-the-editor-ui/SKILL.md) (preview) | Drive the editor UI by name: run actions, clear blocking dialogs, switch screens, read a dock. | agent-workflow, verification |
 
+## game-design
+
+| skill | when to use | also |
+|---|---|---|
+| [*game-design*](./game-design/SKILL.md) ★ (preview) | Review a game or interview its creator about the design. | playtest |
+
 ## gameplay
 
 | skill | when to use | also |
@@ -176,7 +183,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [auto-fire-targeting](./auto-fire-targeting/SKILL.md) | Fix auto-fire targeting (survivors, ARPG, tower defense) with pending damage to stop overkill. | game-design |
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) (library only) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
 | [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage: hitbox and hurtbox Areas, a reusable Health component, damage signals, knockback, projectiles. | scripting, game-design |
-| [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one mechanic in detail (input, feedback, failure modes, tunables) as a doc plus a script stub. | game-design |
+| [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic, document it and draft a script stub. | game-design |
 | [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks via the Summer purchase sheet: checkout, not enough Sparks, unlocks, grants. | scripting, game-design |
 | [*web-and-touch-input*](./web-and-touch-input/SKILL.md) ★ (preview) | Browser and phone input: the first-click rule for sound and mouse capture, focus, touch buttons, a stick. | ui |
 
@@ -242,7 +249,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [brainstorm-game](./brainstorm-game/SKILL.md) ★ | Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md. | project |
+| [brainstorm-game](./brainstorm-game/SKILL.md) ★ | Turn a game idea into a one-page brief in .summer/GameSoul.md. | project |
 | [browse-templates](./browse-templates/SKILL.md) ★ | List Summer Engine project templates, present the choices, and create a project from the chosen one. | project |
 | [*camera-rigs*](./camera-rigs/SKILL.md) (preview) | Camera rigs: Camera2D follow with limits, first-person head, SpringArm3D third-person, top-down, FOV. | 3d, 2d |
 | [make-game](./make-game/SKILL.md) ★ | Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship. | project |

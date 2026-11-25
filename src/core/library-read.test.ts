@@ -3,6 +3,7 @@ import { join, posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   FOOTER_SUFFIX,
+  LINKED_FILE_EXTENSIONS,
   feedbackFooter,
   readLibraryEntry,
   readLibraryInputSchema,
@@ -322,15 +323,17 @@ describe("every link in every library skill resolves through read_library", () =
           broken.push(`${where} (not shipped inside library/)`);
           continue;
         }
-        // The id an agent builds from the link as written, and the canonical id,
-        // both load, and the load carries the target file's text.
+        // Both IDs return the file's text or tell the agent where to find a packaged asset.
         const asWritten = `skill/${slug}/${posix.join(posix.dirname(file), target.split("#")[0]!)}`;
         const targetPath = posix.normalize(posix.join("library/skills", slug, posix.dirname(file), decodeURIComponent(target)));
-        const firstLine = readFileSync(join(PACKAGE_ROOT, ...targetPath.split("/")), "utf-8").split("\n").find((l) => l.trim()) ?? "";
+        const extension = posix.extname(targetPath).toLowerCase();
+        const expectedContent = LINKED_FILE_EXTENSIONS.has(extension)
+          ? readFileSync(join(PACKAGE_ROOT, ...targetPath.split("/")), "utf-8").split("\n").find((line) => line.trim())?.trim() ?? ""
+          : `it ships at ${targetPath} in the package`;
         for (const id of [asWritten, canonical]) {
           const loaded = await readLibraryEntry(id);
           if (!loaded.ok) broken.push(`${where} (${id} -> not_found)`);
-          else if (!loaded.text.includes(firstLine.trim())) broken.push(`${where} (${id} loads another file)`);
+          else if (!loaded.text.includes(expectedContent)) broken.push(`${where} (${id} loads another file)`);
         }
       }
     }

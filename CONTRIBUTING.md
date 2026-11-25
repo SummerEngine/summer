@@ -31,7 +31,7 @@ CI runs the same gates on every pull request.
 ## Pull requests
 
 - Keep each pull request to one change, and say what you tested.
-- Add a line under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md), in plain English: what changed for the person using Summer.
+- Add a line under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md), in plain English: what changed for the person using Summer. Follow the [public release notes standard](docs/PUBLIC_RELEASE_NOTES.md).
 - Everything here is public. No secrets, no internal prices or costs, no private endpoints.
 
 Security problems: see [`SECURITY.md`](SECURITY.md), not a public issue.

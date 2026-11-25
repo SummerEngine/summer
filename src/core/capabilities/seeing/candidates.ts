@@ -179,7 +179,7 @@ function ringCandidates(
         id: `${prefix}_az${String(azimuth).padStart(3, "0")}_el${elevation}`,
         position,
         look_at: lookAt,
-        fov: Math.round(camFov * 100) / 100,
+        fov: camFov,
         samples,
         min_clearance: options.clearance,
         low_angle_rule: options.lowAngle === true,

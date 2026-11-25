@@ -344,13 +344,14 @@ export function traceEnvelope(trace: BatchTrace): JsonRecord {
       ...(trace.failedEnvelope ?? trace.last ?? {}),
       ok: false,
       status: "error",
+      ...(trace.requests > 1 && { undoGroup: false }),
       error: trace.error,
       results,
       receipts: trace.receipts,
     };
   }
   if (trace.requests === 1) return (asRecord(trace.receipts[0]) ?? {}) as JsonRecord;
-  return { ...(trace.last ?? {}), results, requests: trace.requests, receipts: trace.receipts };
+  return { ...(trace.last ?? {}), undoGroup: false, results, requests: trace.requests, receipts: trace.receipts };
 }
 
 function clip(text: string | undefined): string | undefined {

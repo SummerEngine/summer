@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.3",
-      "content_hash": "02a735eb1a6dd1d9c68330f62fdd6a3ddac2bb4c1be4d4ad0d636dd52aa4fe9c",
+      "content_hash": "b8272391f2f10ee551e402303d25034580c0fb0bc4b94cb5cb22f064f2ddd017",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -708,8 +708,8 @@
       "id": "skill/brainstorm-game",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "361b17750d9b43b96bf7738f7506c2c5b352501749a6bcb2e99f615413741d4f",
-      "summary": "Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md.",
+      "content_hash": "4551f0a64ab3c8fe7d5ea2b9b24d68dd3f43b397b8818122b9494129132b2f0b",
+      "summary": "Turn a game idea into a one-page brief in .summer/GameSoul.md.",
       "use_when": [
         "the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan",
         "the user has a genre, theme, or one-line pitch but no core loop, scope, or brief yet"
@@ -1292,7 +1292,7 @@
       "id": "skill/debug",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "5506e2e64770b083afa10e147350f3968769acc3b2d2fda2a6b7f91a8521bf1f",
+      "content_hash": "7e565142e4cdae25fe90dca39f2f7f40c4b63d9efe027715a5237981c316dd23",
       "summary": "Disciplined bug, crash and error loop: script errors, console, debugger, hypothesis, fix, verify.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -1397,8 +1397,8 @@
       "id": "skill/design-mechanic",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "8cd3a0c3c20da73089e316282d1d196faf91548c574a6ae578ff628e15f7213e",
-      "summary": "Design one mechanic in detail (input, feedback, failure modes, tunables) as a doc plus a script stub.",
+      "content_hash": "4a8a0bfe19e4189b10faa424b0bc8c50d10f58dcbbf76548caeb402908156366",
+      "summary": "Design one game mechanic, document it and draft a script stub.",
       "use_when": [
         "designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables",
         "add a grappling hook, dash, double jump, wall run, or parry"
@@ -1615,7 +1615,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "08419e1e78fb05512db1f71b501cedc63d358f144e6afb94016aa5b1cd645d6b",
+      "content_hash": "f9013baecccf26af95b4548aedd1c895f1256e28c5ab8e1e1d42cb57f345f044",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1778,6 +1778,32 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/game-design",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "c7b20501a8ae552da3f361b2a13076b30443c179e157630b94c79dd47e8e36d2",
+      "summary": "Review a game or interview its creator about the design.",
+      "use_when": [
+        "the creator invokes /game-design or asks for a game design review of an existing project, recording, or ruleset",
+        "the creator wants a design interview to find the first playable moment and choose what to test",
+        "the creator needs help deciding how to design a story scene, map route, visual style, spell, or effect for a specific player experience"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "game-design",
+          "playtest"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -2355,12 +2381,13 @@
     {
       "id": "skill/multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d1ba8c2895e91430a890819ca002b42d269ae2f19c70e534eceeedcf7d4fcbbe",
+      "version": "1.0.1",
+      "content_hash": "e80e814ec51585563c4292c0e7e14602beb381bf174ac57d4bceefcd0159430d",
       "summary": "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
         "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "the user wants online play in a game sold on Steam, itch.io or their own store listing",
         "deciding how a multiplayer Summer game is structured before writing networking code",
         "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
       ],
@@ -2482,8 +2509,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "8ec73bbd2c0e4ddaad86a4204e143b10edc93f87058f51b3d67986a24185ef1b",
+      "version": "1.0.3",
+      "content_hash": "ac8ba4b38bbd97df353c48c40532dbc2c25826b8fd2be0716d296418777fcd61",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -3038,7 +3065,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "91c133fc41a50f3998786c17d8ad73ed673ef7c40ae9d122e5b3a9f62eedc832",
+      "content_hash": "8499e2e86fae212ed2a3efd2b783c7b2889742a375a6deaed582567431edcd34",
       "summary": "Publish a game on Summer Games over MCP: store page, art, build upload, go live.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'make it live'",
@@ -3158,7 +3185,7 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "3eddd242438bc5f373865cab006864efe8957024eab465dea86a2c18a744e974",
+      "content_hash": "6815bc3e9243c1517e783723fc1806de389254f52a01f02ef4ce89266558ae00",
       "summary": "Prove players can play a Summer release: server, online join, progress, files.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
@@ -3739,7 +3766,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "c186909620b78c13d0df3ea13b7889739b185e743881df25df34e7fe2645a137",
+      "content_hash": "ec2e8dfd623913b45b7278a04fc37ab46514aab53e87c5782550d737fe9b46b5",
       "summary": "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -5055,7 +5082,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.5.0",
-      "content_hash": "21b2654e9a2f325588a42da4ea8ca11197417be9afd45d2bb33c7042d9f4c7a5",
+      "content_hash": "2572dc99854e0b7c7d5f748e0e73c2c1b0f297450b9fb0e7d3f1041fa0109162",
       "summary": "Prove scene work landed: snapshot, diff, screenshots, runtime reads, 3D audits, shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -6323,10 +6350,10 @@
       "id": "tool/api-models",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "73c3ac25cbe1a46f1e4584f081c9b0d06eee3f76f17cdf356b49d4b380e1638b",
+      "content_hash": "ce781725b5109a711c8d01b53f13ed327e76a53f1202e8c791f189e3fc89816b",
       "summary": "The Summer API's curated game-dev models with capability, input schema, output formats, typical time and USD price; no sign-in.",
       "use_when": [
-        "choosing a model for an image, 3D, video, voice, sound or music asset through the Summer API",
+        "choosing a model for an image, 3D, video, voice, dialogue, sound, music or motion asset through the Summer API",
         "checking what a Summer API model costs or takes as input"
       ],
       "facets": {
@@ -6977,11 +7004,11 @@
     {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "0ba437873ed75942b3ac5199b2dcc4c2b0bbd73f015b38414fa4106b5f995ba3",
-      "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
+      "version": "1.1.1",
+      "content_hash": "cfd092a664b3963656cc2042ce4211ac1d94ca8cc0ae18d1fae4875b5dab78f8",
+      "summary": "Run engine ops in order in one call. Edits can take separate undo steps. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
-        "multi-node builds that should undo as one step (no single-only ops in the list)",
+        "multi-node builds with ordered edits",
         "reaching engine ops that have no dedicated tool",
         "placing many kit pieces, one InstantiateScene op per piece with its position and rotation, read back with receipt summary"
       ],
@@ -7212,9 +7239,9 @@
     {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "bd6c59df3479e5d60c0dac5f61dee6cde3da59054122add68bd344ffe4bc167e",
-      "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
+      "version": "1.2.0",
+      "content_hash": "45937b7f6107f77d824c0952bc6bc2259f7897117437ef4dc96144e287890c4a",
+      "summary": "Connect a signal and verify its local or inherited declaration in the saved scene. The receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
         "\"when the button is pressed, call my function\"",
@@ -7318,8 +7345,8 @@
     {
       "id": "tool/create-scene",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "8a8d28ab4feebc5cbbc9169f6320c64688ab74f950d4ad4c3fc7c089288bf21d",
+      "version": "1.1.0",
+      "content_hash": "a0d4874d6f33710c9258825028889a17af4105bc00c2ae45708277e79887c01d",
       "summary": "Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.",
       "use_when": [
         "starting a new level, prefab, or UI scene file",
@@ -7901,8 +7928,8 @@
     {
       "id": "tool/generate-3d",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "6668e5ca70c44f1ae291e7368a64396ce3eaf8412343f45e0b44e1899981006f",
+      "version": "1.0.3",
+      "content_hash": "ed213570b54e28abfd547b6493a04b5655e72fe3c6d24f13006aebe6d4e93cc4",
       "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.",
       "use_when": [
         "creating a 3D asset or character from a prompt or reference image",
@@ -8039,7 +8066,7 @@
       "id": "tool/generate-sfx-choices",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "cc583f4378e6fa60a864a5bbae0b7d3ddb5b30962a443432d5bc4a7581fd5fb3",
+      "content_hash": "c7b22b1333b10c1e8a2226dc04d4efc7a677f5ec2a2f57885f2fc8bb6b74c527",
       "summary": "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default.",
       "use_when": [
         "the first sound effect in a chat, after the person said yes to three versions to pick from",
@@ -8077,8 +8104,8 @@
     {
       "id": "tool/generate-video",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "98ae8a3b9181f452cf78040fc9dfe5ccd81ca6ce13f55d9bfea895f21efe90c2",
+      "version": "1.0.3",
+      "content_hash": "789e4f49c6c6d5dbdaa37b0145bd23fa53329f4debfb4c3ed5943052ae9411c2",
       "summary": "Generate a video from text or an image with allowlisted models via Summer Studio.",
       "use_when": [
         "creating cutscene, trailer, or reference footage from a prompt",
@@ -8318,8 +8345,8 @@
     {
       "id": "tool/get-debugger-errors",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "e1c7f166cb7316022f9a5ddc8444292a67e0e3f60d54e9e8c148a8070282715b",
+      "version": "1.0.3",
+      "content_hash": "3efe0a20600f2e716de9d0ada9fe767be849aff04a4539a5c01c43fb0ba5df53",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",
@@ -8755,9 +8782,9 @@
     {
       "id": "tool/import-from-url",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "c9df60fadce2263a91127d6bbbe3bcfb192d6b63d5822e331bd18e4f032e5d2b",
-      "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
+      "version": "1.0.3",
+      "content_hash": "15088ca3dbaf688d8615f26f7b21dd035b5e573a979865292c4c776fa6fe28d5",
+      "summary": "Download one file from a public HTTPS URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
         "\"grab this .glb from the link and add it to my project\"",
@@ -8789,9 +8816,9 @@
     {
       "id": "tool/import-from-url-batch",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "0acf3a0be036c3b63793d907bdcf7cdf1fc86564f585a53b753ec70f24589968",
-      "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
+      "version": "1.0.3",
+      "content_hash": "1fee925086da7458773c0d3f853522b42bd08423c9a05b71fddd363293b77d47",
+      "summary": "Download multiple files by public HTTPS URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
         "\"download the model plus its three textures together\"",
@@ -8907,13 +8934,14 @@
     {
       "id": "tool/inspect-asset",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "44f5e9a36efc013f26f1685fb7fa74096d75e7a41f8e498b2ded2f5a1e281848",
+      "version": "1.1.0",
+      "content_hash": "e285d3ebc842d8a59805b541bff565ad33748980dee86b062a1aa1e308f51d9e",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
         "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
-        "reading the Marker3D anchors or collision shapes a kit piece ships with"
+        "reading the Marker3D anchors or collision shapes a kit piece ships with",
+        "inspecting repeated 3D MultiMesh geometry with its instance transforms and drawn-prefix triangle count"
       ],
       "facets": {
         "lifecycle": [
@@ -8958,7 +8986,7 @@
       "id": "tool/inspect-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "87b7fa642d6b613c2e4ffc37054b8911fe1f08fe60dea881795c15e42f6869e2",
+      "content_hash": "521f23067a30431031e804cf6cbd2962429dbc15b4a917a7bf696f840d62c438",
       "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",
@@ -9431,7 +9459,7 @@
       "id": "tool/place-adjacent",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4b06271d1a3f354e872bfb9d870109b309b14c5e121af910474d9b1358d7df96",
+      "content_hash": "56d636dacae5f56e18f9490bb9519a245bcb532cefc59a486b308b46125d259b",
       "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
       "use_when": [
         "laying facade or wall modules edge to edge along a street line",
@@ -9638,7 +9666,7 @@
       "id": "tool/publish-build",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "cfaf43491c9bbf22552854f4e8ea5a2418e3ca979d71f445f59293281681e450",
+      "content_hash": "85c85ffca8d91af1123e15eccd06dd2a305d5127471d8f1f3b3dc4796acab86a",
       "summary": "Upload to the creator's store game, confirm-gated: an export as a Build, a store download, or the server and clients of a game made without Summer Engine.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -9647,7 +9675,7 @@
         "\"release version 1.2.0 of my game\"",
         "\"ship this exported build to the live channel\"",
         "uploading the .zip from summer_export_game as a new Build",
-        "uploading a web build or a macOS or Windows download from summer_export_game format download",
+        "uploading an existing Web, macOS, Windows or Linux ZIP built by any tool",
         "uploading the server bundle of a game not made with Summer Engine, then its macOS, Windows and web clients to that Build (buildId, platform, entry)"
       ],
       "facets": {
@@ -9677,7 +9705,7 @@
       "id": "tool/raycast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ebd29435c93b0650d712a35f2f1def29708a032dddb629207f9132d1f586e91a",
+      "content_hash": "fb7381ac587dc1b32c3da5111fc36b6b9b7a1d9d07126d4a966cdf75590c92ab",
       "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
       "use_when": [
         "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",
@@ -9902,7 +9930,7 @@
       "id": "tool/repeat-along",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "288d19a98e7618cb4662d4bcc740fde3fe6d67415f3117bfc24f836854b1ac2b",
+      "content_hash": "8ed739fc67cc0c2502b22a048ccf9c2f46264465b8d1c85e94d8f34f62598e5b",
       "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
       "use_when": [
         "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",
@@ -9950,8 +9978,8 @@
     {
       "id": "tool/replace-node",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "0fb4ae84243f7d860bf9965add882f0e013445f27649abee91ffcc4681856de5",
+      "version": "1.1.1",
+      "content_hash": "ed175b1e5842353d1bc920914b92d629efbf0b1ff6205dfb81720e0669ff414d",
       "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
@@ -10589,7 +10617,7 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7322a8ec389c209d41c7fe0b56f47c8e8b42616d19044d9b070d7ff6721ab5f9",
+      "content_hash": "a59a8603e2eb9e8bb57d93120889e2385156845082ecd00cb811ce6a3ce06919",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",
@@ -10657,7 +10685,7 @@
       "id": "tool/shot-sheet",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "9e9dddf23e353637b51db1a6ae82e0be981c0c3bbe3274262194a644e9e2a004",
+      "content_hash": "c3ff954e6ada030dcc19ef67ea35052421c5ee085b5538d86b55e51453946889",
       "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
       "use_when": [
         "seeing every hero view of an environment at once after a change, in one image",
@@ -10740,8 +10768,8 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "be7dfce006254a9c8b01a7d4e6402e6f4bccf16c33c88ef4a0828208aeeeaf49",
+      "version": "1.3.0",
+      "content_hash": "a69b30be79d2216f3402ebd5f8298b26e9bf3a313bcb4b547bfde22bcd8faaac",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
@@ -10792,8 +10820,8 @@
       "id": "tool/snapshot-diff",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "996761994942d2099ccfa3e5352a59fe3eb9cc3c8637a5c1f1718625dcbe657d",
-      "summary": "Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.",
+      "content_hash": "3a46e2642b117de7349a94d3e4adb7adc314a0b2aa1716236ef729ba9ce70ad8",
+      "summary": "Compare captured node paths, tracked fields and count changes across two scene snapshots.",
       "use_when": [
         "verifying a mutation batch against the snapshot_id taken before it",
         "\"what changed in the scene after that script ran?\"",
@@ -11398,7 +11426,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "8f8dab1d735156630961e3bbef0b5e8985eb7f9e8e933a173aae163c56fbe9e1",
+      "content_hash": "c1c80d46ad8c8b4cf53c8b6849dfc09b530d958fd370d8ec8965a5f75462e407",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

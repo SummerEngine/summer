@@ -8,6 +8,7 @@
  * with v = 0 at the TOP of the image.
  */
 import { ToolInputError } from "../../tool-errors.js";
+export { toGodotVector3 as formatPoseVector } from "../placement-math.js";
 
 export type Vec3 = readonly [number, number, number];
 
@@ -81,11 +82,25 @@ export interface Basis3 {
   z: Vec3;
 }
 
+// ScenePreview chooses its up axis from (target - position).normalized() in
+// Godot Vector3 precision. A one-ulp difference here can rotate the frame 90°.
+function cameraForward(position: Vec3, target: Vec3): Vec3 {
+  const f32 = Math.fround;
+  const x = f32(f32(target[0]) - f32(position[0]));
+  const y = f32(f32(target[1]) - f32(position[1]));
+  const z = f32(f32(target[2]) - f32(position[2]));
+  const squaredXY = f32(f32(x * x) + f32(y * y));
+  const squaredLength = f32(squaredXY + f32(z * z));
+  const magnitude = f32(Math.sqrt(squaredLength));
+  if (magnitude === 0) return [0, 0, 0];
+  return [f32(x / magnitude), f32(y / magnitude), f32(z / magnitude)];
+}
+
 export function lookAtBasis(position: Vec3, target: Vec3): Basis3 {
-  const forward = normalize(sub(target, position));
-  // Same guard as the engine: looking_at refuses an up parallel to the view.
-  const up: Vec3 = Math.abs(dot(forward, [0, 1, 0])) > 0.999 ? [0, 0, -1] : [0, 1, 0];
-  const z = scale(forward, -1);
+  const forward = cameraForward(position, target);
+  const up: Vec3 = Math.abs(forward[1]) > Math.fround(0.999) ? [0, 0, -1] : [0, 1, 0];
+  // Keep project() and rayDirection() inverse in JS double precision.
+  const z = normalize(scale(forward, -1));
   const x = normalize(cross(up, z));
   const y = cross(z, x);
   return { x, y, z };
@@ -186,16 +201,25 @@ export function directionFromAngles(azimuthDeg: number, elevationDeg: number): V
   return [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
 }
 
+// ScenePreview's free camera and the seeing probe's scored camera both use this near plane.
+const PREVIEW_NEAR = 0.05;
+
 /**
  * Distance from `lookAt` along `toCamera` (unit) at which the box fills
  * `fill` of the frame along its limiting dimension. Binary search: fill falls
- * monotonically as the camera backs away once every corner is in front.
+ * monotonically as the camera backs away. When the requested fill would clip
+ * the mesh, use the closest distance that keeps the whole box beyond the near plane.
  */
 export function fitDistance(box: Aabb, lookAt: Vec3, toCamera: Vec3, fov: number, aspect: number, fill: number): number {
   const dir = normalize(toCamera);
-  const radius = Math.max(0.05, length(box.size) / 2);
-  let lo = 0.05;
-  let hi = Math.max(1, radius / Math.tan(rad(Math.min(fov, fov * aspect)) / 2) * 50);
+  const front = Math.max(...aabbCorners(box).map((corner) => dot(sub(corner, lookAt), dir)));
+  // A corner exactly on the plane can clip when Godot stores the camera and
+  // vertices as floats. Allow for rounding along the viewing axis at this origin.
+  const originMagnitude = dir.reduce((sum, component, i) => sum + Math.abs(component * lookAt[i]!), 0);
+  const clearance = Math.max(1e-6, (originMagnitude + Math.abs(front) + PREVIEW_NEAR) * 2 ** -22);
+  let lo = Math.max(0, front + PREVIEW_NEAR + clearance);
+  const radius = length(box.size) / 2;
+  let hi = Math.max(lo + 1, radius / Math.tan(rad(Math.min(fov, fov * aspect)) / 2) * 50);
   const fillAt = (d: number): number => frameFill({ position: add(lookAt, scale(dir, d)), look_at: lookAt, fov }, aspect, box);
   if (fillAt(hi) > fill) return hi;
   for (let i = 0; i < 60; i++) {
@@ -228,7 +252,9 @@ export function parseVector3(literal: string, label: string): Vec3 {
   if (!match) {
     throw new ToolInputError(`${label} must be a Godot literal like "Vector3(0, 5, 12)" (got ${JSON.stringify(literal)}). Nothing was sent.`);
   }
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+  const components: Vec3 = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (!components.every(Number.isFinite)) throw new ToolInputError(`${label} must contain finite coordinates. Nothing was sent.`);
+  return components;
 }
 
 /** "Vector3(x, y, z)" with 3 decimals — the literal the engine echoes. */
@@ -238,11 +264,6 @@ export function formatVector3(v: Vec3): string {
     return Object.is(r, -0) ? "0" : String(r);
   };
   return `Vector3(${f(v[0])}, ${f(v[1])}, ${f(v[2])})`;
-}
-
-export function roundVec(v: Vec3, digits = 3): Vec3 {
-  const k = 10 ** digits;
-  return [Math.round(v[0] * k) / k, Math.round(v[1] * k) / k, Math.round(v[2] * k) / k];
 }
 
 /** Rotate `v` about +Y by `degrees` (counter-clockwise seen from above). */
@@ -334,8 +355,8 @@ export function letterbox(
     h = canvas[1];
     w = Math.round(h * regionAspect);
   }
-  w = Math.max(16, Math.min(canvas[0], w));
-  h = Math.max(16, Math.min(canvas[1], h));
+  w = Math.max(1, Math.min(canvas[0], w));
+  h = Math.max(1, Math.min(canvas[1], h));
   const x = Math.floor((canvas[0] - w) / 2);
   const y = Math.floor((canvas[1] - h) / 2);
   return { canvas, rect: [x, y, w, h], letterboxed: w < canvas[0] - 1 || h < canvas[1] - 1 };

@@ -8,7 +8,8 @@
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readLibraryEntry, readLibraryInputShape } from "../../core/library-read.js";
-import { runSearchLibrary, searchLibraryInputShape } from "../../core/library-search.js";
+import { runSearchLibrary, searchLibraryInputSchema } from "../../core/library-search.js";
+import type { SurfaceVersion } from "../../core/tool-profiles.js";
 import { textJson } from "./text-json.js";
 
 export const SEARCH_LIBRARY_DESCRIPTION =
@@ -36,18 +37,22 @@ export const READ_LIBRARY_DESCRIPTION =
   "— copy that entry_id verbatim into summer_library_feedback once you have verified the outcome in-engine. " +
   "Unknown id -> {ok:false, error:'not_found', nearest:[up to 3 ids]}. No engine needed; reads the library shipped with this package.";
 
-export function registerLibraryTools(server: McpServer): void {
-  server.tool("summer_search_library", SEARCH_LIBRARY_DESCRIPTION, searchLibraryInputShape, async (args) => {
+export function registerLibraryTools(server: McpServer, surface: SurfaceVersion = "v3"): void {
+  const deps = surface === "v4" ? { docsTools: { read: "summer_docs_read", search: "summer_docs_search" } } : {};
+  const search = server.tool("summer_search_library", SEARCH_LIBRARY_DESCRIPTION, searchLibraryInputSchema.shape, async (args) => {
     try {
-      return textJson(await runSearchLibrary(args));
+      return textJson(await runSearchLibrary(args, deps));
     } catch (error) {
       return textJson({ ok: false, error: error instanceof Error ? error.message : String(error) }, true);
     }
   });
 
+  // The SDK wraps a raw shape in an object that strips unknown arguments.
+  search.inputSchema = searchLibraryInputSchema;
+
   server.tool("summer_read_library", READ_LIBRARY_DESCRIPTION, readLibraryInputShape, async (args) => {
     try {
-      const result = await readLibraryEntry(args.id, args.part ?? "all");
+      const result = await readLibraryEntry(args.id, args.part ?? "all", deps);
       if (!result.ok) return textJson(result, true);
       return { content: [{ type: "text" as const, text: result.text }] };
     } catch (error) {

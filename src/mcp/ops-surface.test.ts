@@ -73,6 +73,100 @@ describe("the surface flag", () => {
   });
 });
 
+describe("library search arguments", () => {
+  it.each([
+    ["v3", "summer_search_library"],
+    ["v4", "summer_docs_search"],
+  ] as const)("rejects unknown fields while keeping the %s kind filter", async (surface, name) => {
+    const { client, close } = await session("engine", surface);
+    try {
+      const result = await client.callTool({ name, arguments: { query: "game", kind: "template" } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("kind");
+
+      const valid = answerOf(await client.callTool({ name, arguments: { query: "game", kinds: ["template"] } }));
+      expect(valid.results.length).toBeGreaterThan(0);
+      expect(valid.results.every((hit: { kind: string }) => hit.kind === "template")).toBe(true);
+    } finally {
+      await close();
+    }
+  });
+
+  it("rejects unknown search arguments in docs.search through summer_call", async () => {
+    const { client, close } = await session("engine", "v4");
+    try {
+      const result = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.search", input: { query: "game", kind: "template" } } }));
+      expect(result).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe("closed MCP input objects", () => {
+  const scene = { scenePath: "res://main.tscn", parent: ".", scene: "res://seat.tscn" };
+  const rotation = [0, 90, 0];
+
+  it.each(["v3", "v4"] as const)("rejects a misspelled placement argument on the %s named tool", async (surface) => {
+    const { client, close } = await session("engine", surface);
+    try {
+      const name = "summer_instantiate_scene";
+      const listed = (await client.listTools()).tools.find((tool) => tool.name === name)!;
+      expect(listed.inputSchema).toMatchObject({ additionalProperties: false, properties: { rotation_degrees: expect.any(Object) } });
+      const result = await client.callTool({ name, arguments: { ...scene, rotationDegrees: rotation } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("rotationDegrees");
+    } finally {
+      await close();
+    }
+  });
+
+  it("checks the selected operation inside summer_call and passes open provider inputs through", async () => {
+    const { client, cloud, close } = await session("engine", "v4");
+    const call = async (op: string, input: Record<string, unknown>) =>
+      answerOf(await client.callTool({ name: "summer_call", arguments: { op, input, dryRun: true } }));
+    try {
+      const op = "engine.instantiate_scene";
+      expect(await call(op, { ...scene, rotation_degrees: rotation })).toMatchObject({ ok: true, status: "dry_run" });
+      expect(await call(op, { ...scene, rotationDegrees: rotation })).toMatchObject({
+        ok: false, error: { code: "invalid_input", message: expect.stringContaining("rotationDegrees") },
+      });
+      expect(await call("engine.save_camera_bookmark", { name: "hero", lookAt: rotation })).toMatchObject({
+        ok: false, error: { code: "invalid_input", message: expect.stringContaining("lookAt") },
+      });
+      expect(cloud.call).not.toHaveBeenCalled();
+      const fields = { provider_option: { nested: 7 } };
+      await call("example.hosted_operation", fields);
+      expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "example.hosted_operation", input: fields, dryRun: true });
+    } finally {
+      await close();
+    }
+  });
+
+  it("preserves arbitrary keys within a batch op and a runtime property map", async () => {
+    const { server } = createMcpServer(resolveToolSelection({ profile: "engine" }, {}), { surface: "v3" });
+    const tools = (server as unknown as { _registeredTools: Record<string, { handler: unknown }> })._registeredTools;
+    const observe = vi.fn(async (_input: unknown) => envelope({ ok: true }));
+    for (const name of ["summer_batch", "summer_runtime_spawn"]) tools[name].handler = observe;
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "input-contract-test", version: "1" });
+    await client.connect(clientSide);
+    try {
+      const props = { custom_amount: 5, custom_label: "hero" };
+      const ops = [{ op: "AddNode", props, extra_engine_field: { nested: 7 } }];
+      await client.callTool({ name: "summer_batch", arguments: { ops } });
+      await client.callTool({ name: "summer_runtime_spawn", arguments: { action: "spawn", props } });
+      expect(observe.mock.calls.map(([args]) => args)).toEqual([
+        expect.objectContaining({ ops }), expect.objectContaining({ props }),
+      ]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
 describe("v4, engine profile", () => {
   it("lists the engine tools by their 3.x names, docs, summer_search and summer_call, and nothing else local", async () => {
     const { client, close } = await session("engine", "v4");
@@ -118,6 +212,28 @@ describe("v4, engine profile", () => {
       expect(text).not.toContain("summer_library_feedback");
       const viaCall = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.read", input: { id: "skill/multiplayer" } } }));
       expect(JSON.stringify(viaCall)).toContain("docs.feedback");
+    } finally {
+      await close();
+    }
+  });
+
+  it.each([
+    ["v3", "summer_read_library", "summer_search_library"],
+    ["v4", "summer_docs_read", "summer_docs_search"],
+  ] as const)("offers available library navigation tools on %s", async (surface, read, search) => {
+    const { client, close } = await session("engine", surface);
+    try {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toEqual(expect.arrayContaining([read, search]));
+      const id = "tool/keep-summer_search_library-in-this-id";
+      const missing = answerOf(await client.callTool({ name: read, arguments: { id } }));
+      expect(missing).toMatchObject({ ok: false, id, hint: expect.stringContaining(`use ${search}`) });
+      const hits = answerOf(await client.callTool({ name: search, arguments: { query: "spatial-placement", kinds: ["skill"] } }));
+      expect(hits.hint).toContain(`Read one with ${read}`);
+      const guide = await client.callTool({ name: read, arguments: { id: "skill/spatial-placement", part: "skill" } });
+      expect(guide.content).toContainEqual(expect.objectContaining({ text: expect.stringContaining(`load each with ${read}`) }));
+      const linked = await client.callTool({ name: read, arguments: { id: "skill/spatial-placement/references/kit-placement-tools.md" } });
+      expect(linked.content).toContainEqual(expect.objectContaining({ text: expect.stringContaining(`The entry itself: ${read}`) }));
     } finally {
       await close();
     }

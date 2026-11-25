@@ -11,6 +11,70 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
   - **Unchanged:** a Summer Engine export uploads and goes live as before and still needs `clientVersion`; an export without `client.pck` is still refused; without `buildId`, `web`, `macos-universal`, `windows-x64` and `linux-x64` are store downloads.
 - **`summer_go_live` says what "live" means for a Private page.** It never changes who can find the store page. When the page is Private the answer says so ("only the game's team, players who own it and invited testers can open it"), and `game.storeVisibility` carries `public` or `private`; it no longer says "players get it now" for a page the public cannot open.
 
+- Mesh port connections use the actual position of a fixed target opening under a translated or rotated parent.
+
+- Port connections and surface attachments ask Godot to verify the full local transform before writing. They now work under small, invertible parent scales and leave the scene untouched when the requested pose would lose precision.
+
+- World snapshots include 2D nodes under mixed scene roots on released editors, so subtree and class filters can find those nodes. Set `include_2d: false` to omit 2D nodes under a mixed root.
+
+- Asset inspection includes visible Sprite3D bounds and the selected frame of each AnimatedSprite3D when measuring a saved scene, including framed textures and billboards.
+
+- Zooming to a numbered mark uses the full camera pose from the request. Camera coordinates reported by zoom and debug views can be used again without losing the view direction.
+- Shot scoring renders its brightness and texture checks at the requested camera aspect, keeping them aligned with the measured rays.
+- Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
+- Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
+- Connecting mesh openings checks that the selected subject opening follows the moving piece and that its target stays put.
+- Placement checks use the original requested movement across long distances. A distant piece can reach a precise gap near the origin, and a gap that the saved position cannot represent is refused before writing.
+- Triangle-based surface snaps also verify the saved movement with Godot and restore the starting pose when the requested placement cannot be represented.
+- Adjacent placement and surface-snap recovery ask Godot to check the requested world movement before writing. Small or reflected parents can place accurately, and unrepresentable adjacent placements report a failure before saving.
+- Measurements and adjacent placements now use geometry in the nodes’ shared 3D world, so a mesh inside a private SubViewport cannot move a piece across the scene.
+
+
+- Mesh connection verification measures the two selected openings after a move, even when another tube crosses their position in the port list.
+- Raycasts and surface attachments skip the hit collider’s own display mesh when reporting nearer visual bounds. Angled walls with matching collision no longer produce a spurious obstacle warning.
+- 3D measurement, visual raycasts and placement include visible meshes beyond 20,000 scene nodes. A scan that runs out of budget reports the limit before its partial bounds can guide placement.
+- **3D spatial tools respect transform and visibility inheritance.** Inspection, mesh measurement, adjacent placement and mesh surface snapping now handle plain `Node` boundaries and `top_level` nodes correctly. Adjacent placement refuses groups whose visible meshes do not follow the moved root.
+- Node inspection reads 3D local transforms directly from Godot, preserving shear, small scales, and all editor rotation modes.
+- Live 3D spatial reads use Godot’s world transform. Inactive scenes and assets retain their own transform frames.
+- Framing keeps the nearest face of a small 3D subject beyond the preview camera’s near clipping plane and reports the projected fill when the lens limits a close-up.
+- Framing uses Godot’s full mesh bounds and camera coordinates, keeping small subjects centred in close-up previews.
+- Camera visibility checks preserve the original physics ray when testing face winding. Close-ups of small, front-facing meshes now report clearance overlaps without a false back-face warning.
+- Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
+- Zooming in on narrow seams preserves the requested strip and centres it between the image bars.
+- Placing and repeating 3D scenes preserves small offsets, scales and full transforms under scaled parents. Large coordinates also retain their exponent.
+- **Placing imported 3D models into a scene works on Summer Engine 0.5.60+.** `summer_import_asset`, `summer_import_asset_by_id`, and the matching `summer tool` commands now dispatch `InstantiateScene` and `SaveScene` as separate single-op requests via `executeSceneMutation` instead of one combined batch that the engine rejects.
+- Saved game input recordings use the requested `save_as` filename under `.summer/replays/`. Unsupported names fail before stopping the recording instead of being silently rewritten.
+- Repeated scene placements keep their planned spacing, endpoints and direction in the receipt, even when nearby copies have very small coordinates relative to their parent.
+
+
+- Connecting mesh ports on pipes under scaled, rotated parents now aligns their opening planes and measures the requested gap along the target opening’s outward normal.
+- Repeating a scene along a line accepts short parent-local spans and small nonzero direction vectors, including under scaled parents.
+- Camera shot scoring and previews use the editor’s visible depth range, so distant walls and terrain stay visible and count toward the frame instead of being marked as sky.
+- Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
+
+- **Still-shot replacement in `content.make` no longer reuses occupied clip windows.** Computing occupied intervals now looks up each existing shot's duration from its original index in `cuts` instead of the filtered array index or the still shot's duration.
+- Debugger reads and support reports preserve separate native error and warning records with the same text. Each record keeps its script stack and its own occurrence count.
+
+- **Script failures include their diagnostics.** Editor and scene script errors now keep native error messages, parse locations, boot diagnostics and rollback state in MCP replies, so agents can act on the failure without retrieving a missing field.
+
+- **Your agent now asks where your multiplayer game will be sold before it builds anything.** The `multiplayer` skill says up front that Summer multiplayer runs only when the game is played through Summer Games (summer.games, the desktop app and the phone apps). For Steam, itch.io or your own store listing it tells the agent to build custom networking that you host, and that a phone app exported from Project > Export cannot join Summer-hosted matches.
+- The debugger errors tool now explains how to read warning text returned by the editor and how to request warnings separately.
+
+- On editors that create actions when binding input, a rejected binding now leaves a missing action absent from project.godot. Older editors report when creating the action succeeded before binding failed.
+
+- Batch editing guidance now explains how to undo individual changes. Full receipts for batches that span multiple requests report a separate undo history for each request.
+
+- Contributors can use the [release notes rubric](docs/PUBLIC_RELEASE_NOTES.md) to write and review public changelog entries.
+- `summer_debug_views` and `summer_shot_sheet` return a scene-load error when the requested scene cannot load, instead of reporting an empty image as a successful capture.
+
+- Scene audits measure props from their transformed geometry, so wall-alignment checks use the actual long axis and wall clearance even with nonuniform scale or diagonal probe rays.
+- After saving an adjacent placement, `summer_place_adjacent` names any piece whose visible bounds disappeared before it could verify the gap.
+
+- When a batch edit fails, its full receipt identifies the failing operation and reports earlier edits that applied, following operations the editor skipped, and requests the tool never sent.
+- Screenshots and other local image tools keep their inline images when called through `summer_call`, including operation names and legacy tool names.
+
+- A failed surface attachment now names blocking objects in the piece’s own 3D world, including when the piece is inside a private SubViewport.
+
 ## [4.9.2] - 2026-11-12
 
 - **Cloud operation discovery matches the hosted server.** The CLI and MCP catalog includes board previews and clips, project templates, web release operations, and the latest video and character inputs.

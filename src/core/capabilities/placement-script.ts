@@ -14,6 +14,7 @@
  *   bounds         visible-geometry extents of nodes along three directions
  *                  (world axes or a node's local axes), plus transforms.
  *   raycast        physics ray (active scene only) and a visual-AABB ray.
+ *   plan_transform verify a parent-local literal reproduces a desired full pose.
  *   ports          resolve Marker3D ports (optionally with the subject's
  *                  other markers), or return every open loop of the node in
  *                  its own frame for placement.ts to order and pick from.
@@ -26,6 +27,8 @@
  * open scene tab that is not the active one. Physics needs the active tab:
  * only that scene's bodies are in the editor's physics space.
  */
+
+import { REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
@@ -94,6 +97,8 @@ func _dispatch(root, active, args):
 		return _cmd_bounds(root, active, args)
 	if cmd == "raycast":
 		return _cmd_raycast(root, active, args)
+	if cmd == "plan_transform":
+		return _plan_transform(root, args)
 	if cmd == "ports":
 		return _cmd_ports(root, args)
 	if cmd == "blockers":
@@ -131,6 +136,37 @@ func _vec(a):
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
 
 
+${REQUEST_DISTANCE_GDSCRIPT}
+
+func _plan_transform(root, args):
+	var node = _node(root, args["path"])
+	if not (node is Node3D):
+		return _fail("not_node3d", "placement subject must be a Node3D")
+	var xf = args["desired"]
+	var want = Transform3D(Basis(_vec(xf[0]), _vec(xf[1]), _vec(xf[2])), _vec(xf[3]))
+	var parent = _parent_xf(node, root)
+	var det = parent.basis.determinant()
+	var refused = _fail("transform_not_representable", "The parent transform cannot reproduce the requested world pose at engine precision.")
+	if not is_finite(det) or det == 0.0 or not want.is_finite():
+		return refused
+	var inv = parent.basis.inverse()
+	var local = Transform3D(inv * want.basis, inv * (want.origin - parent.origin))
+	if not local.is_finite():
+		return refused
+	var literal = var_to_str(local)
+	var stored: Transform3D = str_to_var(literal)
+	var actual = parent * stored
+	if node.is_scale_disabled():
+		actual.basis = actual.basis.orthonormalized()
+	if not actual.is_finite() or _distance_to_request(actual.origin, xf[3]) > 0.0001:
+		return refused
+	# Relative axis error checks scale and orientation even for very small pieces.
+	for i in 3:
+		if _distance_to_request(actual.basis[i], xf[i]) > want.basis[i].length() * 0.0001:
+			return refused
+	return {"ok": true, "local_transform": literal, "original_transform": var_to_str(node.transform)}
+
+
 func _open_scene(scene_path):
 	var wanted = scene_path.simplify_path()
 	var edited = EditorInterface.get_edited_scene_root()
@@ -158,67 +194,53 @@ func _rel(root, n):
 	return String(root.get_path_to(n))
 
 
-# Scene-space transform: Node3D.transform accumulated up to and including root.
-func _xf(node, root):
-	var t = Transform3D.IDENTITY
+${SCENE_SPACE_GDSCRIPT}
+
+# Use the effective world in a live tree. Detached tabs can still have owned
+# or explicitly assigned worlds. A null world there means the scene default.
+func _placement_world(node):
+	if node.is_inside_tree():
+		if node is Node3D:
+			return node.get_world_3d()
+		var view = node if node is Viewport else node.get_viewport()
+		return view.find_world_3d() if view != null else null
 	var cur = node
 	while cur != null:
-		if cur is Node3D:
-			t = cur.transform * t
-			if cur.top_level and cur != root:
-				break
-		if cur == root:
-			break
+		if cur is Viewport:
+			var world = cur.find_world_3d()
+			if world != null:
+				return world
 		cur = cur.get_parent()
-	return t
-
-
-func _visible(node, root):
-	var cur = node
-	while cur != null:
-		if cur is Node3D and not cur.visible:
-			return false
-		if cur == root:
-			break
-		cur = cur.get_parent()
-	return true
+	return null
 
 
 # Visible GeometryInstance3D descendants of start (inclusive) with their
 # scene-space transform and local AABB: the bounds definition AlignDistribute3D
-# uses. exclude holds subtree roots to skip.
-func _geoms(start, root, exclude):
-	var base_xf = Transform3D.IDENTITY
-	var base_vis = true
-	if start != root and start.get_parent() != null:
-		base_xf = _xf(start.get_parent(), root)
-		base_vis = _visible(start.get_parent(), root)
+# uses. exclude holds subtree roots to skip. A null result means the scan
+# exceeded the geometry limit. RunSceneScript enforces its own time budget.
+func _geoms(start, root, exclude, world_source = null):
+	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
-	var stack = [[start, base_xf, base_vis]]
-	var visited = 0
+	for excluded in exclude:
+		if excluded.is_ancestor_of(start):
+			return out
+	var stack = [start]
 	while stack.size() > 0:
-		visited += 1
-		if visited > MAX_GEOMS:
-			break
-		var item = stack.pop_back()
-		var n = item[0]
+		var n = stack.pop_back()
 		if exclude.has(n):
 			continue
-		var t = item[1]
-		var vis = item[2]
-		if n is Node3D:
-			if n.top_level and n != root:
-				t = n.transform
-			else:
-				t = t * n.transform
-			vis = vis and n.visible
-		if vis and n is GeometryInstance3D:
+		if n is GeometryInstance3D and _visible(n, root) and (world_source == null or _placement_world(n) == world):
 			var bb = n.get_aabb()
 			if bb.size != Vector3.ZERO:
-				out.append([n, t, bb])
-		for c in n.get_children():
-			stack.append([c, t, vis])
+				if out.size() >= MAX_GEOMS:
+					return null
+				out.append([n, _world_xf(n, root), bb])
+		stack.append_array(n.get_children())
 	return out
+
+
+func _geometry_scan_limit(root, start):
+	return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")
 
 
 func _corners(bb, t):
@@ -261,11 +283,37 @@ func _dirs(root, args):
 		return {"fail": _fail("node_not_found", "space node not found: " + space_node)}
 	if not (n is Node3D):
 		return {"fail": _fail("not_node3d", "space node is not a Node3D: " + space_node)}
-	var b = _xf(n, root).basis.orthonormalized()
+	var b = _world_xf(n, root).basis.orthonormalized()
 	return {"dirs": [b.x.normalized(), b.y.normalized(), b.z.normalized()], "space": "local"}
 
 
 # ---------------------------------------------------------------- bounds
+
+# Geometry in the frame the mount will use: its final axis lengths, before
+# the rigid turn into the surface. A sheared current frame has different extents.
+func _mount_geoms(subject, subject_xf, geoms):
+	var b = subject_xf.basis
+	var axis_lengths = Vector3(b.x.length(), b.y.length(), b.z.length())
+	var poses = {subject: Transform3D(Basis.from_scale(axis_lengths), subject_xf.origin)}
+	var posed = []
+	for g in geoms:
+		var node = g[0]
+		var chain = []
+		while not poses.has(node):
+			if not (node is Node3D) or node.top_level:
+				return {"fail": _fail("independent_subject_geometry", "Visible mounting geometry does not inherit the subject transform")}
+			chain.append(node)
+			node = node.get_parent()
+		var t = poses[node]
+		for i in range(chain.size() - 1, -1, -1):
+			node = chain[i]
+			t = t * node.transform
+			if node.is_scale_disabled():
+				t.basis = t.basis.orthonormalized()
+			poses[node] = t
+		posed.append([g[0], t, g[2]])
+	return {"geoms": posed}
+
 
 func _cmd_bounds(root, active, args):
 	var d = _dirs(root, args)
@@ -273,6 +321,7 @@ func _cmd_bounds(root, active, args):
 		return d["fail"]
 	var dirs = d["dirs"]
 	var nodes = []
+	var world = null
 	var excluded_subjects = []
 	for spec in args.get("nodes", []):
 		var path = String(spec.get("path", ""))
@@ -281,24 +330,37 @@ func _cmd_bounds(root, active, args):
 			return _fail("node_not_found", "node not found in scene: " + path)
 		if not (n is Node3D):
 			return _fail("not_node3d", "node is not a Node3D: " + path)
+		var node_world = _placement_world(n)
+		if nodes.is_empty():
+			world = node_world
+		elif node_world != world:
+			return _fail("different_world_3d", "nodes must share a World3D to compare their bounds: " + path)
 		var exclude = []
 		for ex in spec.get("exclude", []):
 			var en = _node(root, String(ex))
 			if en != null and n.is_ancestor_of(en):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
-		var geoms = _geoms(n, root, exclude)
-		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_xf(n, root))}
-		if n != root and n.get_parent() != null:
-			rec["parent_xform"] = _xf12(_xf(n.get_parent(), root))
-		else:
-			rec["parent_xform"] = _xf12(Transform3D.IDENTITY)
+		var geoms = _geoms(n, root, exclude, n)
+		if geoms == null:
+			return _geometry_scan_limit(root, n)
+		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_world_xf(n, root))}
+		rec["parent_xform"] = _xf12(_parent_xf(n, root))
+		rec["independent_geometry"] = []
+		for g in geoms:
+			if not _inherits_3d(g[0], n):
+				rec["independent_geometry"].append(_rel(root, g[0]))
 		rec["position"] = _raw3(n.position)
-		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
-			rec["intervals"] = _intervals(geoms, dirs)
+			var measured = geoms
+			if spec.get("mount_frame", false):
+				var preview = _mount_geoms(n, _world_xf(n, root), geoms)
+				if preview.has("fail"):
+					return preview["fail"]
+				measured = preview["geoms"]
+			rec["intervals"] = _intervals(measured, dirs)
 			var reach = 0.0
-			var o = _xf(n, root).origin
+			var o = _world_xf(n, root).origin
 			for g in geoms:
 				for c in _corners(g[2], g[1]):
 					reach = maxf(reach, (c - o).length())
@@ -312,11 +374,10 @@ func _cmd_bounds(root, active, args):
 
 # ---------------------------------------------------------------- raycast
 
-func _phys_ray(root, active, origin, dir, dist, mask, areas, exclude_nodes, accept_under):
+func _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclude_nodes, accept_under):
 	if not active:
 		return {"available": false, "reason": "scene_not_active"}
-	var vp = root.get_viewport()
-	var world = vp.find_world_3d() if vp != null else null
+	var world = _placement_world(world_source)
 	if world == null:
 		return {"available": false, "reason": "no_world_3d"}
 	var space = world.direct_space_state
@@ -347,18 +408,34 @@ func _phys_ray(root, active, origin, dir, dist, mask, areas, exclude_nodes, acce
 		var path = ""
 		if col is Node:
 			path = _rel(root, col) if (col == root or root.is_ancestor_of(col)) else String(col.get_path())
-		return {"available": true, "hit": true, "path": path, "point": hit.get("position"), "normal": hit.get("normal"), "skipped": skipped}
+		return {"available": true, "hit": true, "collider": col, "path": path, "point": hit.get("position"), "normal": hit.get("normal"), "skipped": skipped}
 	return {"available": true, "hit": false, "skipped": skipped, "gave_up": true}
 
 
-func _vis_ray(geoms, origin, dir, dist, accept_under):
+# Godot scenes can put the mesh under the body or the generated body under
+# its mesh. A nested body represents a separate object in either layout.
+func _visual_of_hit_collider(visual, collider):
+	if not (collider is CollisionObject3D):
+		return false
+	if collider.is_ancestor_of(visual):
+		var parent = visual.get_parent()
+		while not (parent is CollisionObject3D):
+			parent = parent.get_parent()
+		return parent == collider
+	if visual.is_ancestor_of(collider):
+		var parent = collider.get_parent()
+		while not (parent is GeometryInstance3D or parent is CollisionObject3D):
+			parent = parent.get_parent()
+		return parent == visual
+	return false
+
+
+func _vis_ray(geoms, origin, dir, dist, hit_collider):
 	var best_t = INF
 	var best = null
 	var best_axis = -1
 	var inside = 0
 	for g in geoms:
-		if accept_under != null and not (g[0] == accept_under or accept_under.is_ancestor_of(g[0])):
-			continue
 		var cs = _corners(g[2], g[1])
 		var mn = cs[0]
 		var mx = cs[0]
@@ -393,7 +470,7 @@ func _vis_ray(geoms, origin, dir, dist, accept_under):
 		if tmin < 0.0:
 			inside += 1
 			continue
-		if tmin <= dist and tmin < best_t:
+		if tmin <= dist and tmin < best_t and not _visual_of_hit_collider(g[0], hit_collider):
 			best_t = tmin
 			best = g[0]
 			best_axis = axis
@@ -429,44 +506,52 @@ func _cmd_raycast(root, active, args):
 	# A ray from a subject toward a surface node: start at the subject origin,
 	# aim at the nearest point of the surface's visible bounds.
 	var from_subject = String(args.get("from_subject", ""))
-	if from_subject != "":
-		var sn = _node(root, from_subject)
-		if sn == null:
-			return _fail("node_not_found", "subject not found: " + from_subject)
+	var world_source = _node(root, from_subject)
+	if world_source == null:
+		return _fail("node_not_found", "subject not found: " + from_subject)
+	if from_subject != "" and not args.has("direction"):
 		if accept_under == null:
 			return _fail("bad_args", "from_subject needs a surface node")
-		origin = _xf(sn, root).origin
-		var sg = _geoms(accept_under, root, [])
+		origin = _world_xf(world_source, root).origin
+		var sg = _geoms(accept_under, root, [], world_source)
+		if sg == null:
+			return _geometry_scan_limit(root, accept_under)
 		if sg.size() == 0:
-			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at: " + surface)
+			return _fail("surface_has_no_visual_bounds", "surface has no visible geometry to aim at in the subject's world: " + surface)
 		var iv = _intervals(sg, [Vector3.RIGHT, Vector3.UP, Vector3.BACK])
 		var closest = Vector3(clampf(origin.x, iv[0][0], iv[0][1]), clampf(origin.y, iv[1][0], iv[1][1]), clampf(origin.z, iv[2][0], iv[2][1]))
 		if (closest - origin).length() < 0.0001:
 			return _fail("subject_inside_surface_bounds", "the subject origin is inside the surface's bounds, so no direction toward it is defined; pass an explicit ray")
 		dir = (closest - origin).normalized()
-		exclude_nodes.append(sn)
+		exclude_nodes.append(world_source)
 	var out = {"ok": true, "origin": _raw3(origin), "direction": _raw3(dir), "scene_active": active}
 	var phys = {"available": false, "reason": "not_requested"}
 	if mode != "visual_aabb":
-		phys = _phys_ray(root, active, origin, dir, dist, mask, areas, exclude_nodes, accept_under)
-	var geoms = _geoms(root, root, exclude_nodes)
-	var vis = _vis_ray(geoms, origin, dir, dist, accept_under)
+		phys = _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclude_nodes, accept_under)
 	out["physics_available"] = phys.get("available", false)
 	if not phys.get("available", false):
 		out["physics_unavailable_reason"] = phys.get("reason", "")
 	if phys.get("hit", false):
 		out["physics"] = {"path": phys["path"], "point": _raw3(phys["point"]), "normal": _raw3(phys["normal"]), "distance": (phys["point"] - origin).length(), "skipped": phys.get("skipped", 0)}
+	if mode == "physics":
+		return out
+	var scan_root = accept_under if accept_under != null else root
+	var geoms = _geoms(scan_root, root, exclude_nodes, world_source)
+	if geoms == null:
+		if not phys.get("hit", false):
+			return _geometry_scan_limit(root, scan_root)
+		out["visual_truncated"] = true
+		return out
+	var vis = _vis_ray(geoms, origin, dir, dist, phys.get("collider"))
 	if vis.get("hit", false):
 		out["visual"] = {"path": _rel(root, vis["node"]), "point": _raw3(vis["point"]), "normal": _raw3(vis["normal"]), "distance": vis["t"]}
 	out["visual_origin_inside"] = vis.get("inside", 0)
-	if geoms.size() >= MAX_GEOMS:
-		out["visual_truncated"] = true
 	return out
 
 
 # ---------------------------------------------------------------- meshes
 
-# Triangles of the given meshes (each [MeshInstance3D, frame transform, aabb])
+# Triangles of mesh nodes (each [node, frame transform, mesh aabb, visible, Mesh])
 # in one frame: area-binned planar faces and open boundary loops.
 func _analyze(meshes, budget, want_planes, want_loops):
 	var planes = {}
@@ -478,85 +563,96 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		if truncated:
 			break
 		var m = meshes[mi]
-		var mesh = m[0].mesh
-		var t = m[1]
-		var flip = t.basis.determinant() < 0.0
-		var weld = {}
-		var pos = PackedVector3Array()
-		var edges = {}
-		for s in range(mesh.get_surface_count()):
+		if not m[3]:
+			continue
+		var mesh = _mesh_resource(m)
+		if _mesh_tris(mesh) == 0:
+			continue
+		for instance in range(_drawn_instances(m[0])):
 			if truncated:
 				break
-			if not _is_tris(mesh, s):
-				continue
-			var culls = _culls_back(m[0], s) if want_planes else true
-			var arr = mesh.surface_get_arrays(s)
-			var verts = arr[Mesh.ARRAY_VERTEX]
-			if verts == null or verts.size() == 0:
-				continue
-			if verts.size() > budget * 3:
-				truncated = true
-				break
-			var idx = arr[Mesh.ARRAY_INDEX]
-			var has_idx = idx != null and idx.size() > 0
-			var count = idx.size() if has_idx else verts.size()
-			var ids = PackedInt32Array()
-			ids.resize(verts.size())
-			var wv = PackedVector3Array()
-			wv.resize(verts.size())
-			for i in range(verts.size()):
-				var p = t * verts[i]
-				wv[i] = p
-				var key = Vector3i(roundi(p.x * 10000.0), roundi(p.y * 10000.0), roundi(p.z * 10000.0))
-				var id = weld.get(key, -1)
-				if id < 0:
-					id = pos.size()
-					weld[key] = id
-					pos.append(p)
-				ids[i] = id
-			var k = 0
-			while k + 2 < count:
-				if analyzed >= budget:
+			var t = m[1]
+			if m[0] is MultiMeshInstance3D:
+				t = t * m[0].multimesh.get_instance_transform(instance)
+			var flip = t.basis.determinant() < 0.0
+			var weld = {}
+			var pos = PackedVector3Array()
+			var edges = {}
+			for s in range(mesh.get_surface_count()):
+				if truncated:
+					break
+				if not _is_tris(mesh, s):
+					continue
+				var culls = _culls_back(m[0], mesh, s) if want_planes else true
+				var arr = mesh.surface_get_arrays(s)
+				var verts = arr[Mesh.ARRAY_VERTEX]
+				if verts == null or verts.size() == 0:
+					continue
+				if verts.size() > budget * 3:
 					truncated = true
 					break
-				analyzed += 1
-				var i0 = idx[k] if has_idx else k
-				var i1 = idx[k + 1] if has_idx else k + 1
-				var i2 = idx[k + 2] if has_idx else k + 2
-				k += 3
-				if want_planes:
-					var a = wv[i0]
-					var cr = (a - wv[i2]).cross(a - wv[i1])
-					if flip:
-						cr = -cr
-					var l = cr.length()
-					if l > 0.0000000001:
-						var nn = cr / l
-						var area = l * 0.5
-						var ca = area if culls else 0.0
-						var off = nn.dot(a)
-						var pk = Vector4i(roundi(nn.x * 40.0), roundi(nn.y * 40.0), roundi(nn.z * 40.0), roundi(off * 100.0))
-						var acc = planes.get(pk)
-						if acc == null:
-							planes[pk] = [area, nn * area, off * area, 1, ca]
-						else:
-							acc[0] += area
-							acc[1] += nn * area
-							acc[2] += off * area
-							acc[3] += 1
-							acc[4] += ca
-				if want_loops:
-					_edge(edges, ids[i0], ids[i1])
-					_edge(edges, ids[i1], ids[i2])
-					_edge(edges, ids[i2], ids[i0])
-		if want_loops and edges.size() > 0:
-			var mc = t * m[2].get_center()
-			var found = _loops(edges, pos)
-			open_chains += found["open"]
-			for lp in found["loops"]:
-				var rec = _loop_record(lp, pos, mc)
-				rec["mesh"] = mi
-				loops.append(rec)
+				var idx = arr[Mesh.ARRAY_INDEX]
+				var has_idx = idx != null and idx.size() > 0
+				var count = idx.size() if has_idx else verts.size()
+				var ids = PackedInt32Array()
+				ids.resize(verts.size())
+				var wv = PackedVector3Array()
+				wv.resize(verts.size())
+				for i in range(verts.size()):
+					var p = t * verts[i]
+					wv[i] = p
+					var key = Vector3i(roundi(p.x * 10000.0), roundi(p.y * 10000.0), roundi(p.z * 10000.0))
+					var id = weld.get(key, -1)
+					if id < 0:
+						id = pos.size()
+						weld[key] = id
+						pos.append(p)
+					ids[i] = id
+				var k = 0
+				while k + 2 < count:
+					if analyzed >= budget:
+						truncated = true
+						break
+					analyzed += 1
+					var i0 = idx[k] if has_idx else k
+					var i1 = idx[k + 1] if has_idx else k + 1
+					var i2 = idx[k + 2] if has_idx else k + 2
+					k += 3
+					if want_planes:
+						var a = wv[i0]
+						var cr = (a - wv[i2]).cross(a - wv[i1])
+						if flip:
+							cr = -cr
+						var l = cr.length()
+						if l > 0.0000000001:
+							var nn = cr / l
+							var area = l * 0.5
+							var ca = area if culls else 0.0
+							var off = nn.dot(a)
+							var pk = Vector4i(roundi(nn.x * 40.0), roundi(nn.y * 40.0), roundi(nn.z * 40.0), roundi(off * 100.0))
+							var acc = planes.get(pk)
+							if acc == null:
+								planes[pk] = [area, nn * area, off * area, 1, ca]
+							else:
+								acc[0] += area
+								acc[1] += nn * area
+								acc[2] += off * area
+								acc[3] += 1
+								acc[4] += ca
+					if want_loops:
+						_edge(edges, ids[i0], ids[i1])
+						_edge(edges, ids[i1], ids[i2])
+						_edge(edges, ids[i2], ids[i0])
+			if want_loops and edges.size() > 0:
+				var mc = t * m[2].get_center()
+				var found = _loops(edges, pos)
+				open_chains += found["open"]
+				for lp in found["loops"]:
+					var rec = _loop_record(lp, pos, mc)
+					rec["mesh"] = mi
+					if m[0] is MultiMeshInstance3D:
+						rec["instance"] = instance
+					loops.append(rec)
 	var plist = []
 	for pk in planes:
 		var acc = planes[pk]
@@ -570,8 +666,10 @@ func _analyze(meshes, budget, want_planes, want_loops):
 # Whether surface s of a MeshInstance3D is drawn with back-face culling, so its
 # faces are invisible from behind. No material means the default material,
 # which culls back faces.
-func _culls_back(mi, s):
-	var mat = mi.get_active_material(s)
+func _culls_back(mi, mesh, s):
+	var mat = mi.material_override if mi is GeometryInstance3D else null
+	if mat == null:
+		mat = mi.get_active_material(s) if mi is MeshInstance3D else mesh.surface_get_material(s)
 	if mat == null:
 		return true
 	if mat is BaseMaterial3D:
@@ -687,51 +785,127 @@ func _loop_raw(lp):
 	var rec = {"mesh": lp["mesh"], "center": _raw3(lp["center"]), "direction": _raw3(lp["direction"]), "radius": lp["radius"], "vertices": lp["vertices"], "max_dev": lp["max_dev"]}
 	if lp["ambiguous"]:
 		rec["direction_ambiguous"] = true
+	if lp.has("instance"):
+		rec["instance"] = lp["instance"]
 	return rec
 
 
+# SpriteBase3D fills its drawing AABB on tree entry. Both sprite types draw the
+# selected texture through the same native path. A static preview never plays
+# an animation or enters the authored node, its scripts or children.
+func _asset_sprite_aabb(sprite):
+	var texture
+	if sprite is AnimatedSprite3D:
+		var frames = sprite.sprite_frames
+		if frames == null or not frames.has_animation(sprite.animation) or sprite.frame >= frames.get_frame_count(sprite.animation):
+			return AABB()
+		texture = frames.get_frame_texture(sprite.animation, sprite.frame)
+	else:
+		texture = sprite.texture
+	if texture == null:
+		return AABB()
+	var preview = Sprite3D.new()
+	preview.visible = false
+	preview.texture = texture
+	if sprite is Sprite3D:
+		for property in ["region_enabled", "region_rect", "hframes", "vframes", "frame"]:
+			preview.set(property, sprite.get(property))
+	for property in ["centered", "offset", "pixel_size", "axis", "billboard"]:
+		preview.set(property, sprite.get(property))
+	Engine.get_main_loop().root.add_child(preview, false, Node.INTERNAL_MODE_BACK)
+	var bounds = preview.get_aabb()
+	preview.free()
+	return bounds
+
+
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
-func _collect(top):
+func _collect(top, scene_root = null, inspecting_asset = false):
+	var world = _placement_world(top) if scene_root != null else null
 	var meshes = []
 	var geoms = []
 	var markers = []
 	var shapes = []
-	var stack = [[top, Transform3D.IDENTITY, true, true]]
+	var unsupported = []
+	var frame = _xf(top, top)
+	var scene_frame = _world_xf(top, scene_root) if scene_root != null else frame
+	if frame.basis.determinant() == 0.0 or scene_frame.basis.determinant() == 0.0:
+		return {"meshes": [], "geoms": [], "markers": [], "shapes": [], "unsupported": [], "singular_root": true}
+	var inverse = frame.affine_inverse()
+	var scene_inverse = scene_frame.affine_inverse() if scene_root != null else inverse
+	var stack = [top]
 	while stack.size() > 0:
-		var it = stack.pop_back()
-		var n = it[0]
-		var t = it[1]
-		var vis = it[2]
-		if n is Node3D:
-			if not it[3]:
-				t = t * n.transform
-			vis = vis and n.visible
-		if n is GeometryInstance3D:
-			var bb = n.get_aabb()
-			if bb.size != Vector3.ZERO:
-				if vis:
-					geoms.append([n, t, bb])
-				if n is MeshInstance3D and n.mesh != null:
-					meshes.append([n, t, bb, vis])
-		elif n is Marker3D:
-			markers.append([n, t])
-		elif n is CollisionShape3D:
-			shapes.append([n, t])
-		for c in n.get_children():
-			stack.append([c, t, vis, false])
+		var n = stack.pop_back()
+		if n is Node3D and (scene_root == null or _placement_world(n) == world):
+			var t: Transform3D
+			if scene_root != null and not _inherits_3d(n, top):
+				t = scene_inverse * _world_xf(n, scene_root)
+			else:
+				t = inverse * _xf(n, top)
+			var vis = _visible(n, top)
+			if n is GeometryInstance3D:
+				var bb = n.get_aabb()
+				if inspecting_asset and vis and (n is Sprite3D or n is AnimatedSprite3D) and not n.is_inside_tree():
+					bb = _asset_sprite_aabb(n)
+				if bb.size != Vector3.ZERO:
+					if vis:
+						geoms.append([n, t, bb])
+					if n is MeshInstance3D and n.mesh != null:
+						meshes.append([n, t, bb, vis, n.mesh])
+				if n is MultiMeshInstance3D and n.multimesh != null and n.multimesh.mesh != null:
+					if n.multimesh.transform_format != MultiMesh.TRANSFORM_3D:
+						unsupported.append([String(top.get_path_to(n)), vis])
+					else:
+						meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis, n.multimesh.mesh])
+			elif n.is_class("GridMap"):
+				var cells = n.get_meshes()
+				for index in range(0, cells.size(), 2):
+					var mesh = cells[index + 1]
+					var bb = mesh.get_aabb()
+					if bb.size == Vector3.ZERO:
+						continue
+					var cell_transform = t * cells[index]
+					meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
+					if vis:
+						geoms.append([n, cell_transform, bb])
+			elif n is Marker3D:
+				markers.append([n, t])
+			elif n is CollisionShape3D:
+				shapes.append([n, t])
+		stack.append_array(n.get_children())
 	var by_path = func(a, b): return String(top.get_path_to(a[0])) < String(top.get_path_to(b[0]))
-	meshes.sort_custom(by_path)
+	var by_mesh = func(a, b):
+		if a[0] == b[0] and a.size() > 5 and b.size() > 5:
+			return a[5] < b[5]
+		return by_path.call(a, b)
+	meshes.sort_custom(by_mesh)
 	markers.sort_custom(by_path)
 	shapes.sort_custom(by_path)
-	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes}
+	return {"meshes": meshes, "geoms": geoms, "markers": markers, "shapes": shapes, "unsupported": unsupported}
 
 
-func _visible_meshes(col):
-	var out = []
-	for m in col["meshes"]:
-		if m[3]:
-			out.append(m)
-	return out
+func _mesh_resource(row):
+	return row[4]
+
+
+func _drawn_instances(node):
+	if not (node is MultiMeshInstance3D):
+		return 1
+	var mm = node.multimesh
+	return mm.instance_count if mm.visible_instance_count < 0 else mini(mm.instance_count, mm.visible_instance_count)
+
+
+func _mesh_analysis_error(col, visible_only = false):
+	var unsupported = []
+	for item in col["unsupported"]:
+		if not visible_only or item[1]:
+			unsupported.append(item[0])
+	if not unsupported.is_empty():
+		return _fail("unsupported_multimesh_format", "Triangle analysis requires MultiMesh.TRANSFORM_3D; 2D transform data at " + str(unsupported))
+	if DisplayServer.get_name() == "headless" or RenderingServer.get_current_rendering_driver_name() == "dummy":
+		for m in col["meshes"]:
+			if m[0] is MultiMeshInstance3D and _drawn_instances(m[0]) > 0 and (not visible_only or m[3]):
+				return _fail("multimesh_backend_unavailable", "The dummy renderer does not retain MultiMesh instance transforms or bounds; inspect this asset in a rendering editor.")
+	return null
 
 
 # Whether surface s is a triangle list. Only ArrayMesh binds
@@ -823,6 +997,17 @@ func _cmd_inspect_asset(args):
 		return _fail("unsupported_resource", path + " is a " + res.get_class() + "; pass a scene (.tscn/.scn/.glb/.gltf) or a Mesh resource")
 	if inst == null:
 		return _fail("asset_instantiate_failed", "Could not instantiate " + path)
+	# A detached CSG root has no evaluated visual mesh. A collision bake lacks
+	# the per-surface materials needed for facing and back-face evidence.
+	var csg = inst if inst.is_class("CSGShape3D") else null
+	if csg == null:
+		var shapes = inst.find_children("*", "CSGShape3D", true, false)
+		if not shapes.is_empty():
+			csg = shapes[0]
+	if csg != null:
+		var where = String(inst.get_path_to(csg))
+		inst.free()
+		return _fail("csg_visual_mesh_unavailable", path + " contains procedural CSG geometry at " + where + ". Its visual mesh and materials cannot be measured off-scene. Bake the CSG root to a MeshInstance3D in Godot, save a separate scene, then inspect that scene.")
 	var out = _describe(inst, args)
 	inst.free()
 	out["path"] = path
@@ -831,7 +1016,12 @@ func _cmd_inspect_asset(args):
 
 func _describe(inst, args):
 	var budget = int(args.get("max_triangles", 60000))
-	var col = _collect(inst)
+	var col = _collect(inst, null, true)
+	if col.get("singular_root", false):
+		return _fail("singular_asset_root", "the asset root has a singular transform")
+	var analysis_error = _mesh_analysis_error(col)
+	if analysis_error != null:
+		return analysis_error
 	var out = {"ok": true, "frame": "asset_root", "root_class": inst.get_class(), "root_name": String(inst.name)}
 	if inst is Node3D:
 		out["root_transform_identity"] = inst.transform.is_equal_approx(Transform3D.IDENTITY)
@@ -852,17 +1042,23 @@ func _describe(inst, args):
 	var meshes_out = []
 	var total = 0
 	for m in col["meshes"]:
-		var tris = _mesh_tris(m[0].mesh)
+		var tris = _mesh_tris(_mesh_resource(m)) * _drawn_instances(m[0])
 		total += tris
-		var mb = _bounds_of([[m[0], m[1], m[2]]])
+		var mesh_bounds = m[0].get_aabb() if m[0] is MultiMeshInstance3D else m[2]
+		var mb = _bounds_of([[m[0], m[1], mesh_bounds]])
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
+		if m.size() > 5:
+			rec["grid_entry"] = m[5]
+		if m[0] is MultiMeshInstance3D:
+			rec["instances"] = m[0].multimesh.instance_count
+			rec["drawn_instances"] = _drawn_instances(m[0])
 		if not m[3]:
 			rec["hidden"] = true
 		meshes_out.append(rec)
 	out["mesh_count"] = meshes_out.size()
 	out["meshes"] = meshes_out
 	out["triangles"] = total
-	var an = _analyze(_visible_meshes(col), budget, true, true)
+	var an = _analyze(col["meshes"], budget, true, true)
 	var planes_out = []
 	for p in an["planes"]:
 		if planes_out.size() >= 16:
@@ -914,8 +1110,20 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
-func _resolve_port(root, node, port, budget, want_others):
-	var nt = _xf(node, root)
+func _port_motion_error(root, source, piece, moving_subject):
+	if moving_subject == null:
+		return null
+	var follows = _inherits_3d(source, moving_subject)
+	if piece == moving_subject and not follows:
+		return _fail("independent_subject_port", "Port '" + _rel(root, source) + "' does not move with " + _rel(root, piece) + ". Choose a port that inherits the subject transform.")
+	if piece != moving_subject and follows:
+		return _fail("target_port_moves_with_subject", "Target port '" + _rel(root, source) + "' moves with " + _rel(root, moving_subject) + ". Choose a stationary target port.")
+	return null
+
+
+func _resolve_port(root, node, port, budget, want_others, moving_subject = null):
+	var world = _placement_world(node)
+	var nt = _world_xf(node, root)
 	if typeof(port) == TYPE_STRING:
 		var mk = node.get_node_or_null(NodePath(String(port)))
 		if mk == null:
@@ -924,18 +1132,23 @@ func _resolve_port(root, node, port, budget, want_others):
 			return {"fail": _fail("port_not_found", "no node named '" + String(port) + "' under " + _rel(root, node))}
 		if not (mk is Node3D):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
-		var mt = _xf(mk, root)
+		if _placement_world(mk) != world:
+			return {"fail": _fail("different_world_3d", "port marker and its piece must share a World3D")}
+		var motion_error = _port_motion_error(root, mk, node, moving_subject)
+		if motion_error != null:
+			return {"fail": motion_error}
+		var mt = _world_xf(mk, root)
 		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
 		if want_others:
 			var mothers = []
 			var mtotal = 0
 			for item in _collect(node)["markers"]:
-				if item[0] == mk:
+				if item[0] == mk or _placement_world(item[0]) != world or not _inherits_3d(item[0], node):
 					continue
 				mtotal += 1
 				if mothers.size() >= 16:
 					continue
-				var it = _xf(item[0], root)
+				var it = _world_xf(item[0], root)
 				mothers.append({"kind": "marker", "name": String(item[0].name), "path": _rel(root, item[0]), "position": _raw3(it.origin), "direction": _raw3((-it.basis.z).normalized())})
 			mrec["others"] = mothers
 			mrec["others_total"] = mtotal
@@ -943,12 +1156,25 @@ func _resolve_port(root, node, port, budget, want_others):
 	# An open-loop port: every loop of the node in its own frame, plus the
 	# node's scene transform. placement.ts orders them (stable ids from
 	# direction and position, never radius) and picks the one asked for.
-	var col = _collect(node)
-	var an = _analyze(_visible_meshes(col), budget, false, true)
+	var col = _collect(node, root)
+	var analysis_error = _mesh_analysis_error(col, true)
+	if analysis_error != null:
+		return {"fail": analysis_error}
+	var an = _analyze(col["meshes"], budget, false, true)
 	var loops = []
+	var unavailable = {}
+	var last_mesh = -1
 	for lp in an["loops"]:
+		var mesh = lp["mesh"]
+		if mesh != last_mesh:
+			last_mesh = mesh
+			var motion_error = _port_motion_error(root, col["meshes"][mesh][0], node, moving_subject)
+			if motion_error != null:
+				unavailable[str(mesh)] = motion_error
 		loops.append(_loop_raw(lp))
 	var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}
+	if not unavailable.is_empty():
+		out["unavailable_meshes"] = unavailable
 	if an["truncated"]:
 		out["analysis_truncated"] = true
 	return out
@@ -966,20 +1192,19 @@ func _cmd_ports(root, args):
 		return _fail("not_node3d", "subject and target must be Node3D")
 	if sub == tgt or sub.is_ancestor_of(tgt):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
-	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
+	if _placement_world(sub) != _placement_world(tgt):
+		return _fail("different_world_3d", "subject and target must share a World3D to join their ports")
+	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)), sub)
 	if sp.has("fail"):
 		return sp["fail"]
-	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false)
+	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false, sub)
 	if tp.has("fail"):
 		return tp["fail"]
 	for p in [sp, tp]:
 		if p.has("position"):
 			p["position"] = _raw3(p["position"])
 			p["direction"] = _raw3(p["direction"])
-	var parent_xf = Transform3D.IDENTITY
-	if sub != root and sub.get_parent() != null:
-		parent_xf = _xf(sub.get_parent(), root)
-	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root)), "parent_xform": _xf12(parent_xf)}
+	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_world_xf(sub, root))}
 
 
 # ---------------------------------------------------------------- blockers
@@ -1001,23 +1226,21 @@ func _cmd_blockers(root, active, args):
 	dir = dir.normalized()
 	var dist = float(args.get("max_distance", 1.0))
 	var mask = int(args.get("collision_mask", 4294967295))
+	var world = _placement_world(n)
 	var shapes = []
 	var ex: Array[RID] = []
 	var stack = [n]
 	while stack.size() > 0:
 		var cur = stack.pop_back()
-		if cur is CollisionObject3D:
+		if cur is CollisionObject3D and _placement_world(cur) == world:
 			ex.append(cur.get_rid())
-		if cur is CollisionShape3D and not cur.disabled and cur.shape != null:
+		if cur is CollisionShape3D and not cur.disabled and cur.shape != null and _placement_world(cur) == world:
 			shapes.append(cur)
 		for c in cur.get_children():
 			stack.append(c)
 	var space = null
-	if active and shapes.size() > 0 and n.is_inside_tree():
-		var vp = root.get_viewport()
-		var world = vp.find_world_3d() if vp != null else null
-		if world != null:
-			space = world.direct_space_state
+	if active and shapes.size() > 0 and n.is_inside_tree() and world != null:
+		space = world.direct_space_state
 	var overlaps = []
 	var best = INF
 	var best_path = ""
@@ -1052,10 +1275,16 @@ func _cmd_blockers(root, active, args):
 		if best_path != "":
 			pout["first_contact"] = {"path": best_path, "distance": best}
 		return pout
-	var mine = _bounds_of(_geoms(n, root, []))
+	var subject_geoms = _geoms(n, root, [], n)
+	if subject_geoms == null:
+		return _geometry_scan_limit(root, n)
+	var mine = _bounds_of(subject_geoms)
 	if mine == null:
 		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
-	for g in _geoms(root, root, [n]):
+	var other_geoms = _geoms(root, root, [n], n)
+	if other_geoms == null:
+		return _geometry_scan_limit(root, root)
+	for g in other_geoms:
 		var ob = _bounds_of([g])
 		if mine.intersects(ob):
 			var vp_path = _rel(root, g[0])

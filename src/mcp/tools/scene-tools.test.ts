@@ -49,6 +49,7 @@ describe("summer_create_scene guarded create-only write", () => {
   function mockCreateClient(overrides?: {
     executeIdentityBoundOps?: ReturnType<typeof vi.fn>;
     readProjectFile?: ReturnType<typeof vi.fn>;
+    getEngineCapabilities?: () => { opKinds: string[] };
   }) {
     const executeIdentityBoundOps =
       overrides?.executeIdentityBoundOps ??
@@ -67,6 +68,7 @@ describe("summer_create_scene guarded create-only write", () => {
     const getSceneState = vi.fn();
     vi.mocked(getClient).mockResolvedValue({
       getBoundProjectIdHash: () => "hash-a",
+      getEngineCapabilities: overrides?.getEngineCapabilities,
       executeIdentityBoundOps,
       executeOps,
       readProjectFile,
@@ -81,6 +83,18 @@ describe("summer_create_scene guarded create-only write", () => {
     rootName: "Main",
     rootType: "Node3D",
   };
+
+  it("refuses a non-Node class through the MCP callback before writing", async () => {
+    const executeIdentityBoundOps = vi.fn(async () => ({ results: [{
+      op: "GetClassInfo", ok: true, class_name: "BoxMesh", exists: true,
+      native_class: true, is_node: false, can_instantiate: true,
+    }] }));
+    const { readProjectFile } = mockCreateClient({ executeIdentityBoundOps, getEngineCapabilities: () => ({ opKinds: ["GetClassInfo"] }) });
+    const result = await sceneTool("summer_create_scene").handler({ ...createArgs, rootType: "BoxMesh" });
+    expect(result).toMatchObject({ isError: true });
+    expect(executeIdentityBoundOps).toHaveBeenCalledExactlyOnceWith([{ op: "GetClassInfo", class_name: "BoxMesh" }]);
+    expect(readProjectFile).not.toHaveBeenCalled();
+  });
 
   it("sends exactly one identity-bound create-only WriteFile with the minimal scene text", async () => {
     const { executeIdentityBoundOps, executeOps, health, getSceneState } = mockCreateClient();
@@ -304,6 +318,44 @@ describe("single-op dispatch contract (engine 0.5.60+)", () => {
     const body = JSON.parse(result.content?.[0]?.text ?? "{}");
     expect(body.requests).toBe(2);
     expect(body.results.map((entry: { op: string }) => entry.op)).toEqual(["SetProp", "SaveScene"]);
+  });
+
+  it("keeps the failing item, successful prefix and skipped tail in a full batch failure", async () => {
+    const executeIdentityBoundOps = vi.fn().mockResolvedValue({
+      status: "error",
+      results: [
+        { ok: true, op: "SetProp", meta: { applied: true } },
+        { ok: false, op: "RemoveNode", error: "node not found: Missing" },
+        { ok: false, op: "AddNode", failure_reason: "skipped", error: "skipped (previous op failed)" },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps } as never);
+    const result = await sceneTool("summer_batch").handler({
+      scenePath: "res://main.tscn",
+      ops: [{ op: "SetProp" }, { op: "RemoveNode" }, { op: "AddNode" }],
+    }) as { isError: boolean; content: { text: string }[] };
+    expect(result.isError).toBe(true);
+    const text = result.content[0]!.text;
+    expect(text).toContain("ops[1] RemoveNode: node not found: Missing");
+    expect(text).toContain("1 earlier op(s) already applied (SetProp)");
+    expect(text).toContain("Skipped: AddNode");
+    expect(text).toContain("Not sent: SaveScene");
+    expect(executeIdentityBoundOps).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an uncertain save uncertain while reporting the earlier confirmed edit", async () => {
+    const executeIdentityBoundOps = vi.fn()
+      .mockResolvedValueOnce({ status: "ok", results: [{ ok: true, op: "SetProp" }] })
+      .mockResolvedValueOnce({ terminalState: "timed_out" });
+    vi.mocked(getClient).mockResolvedValue({ executeIdentityBoundOps } as never);
+    const result = await sceneTool("summer_batch").handler({
+      scenePath: "res://main.tscn", ops: [{ op: "SetProp" }],
+    }) as { isError: boolean; content: { text: string }[] };
+    expect(result.isError).toBe(true);
+    const text = result.content[0]!.text;
+    expect(text).toContain("final state is unknown");
+    expect(text).toContain("1 earlier op(s) already applied");
+    expect(text).not.toContain("NOT saved");
   });
 
   it("reports an applied mutation followed by a failed save honestly", async () => {
@@ -552,7 +604,7 @@ describe("summer_batch spatial ops", () => {
 });
 
 describe("summer_batch description tells the truth about undo", () => {
-  it("promises one undo step only when nothing forces a split, and one per chunk otherwise", () => {
+  it("explains per-edit Undo and keeps request counts separate from Undo history", () => {
     let description = "";
     registerSceneTools({
       tool(name: string, desc: string) {
@@ -562,8 +614,8 @@ describe("summer_batch description tells the truth about undo", () => {
     } as never);
     expect(description).not.toContain("grouped into one undo step");
     expect(description).not.toContain("undo everything with a single Ctrl+Z.");
-    expect(description).toContain("ONE undo step");
-    expect(description).toContain("EACH chunk is its own undo step");
+    expect(description).toContain("separate undo steps for edits in the same engine request");
+    expect(description).not.toMatch(/each chunk is its own undo step|N \+ 2 requests and undo steps/i);
   });
 });
 

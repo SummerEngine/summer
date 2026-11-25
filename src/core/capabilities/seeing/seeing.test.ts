@@ -242,6 +242,24 @@ describe("summer_debug_views", () => {
 describe("summer_zoom", () => {
   const pose = { camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", fov: 50 };
 
+  it("uses the same precise camera pose for a mark, its crop, and the reusable receipt", async () => {
+    const camera = { camera_position: "Vector3(0, 0, 6)", camera_look_at: "Vector3(0.0004, 0, 5.9996)", fov: 55.12345 };
+    const engine = fakeEngine({
+      projectRoot: project,
+      native: (op) => ({
+        ok: true,
+        framing: op.framing,
+        image_base64: OK_JPEG.toString("base64"),
+        marks: [{ id: 1, path: "Target", class: "MeshInstance3D", screen_rect: { x: 400, y: 200, w: 100, h: 100 } }],
+      }),
+    });
+    const result = (await zoom(engine, { scenePath: "res://square.tscn", ...camera, mark: 1 })) as SeeingSuccess;
+    expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", marks: true, ...camera });
+    expect(result.ok).toBe(true);
+    expect(result.receipt.pose).toEqual({ position: camera.camera_position, look_at: camera.camera_look_at, fov: camera.fov });
+    expect(result.caption).toContain("look_at Vector3(0.0004, 0, 5.9996), fov 55.12345");
+  });
+
   it("renders the exact sub-frustum of a region", async () => {
     const engine = fakeEngine({ projectRoot: project });
     const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0 })) as SeeingSuccess;
@@ -251,6 +269,21 @@ describe("summer_zoom", () => {
     expect(crop[0]).toBeCloseTo(0.4, 6);
     expect(crop[2]).toBeCloseTo(0.6, 6);
     expect(r.caption).toMatch(/Zoom x5\.0/);
+  });
+
+  it.each([
+    { reference: [320, 192], region: [0.625, 0.125, 4 / 320, 0.75], rect: [34, 0, 4, 144] },
+    { reference: [192, 320], region: [0.125, 0.625, 0.75, 4 / 320], rect: [0, 21, 144, 4] },
+    { reference: [320, 192], region: [0.625, 0.125, 1 / 320, 0.75], rect: [35, 0, 1, 144] },
+    { reference: [192, 320], region: [0.125, 0.625, 0.75, 1 / 320], rect: [0, 22, 144, 1] },
+  ])("centres a thin crop at pixel size $rect inside the letterbox", async ({ reference, region, rect }) => {
+    const engine = fakeEngine({ projectRoot: project });
+    const result = (await zoom(engine, { ...pose, scenePath: "res://seams.tscn", reference_size: reference, region, max_size: 144 })) as SeeingSuccess;
+    expect(result.receipt.region_px).toEqual(rect.slice(2));
+    expect(result.receipt.letterboxed).toBe(true);
+    const [tile] = engine.configs[0]!.tiles as Array<Record<string, unknown>>;
+    expect(tile!.rect).toEqual(rect);
+    expect(tile!.pose).toMatchObject({ crop: [region[0], region[1], region[0]! + region[2]!, region[1]! + region[3]!] });
   });
 
   it("resolves mark N with a marks render of the same pose, then zooms on its box", async () => {
@@ -300,6 +333,14 @@ describe("summer_frame_shot", () => {
     };
   }
 
+  it.each([1, 3, 3.7, 0.64])("renders candidate scoring images at the ray-grid aspect %s", async (aspect) => {
+    const engine = fakeEngine({ projectRoot: project, analyze: measure });
+    await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1"], aspect, render: "none", save_bookmark: false });
+    const { size } = engine.configs[1]!.image_check as { size: [number, number] };
+    expect(size[0] / size[1]).toBe(aspect);
+    expect(engine.configs[1]!.measure).toMatchObject({ aspect });
+  });
+
   it("measures candidates in-engine, returns the top 3, saves the best and renders one sheet", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: measure });
     const r = (await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1", "House2", "House3"] })) as SeeingSuccess;
@@ -307,7 +348,7 @@ describe("summer_frame_shot", () => {
     expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze", "render"]);
     expect((engine.configs[1]!.candidates as unknown[]).length).toBe(36);
     expect(engine.configs[1]!.measure).toMatchObject({ grid_cols: 24, grid_rows: 14, near_lens_radius: 0.3 });
-    expect(engine.configs[1]!.image_check).toEqual({ size: [96, 56] });
+    expect(engine.configs[1]!.image_check).toEqual({ size: [96, 54] });
     const receipt = r.receipt as { top: unknown[]; rejected: Record<string, number>; bookmark: string };
     expect(receipt.top).toHaveLength(3);
     expect(receipt.rejected.hard_blocked).toBe(12);
@@ -594,6 +635,15 @@ describe("summer_frame_nodes checks an explicit from (a camera behind a backdrop
     expect(new Set(options.map((o) => `${o.from.join(",")}|${o.fov}`)).size).toBe(options.length);
   });
 
+  it("keeps the subject centre and requested lens for a small target", () => {
+    const center = [0.00045, 1.59953, 0.00039] as const;
+    const box = { position: [-0.00555, 1.59553, -0.00011] as const, size: [0.012, 0.008, 0.001] as const };
+    const options = viewOptions(box, center, [0, 0, 1], 5.0047, 1, 0.8);
+    for (const option of options) expect(option.pose.look_at).toEqual(center);
+    expect(options[0]!.pose.position.slice(0, 2)).toEqual(center.slice(0, 2));
+    expect(options[0]!.pose.fov).toBe(5.0047);
+  });
+
   it("judgeViewOptions picks the cheapest valid alternative", () => {
     const box = { position: [-1, 0, -1] as const, size: [2, 2, 2] as const };
     const options = viewOptions(box, [0, 1, 0], [0, 0, 1], 50, 16 / 9, 0.8);
@@ -732,6 +782,35 @@ describe("previous-image slots are the compare baseline (a plain sheet must not 
     expect(r.caption).toContain("kept the existing previous image (compare baseline) of hero");
   });
 
+  it.each(["lighting", "unshaded", "normals", "overdraw", "wireframe"] as const)(
+    "keeps the %s baseline separate from existing beauty captures",
+    async (view) => {
+      const beauty = seedSlot();
+      const engine = fakeEngine({ projectRoot: project, bookmarks });
+      const args = { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }], view };
+      const path = join(project, ".summer", "shots", "views", view, "hero.jpg");
+
+      const first = (await shotSheet(engine, { ...args, compare_previous: true })) as SeeingSuccess;
+      expect(first.receipt.diffs).toBeUndefined();
+      expect(first.receipt.slots).toEqual([`res://.summer/shots/views/${view}/hero.jpg`]);
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      expect(readFileSync(beauty)).toEqual(BASELINE);
+
+      writeFileSync(path, BASELINE);
+      await shotSheet(engine, args);
+      expect(readFileSync(path)).toEqual(BASELINE);
+      const next = (await shotSheet(engine, { ...args, compare_previous: true })) as SeeingSuccess;
+      expect(next.receipt.diffs).toHaveLength(1);
+      const tiles = engine.configs.at(-1)!.tiles as Array<Record<string, unknown>>;
+      expect(tiles.filter((t) => t.kind === "prev" || t.kind === "diff").map((t) => t.image_path)).toEqual([path, path]);
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      writeFileSync(path, BASELINE);
+      await shotSheet(engine, { ...args, update_previous: true });
+      expect(readFileSync(path)).toEqual(OK_JPEG);
+      expect(readFileSync(beauty)).toEqual(BASELINE);
+    }
+  );
+
   it("update_previous:true or compare_previous:true replaces it; a missing slot is created", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, bookmarks });
@@ -795,7 +874,7 @@ describe("the kernel's back-face, lens and transparency rules (source contract)"
   const kernel = loadKernelSource();
 
   it("reads the side of each hit with a front-faces-only ray and keeps transparent bodies out of the sweeps", () => {
-    expect(kernel).toMatch(/func _is_back\([\s\S]*?q\.hit_back_faces = false/);
+    expect(kernel).toMatch(/func _ray\([\s\S]*?q\.hit_back_faces = false/);
     expect(kernel).toContain("const LAYER_SEE := 8");
     // The thick sweeps use class masks only, never LAYER_SEE.
     expect(kernel).toMatch(/var sweep_hard_mask := LAYER_HARD\n/);
@@ -833,7 +912,7 @@ describe("the kernel's back-face, lens and transparency rules (source contract)"
     expect(floor).toContain('return {"y": box.position.y, "source": "lowest_point", "rays": n * n, "hits": 0}');
     const at = kernel.slice(kernel.indexOf("func _floor_at("), kernel.indexOf("func _walkable_floor("));
     // Horizontal, met from above on its drawn side, with headroom for the eye.
-    expect(at).toContain("(hit[\"normal\"] as Vector3).y > 0.7 and not _is_back(p, Vector3.DOWN, flags)");
+    expect(at).toContain("(hit[\"normal\"] as Vector3).y > 0.7 and not bool(hit[\"back\"])");
     expect(at).toContain("_ray(p + Vector3.UP * 0.05, p + Vector3.UP * height, EYE_GROUND_MASK).is_empty()");
     // Eye placement measures from the same walkable surface, for the stand and under the lens.
     expect(kernel).toContain("ref = _floor_at(stand.x, stand.z, stand.y + 0.1, stand.y - 6.0, lo)");

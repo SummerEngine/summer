@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createScene, createSceneInputShape } from "../../core/capabilities/create-scene.js";
 import { viewSetOp } from "../../core/capabilities/view-set.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
@@ -23,136 +24,21 @@ import {
 // re-exported here for the spatial tools (snap / align).
 export { FALLBACK_SINGLE_ONLY_OPS, resolveSingleOnlyOps, executeSceneMutation };
 
-function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
-  const receipt = (result ?? {}) as Record<string, unknown>;
-  const results = Array.isArray(receipt.results)
-    ? receipt.results as Array<Record<string, unknown>>
-    : [];
-  const failed = results.find((entry) => entry?.ok === false);
-  if (receipt.status === "error" || failed) {
-    const error =
-      (typeof failed?.error === "string" && failed.error) ||
-      (typeof receipt.error === "string" && receipt.error) ||
-      `${context} failed`;
-    throw new Error(error);
-  }
-  return receipt;
-}
-
-/** Compose the minimal valid .tscn text scene: header + one root node.
- *  `uid` and `load_steps` are optional in the engine parser
- *  (resource_format_text.cpp treats a missing uid as INVALID_ID); the editor
- *  assigns a uid on first save. */
-function minimalSceneText(rootName: string, rootType: string): string {
-  return `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`;
-}
-
 const finiteNumber = z.number().finite();
 const finiteVector3 = z.tuple([finiteNumber, finiteNumber, finiteNumber]);
-
-// Node names reject . : @ / " %; the type must be a plain class name.
-// Both are interpolated into quoted .tscn fields, so validate before composing.
-const VALID_ROOT_NAME = /^[A-Za-z_][A-Za-z0-9_\- ]*$/;
-const VALID_ROOT_TYPE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function registerSceneTools(server: McpServer): void {
   server.tool(
     "summer_create_scene",
-    `Create a new empty scene file. Writes a minimal .tscn through the identity-bound engine with a create-only guard: it fails if the path already exists, and it never touches the currently open scene.
+    `Create a new empty .tscn in the selected project. Pass a new res:// path. An existing file stays intact and the current editor scene stays open.
 
-The new scene is on disk but NOT opened. Call summer_open_scene to start editing it, then summer_add_node to build it out.
+rootType accepts a concrete native Node class such as Camera3D. To use a registered GDScript class, open its script in the selected editor and save any edits first. Its constructor must accept zero arguments, including when inherited. The scene stores the concrete native Node base with that script attached.
 
-Recommended workflow:
-1) Call summer_get_project_context
-2) Call summer_create_scene with a new res:// path
-3) Call summer_open_scene with that path`,
-    {
-      path: z.string().describe("New scene path, e.g. 'res://scenes/empty_level.tscn'"),
-      rootName: z.string().default("Main").describe("Root node name for the new scene"),
-      rootType: z
-        .string()
-        .default("Node3D")
-        .describe(
-          "Root node type. Default 'Node3D' (3D scenes); common alternatives: 'Node2D' (2D scenes), 'Control' (UI scenes), 'Node' (logic-only)."
-        ),
-      allow_temporary_scene_mutation: z
-        .boolean()
-        .optional()
-        .describe(
-          "DEPRECATED, ignored. Scene creation no longer mutates any open scene; kept only so older callers don't break."
-        ),
-    },
-    async ({ path, rootName, rootType }) =>
-      withEngine(async (client) => {
-        const safePath = path.trim().replace(/\\/g, "/");
-        if (!safePath.startsWith("res://") || safePath.includes("..")) {
-          throw new ToolInputError("Scene path must be a traversal-free res:// project path.");
-        }
-        if (!safePath.endsWith(".tscn")) {
-          throw new ToolInputError("New scenes must use the text format: the path must end in .tscn.");
-        }
-        if (!VALID_ROOT_NAME.test(rootName)) {
-          throw new ToolInputError(
-            `Invalid rootName "${rootName}": use letters, digits, underscores, hyphens, or spaces, starting with a letter or underscore.`
-          );
-        }
-        if (!VALID_ROOT_TYPE.test(rootType)) {
-          throw new ToolInputError(
-            `Invalid rootType "${rootType}": must be a plain class name like 'Node3D', 'Node2D', or 'Control'.`
-          );
-        }
+Unknown, abstract and non-Node roots fail before writing. If the editor lacks current constructor metadata, the tool returns class_verification_unavailable and leaves the destination free. Other scripting languages currently lack verified constructor support. On editors that use an offscreen preview for class lookup, stop a running game if it blocks the preview.
 
-        // Same engine-routed guarded write path summer_write_file uses:
-        // identity-bound, and mustNotExist makes the engine refuse (create-only)
-        // if the path already exists. The open scene is never touched.
-        const receipt = requireSuccessfulOps(
-          await client.executeIdentityBoundOps([
-            {
-              op: "WriteFile",
-              path: safePath,
-              content: minimalSceneText(rootName, rootType),
-              mustNotExist: true,
-            },
-          ]),
-          `Creating ${safePath}`,
-        );
-
-        // Post-write verification: read the file back through the engine. The
-        // write receipt already passed; a read-back failure is reported honestly
-        // instead of failing the create or being masked.
-        let verified = false;
-        let verifyError: string | undefined;
-        try {
-          const read = (await client.readProjectFile(safePath, 4096)) as {
-            ok?: boolean;
-            error?: unknown;
-            data?: { content?: unknown };
-          };
-          const content = typeof read?.data?.content === "string" ? read.data.content : null;
-          if (read?.ok === false) {
-            verifyError = String(read.error ?? "engine could not read the file back");
-          } else if (content === null) {
-            verifyError = "engine returned no text content on read-back";
-          } else if (!content.includes(`[node name="${rootName}"`)) {
-            verifyError = "read-back content does not contain the expected root node";
-          } else {
-            verified = true;
-          }
-        } catch (err) {
-          verifyError = err instanceof Error ? err.message : String(err);
-        }
-
-        return {
-          ok: true,
-          created: safePath,
-          rootName,
-          rootType,
-          verified,
-          ...(verifyError ? { verifyError } : {}),
-          receipt,
-          hint: "The new scene is on disk but not open. Call summer_open_scene to start editing it.",
-        };
-      })
+A verified result confirms that the editor read back the expected scene text. Call summer_open_scene with the new path to edit it, then summer_add_node to add children.`,
+    createSceneInputShape,
+    async (args) => withEngine(async (client) => createScene(client, args))
   );
 
   server.tool(
@@ -196,7 +82,7 @@ VALUE FORMAT — Godot string syntax for complex types:
 - Strings: "hello" — native JSON
 
 COMMON PROPERTIES:
-- position: "Vector3(x, y, z)" — world position
+- position: "Vector3(x, y, z)" — local position. A Node3D that inherits its parent’s transform uses that parent’s coordinate system.
 - rotation_degrees: "Vector3(rx, ry, rz)" — rotation in degrees
 - scale: "Vector3(sx, sy, sz)" — scale factor
 - visible: true/false — visibility
@@ -333,7 +219,7 @@ Common signals:
 
 The receiver should have the method (a script method, or a built-in such as queue_free); a missing one is saved anyway and reported in warnings. scenePath must be a .tscn.
 
-PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair), saves, reads the saved .tscn back and returns persisted:true / verified:true only when the [connection] line is there; otherwise an error with failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts it.`,
+PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair) and verifies the saved connection. A local connection includes its [connection] line. For an existing connection inherited from a base or instanced scene, Godot reads the saved scene and its dependencies and reports the declaring scene and flags. If the saved declaration is missing, the tool returns failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts a newly created connection.`,
     connectSignalInputShape,
     async (args) => withEngine(async (client) => connectSignalPersisted(client, args))
   );
@@ -370,11 +256,15 @@ PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_
     "summer_replace_node",
     `Replace a node with a different scene/model or node type, keeping its parent, sibling index, name, transform and property overrides, and the children the scene added under it. Use it to swap a kit piece for another (a wall host for a door host), a placeholder for a prefab, or a StaticBody3D for a RigidBody3D.
 
+Direct exported Node references held by other retained nodes are rebound to the replacement when its type is compatible. Ordinary NodePath properties and references to unchanged children keep their values. An incompatible exported reference refuses the swap before the old node is removed. Arrays, dictionaries and Resource-contained references are not traversed.
+
 Give exactly one of scene or type. The scenePath must be a .tscn.
 
-PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
+PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child and the preserved exported Node references present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
 
-How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
+For matching Node2D or Node3D roots, the tool compares their local poses in Godot, including an identity pose omitted from the file. On a hand-authored prefab it can pin a pose override in the Inspector so Godot keeps it when saving.
+
+How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> rebind direct exported Node references -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
     replaceNodeInputShape,
     async (args) => withEngine(async (client) => replaceNodePersisted(client, args))
   );
@@ -389,7 +279,7 @@ Reads the currently OPEN scene — "path" is relative to its root (there is no s
 
 Example: inspect a light to see its energy, color, shadow settings before changing them.
 
-The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + Transform3D, composed from the world snapshot), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
+The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + exact native scene Transform3D), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
     inspectNodeInputShape,
     async (args) =>
       // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int.
@@ -411,7 +301,7 @@ Two forms, pass exactly one:
     "summer_batch",
     `Execute multiple operations (a multi-node build) in a single call. Each op is forwarded to the engine VERBATIM: this is also how you reach engine ops without a dedicated tool.
 
-UNDO: when nothing in the list forces a split (see SPLITS), the whole batch is ONE undo step (one Ctrl+Z). Single-only ops split the list into sequential requests, and EACH chunk is its own undo step (the receipt shows the chunks).
+UNDO: the editor can record separate undo steps for edits in the same engine request. Undo once and inspect the scene before repeating. A full receipt reports undoGroup for each request. A batch spanning multiple requests cannot share one undo group.
 
 Ops use the individual tools' format:
 - {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
@@ -429,7 +319,7 @@ REFUSED: a raw ReplaceNode with scene (it saves the old scene reference; use sum
 
 REPARENTNODE KEEPS ITS SUBTREE AND IS VERIFIED: the engine op re-owns only the moved node and drops its descendants from the saved file, so the tool saves, sends each ReparentNode alone plus an in-place ReparentNode per scene-owned descendant, then reads the saved .tscn back: persisted:true / verified:true only when every moved node and descendant is at its new path, else failure_reason not_persisted. A move onto a parent with a same-named child is refused (name_collision). scenePath must be a .tscn; Undo cannot share the batch.
 
-PLACED INSTANCES: an InstantiateScene op may carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"), set on the created node; one op per piece. Each InstantiateScene is its own request and the transforms of a run follow together (up to 200 per request), so N pieces plus the save cost about N + 2 requests and undo steps. Later ops (SetProp, SnapToSurface, the save) see the pieces placed; if one fails, the pieces before it still get their transforms.
+PLACED INSTANCES: an InstantiateScene op may carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"), set on the created node; one op per piece. Each InstantiateScene is its own request and the transforms of a run follow together (up to 200 per request), so N pieces plus the save cost about N + 2 requests. Later ops (SetProp, SnapToSurface, the save) see the pieces placed; if one fails, the pieces before it still get their transforms.
 
 RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index into your ops), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops: a large full receipt overflows the tool-output limit.
 

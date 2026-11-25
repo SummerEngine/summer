@@ -16,6 +16,7 @@
  * as the single per-tool dispatch table so the handler bodies stop being two
  * mirrors as well.
  */
+import { createScene, createSceneInputSchema } from "./create-scene.js";
 import { downloadRemix, type DownloadRemixInput } from "./download-remix.js";
 import { setGameRemix } from "./game-remix.js";
 import { viewSetOp } from "./view-set.js";
@@ -40,6 +41,7 @@ import {
   missingEngineOpResult,
   type MissingOpResult,
 } from "../capability-skew.js";
+import { bindInputAction } from "./input-map.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
 import {
   recentEvents,
@@ -1213,8 +1215,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_get_script_errors", "Check a GDScript file for parse/compile errors", true, async (args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).getScriptErrors(str(args, "path")))
   ),
-  entry("summer_create_debug_report", "Create a support-ready Markdown debug report", false, async (args) => {
+  entry("summer_create_debug_report", "Create a support-ready Markdown debug report", false, async (args, ctx) => {
     const artifact = await createDebugReportArtifact({
+      connectEngine: () => ctx.engine(),
       issue: optStr(args, "issue"),
       outputPath: optStr(args, "output_path"),
       includePlaySession: args.include_play_session === true,
@@ -1289,7 +1292,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     const content = replaceAll
       ? current.content.split(oldText).join(newText)
-      : current.content.replace(oldText, newText);
+      : current.content.replace(oldText, () => newText);
     if (content === current.content) {
       return { ok: true, noOp: true, path: safePath, sha256: current.sha256, matches };
     }
@@ -1509,10 +1512,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       throw new ToolDispatchError("events must be an array of input event objects");
     }
     return requireEngineSuccess(
-      await (await ctx.engine()).executeOps([
-        { op: "InputMapAddAction", name: str(args, "name") },
-        { op: "InputMapBind", name: str(args, "name"), events: args.events },
-      ])
+      await bindInputAction(await ctx.engine(), str(args, "name"), args.events)
     );
   }),
   entry("summer_get_scene_tree", "Read a scene's node tree (explicit depth/limit honored)", true, async (args, ctx) => {
@@ -1542,11 +1542,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
   }),
-  entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
+  entry("summer_import_from_url", "Download one file by public HTTPS URL through Godot's import pipeline", true, async (args, ctx) => {
     const path = optStr(args, "path");
     return requireEngineSuccess(await importUrls(await ctx.engine(), [{ url: str(args, "url"), ...(path ? { path } : {}) }], { batch: false }));
   }),
-  entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
+  entry("summer_import_from_url_batch", "Download multiple files by public HTTPS URL in one operation", true, async (args, ctx) => {
     if (!Array.isArray(args.imports)) {
       throw new ToolDispatchError("imports must be an array of {url, path} objects");
     }
@@ -1554,42 +1554,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene ---
-  entry("summer_create_scene", "Create a new minimal .tscn with a create-only guard", true, async (args, ctx) => {
-    const safePath = str(args, "path").trim().replace(/\\/g, "/");
-    const rootName = optStr(args, "rootName") ?? "Main";
-    const rootType = optStr(args, "rootType") ?? "Node3D";
-    if (!safePath.startsWith("res://") || safePath.includes("..")) {
-      throw new ToolDispatchError("Scene path must be a traversal-free res:// project path.");
-    }
-    if (!safePath.endsWith(".tscn")) {
-      throw new ToolDispatchError("New scenes must use the text format: the path must end in .tscn.");
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_\- ]*$/.test(rootName)) {
-      throw new ToolDispatchError(`Invalid rootName "${rootName}".`);
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(rootType)) {
-      throw new ToolDispatchError(`Invalid rootType "${rootType}".`);
-    }
-    const client = await ctx.engine();
-    const receipt = requireEngineSuccess(
-      await client.executeIdentityBoundOps([
-        {
-          op: "WriteFile",
-          path: safePath,
-          content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
-          mustNotExist: true,
-        },
-      ])
-    );
-    return {
-      ok: true,
-      created: safePath,
-      rootName,
-      rootType,
-      receipt,
-      hint: "The new scene is on disk but not open. Use open-scene to start editing it.",
-    };
-  }),
+  entry("summer_create_scene", "Create a new minimal .tscn with a create-only guard", true, async (args, ctx) =>
+    requireEngineSuccess(await createScene(await ctx.engine(), parseToolArgs(createSceneInputSchema, args, "create-scene")))
+  ),
   entry("summer_add_node", "Add a node to an exact scene", true, async (args, ctx) =>
     executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
       { op: "AddNode", parent: str(args, "parent"), type: str(args, "type"), name: str(args, "name") },
@@ -1682,7 +1649,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const parsed = parseToolArgs(inspectResourceInputSchema, args, "inspect-resource");
     return requireEngineSuccess(await inspectResource(await ctx.engine(), parsed));
   }),
-  entry("summer_batch", "Run multiple engine ops as one undo group (verbatim passthrough)", true, async (args, ctx) => {
+  entry("summer_batch", "Run multiple engine ops in order (verbatim passthrough)", true, async (args, ctx) => {
     if (!Array.isArray(args.ops)) {
       throw new ToolDispatchError("ops must be an array of operation objects");
     }

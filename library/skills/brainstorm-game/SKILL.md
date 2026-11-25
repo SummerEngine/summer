@@ -1,6 +1,6 @@
 ---
 name: brainstorm-game
-description: "Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md."
+description: "Turn a game idea into a one-page brief in .summer/GameSoul.md."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

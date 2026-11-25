@@ -28,6 +28,7 @@
  * only that scene's bodies are in the editor's physics space.
  */
 
+import { GRIDMAP_GEOMETRY_GDSCRIPT } from "./gridmap-geometry.js";
 import { REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
@@ -195,6 +196,7 @@ func _rel(root, n):
 
 
 ${SCENE_SPACE_GDSCRIPT}
+${GRIDMAP_GEOMETRY_GDSCRIPT}
 
 # Use the effective world in a live tree. Detached tabs can still have owned
 # or explicitly assigned worlds. A null world there means the scene default.
@@ -862,14 +864,15 @@ func _collect(top, scene_root = null, inspecting_asset = false):
 					else:
 						meshes.append([n, t, n.multimesh.mesh.get_aabb(), vis, n.multimesh.mesh])
 			elif n.is_class("GridMap"):
-				var cells = n.get_meshes()
+				var geometry = _gridmap_geometry(n)
+				var cells = geometry.pairs
 				for index in range(0, cells.size(), 2):
 					var mesh = cells[index + 1]
 					var bb = mesh.get_aabb()
 					if bb.size == Vector3.ZERO:
 						continue
 					var cell_transform = t * cells[index]
-					meshes.append([n, cell_transform, bb, vis, mesh, index / 2])
+					meshes.append([n, cell_transform, bb, vis, mesh, index / 2, geometry.index_field])
 					if vis:
 						geoms.append([n, cell_transform, bb])
 			elif n is Marker3D:
@@ -1053,7 +1056,7 @@ func _describe(inst, args):
 		var mb = _bounds_of([[m[0], m[1], mesh_bounds]])
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
 		if m.size() > 5:
-			rec["grid_entry"] = m[5]
+			rec[m[6]] = m[5]
 		if m[0] is MultiMeshInstance3D:
 			rec["instances"] = m[0].multimesh.instance_count
 			rec["drawn_instances"] = _drawn_instances(m[0])

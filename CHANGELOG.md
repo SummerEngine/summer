@@ -8,6 +8,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Painted rooms now display ordinary props such as `OutdoorTable` and `FootstepsSign`. The final name word identifies door and step slabs.
 
+- The 4K painted-world detail helper refreshes changed tiles when you edit the painting, style or run ID. Rerunning the same request reuses completed tiles.
+
 - Painted 2.5D locations project the picture from Godot’s effective camera origin and axes, including authored horizontal and vertical camera offsets.
 
 - Painted blockout cones and tapered cylinders now collide along their visible slope. Cylinders stretched into an ellipse also retain their collision footprint in Jolt.

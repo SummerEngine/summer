@@ -8935,7 +8935,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "e285d3ebc842d8a59805b541bff565ad33748980dee86b062a1aa1e308f51d9e",
+      "content_hash": "e67cd3fb39e166c03f684805dfba9422e1ee64a0ca6341ff168f2390fc6629d8",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
@@ -9459,7 +9459,7 @@
       "id": "tool/place-adjacent",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "56d636dacae5f56e18f9490bb9519a245bcb532cefc59a486b308b46125d259b",
+      "content_hash": "82b22e153b8f73827f5b455012d5307352884b4af49887d99c03dfbd0d5865df",
       "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
       "use_when": [
         "laying facade or wall modules edge to edge along a street line",
@@ -10769,7 +10769,7 @@
       "id": "tool/snap-to-surface",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "a69b30be79d2216f3402ebd5f8298b26e9bf3a313bcb4b547bfde22bcd8faaac",
+      "content_hash": "db0c17d1fb767a77f4d3d0437aa0feb200145c2f8f6525c3c83a424f7e51ba64",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",

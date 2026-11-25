@@ -76,7 +76,7 @@ Returns (all in the asset root's own frame, the frame position/rotation apply in
 - collision: CollisionShape3D nodes {path, shape, size/radius/height/faces, center, min, max}
 - analysis {triangles_analyzed, triangle_budget, truncated}; a "truncated" object when a list was cut to fit 5 KB
 
-Visible Sprite3D nodes and the saved frame of each visible AnimatedSprite3D contribute their Godot drawing bounds to aabb and origin. Inspection reads the selected animation and frame without playing it. The mesh rows, triangle counts, and planes describe the mesh geometry listed above.
+Visible Sprite3D nodes and the saved frame of each visible AnimatedSprite3D contribute their Godot drawing bounds to aabb and origin. Inspection reads the selected animation and frame without playing it. Shadows-only mesh rows and triangles are counted. Bounds, facing planes and loops skip their surfaces.
 
 CSG scenes require a baked visual mesh. For procedural CSG the tool returns csg_visual_mesh_unavailable with the node path and recovery.
 
@@ -91,7 +91,7 @@ maxTriangles 100-300000 (default 60000). Evidence is mesh_triangles. Uses the ex
 
 Example: next module to the right, same base height, same front plane: {axis:"x", side:"max", gap:0, alignOtherAxes:{y:"min", z:"max"}}.
 
-Bounds are the visible GeometryInstance3D AABBs (the definition summer_align_distribute_3d uses; evidence visual_aabb). space "local" uses the reference's own axes for rotated facades. When the subject is inside the reference, its geometry is left out of the reference's bounds. One SetProp on position, one undo step, then the scene is saved; a fresh read verifies the achieved gap and residuals (verify). A measured result includes verify:{gap, residuals}. If either node loses its visible bounds after the save, saved stays true and verify reports {ok:false, error}. The scene must be open in the editor (any tab).`,
+Bounds come from visible GeometryInstance3D surfaces (evidence visual_aabb). The scan skips shadows-only casters and includes their separately drawn children. Use summer_align_distribute_3d for group alignment. space "local" uses the reference's own axes for rotated facades. When the subject is inside the reference, its geometry is left out of the reference's bounds. One SetProp on position, one undo step, then the scene is saved; a fresh read verifies the achieved gap and residuals (verify). A measured result includes verify:{gap, residuals}. If either node loses its visible bounds after the save, saved stays true and verify reports {ok:false, error}. The scene must be open in the editor (any tab).`,
     placeAdjacentArgsSchema.shape,
     runPlacement(placeAdjacent)
   );

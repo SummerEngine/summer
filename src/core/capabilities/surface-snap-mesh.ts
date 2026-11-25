@@ -51,10 +51,12 @@ export interface SnapMeshProbeArgs {
   maxDistance: number;
   gap: number;
   captureTransform?: boolean;
+  nativeSupportPath?: string;
 }
 
 export interface MeshSnapMeasure {
   ok: true;
+  excluded_native_support?: boolean;
   /** A support was found within maxDistance. */
   found: boolean;
   /** Distance the subject can move along the direction before its visible
@@ -87,6 +89,7 @@ export interface MeshSnapMeasure {
 
 export interface MeshSnapFailure {
   ok: false;
+  excluded_native_support?: boolean;
   failure_reason: string;
   error: string;
 }
@@ -107,6 +110,7 @@ export async function measureMeshSnap(client: SnapMeshClient, args: SnapMeshProb
       direction: args.direction,
       max_distance: args.maxDistance,
       gap: args.gap,
+      ...(args.nativeSupportPath ? { native_support: args.nativeSupportPath } : {}),
       ...(args.captureTransform ? { capture_transform: true } : {}),
     }),
     max_seconds: 30,
@@ -133,6 +137,7 @@ export async function measureMeshSnap(client: SnapMeshClient, args: SnapMeshProb
   if (result.ok !== true) {
     return {
       ok: false,
+      ...(result.excluded_native_support === true ? { excluded_native_support: true } : {}),
       failure_reason: typeof result.failure_reason === "string" ? result.failure_reason : "mesh_probe_failed",
       error: typeof result.error === "string" ? result.error : "the visible-mesh probe reported a failure",
     };
@@ -180,19 +185,31 @@ func run(_ctx):
 		return _fail("not_snappable", "the subject must be a Node3D below the scene root")
 	if args.get("capture_transform", false):
 		return {"ok": true, "found": false, "transform": var_to_str(subject.transform)}
+	var result = _measure(root, subject, args)
+	if args.has("native_support"):
+		var support = _node(root, String(args["native_support"]))
+		if support is GeometryInstance3D and not _draws_surface(support, root):
+			result["excluded_native_support"] = true
+	return result
+
+
+func _measure(root, subject, args):
 	var dv = _vec(args.get("direction", [0, -1, 0]))
 	if dv.length() < 0.000001:
 		return _fail("bad_args", "direction must be non-zero")
 	var d = dv.normalized()
 	var max_distance = float(args.get("max_distance", 20.0))
 	var gap = float(args.get("gap", 0.0))
-	var skipped = {"screen_space": 0, "not_mesh": 0}
+	var skipped = {"screen_space": 0, "not_mesh": 0, "shadows_only": 0}
 	var sub_faces = PackedVector3Array()
-	for it in _mesh_items(subject, root, null, skipped):
+	var subject_meshes = _mesh_items(subject, root, null, skipped)
+	for it in subject_meshes:
 		if not _inherits_3d(it[0], subject):
 			return _fail("independent_subject_geometry", "visible geometry does not inherit the subject's transform: " + _rel(root, it[0]))
 		sub_faces.append_array(it[1] * it[0].mesh.get_faces())
 	if sub_faces.size() < 3:
+		if skipped["shadows_only"] > 0 and subject_meshes.is_empty() and skipped["not_mesh"] == 0 and skipped["screen_space"] == 0 and not skipped.has("node_budget"):
+			return _fail("shadows_only_subject", "The subject only has shadows-only geometry; it has no visible surface to seat.")
 		return _fail("no_subject_mesh", "the subject has no visible mesh triangles to measure")
 	# The subject's unique vertices, its extent along d and its bounds.
 	var uniq = {}
@@ -538,7 +555,7 @@ func _mesh_items(start, root, exclude, skipped):
 		var n = stack.pop_back()
 		if exclude != null and n == exclude:
 			continue
-		if n is GeometryInstance3D and _visible(n, root):
+		if n is GeometryInstance3D and _draws_surface(n, root):
 			if n is MeshInstance3D:
 				if n.mesh != null:
 					if _screen_space(n):
@@ -547,6 +564,8 @@ func _mesh_items(start, root, exclude, skipped):
 						out.append([n, _world_xf(n, root)])
 			else:
 				skipped["not_mesh"] += 1
+		elif n is GeometryInstance3D and _visible(n, root):
+			skipped["shadows_only"] += 1
 		stack.append_array(n.get_children())
 	return out
 

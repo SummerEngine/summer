@@ -13,7 +13,7 @@ it.skipIf(!engine)("seats visible mesh edges on the first crossed shelf", () => 
   try {
     writeFileSync(join(project, "project.godot"), 'config_version=5\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n');
     copyFileSync(fileURLToPath(new URL("../../../tests/godot/snap-crossing-edges.gd", import.meta.url)), join(project, "regression.gd"));
-    writeFileSync(join(project, "snap.gd"), buildSnapMeshScript({ subject: "Plank", direction: [0, -1, 0], gap: 0.15, max_distance: 20 }));
+    writeFileSync(join(project, "snap.gd"), buildSnapMeshScript({ subject: "Plank", direction: [0, -1, 0], gap: 0.15, max_distance: 20, native_support: "Shelf" }));
     const run = spawnSync(engine!, ["--headless", "--summer-no-api", "--audio-driver", "Dummy", "--path", project, "--script", "res://regression.gd"], { encoding: "utf8", timeout: 30_000 });
     expect(run.error, run.stderr).toBeUndefined();
     expect(run.status, run.stdout + run.stderr).toBe(0);
@@ -23,11 +23,11 @@ it.skipIf(!engine)("seats visible mesh edges on the first crossed shelf", () => 
       parents: { actual_gap?: number; failure?: string }[];
       slopes: { support: string; mesh_gap: number; verified_gap: number }[];
     };
-    expect(rows.map(row => row.support)).toEqual(["Shelf", "Shelf", "Shelf", "Floor"]);
+    expect(rows.map(row => row.support)).toEqual(["Shelf", "Shelf", "Shelf", "Floor", "Floor"]);
     expect(rows.slice(0, 2).map(row => row.contact)).toEqual(["crossing_edges", "crossing_edges"]);
     rows.slice(0, 2).forEach(row => expect(row.normal[1]).toBeCloseTo(1, 6));
     rows.forEach((row, i) => {
-      expect(row.mesh_height).toBeCloseTo(i === 3 ? 0.15 : 3.15, 4);
+      expect(row.mesh_height).toBeCloseTo(i < 3 ? 3.15 : 0.15, 4);
       expect(row.verified_gap).toBeCloseTo(0.15, 4);
     });
     expect(parents).toHaveLength(4);

@@ -229,7 +229,7 @@ func _geoms(start, root, exclude, world_source = null):
 		if exclude.has(n):
 			continue
 		stack.append_array(n.get_children())
-		if not (n is GeometryInstance3D) or not _visible(n, root) or (world_source != null and _placement_world(n) != world):
+		if not (n is GeometryInstance3D) or not _draws_surface(n, root) or (world_source != null and _placement_world(n) != world):
 			continue
 		var bb
 		if n.is_class("CSGShape3D"):
@@ -846,7 +846,7 @@ func _collect(top, scene_root = null, inspecting_asset = false):
 				t = scene_inverse * _world_xf(n, scene_root)
 			else:
 				t = inverse * _xf(n, top)
-			var vis = _visible(n, top)
+			var vis = _draws_surface(n, top)
 			if n is GeometryInstance3D:
 				var bb = n.get_aabb()
 				if inspecting_asset and vis and (n is Sprite3D or n is AnimatedSprite3D) and not n.is_inside_tree():
@@ -1057,7 +1057,7 @@ func _describe(inst, args):
 		if m[0] is MultiMeshInstance3D:
 			rec["instances"] = m[0].multimesh.instance_count
 			rec["drawn_instances"] = _drawn_instances(m[0])
-		if not m[3]:
+		if not m[3] and not _visible(m[0], inst):
 			rec["hidden"] = true
 		meshes_out.append(rec)
 	out["mesh_count"] = meshes_out.size()

@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Visual measurements, rays, adjacent placement and surface snapping skip shadows-only casters and still count their visible children.
+
 - Screenshot captions distinguish a missing saved 3D camera from the 2D layers and UI that can remain visible during play.
 
 - Screenshot checks recognize fine patterns and color detail within JPEG blocks. A solid-color frame now describes the measured image and leaves scene visibility open.

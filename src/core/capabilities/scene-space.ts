@@ -50,6 +50,11 @@ func _visible(node, root):
 	return true
 
 
+# Shadows-only affects this surface, independently of visibility inherited by children.
+func _draws_surface(node, root):
+	return _visible(node, root) and (not (node is GeometryInstance3D) or node.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY)
+
+
 func _inherits_3d(node, ancestor):
 	var cur = node
 	while cur != ancestor:
@@ -146,7 +151,7 @@ func run(ctx):
 		var stack = [node]
 		while not stack.is_empty():
 			var n = stack.pop_back()
-			if n is GeometryInstance3D and _visible(n, root) and not _inherits_3d(n, node):
+			if n is GeometryInstance3D and _draws_surface(n, root) and not _inherits_3d(n, node):
 				independent.append(String(root.get_path_to(n)))
 			stack.append_array(n.get_children())
 	var result = {"ok": true, "origin": [xf.origin.x, xf.origin.y, xf.origin.z], "position": [node.position.x, node.position.y, node.position.z], "transform": var_to_str(xf), "independent_geometry": independent}

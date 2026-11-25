@@ -6,8 +6,8 @@
  * node (StateProvider::inspector_state) — about 5 KB to read one transform.
  * `fields` keeps only the named properties (globs allowed) and adds a few
  * derived fields the inspector cannot give:
- *   transform        local position / rotation_degrees / scale (+ Transform3D
- *                    literal for 3D nodes);
+ *   transform        local position and scale, rotation in radians on Node2D and
+ *                    Control, rotation_degrees and a Transform3D literal on Node3D;
  *   global_transform exact native scene transform, respecting Node3D inheritance;
  *   scene_file_path  the res:// scene the node instances (world snapshot);
  *   aabb             the node's world AABB (world snapshot);
@@ -40,7 +40,7 @@ export const inspectNodeInputShape = {
     .max(48)
     .optional()
     .describe(
-      "Only these fields: property names or globs (e.g. 'position', 'surface_material_override/*') and the derived fields transform, global_transform, scene_file_path, aabb, warnings. Omit for every property."
+      "Only these fields: property names or globs (e.g. 'position', 'surface_material_override/*') and the derived fields transform, global_transform, scene_file_path, aabb, warnings. In transform, Node2D and Control report rotation in radians. Node3D reports rotation_degrees. Omit for every property."
     ),
 };
 

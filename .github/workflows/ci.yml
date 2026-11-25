@@ -118,6 +118,10 @@ jobs:
       - name: Summer API and sign-in tests
         run: npx vitest run src/cli/commands/api.test.ts src/cli/commands/api-batch.test.ts src/cli/commands/api-windows.test.ts src/cli/commands/login.test.ts src/core/oauth.test.ts src/core/store-auth-config.test.ts
 
+      - name: Windows media tool lookup and launch
+        if: matrix.os == 'windows-latest'
+        run: npx vitest run src/core/capabilities/content-make/media-lookup.test.ts
+
       # macOS only: these tests expect a POSIX host (Windows writes
       # `cmd.exe /c npx` entries and backslash paths on purpose).
       - name: Installer tests (config paths and formats)

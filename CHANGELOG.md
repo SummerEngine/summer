@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Painted 2.5D locations project the picture from Godot’s effective camera origin and axes, including authored horizontal and vertical camera offsets.
+
 - Painted blockout cones and tapered cylinders now collide along their visible slope. Cylinders stretched into an ellipse also retain their collision footprint in Jolt.
 
 - Painted blockout spheres keep their authored squash and scale when toggling collision. Solid ellipsoids now use a collision hull built from the scaled mesh.

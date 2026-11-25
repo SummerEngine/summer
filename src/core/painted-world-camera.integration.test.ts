@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 
 const binary = process.env.SUMMER_BIN ?? process.env.SUMMER_EDITOR_BIN;
 
-it.skipIf(!binary)("frames the whole painting and keeps the outdoor view inside its borders as the window resizes", () => {
+it.skipIf(!binary).each(["centered", "offset"])("projects and frames the %s paint camera as the window resizes", (frame) => {
   const project = mkdtempSync(join(tmpdir(), "summer-painted-camera-"));
   try {
     const source = new URL("../../library/skills/painted-25d-world/_building-blocks/", import.meta.url);
@@ -18,7 +18,7 @@ it.skipIf(!binary)("frames the whole painting and keeps the outdoor view inside 
     copyFileSync(new URL("../../tests/godot/painted-world-camera.gd", import.meta.url), join(project, "case.gd"));
     writeFileSync(join(project, "project.godot"), "config_version=5\n");
     const output = execFileSync(binary!, [
-      "--headless", "--path", project, "--summer-no-api", "--summer-no-publish", "--script", "res://case.gd",
+      "--headless", "--path", project, "--summer-no-api", "--summer-no-publish", "--script", "res://case.gd", ...(frame === "offset" ? ["--", "--paint-offset"] : []),
     ], { env: { HOME: project, PATH: process.env.PATH, SUMMER_NO_TELEMETRY: "1" }, encoding: "utf8", timeout: 15000 });
     expect(output).toContain("PAINTED_CAMERA_OK");
   } finally {

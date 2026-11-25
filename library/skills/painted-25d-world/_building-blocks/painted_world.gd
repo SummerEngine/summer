@@ -34,7 +34,7 @@ func _ready() -> void:
 	game_cam.make_current()
 	_enter(location)
 	if player.has_method("setup"):
-		player.setup(location.paint_cam.global_basis)
+		player.setup(location.paint_cam.get_camera_transform().basis)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			_take_shots.call_deferred(arg.trim_prefix("--shots="))
@@ -45,7 +45,7 @@ func _capture_mode() -> void:
 	location.paint_cam.make_current()
 	set_physics_process(false)
 	if player.has_method("setup"):
-		player.setup(location.paint_cam.global_basis)
+		player.setup(location.paint_cam.get_camera_transform().basis)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 20, 0)
 	sun.light_energy = 1.2
@@ -67,7 +67,7 @@ func go(to: Node3D, spawn: Vector3) -> void:
 	_enter(to)
 
 func _enter(loc: Node3D) -> void:
-	game_cam.global_basis = loc.paint_cam.global_basis
+	game_cam.global_basis = loc.paint_cam.get_camera_transform().basis
 	RenderingServer.set_default_clear_color(loc.edge_color)
 	_physics_process(0.0)
 
@@ -79,10 +79,11 @@ func _aspect() -> float:
 func _physics_process(_delta: float) -> void:
 	var size: Vector2 = location.paint_size
 	var aspect := _aspect()
-	var cam_basis: Basis = location.paint_cam.global_basis
+	var frame: Transform3D = location.paint_cam.get_camera_transform()
+	var cam_basis := frame.basis
 	if location.frame_whole or full_view:
 		game_cam.size = maxf(size.x, size.y / aspect)
-		game_cam.global_position = location.paint_cam.global_position
+		game_cam.global_position = frame.origin
 		return
 	# keep the player inside the painting (move along the ground, not through the air)
 	var half := size / 2.0 - Vector2(1.0, 2.0)
@@ -96,7 +97,7 @@ func _physics_process(_delta: float) -> void:
 	game_cam.size = minf(view_width, fit)
 	var view := Vector2(game_cam.size, game_cam.size * aspect)
 	var t: Vector2 = location.plane(player.global_position + Vector3(0, 1, 0)).clamp(-(size - view) / 2.0, (size - view) / 2.0)
-	game_cam.global_position = location.paint_cam.global_position + cam_basis.x * t.x + cam_basis.y * t.y
+	game_cam.global_position = frame.origin + cam_basis.x * t.x + cam_basis.y * t.y
 
 func _take_shots(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)

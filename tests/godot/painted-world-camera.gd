@@ -35,10 +35,16 @@ func check() -> void:
 	paint_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	paint_camera.size = 24.0
 	paint_camera.rotation_degrees = Vector3(-30, 45, 0)
+	if "--paint-offset" in OS.get_cmdline_user_args():
+		paint_camera.h_offset = 1.5
+		paint_camera.v_offset = -1.125
 	location.add_child(paint_camera)
 	var painted := Node3D.new()
 	painted.name = "Painted"
 	location.add_child(painted)
+	var surface := MeshInstance3D.new()
+	surface.mesh = QuadMesh.new()
+	painted.add_child(surface)
 	var texture := GradientTexture2D.new()
 	texture.gradient = Gradient.new()
 	texture.width = PAINT_PIXELS.x
@@ -57,7 +63,18 @@ func check() -> void:
 	world.set_physics_process(false)
 	var original := paint_camera.duplicate() as Camera3D
 	reference.add_child(original)
-	original.global_transform = paint_camera.get_camera_transform()
+	original.global_transform = paint_camera.global_transform
+	var material := surface.material_override as ShaderMaterial
+	var origin: Vector3 = material.get_shader_parameter("paint_origin")
+	var right: Vector3 = material.get_shader_parameter("paint_right")
+	var up: Vector3 = material.get_shader_parameter("paint_up")
+	for pixel: Vector2 in [Vector2(80, 45), Vector2(16, 72)]:
+		var point := original.project_position(pixel, 20.0)
+		var expected := (pixel - Vector2(PAINT_PIXELS) * 0.5) * Vector2(1, -1) * paint_camera.size / PAINT_PIXELS.x
+		var delta := point - origin
+		var shader_plane := Vector2(delta.dot(right), delta.dot(up))
+		if shader_plane.distance_to(expected) > 0.001 or location.plane(point).distance_to(expected) > 0.001:
+			return fail("Projected paint and camera pixel disagree at %s" % pixel)
 
 	for pixels in [Vector2i(320, 180), Vector2i(180, 320), Vector2i(360, 150)]:
 		screen.size = pixels

@@ -5,9 +5,9 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled;
 
 uniform sampler2D paint : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
-uniform vec3 paint_origin;      // PaintCamera.global_position
-uniform vec3 paint_right;       // PaintCamera.global_basis.x
-uniform vec3 paint_up;          // PaintCamera.global_basis.y
+uniform vec3 paint_origin;      // Effective camera origin, including Camera3D offsets
+uniform vec3 paint_right;       // Camera frame right, unit length
+uniform vec3 paint_up;          // Camera frame up, unit length
 uniform vec2 paint_size;        // frame width, height in metres (Camera3D.size with KEEP_WIDTH, height = width * H / W)
 
 varying vec3 world_pos;

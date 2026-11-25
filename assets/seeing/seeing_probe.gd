@@ -1003,8 +1003,26 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 const CAMERA_POLE_LIMIT := Vector3(0.0, 0.999, 0.0).y
 
 
+# Keep Godot's normal direction and pole rounding for ordinary shots. If the
+# length overflows or underflows, rescale the represented delta before squaring it.
+static func _camera_direction(pos: Vector3, look: Vector3) -> Vector3:
+	if not pos.is_finite() or not look.is_finite() or pos == look:
+		return Vector3.ZERO
+	var delta := look - pos
+	if not delta.is_finite():
+		delta = look * 0.5 - pos * 0.5
+	var direction := delta.normalized()
+	if direction.is_normalized():
+		return direction
+	var magnitudes := delta.abs()
+	return (delta / magnitudes[magnitudes.max_axis_index()]).normalized()
+
+
 func _look_basis(pos: Vector3, look: Vector3) -> Basis:
-	var fwd := (look - pos).normalized()
+	return _basis_from_direction(_camera_direction(pos, look))
+
+
+func _basis_from_direction(fwd: Vector3) -> Basis:
 	var up := Vector3.UP
 	if absf(fwd.y) > CAMERA_POLE_LIMIT:
 		up = Vector3(0, 0, -1)
@@ -1525,6 +1543,8 @@ func _setup_render() -> void:
 		var sv: SubViewport = null
 		if kind == "shot":
 			sv = _make_shot_tile(t, world, layer, info)
+			if sv == null:
+				return
 		elif kind == "prev":
 			_make_image_tile(t, layer, info)
 		elif kind == "note":
@@ -1565,6 +1585,13 @@ func _apply_project_aa(sv: SubViewport) -> void:
 
 
 func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Dictionary) -> SubViewport:
+	var pose: Dictionary = t.get("pose", {})
+	var pos := _vec(pose.get("position"))
+	var look := _vec(pose.get("look_at"), pos + Vector3(0, 0, -1))
+	var forward := _camera_direction(pos, look)
+	if forward == Vector3.ZERO:
+		_fail("bad_camera_pose", "The camera position and aiming point must be finite and distinct at the renderer's precision.")
+		return null
 	var rect := _rect(t)
 	var render_size := _vec2i(t.get("render_size", [int(rect.size.x), int(rect.size.y)]))
 	var view := String(t.get("view", "beauty"))
@@ -1604,10 +1631,7 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 	info["method"] = method
 	sv.add_child(cam)
 	add_child(sv)
-	var pose: Dictionary = t.get("pose", {})
-	var pos := _vec(pose.get("position"))
-	var look := _vec(pose.get("look_at"), pos + Vector3(0, 0, -1))
-	cam.global_transform = Transform3D(_look_basis(pos, look), pos)
+	cam.global_transform = Transform3D(_basis_from_direction(forward), pos)
 	var near := float(pose.get("near", _preview_camera.near))
 	var far := float(pose.get("far", _pose_far(pos, look)))
 	var fov := float(pose.get("fov", 60.0))

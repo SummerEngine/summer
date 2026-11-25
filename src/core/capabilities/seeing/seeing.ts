@@ -289,7 +289,7 @@ function poseFromArgs(args: PoseArgs, label: string): ResolvedPose | { needsBook
   }
   const position = parseVector3(args.camera_position, `${label} camera_position`);
   const look_at = parseVector3(args.camera_look_at, `${label} camera_look_at`);
-  if (position.every((v, i) => Math.abs(v - look_at[i]!) < 1e-6)) throw new ToolInputError(`${label}: camera_position and camera_look_at must differ. Nothing was sent.`);
+  if (position.every((v, i) => v === look_at[i])) throw new ToolInputError(`${label}: camera_position and camera_look_at must differ. Nothing was sent.`);
   return { pose: { position, look_at, fov: fov ?? 60 } };
 }
 

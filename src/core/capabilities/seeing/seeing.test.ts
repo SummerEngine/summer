@@ -242,6 +242,20 @@ describe("summer_debug_views", () => {
 describe("summer_zoom", () => {
   const pose = { camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", fov: 50 };
 
+  it("preserves distinct sub-micrometre aim coordinates and rejects exactly coincident inputs", async () => {
+    const camera = { camera_position: "Vector3(0, 0, 0)", camera_look_at: "Vector3(0.0000005, 0, 0)" };
+    const engine = fakeEngine({ projectRoot: project });
+    const options = { scenePath: "res://square.tscn", region: [0.25, 0.25, 0.5, 0.5], ...camera };
+    const result = await zoom(engine, options);
+    expect(result.ok).toBe(true);
+    expect((engine.configs[0]!.tiles as Array<{ pose: unknown }>)[0]!.pose).toMatchObject({
+      position: [0, 0, 0], look_at: [5e-7, 0, 0],
+    });
+    const same = fakeEngine({ projectRoot: project });
+    await expect(zoom(same, { ...options, camera_look_at: camera.camera_position })).rejects.toThrow(/must differ/);
+    expect(same.calls).toEqual([]);
+  });
+
   it("uses the same precise camera pose for a mark, its crop, and the reusable receipt", async () => {
     const camera = { camera_position: "Vector3(0, 0, 6)", camera_look_at: "Vector3(0.0004, 0, 5.9996)", fov: 55.12345 };
     const engine = fakeEngine({

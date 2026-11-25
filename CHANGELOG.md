@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Screenshot checks recognize fine patterns and color detail within JPEG blocks. A solid-color frame now describes the measured image and leaves scene visibility open.
+
 - Visual measurement, raycasts and adjacent placement use Godot’s evaluated CSG solid. Subtraction cutters no longer produce phantom ray hits or extra gaps.
 
 - The camera-rigs guide keeps the board centered when switching from overhead to an isometric view.

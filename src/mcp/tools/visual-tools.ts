@@ -159,7 +159,7 @@ target:
     STABLE VIEWPOINTS (newer engines): framing:"bookmark" + bookmark_name renders from a pose saved with summer_camera_bookmark, and framing:"free" from an explicit camera_position / camera_look_at (+ fov). Both are fixed synthetic poses rendered with the scene's REAL WorldEnvironment, and the same pose every time — the way to take before/after frames that actually line up. marks:true draws a Set-of-Mark overlay (numbered tags + boxes over the largest visible 3D nodes, up to max_marks) and the caption lists label -> node path, so you can say "label 3 (Props/Crate_02) is floating" instead of guessing. The scene file is never touched. 2D scenes render normally with marks_unsupported. Older engines resolve the new framings to a preset and ignore marks — the caption says so; a frame from such a build is NOT pose-stable.
   "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Works over the plain local connection on current Summer Engine builds (verified on 0.5.65, about 1.4 s); if a build refuses with bridge_required the result says so and names the alternatives.
 
-BLANK FRAMES ARE A CAPTURE CONDITION, NOT A SCENE FACT. A uniformly black/grey "viewport" frame means the editor had not redrawn its viewport texture when it was read (typically right after a tab switch or a scene mutation) — not that the scene is dark or has no camera. Every frame is content-checked; a flat viewport frame is recaptured once automatically and the caption says what happened. Never conclude anything about lights, cameras, or content from a blank frame: recapture first.
+A flat viewport image can be an intentional solid fill or a capture taken before the editor redraws. The toolkit checks each JPEG and retries a flat viewport once. If you expected detail, check the returned image and scene before changing lights or cameras.
 
 Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent on an engine build without framing:"camera", use a RunVerification probe's save_frame(name) — its instance has a real renderer.`,
     {
@@ -407,10 +407,8 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
             const meta = snap.metadata as Record<string, unknown> | undefined;
             const requestedFraming = preview?.framing;
 
-            // Frame content check (F-01). Wording is per target because a flat
-            // frame means different things: viewport = texture not redrawn;
-            // game = booting / loading / fade; scene = nothing visible in the
-            // framing or a blank readback the engine's own retries did not fix.
+            // Describe the measured frame. Its encoded tones cannot tell us
+            // whether a solid fill was intentional or the texture was stale.
             const quality = snap.frameQuality;
             const recapture = snap.recapture;
             let frameCheck = "";
@@ -430,19 +428,19 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                 );
               } else {
                 warnings.push(
-                  `WARNING: this preview is ${flat} (engine render retries: ${snap.renderRetries ?? 0}). Either nothing is visible in this framing or the readback was blank; verify with summer_get_scene_tree and, for 3D scenes, framing:"camera" before concluding anything.`
+                  `WARNING: this preview is ${flat} (engine render retries: ${snap.renderRetries ?? 0}). A solid fill can look like this. If you expected detail, check summer_get_scene_tree and, for 3D scenes, framing:"camera".`
                 );
               }
             } else if (quality?.analyzable) {
-              frameCheck = ` Frame check: not blank (luma spread ${quality.lumaSpread}).`;
+              frameCheck = " Frame check: the JPEG contains contrast or detail.";
               if (recapture) {
                 notes.push(
-                  `NOTE: the first capture came back ${describeFlatFrame(recapture.firstFrame)} — the viewport texture had not been redrawn yet (this happens right after a tab switch or a scene mutation). This image is the automatic recapture taken ${recapture.delayMs} ms later.`
+                  `NOTE: the first capture came back ${describeFlatFrame(recapture.firstFrame)}. This image is the automatic recapture taken ${recapture.delayMs} ms later.`
                 );
               }
             } else if (quality && target !== "scene") {
               notes.push(
-                `NOTE: frame content check unavailable (${quality.reason ?? "unknown reason"}). If the image is uniformly black or grey, the viewport had not redrawn when it was read — recapture before concluding anything about lights, cameras, or content.`
+                `NOTE: frame content check unavailable (${quality.reason ?? "unknown reason"}). If you expected detail, recapture after the viewport redraws.`
               );
             }
 

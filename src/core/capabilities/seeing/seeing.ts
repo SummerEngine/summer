@@ -383,7 +383,7 @@ function imageFrom(run: ProbeRun | { image?: SeeingImage }): SeeingImage | null 
 function flatWarning(image: SeeingImage | null): string | null {
   if (!image) return null;
   const q = analyzeFrameBase64(image.base64, image.mime);
-  return q.analyzable && q.flat ? "WARNING: the returned image is uniformly flat — nothing visible was rendered. Do not judge the scene from it; check the poses and summer_get_console." : null;
+  return q.analyzable && q.flat ? "WARNING: the returned image has little or no colour variation. If you expected detail, check the camera poses and summer_get_console." : null;
 }
 
 function capCaption(lines: string[], limit = 4800): string {

@@ -17,17 +17,11 @@
  * instrumenting the engine, so this module detects the SYMPTOM (a flat frame)
  * instead of asserting a cause.
  *
- * WHAT IT DOES. The engine encodes every snapshot as a baseline JPEG
- * (Image::save_jpg_to_buffer -> libjpeg-turbo, quality 0.8, 4:2:0). A full
- * decoder dependency is not acceptable for one heuristic, and nothing in
- * node_modules decodes JPEG transitively. But baseline JPEG makes the question
- * "is this frame flat?" cheap to answer exactly: each 8x8 block's DC coefficient
- * IS its mean value (F(0,0) = 8 * mean of the level-shifted block). So this
- * module Huffman-decodes the scan — the only way to find block boundaries — and
- * keeps just the DC coefficient of every block, skipping the AC terms. No IDCT,
- * no upsampling, no colour conversion. A frame whose blocks all share one DC per
- * component is uniform by construction, not by threshold. A few hundred
- * thousand Huffman symbols is a handful of milliseconds.
+ * The engine encodes snapshots as interleaved baseline JPEG. Each 8×8
+ * block's DC coefficient gives its mean. Its AC coefficients describe
+ * variation around that mean, including detail repeated in every block.
+ * We walk the entropy stream once and bound the possible sample range from
+ * the dequantized coefficients, without an IDCT, upsampling or RGB conversion.
  *
  * Progressive/lossless/12-bit JPEGs (which the engine never writes) and
  * anything that fails to parse come back `analyzable: false` — never a throw,
@@ -43,25 +37,21 @@ export interface FrameQuality {
   height?: number;
   /** Number of luma (first component) blocks decoded. */
   lumaBlocks?: number;
-  /** Mean luminance of the frame, 0..255 (from block means). */
+  /** Mean of the decoded luma block means, including edge padding, 0..255. */
   meanLuma?: number;
-  /** max - min of the luma block means, 0..255. 0 = every block identical. */
+  /** max - min of the luma block means, 0..255. 0 = the block means are equal. */
   lumaSpread?: number;
   /** Largest max - min over the chroma components' block means (0 for greyscale). */
   chromaSpread?: number;
-  /** Every block of every component carries the same DC coefficient. Exact. */
+  /** Each component has constant DC and zero AC throughout the scan. */
   uniform: boolean;
-  /** uniform, or all spreads within FLAT_SPREAD_MAX — a frame with no visible
-   *  content: not-yet-drawn viewport texture, a solid fill, a black boot frame. */
+  /** The encoded range of every component is bounded by FLAT_SPREAD_MAX. */
   flat: boolean;
   /** Coarse tone of a flat frame, for the caption. */
   tone?: "black" | "white" | "grey" | "color";
 }
 
-/** Block-mean spread (in 8-bit luma/chroma units) at or below which a frame is
- *  treated as content-free. One quantisation step at the engine's quality is
- *  well under 1 unit; real editor/game frames measured in the e2e set spread
- *  100+ units. */
+/** Maximum certified component range in 8-bit samples for a near-flat frame. */
 export const FLAT_SPREAD_MAX = 4;
 
 const BLACK_LUMA_MAX = 24;
@@ -91,6 +81,7 @@ interface Component {
   min: number;
   max: number;
   sum: number;
+  maxAcSpan: number; // Largest upper bound on a block’s internal sample range.
 }
 
 interface HuffmanTable {
@@ -213,8 +204,7 @@ function extend(value: number, bits: number): number {
   return value < 1 << (bits - 1) ? value - (1 << bits) + 1 : value;
 }
 
-/** Decode one block: record its DC, skip its AC coefficients. */
-function decodeBlock(reader: ScanReader, comp: Component): void {
+function decodeBlock(reader: ScanReader, comp: Component, quant: Uint16Array): void {
   const t = reader.decode(comp.dcTable!);
   const diff = t === 0 ? 0 : extend(reader.receive(t), t);
   comp.pred += diff;
@@ -231,6 +221,10 @@ function decodeBlock(reader: ScanReader, comp: Component): void {
   comp.blocks += 1;
   comp.sum += dc;
 
+  // Each non-DC term in the inverse DCT contributes at most |coefficient|/4
+  // from the block mean. Twice that bounds the span. Quantization entries
+  // and entropy coefficients use the same zigzag order.
+  let acSpan = 0;
   let k = 1;
   while (k < 64) {
     const rs = reader.decode(comp.acTable!);
@@ -245,9 +239,13 @@ function decodeBlock(reader: ScanReader, comp: Component): void {
     }
     k += r;
     if (k > 63) throw new Error("AC run past block end");
-    reader.receive(s);
+    const amplitude = reader.receive(s);
+    if (comp.maxAcSpan <= FLAT_SPREAD_MAX) {
+      acSpan += Math.abs(extend(amplitude, s)) * quant[k] / 2;
+    }
     k += 1;
   }
+  comp.maxAcSpan = Math.max(comp.maxAcSpan, acSpan);
 }
 
 /**
@@ -334,6 +332,7 @@ function analyze(data: Uint8Array): FrameQuality {
           min: 0,
           max: 0,
           sum: 0,
+          maxAcSpan: 0,
         });
       }
     } else if (marker === 0xc2) {
@@ -427,7 +426,7 @@ function decodeScan(
     }
     for (const c of comps) {
       const n = blocksPerMcu(c);
-      for (let b = 0; b < n; b++) decodeBlock(reader, c);
+      for (let b = 0; b < n; b++) decodeBlock(reader, c, quant[c.tq]!);
     }
   }
 
@@ -445,8 +444,10 @@ function decodeScan(
     chromaSpread = Math.max(chromaSpread, toMean(c, c.max) - toMean(c, c.min));
     chromaOffset = Math.max(chromaOffset, Math.abs(toMean(c, c.sum / c.blocks) - 128));
   }
-  const uniform = comps.every((c) => c.allSame);
-  const flat = uniform || (lumaSpread <= FLAT_SPREAD_MAX && chromaSpread <= FLAT_SPREAD_MAX);
+  // Including padded edge samples is conservative: their variation can keep
+  // a cropped frame from being called flat, but cannot hide visible detail.
+  const uniform = comps.every((c) => c.allSame && c.maxAcSpan === 0);
+  const flat = comps.every((c) => toMean(c, c.max) - toMean(c, c.min) + c.maxAcSpan <= FLAT_SPREAD_MAX);
 
   let tone: FrameQuality["tone"];
   if (flat) {
@@ -484,7 +485,7 @@ export function analyzeFrameBase64(base64: string, mime?: string): FrameQuality 
 
 /** One clause for a caption, e.g. "uniformly black (mean luma 0/255)". */
 export function describeFlatFrame(q: FrameQuality): string {
-  const tone = q.tone === "color" ? "a single flat colour" : `${q.tone ?? "flat"}`;
   const how = q.uniform ? "uniformly" : "almost uniformly";
-  return `${how} ${tone} (mean luma ${Math.round(q.meanLuma ?? 0)}/255, spread ${q.lumaSpread ?? 0})`;
+  const appearance = q.tone === "color" ? (q.uniform ? "a solid colour" : "nearly a solid colour") : `${how} ${q.tone ?? "flat"}`;
+  return `${appearance} (mean luma ${Math.round(q.meanLuma ?? 0)}/255)`;
 }

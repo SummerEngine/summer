@@ -34,6 +34,8 @@ func check() -> void:
 	paint_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	paint_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	paint_camera.size = 24.0
+	paint_camera.near = 0.5
+	paint_camera.far = 70.0
 	paint_camera.rotation_degrees = Vector3(-30, 45, 0)
 	if "--paint-offset" in OS.get_cmdline_user_args():
 		paint_camera.h_offset = 1.5
@@ -61,6 +63,8 @@ func check() -> void:
 	world.player_path = ^"Player"
 	screen.add_child(world)
 	world.set_physics_process(false)
+	if camera.near != paint_camera.near or camera.far != paint_camera.far:
+		return fail("The game did not start with the first location's clip planes")
 	var original := paint_camera.duplicate() as Camera3D
 	reference.add_child(original)
 	original.global_transform = paint_camera.global_transform
@@ -92,6 +96,18 @@ func check() -> void:
 				return fail("Paint extends past %s at %s: %s" % [mode, pixels, bounds])
 			elif absf(bounds.size.x - visible.size.x) > 0.01 and absf(bounds.size.y - visible.size.y) > 0.01:
 				return fail("Neither painting dimension fills %s at %s" % [mode, pixels])
+	var cottage := location.duplicate() as Node3D
+	cottage.name = "Cottage"
+	cottage.position.x += 100.0
+	var cottage_camera := cottage.get_node("PaintCamera") as Camera3D
+	cottage_camera.near = 4.0
+	cottage_camera.far = 160.0
+	world.add_child(cottage)
+	for stop in [cottage, location]:
+		world.go(stop, stop.global_position)
+		var expected: Camera3D = stop.paint_cam
+		if camera.near != expected.near or camera.far != expected.far:
+			return fail("Wrong clip planes in %s: %s to %s" % [stop.name, camera.near, camera.far])
 	print("PAINTED_CAMERA_OK")
 	quit()
 

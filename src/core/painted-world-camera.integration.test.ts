@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 
 const binary = process.env.SUMMER_BIN ?? process.env.SUMMER_EDITOR_BIN;
 
-it.skipIf(!binary).each(["centered", "offset"])("projects and frames the %s paint camera as the window resizes", (frame) => {
+it.skipIf(!binary).each(["centered", "offset"])("projects the %s paint camera, frames the room and applies its clip range", (frame) => {
   const project = mkdtempSync(join(tmpdir(), "summer-painted-camera-"));
   try {
     const source = new URL("../../library/skills/painted-25d-world/_building-blocks/", import.meta.url);

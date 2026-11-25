@@ -28,9 +28,7 @@ func _ready() -> void:
 	if location.paint == null:
 		_capture_mode()
 		return
-	game_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	game_cam.keep_aspect = Camera3D.KEEP_WIDTH
-	game_cam.far = location.paint_cam.far
 	game_cam.make_current()
 	_enter(location)
 	if player.has_method("setup"):
@@ -67,6 +65,7 @@ func go(to: Node3D, spawn: Vector3) -> void:
 	_enter(to)
 
 func _enter(loc: Node3D) -> void:
+	game_cam.set_orthogonal(loc.paint_cam.size, loc.paint_cam.near, loc.paint_cam.far)
 	game_cam.global_basis = loc.paint_cam.get_camera_transform().basis
 	RenderingServer.set_default_clear_color(loc.edge_color)
 	_physics_process(0.0)
@@ -100,13 +99,22 @@ func _physics_process(_delta: float) -> void:
 	game_cam.global_position = frame.origin + cam_basis.x * t.x + cam_basis.y * t.y
 
 func _take_shots(dir: String) -> void:
-	DirAccess.make_dir_recursive_absolute(dir)
+	var error := DirAccess.make_dir_recursive_absolute(dir)
+	if error != OK:
+		push_error("Could not create shot directory %s (%s)" % [dir, error_string(error)])
+		get_tree().quit(1)
+		return
 	for step in shot_plan:
 		full_view = step[3] == "full"
 		player.input_override = step[1]
 		await get_tree().create_timer(step[2]).timeout
 		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_jpg(dir.path_join(str(step[0]) + ".jpg"), 0.92)
+		var path := dir.path_join(str(step[0]) + ".jpg")
+		var img := get_viewport().get_texture().get_image()
+		error = img.save_jpg(path, 0.92) if img != null and not img.is_empty() else ERR_INVALID_DATA
+		if error != OK:
+			push_error("Could not save shot at %s (%s)" % [path, error_string(error)])
+			break
 	player.input_override = Vector2.ZERO
 	full_view = false
-	get_tree().quit()
+	get_tree().quit(0 if error == OK else 1)

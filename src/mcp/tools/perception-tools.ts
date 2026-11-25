@@ -68,6 +68,8 @@ THE LOOP: summer_world_snapshot (note snapshot_id) -> mutate (summer_run_script 
 
 Node entries are sorted by path. When the engine reaches its node cap, changes near that boundary can appear as additions or removals. The engine retains the last 8 snapshots per session, keyed by snapshot_id. Use this instead of summer_get_scene_tree when you need transforms/AABBs/fingerprints or a diffable baseline; the tree read remains the hierarchy-shaped view. On an engine build that predates GetWorldSnapshot the result is a structured engine_lacks_op failure naming the fallback.
 
+pos and rot_deg describe the local transform. For a Node3D in scene space, request global_pos and global_rot_deg when the editor supplies them. Sprites can also expose flip_h, flip_v, frame and animation depending on their class. Summer 0.8.8 omits these world-pose and sprite fields. Omit fields to discover the keys your editor returns for a node. When a newer editor reports why a value is unavailable, request unavailable and hint alongside that value (for example, ['aabb','unavailable','hint']).
+
 KEEP IT SMALL (about 250 bytes per node): at most ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES} nodes are listed by default. path_prefix reads one subtree ('House3', 'Lane2/Props'), classes keeps some node classes, fields keeps some per-node fields (e.g. ['pos','aabb']), offset/next_offset page the list. A filtered read adds matched_nodes and matched_counts (class counts of the subtree). counts and total_nodes describe the scene. Filtering and paging leave the stored baseline intact. If engine_truncated is true, the engine omitted node entries from the baseline. Increase max_nodes and take a new baseline before editing.`,
     worldSnapshotInputShape,
     async (args) =>

@@ -21,10 +21,12 @@ export const WORLD_SNAPSHOT_DEFAULT_MAX_NODES = 200;
 /** The engine's own default cap (SNAPSHOT_MAX_NODES_DEFAULT) for the stored snapshot. */
 export const ENGINE_SNAPSHOT_MAX_NODES = 4000;
 
-/** Per-node fields the engine writes (path is always kept). */
+/** Known keys vary with the editor version and node class. */
 export const WORLD_SNAPSHOT_NODE_FIELDS: readonly string[] = [
-  "class", "name", "pos", "rot_deg", "scale", "visible", "aabb", "scene_file",
-  "script_fp", "material_fps", "material_fps_truncated", "z_index", "rect", "view_rect", "limit_rect",
+  "class", "name", "pos", "rot_deg", "scale", "global_pos", "global_rot_deg", "visible", "aabb",
+  "z_index", "rect", "view_rect", "limit_rect", "flip_h", "flip_v", "billboard", "animation", "frame",
+  "hframes", "vframes", "region_enabled", "region_rect", "scene_file", "script_fp", "material_fps",
+  "material_slots", "material_fps_truncated", "light_energy", "light_color", "unavailable", "hint",
 ];
 
 // Mirrors library/tools/world-snapshot/resource.yaml input_schema (parity-tested).
@@ -64,7 +66,7 @@ export const worldSnapshotInputShape = {
     .max(16)
     .optional()
     .describe(
-      "Only these per-node fields (path is always kept): class, name, pos, rot_deg, scale, visible, aabb, scene_file, script_fp, material_fps, z_index, rect, view_rect, limit_rect."
+      `Choose keys from a node entry. Available keys depend on the node class and editor version. Omit fields to see them. Each result includes path. Known keys include ${WORLD_SNAPSHOT_NODE_FIELDS.join(", ")}.`
     ),
 };
 

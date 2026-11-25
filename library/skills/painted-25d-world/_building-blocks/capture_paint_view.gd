@@ -27,6 +27,10 @@ func _ready() -> void:
 	for i in 4:
 		await RenderingServer.frame_post_draw
 	var img := vp.get_texture().get_image()
-	img.save_png(out_path)
+	var error := img.save_png(out_path) if img != null and not img.is_empty() else ERR_INVALID_DATA
+	if error != OK:
+		push_error("Could not save blockout PNG at %s (%s)" % [out_path, error_string(error)])
+		get_tree().quit(1)
+		return
 	print("PAINT_VIEW_SAVED ", ProjectSettings.globalize_path(out_path), " ", img.get_size())
 	get_tree().quit()

@@ -20,6 +20,11 @@ func _ready() -> void:
 	(lvl.get_node(camera_path) as Camera3D).make_current()
 	for i in 6:
 		await RenderingServer.frame_post_draw
-	vp.get_texture().get_image().save_png(out_path)
+	var img := vp.get_texture().get_image()
+	var error := img.save_png(out_path) if img != null and not img.is_empty() else ERR_INVALID_DATA
+	if error != OK:
+		push_error("Could not save projection PNG at %s (%s)" % [out_path, error_string(error)])
+		get_tree().quit(1)
+		return
 	print("PAINTCAM_SAVED ", ProjectSettings.globalize_path(out_path))
 	get_tree().quit()

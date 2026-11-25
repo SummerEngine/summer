@@ -216,10 +216,14 @@ func _placement_world(node):
 	return null
 
 
+func _geometry_scan_limit(start, root):
+	return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry bounds under " + _rel(root, start) + ". Narrow the requested subtree.")
+
+
 # Collect rendered geometry in this subtree. CSG operands contribute to the
 # root's evaluated mesh, but ordinary children of any operand still draw.
 # Return the usual geometry array on success, or a typed failure dictionary.
-func _geoms(start, root, exclude, world_source = null):
+func _geoms(start, root, exclude, world_source = null, include_grids = false):
 	var world = _placement_world(world_source) if world_source != null else null
 	var out = []
 	for excluded in exclude:
@@ -231,7 +235,24 @@ func _geoms(start, root, exclude, world_source = null):
 		if exclude.has(n):
 			continue
 		stack.append_array(n.get_children())
-		if not (n is GeometryInstance3D) or not _draws_surface(n, root) or (world_source != null and _placement_world(n) != world):
+		var is_grid = include_grids and n.is_class("GridMap")
+		if not (is_grid or n is GeometryInstance3D) or (world_source != null and _placement_world(n) != world):
+			continue
+		if is_grid:
+			if not _visible(n, root):
+				continue
+			var geometry = _gridmap_geometry(n)
+			var frame = _world_xf(n, root)
+			for i in range(0, geometry.pairs.size(), 2):
+				if geometry.shadows_only.has(int(i / 2)):
+					continue
+				var bounds = geometry.pairs[i + 1].get_aabb()
+				if bounds.size != Vector3.ZERO:
+					if out.size() >= MAX_GEOMS:
+						return _geometry_scan_limit(start, root)
+					out.append([n, frame * geometry.pairs[i], bounds])
+			continue
+		if not _draws_surface(n, root):
 			continue
 		var bb
 		if n.is_class("CSGShape3D"):
@@ -245,7 +266,7 @@ func _geoms(start, root, exclude, world_source = null):
 			bb = n.get_aabb()
 		if bb.size != Vector3.ZERO:
 			if out.size() >= MAX_GEOMS:
-				return _fail("geometry_scan_limit", "More than " + str(MAX_GEOMS) + " visible geometry instances under " + _rel(root, start) + ". Narrow the requested subtree.")
+				return _geometry_scan_limit(start, root)
 			out.append([n, _world_xf(n, root), bb])
 	return out
 
@@ -348,7 +369,7 @@ func _cmd_bounds(root, active, args):
 			if en != null and n.is_ancestor_of(en):
 				exclude.append(en)
 				excluded_subjects.append(String(ex))
-		var geoms = _geoms(n, root, exclude, n)
+		var geoms = _geoms(n, root, exclude, n, args.get("include_grids", false))
 		if geoms is Dictionary:
 			return geoms
 		var rec = {"path": path, "resolved": _rel(root, n), "geometry_count": geoms.size(), "xform": _xf12(_world_xf(n, root))}
@@ -422,6 +443,8 @@ func _phys_ray(root, active, world_source, origin, dir, dist, mask, areas, exclu
 # Godot scenes can put the mesh under the body or the generated body under
 # its mesh. A nested body represents a separate object in either layout.
 func _visual_of_hit_collider(visual, collider):
+	if visual.is_class("GridMap"):
+		return visual == collider
 	if not (collider is CollisionObject3D):
 		return false
 	if collider.is_ancestor_of(visual):
@@ -543,7 +566,7 @@ func _cmd_raycast(root, active, args):
 	if mode == "physics":
 		return out
 	var scan_root = accept_under if accept_under != null else root
-	var geoms = _geoms(scan_root, root, exclude_nodes, world_source)
+	var geoms = _geoms(scan_root, root, exclude_nodes, world_source, args.get("include_grids", false))
 	if geoms is Dictionary:
 		if not phys.get("hit", false):
 			return geoms

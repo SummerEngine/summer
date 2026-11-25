@@ -68,7 +68,11 @@ export interface SnapClient extends CapabilityAdvertisingClient {
 
 const RECOVERY_FAILURES = new Set(["gap_exceeds_hit_travel", "overlap_recovery_exceeded", "aligned_overlap_recovery_exceeded"]);
 /** These failures invalidate a provisional AABB seat or a subsequent triangle correction. */
-const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "grid_mesh_budget_exceeded", "translation_not_representable", "shadows_only_subject"]);
+const MESH_ROLLBACK_FAILURES = new Set([
+  "mesh_edge_budget_exceeded", "grid_mesh_budget_exceeded", "multimesh_budget_exceeded",
+  "multimesh_backend_unavailable", "unsupported_multimesh_format", "no_drawn_multimesh_subject",
+  "translation_not_representable", "shadows_only_subject",
+]);
 /** Engine failures with visual_aabb evidence that the visible-mesh measurement retries. */
 const MESH_FALLBACK_FAILURES = new Set(["overlap_recovery_exceeded", "gap_exceeds_hit_travel", "surface_not_found"]);
 /** A visible-mesh gap this close to the requested one needs no move. */
@@ -447,7 +451,7 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
   if (!verify.ok && MESH_ROLLBACK_FAILURES.has(verify.failure_reason)) return refuseMeshPlacement(verify, moved);
   const finalGap = verify.ok && verify.found && typeof verify.travel === "number" ? verify.travel : undefined;
   if (replayed && (finalGap === undefined || Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE)) {
-    return refuseMeshPlacement({ ok: false, failure_reason: "verify_mismatch", error: "A fresh triangle sweep could not confirm the requested gap after replaying the original GridMap sweep." }, moved);
+    return refuseMeshPlacement({ ok: false, failure_reason: "verify_mismatch", error: "A fresh triangle sweep could not confirm the requested gap after replaying the original visible-mesh sweep." }, moved);
   }
   if (moved && finalGap !== undefined && Math.abs(finalGap - args.gap) > MESH_SNAP_VERIFY_TOLERANCE) {
     const restored = typeof measure.position === "string" && !extractOpError(await send([position(measure.position)]));

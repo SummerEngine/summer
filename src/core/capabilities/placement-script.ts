@@ -29,7 +29,8 @@
  */
 
 import { GRIDMAP_GEOMETRY_GDSCRIPT } from "./gridmap-geometry.js";
-import { REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+import { MULTIMESH_GEOMETRY_GDSCRIPT } from "./multimesh-geometry.js";
+import { PLACEMENT_WORLD_GDSCRIPT, REQUEST_DISTANCE_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
@@ -198,22 +199,7 @@ func _rel(root, n):
 ${SCENE_SPACE_GDSCRIPT}
 ${GRIDMAP_GEOMETRY_GDSCRIPT}
 
-# Use the effective world in a live tree. Detached tabs can still have owned
-# or explicitly assigned worlds. A null world there means the scene default.
-func _placement_world(node):
-	if node.is_inside_tree():
-		if node is Node3D:
-			return node.get_world_3d()
-		var view = node if node is Viewport else node.get_viewport()
-		return view.find_world_3d() if view != null else null
-	var cur = node
-	while cur != null:
-		if cur is Viewport:
-			var world = cur.find_world_3d()
-			if world != null:
-				return world
-		cur = cur.get_parent()
-	return null
+${PLACEMENT_WORLD_GDSCRIPT}
 
 
 func _geometry_scan_limit(start, root):
@@ -601,9 +587,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		for instance in range(_drawn_instances(m[0])):
 			if truncated:
 				break
-			var t = m[1]
-			if m[0] is MultiMeshInstance3D:
-				t = t * m[0].multimesh.get_instance_transform(instance)
+			var t = _drawn_instance_transform(m[0], m[1], instance)
 			var flip = t.basis.determinant() < 0.0
 			var weld = {}
 			var pos = PackedVector3Array()
@@ -920,11 +904,7 @@ func _mesh_resource(row):
 	return row[4]
 
 
-func _drawn_instances(node):
-	if not (node is MultiMeshInstance3D):
-		return 1
-	var mm = node.multimesh
-	return mm.instance_count if mm.visible_instance_count < 0 else mini(mm.instance_count, mm.visible_instance_count)
+${MULTIMESH_GEOMETRY_GDSCRIPT}
 
 
 func _mesh_analysis_error(col, visible_only = false):
@@ -934,7 +914,7 @@ func _mesh_analysis_error(col, visible_only = false):
 			unsupported.append(item[0])
 	if not unsupported.is_empty():
 		return _fail("unsupported_multimesh_format", "Triangle analysis requires MultiMesh.TRANSFORM_3D; 2D transform data at " + str(unsupported))
-	if DisplayServer.get_name() == "headless" or RenderingServer.get_current_rendering_driver_name() == "dummy":
+	if not _can_read_multimesh_transforms():
 		for m in col["meshes"]:
 			if m[0] is MultiMeshInstance3D and _drawn_instances(m[0]) > 0 and (not visible_only or m[3]):
 				return _fail("multimesh_backend_unavailable", "The dummy renderer does not retain MultiMesh instance transforms or bounds; inspect this asset in a rendering editor.")

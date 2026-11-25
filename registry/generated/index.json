@@ -968,7 +968,7 @@
       "id": "skill/character-movement",
       "kind": "skill",
       "version": "1.2.1",
-      "content_hash": "a296885a09e7fe2bbbb94d7f99cb8a6dcaa180dc048ebe361877625977d1c57e",
+      "content_hash": "fab2c5a2114e0369e4d101b97675bb32b974afd135d87e9d0ce2ace1753cca9e",
       "summary": "Player controllers for 2D and 3D, plus the standard third-person controller for Summer humanoids.",
       "use_when": [
         "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
@@ -1746,7 +1746,7 @@
       "id": "skill/fps-controller",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "d9738d002f0a4a7d9d0a46a95bee9e22cab84bf513d49961e4246e0efcc805c1",
+      "content_hash": "3f46396de0540187d722e7224cbfc58ff84d66de17f55472a87b6dbad7a2b075",
       "summary": "First-person controller: WASD, mouse look, jump, coyote time, jump buffering, air control.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -2333,7 +2333,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.2.0",
-      "content_hash": "b6078a16547b4d8e14ccc75125b1f3be70543e30f3fb6bc2ab508f5ddae8e069",
+      "content_hash": "20d2214f7f24cdf4ddc622e11f64ccafe66afd839ca57c1557979fb5c36da903",
       "summary": "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",

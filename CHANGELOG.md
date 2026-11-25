@@ -6,6 +6,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - The camera-rigs guide keeps the board centered when switching from overhead to an isometric view.
 
+- First-person movement examples keep W and D aligned with the camera when a room or spawn parent is rotated.
+
 - Painted rooms now display ordinary props such as `OutdoorTable` and `FootstepsSign`. The final name word identifies door and step slabs.
 
 - The 4K painted-world detail helper refreshes changed tiles when you edit the painting, style or run ID. Rerunning the same request reuses completed tiles.

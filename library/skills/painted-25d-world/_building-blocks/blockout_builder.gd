@@ -5,7 +5,7 @@ extends Node3D
 ##   box    pos (centre), size [x, y, z], yaw / rot_x / rot_z (degrees), scale
 ##   prism  pos, size (a PrismMesh: the ridge along z), yaw / rot_x / rot_z
 ##   cyl    pos (base centre), r_bot, r_top, height
-##   sphere pos (centre), radius, sy (vertical squash)
+##   sphere pos (centre), radius, sy (vertical squash), scale (multiplies the squashed mesh; a flat sphere has no solid volume)
 ##   poly   points [[x, z], ...], top, depth: flat ground or a quay, extruded down, two-sided collision
 ##   wall   segments [[[x, z], [x, z]], ...], height: invisible blockers along water and ledges (leave gaps at
 ##          pier roots and doorways)
@@ -59,6 +59,7 @@ func _build(o: Dictionary) -> void:
 	var mesh: Mesh
 	var shape: Shape3D
 	var offset := Vector3.ZERO
+	var sphere_scale := Vector3.ONE
 	match o.kind:
 		"box":
 			var b := BoxMesh.new()
@@ -89,9 +90,20 @@ func _build(o: Dictionary) -> void:
 			sp.radius = o.radius
 			sp.height = o.radius * 2.0
 			mesh = sp
-			var s := SphereShape3D.new()
-			s.radius = o.radius
-			shape = s
+			if o.has("scale"):
+				sphere_scale = _v(o.scale)
+			sphere_scale.y *= float(o.get("sy", 1.0))
+			var radii := sphere_scale.abs() * sp.radius
+			if o.get("solid", false) and radii[radii.min_axis_index()] > 0.0:
+				if radii.x == radii.y and radii.y == radii.z:
+					var s := SphereShape3D.new()
+					s.radius = radii.x
+					shape = s
+				else:
+					var hull := ConvexPolygonShape3D.new()
+					var vertices: PackedVector3Array = sp.get_mesh_arrays()[Mesh.ARRAY_VERTEX]
+					hull.points = Transform3D.IDENTITY.scaled(sphere_scale) * vertices
+					shape = hull
 		"poly":
 			mesh = _extrude(o.points, o.top, o.depth)
 			shape = mesh.create_trimesh_shape()
@@ -115,9 +127,9 @@ func _build(o: Dictionary) -> void:
 	if o.kind != "poly":
 		holder.position = _v(o.pos) + offset
 		holder.rotation_degrees = Vector3(o.get("rot_x", 0.0), o.get("yaw", 0.0), o.get("rot_z", 0.0))
-		if o.kind == "sphere" and o.has("sy"):
-			mi.scale = Vector3(1, o.sy, 1)
-		if o.has("scale"):
+		if o.kind == "sphere":
+			mi.scale = sphere_scale
+		elif o.has("scale"):
 			holder.scale = _v(o.scale)
 	add_child(holder)
 

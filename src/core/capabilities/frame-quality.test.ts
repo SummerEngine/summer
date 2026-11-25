@@ -67,6 +67,24 @@ describe("analyzeJpegFrame — frames with real content", () => {
   });
 });
 
+describe("detail inside JPEG blocks", () => {
+  // These encoded fixtures have constant block means. The last stores its
+  // vertical color pattern only in the three visible columns of a partial block.
+  it.each(["08-fine-checker.jpg", "09-chroma-stripes-420.jpg", "10-partial-edge-444.jpg"])(
+    "keeps the visible pattern in %s", (name) => {
+      expect(analyzeJpegFrame(frame(name))).toMatchObject({
+        analyzable: true, uniform: false, flat: false, lumaSpread: 0, chromaSpread: 0,
+      });
+    }
+  );
+
+  it("distinguishes surviving low-amplitude AC from detail lost in quantization", () => {
+    // Independent pixel decode gives [127, 128] and [128, 128] respectively.
+    expect(analyzeJpegFrame(frame("11-low-ac.jpg"))).toMatchObject({ analyzable: true, uniform: false, flat: true });
+    expect(analyzeJpegFrame(frame("12-quantized-flat.jpg"))).toMatchObject({ analyzable: true, uniform: true, flat: true });
+  });
+});
+
 describe("analyzeJpegFrame — inputs it must refuse without throwing", () => {
   it("rejects non-JPEG bytes", () => {
     const q = analyzeJpegFrame(Buffer.from("\x89PNG\r\n\x1a\n not a jpeg", "latin1"));

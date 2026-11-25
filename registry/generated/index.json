@@ -10451,7 +10451,7 @@
       "id": "tool/screenshot",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "5aaad5b7a2c6236872653f24c6076a0f562ee71606f1fd045e00c82711cf3062",
+      "content_hash": "7f1d2b58680f505739ba84de7ad09b3c8af8b12f3fc7dca90215ee25f2179c0a",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",

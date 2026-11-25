@@ -119,10 +119,20 @@ describe("summer_screenshot viewport — F-01 blank-frame handling", () => {
     expect(image(result)?.data).toBe(GOOD_2D);
     const caption = text(result);
     expect(caption).toContain("Editor viewport (2D tab)");
-    expect(caption).toContain("Frame check: not blank");
+    expect(caption).toContain("the JPEG contains contrast or detail");
     expect(caption).not.toContain("WARNING");
     // The old caption asserted the frame was real ("describe what you actually see").
     expect(caption).not.toContain("actually see");
+  });
+
+  it("returns a viewport with sub-block color stripes on the first capture", async () => {
+    const stripes = frame64("09-chroma-stripes-420.jpg");
+    const viewportSnapshot = vi.fn().mockResolvedValue(snapshot(stripes, { width: 32, height: 32 }));
+    mockClient({ viewportSnapshot });
+    const result = (await screenshotTool().handler({ target: "viewport" })) as Result;
+    expect(viewportSnapshot).toHaveBeenCalledTimes(1);
+    expect(image(result)?.data).toBe(stripes);
+    expect(text(result)).not.toContain("WARNING");
   });
 
   it("recaptures once after the settle delay when the first frame is the e2e black frame, and returns the second", async () => {
@@ -140,7 +150,7 @@ describe("summer_screenshot viewport — F-01 blank-frame handling", () => {
     expect(caption).toContain("1280x768");
     expect(caption).toContain("automatic recapture");
     expect(caption).toContain("uniformly black");
-    expect(caption).toContain("Frame check: not blank");
+    expect(caption).toContain("the JPEG contains contrast or detail");
     expect(caption).not.toContain("WARNING: this frame");
   });
 
@@ -155,7 +165,7 @@ describe("summer_screenshot viewport — F-01 blank-frame handling", () => {
     expect(caption).toContain(`automatic recapture ${VIEWPORT_RECAPTURE_DELAY_MS} ms later`);
     expect(caption).toContain("NOT evidence about lights, cameras");
     expect(caption).toContain("summer_screenshot again");
-    expect(caption).not.toContain("Frame check: not blank");
+    expect(caption).not.toContain("the JPEG contains contrast or detail");
   });
 
   it("keeps the first frame and reports the error when the recapture itself fails", async () => {
@@ -258,7 +268,7 @@ describe("summer_screenshot game — F-15 works locally; blank frames are called
     expect(result.isError).toBeFalsy();
     const caption = text(result);
     expect(caption).toContain("Running game frame (1280x719)");
-    expect(caption).toContain("Frame check: not blank");
+    expect(caption).toContain("the JPEG contains contrast or detail");
   });
 
   it("flags a flat game frame as a boot/loading condition rather than a missing camera", async () => {

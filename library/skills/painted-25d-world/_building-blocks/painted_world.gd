@@ -28,9 +28,7 @@ func _ready() -> void:
 	if location.paint == null:
 		_capture_mode()
 		return
-	game_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	game_cam.keep_aspect = Camera3D.KEEP_WIDTH
-	game_cam.far = location.paint_cam.far
 	game_cam.make_current()
 	_enter(location)
 	if player.has_method("setup"):
@@ -67,6 +65,7 @@ func go(to: Node3D, spawn: Vector3) -> void:
 	_enter(to)
 
 func _enter(loc: Node3D) -> void:
+	game_cam.set_orthogonal(loc.paint_cam.size, loc.paint_cam.near, loc.paint_cam.far)
 	game_cam.global_basis = loc.paint_cam.global_basis
 	RenderingServer.set_default_clear_color(loc.edge_color)
 	_physics_process(0.0)

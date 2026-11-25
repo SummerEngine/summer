@@ -223,14 +223,20 @@ describe("summer_screenshot scene — F-05 camera confession by scene kind", () 
     expect(caption).toContain("framing: iso");
   });
 
-  it("a 3D scene with no Camera3D keeps the grey/black warning", async () => {
+  it.each([
+    ["3D geometry", tree3d],
+    ["3D geometry and a 2D HUD", { data: { ...tree3d.data, children: [...tree3d.data.children, tree2d.data.children[1]!] } }],
+  ] as const)("warns only about the saved 3D camera for %s", async (_name, tree) => {
     mockClient({
       scenePreview: vi.fn().mockResolvedValue(preview({ sceneHadLight: false })),
-      getSceneState: vi.fn().mockResolvedValue(tree3d),
+      getSceneState: vi.fn().mockResolvedValue(tree),
     });
     const result = (await screenshotTool().handler({ target: "scene", scenePath: "res://main.tscn" })) as Result;
     const caption = text(result);
-    expect(caption).toContain("WARNING: this 3D scene has no Camera3D — it will render grey/black when played.");
+    expect(caption).toContain("no Camera3D in the saved scene");
+    expect(caption).toContain("needs an active Camera3D to show its 3D world");
+    expect(caption).toContain("2D content and UI can still render");
+    expect(caption).not.toContain("will render grey/black");
     expect(caption).toContain("no light");
   });
 
@@ -242,15 +248,17 @@ describe("summer_screenshot scene — F-05 camera confession by scene kind", () 
     const result = (await screenshotTool().handler({ target: "scene", scenePath: "res://x.tscn" })) as Result;
     const caption = text(result);
     expect(caption).toContain("could not be read to tell 2D from 3D (scene not loaded)");
-    expect(caption).not.toContain("this 3D scene has no Camera3D");
+    expect(caption).not.toContain("no Camera3D in the saved scene");
+    expect(caption).not.toContain("will render grey/black");
   });
 
   it("does not read the tree when the scene has its own camera; untargeted preview uses the untargeted tree read", async () => {
     const withCamera = mockClient({
       scenePreview: vi.fn().mockResolvedValue(preview({ sceneHasCamera: true })),
     });
-    await screenshotTool().handler({ target: "scene", scenePath: "res://main.tscn" });
+    const result = await screenshotTool().handler({ target: "scene", scenePath: "res://main.tscn" });
     expect(withCamera.getSceneState).not.toHaveBeenCalled();
+    expect(text(result)).not.toContain("needs an active Camera3D");
 
     const open = mockClient({
       scenePreview: vi.fn().mockResolvedValue(preview()),

@@ -81,6 +81,13 @@ async function frameCount(file: string): Promise<number> {
   return Number(stdout.trim());
 }
 
+/** Format file paths for FFmpeg's concat demuxer: forward slashes and escaped single quotes. */
+export function formatConcatList(files: readonly string[]): string {
+  return files
+    .map((file) => `file '${file.replace(/\\/g, "/").replace(/'/g, "'\\''")}'\n`)
+    .join("");
+}
+
 /** The cut: every shot on its frame-exact slot, concatenated, plus the game-sound bed on the same grid. */
 export async function buildBase(shots: readonly ShotSpec[], cuts: readonly number[], dir: string, onShot?: (index: number, total: number) => void): Promise<{ base: string; bed: string; frameCuts: number[] }> {
   const seg = join(dir, "seg");
@@ -106,7 +113,7 @@ export async function buildBase(shots: readonly ShotSpec[], cuts: readonly numbe
     onShot?.(i + 1, shots.length);
   }
   const list = join(seg, "vlist.txt");
-  writeFileSync(list, videos.map((v) => `file '${v}'\n`).join(""));
+  writeFileSync(list, formatConcatList(videos));
   const base = join(dir, "base.mp4");
   const bed = join(dir, "bed.wav");
   await ffmpeg(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", base]);
@@ -126,7 +133,7 @@ export async function overlayTrack(states: ReadonlyArray<[string, number]>, out:
     await ffmpeg(["-loop", "1", "-framerate", String(FPS), "-i", picture, "-frames:v", String(n), "-c:v", "qtrle", "-pix_fmt", "argb", part]);
     parts.push(part);
   }
-  writeFileSync(`${out}.txt`, parts.map((part) => `file '${part}'\n`).join(""));
+  writeFileSync(`${out}.txt`, formatConcatList(parts));
   await ffmpeg(["-f", "concat", "-safe", "0", "-i", `${out}.txt`, "-c", "copy", out]);
   return out;
 }

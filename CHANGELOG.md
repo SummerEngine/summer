@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`content.make` renders on Windows and in folders with apostrophes.** FFmpeg concat list files now normalize backslashes to forward slashes and escape single quotes instead of failing to open segments.
+
 - Screenshot checks recognize fine patterns and color detail within JPEG blocks. A solid-color frame now describes the measured image and leaves scene visibility open.
 
 - Visual measurement, raycasts and adjacent placement use Godot’s evaluated CSG solid. Subtraction cutters no longer produce phantom ray hits or extra gaps.

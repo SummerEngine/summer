@@ -221,9 +221,8 @@ Painting pixels per metre must be at least the screen's pixels per metre. A 4K p
 40 m frame gives 137 px/m; a 16 m view on a 1080p-class game view needs about 96-120 px/m, so it stays sharp. A
 2048 px painting over 32 m (64 px/m) is soft at that view. For bigger worlds use more frames, not a wider frame.
 
-**4K through Summer:** no Summer image model returns 4K. [The tiled detail helper](_building-blocks/tools/detail4k.py), called with `python3 detail4k.py <painting_2k.png> <out_dir> "<style words>"`, upscales the 2K paint-over 2x, cuts nine overlapping 2048x1152 tiles, runs a strict "redraw sharper,
-pixel-aligned" image-to-image pass on each with `seedream-5-pro` and blends them back. Nine generations; the
-alignment holds.
+**4K through Summer:** no Summer image model returns 4K. [The tiled detail helper](_building-blocks/tools/detail4k.py), called with `python3 detail4k.py <painting_2k.png> <out_dir> "<style words>" [run_id]`, upscales the 2K paint-over 2x, cuts nine overlapping 2048x1152 tiles, runs a strict "redraw sharper,
+pixel-aligned" image-to-image pass on each with `seedream-5-pro` and blends them back into `paint4k.png`. The first run can spend up to nine image generations. Keep the output directory to resume with the same tile pixels, style and run ID. Editing the image regenerates only changed crops. Changing the style or run ID starts new generations. Older, unlabelled `tile_*_paint.png` files stay in place; the first run with this version generates fresh tiles.
 
 ### 6. Projection in the engine
 

@@ -801,7 +801,7 @@
       "id": "skill/camera-rigs",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "36348aa7e7b557d1d958b0fe54013192d8ff85b37876cb1cd05986387b0f4441",
+      "content_hash": "12a87e1771645107f4e97526e34a8a36998b3d336dd5a517954773458662bb45",
       "summary": "Camera rigs: Camera2D follow with limits, first-person head, SpringArm3D third-person, top-down, FOV.",
       "use_when": [
         "black screen on play, or the camera shows past the level edge",

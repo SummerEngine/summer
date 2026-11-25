@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- The camera-rigs guide keeps the board centered when switching from overhead to an isometric view.
+
 - Painted rooms now display ordinary props such as `OutdoorTable` and `FootstepsSign`. The final name word identifies door and step slabs.
 
 - Painted 2.5D locations project the picture from Godot’s effective camera origin and axes, including authored horizontal and vertical camera offsets.

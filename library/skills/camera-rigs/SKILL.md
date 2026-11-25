@@ -99,8 +99,22 @@ summer_batch(scenePath="res://main.tscn", ops=[
 ])
 ```
 
-`projection = 1` is orthogonal. `size` is the vertical world units shown - bigger
-= more zoomed out. For isometric, rotate ~(-30, 45, 0) instead of straight down.
+With the camera's default Keep Height, this shows 20 metres vertically and
+centres the view on the origin. For an isometric view of the same point, move
+the camera around the target as you tilt it. Apply these two changes to the
+orthographic camera above.
+
+```
+summer_batch(scenePath="res://main.tscn", ops=[
+  {"op": "SetProp", "path": "./Camera", "key": "position", "value": "Vector3(12.24745, 10, 12.24745)"},
+  {"op": "SetProp", "path": "./Camera", "key": "rotation_degrees", "value": "Vector3(-30, 45, 0)"}
+])
+```
+
+Both poses place the camera 20 metres from its target. To centre another point,
+add that point's position in the camera parent's coordinates to the example
+offset. In a script, set the rotation first and use
+`camera.position = target + camera.basis.z.normalized() * 20.0`.
 
 ## FOV guidance
 

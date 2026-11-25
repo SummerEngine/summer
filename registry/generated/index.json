@@ -1579,7 +1579,7 @@
       "id": "skill/environment-kit",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "7961f5b5ab29813aa705fd17e88dd50b66781a1b5bab33574d2db871042a4fab",
+      "content_hash": "2eedbe7d945c7bb97369c352b2da2c84d5456999c4ae6653981c0e7aec603f76",
       "summary": "Generate a modular environment kit: walls, floor tiles, pillars, doors, arches in one visual style.",
       "use_when": [
         "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces",
@@ -11426,7 +11426,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "c1c80d46ad8c8b4cf53c8b6849dfc09b530d958fd370d8ec8965a5f75462e407",
+      "content_hash": "36292594df37a6f6c957d11b4af57a5018a28cb2040dc023107ae14aebdc0ef7",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

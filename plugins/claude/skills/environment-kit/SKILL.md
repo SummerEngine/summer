@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_asset summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/kits/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -63,7 +63,7 @@ Kit pieces only feel modular if they snap to a fixed grid. Pick the grid before 
 | **2m** | Standard interiors (homes, taverns, offices) | Wall = 2×3×0.3m. Floor = 2×2m. Halves piece count. |
 | **4m** | Exteriors and large halls (temples, warehouses, throne rooms) | Wall = 4×4×0.4m. Floor = 4×4m. Quarter the piece count for the same area. |
 
-**Critical:** include the dimensions in the prompt. `assets.generate_3d` doesn't enforce them, but Hunyuan respects scale cues — `2 meter tall wall section` produces a mesh that imports near 2m tall. Then verify with `summer_inspect_resource` and scale-correct in the editor if needed.
+**Critical:** include the dimensions in the prompt. `assets.generate_3d` doesn't enforce them, but Hunyuan respects scale cues — `2 meter tall wall section` produces a mesh that imports near 2m tall. Then verify with `summer_inspect_asset` and scale-correct in the editor if needed.
 
 ## Steps
 
@@ -128,10 +128,10 @@ Three things the shape of those calls encodes:
 ### 5. Verify scale and pivots
 
 ```
-summer_inspect_resource(path="res://assets/kits/dungeon/wall.glb")
+summer_inspect_asset(path="res://assets/kits/dungeon/wall.glb")
 ```
 
-Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial.
+Read `summary.aabb` for the whole piece’s minimum, maximum and size in metres, and `summary.origin` for the pivot’s location relative to those bounds. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial.
 
 If an imported piece has an offset pivot, create a reusable scene with a `Node3D` root and instance the GLB as its child. Move the **model child** until the chosen snap point coincides with the root origin. For example, if the bottom-back corner is at `(2, 0.75, 2.8)` in the new root's coordinates, subtract that vector from the child's position. Save the scene and place or rotate instances of it on the grid. This keeps the imported model linked to its source.
 
@@ -195,8 +195,8 @@ No Summer MCP tools in this session? Run each one as a command; when `summer --v
 | `summer_get_scene_tree` | `summer engine get-scene-tree` |
 | `summer_import_asset_by_id` | `summer engine import-asset-by-id` |
 | `summer_import_from_url` | `summer engine import-from-url` |
+| `summer_inspect_asset` | `summer engine inspect-asset` |
 | `summer_inspect_node` | `summer engine inspect-node` |
-| `summer_inspect_resource` | `summer engine inspect-resource` |
 | `summer_instantiate_scene` | `summer engine instantiate-scene` |
 | `summer_save_scene` | `summer engine save-scene` |
 | `summer_set_prop` | `summer engine set-prop` |

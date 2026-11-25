@@ -75,7 +75,7 @@ input_schema:
       items:
         type: string
       maxItems: 16
-      description: "Only these per-node fields (path is always kept): class, name, pos, rot_deg, scale, visible, aabb, scene_file, script_fp, material_fps, z_index, rect, view_rect, limit_rect."
+      description: "Choose keys from a node entry. Available keys depend on the node class and editor version. Omit fields to see them. Each result includes path. Known keys include class, name, pos, rot_deg, scale, global_pos, global_rot_deg, visible, aabb, z_index, rect, view_rect, limit_rect, flip_h, flip_v, billboard, animation, frame, hframes, vframes, region_enabled, region_rect, scene_file, script_fp, material_fps, material_slots, material_fps_truncated, light_energy, light_color, unavailable, hint."
   additionalProperties: false
 authority:
   filesystem: false

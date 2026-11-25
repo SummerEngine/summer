@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
+
 - Asset inspection measures the saved baked mesh of a GridMap when present. Unbaked grids keep their per-cell mesh measurements.
 
 - Visual measurements, rays, adjacent placement and surface snapping skip shadows-only casters and still count their visible children.

@@ -872,8 +872,10 @@ func _collect(top, scene_root = null, inspecting_asset = false):
 					if bb.size == Vector3.ZERO:
 						continue
 					var cell_transform = t * cells[index]
-					meshes.append([n, cell_transform, bb, vis, mesh, index / 2, geometry.index_field])
-					if vis:
+					var casts_only = geometry.shadows_only.has(int(index / 2))
+					var drawn = vis and not casts_only
+					meshes.append([n, cell_transform, bb, drawn, mesh, index / 2, geometry.index_field, casts_only])
+					if drawn:
 						geoms.append([n, cell_transform, bb])
 			elif n is Marker3D:
 				markers.append([n, t])
@@ -1057,6 +1059,8 @@ func _describe(inst, args):
 		var rec = {"path": String(inst.get_path_to(m[0])), "tris": tris, "min": _v3(mb.position), "max": _v3(mb.end)}
 		if m.size() > 5:
 			rec[m[6]] = m[5]
+			if m[7]:
+				rec["shadows_only"] = true
 		if m[0] is MultiMeshInstance3D:
 			rec["instances"] = m[0].multimesh.instance_count
 			rec["drawn_instances"] = _drawn_instances(m[0])

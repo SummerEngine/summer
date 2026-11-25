@@ -298,7 +298,7 @@ export function formatSceneMarks(summary: SceneMarksSummary, notes?: ReadonlyMap
   }
   const counts: string[] = [];
   if (summary.candidates !== undefined) counts.push(`${summary.candidates} candidate(s)`);
-  if (summary.skipped) counts.push(`${summary.skipped} skipped off-screen/extent-less`);
+  if (summary.skipped) counts.push(`${summary.skipped} skipped`);
   if (summary.truncated) counts.push(`truncated at max_marks ${summary.maxMarks ?? "?"}`);
   lines.push(
     `marks: ${summary.marks.length} numbered label(s) drawn${counts.length ? ` (${counts.join(", ")})` : ""}` +

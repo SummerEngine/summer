@@ -19,7 +19,7 @@ func box(parent, name, size, position):
 	resource.size = size
 	return mesh(parent, name, resource, position)
 
-func check_case(rotated, offset, shelf_size, shelf_x):
+func check_case(rotated, offset, shelf_size, shelf_x, shelf_mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON):
 	var fixture = Node3D.new()
 	root.add_child(fixture)
 	if rotated:
@@ -29,7 +29,7 @@ func check_case(rotated, offset, shelf_size, shelf_x):
 	plate.size = Vector2(6.4, 0.7)
 	plate.center_offset = offset
 	var plank = mesh(fixture, "Plank", plate, Vector3(0, 11, 0) - offset)
-	box(fixture, "Shelf", shelf_size, Vector3(shelf_x, 2.7, -0.13))
+	box(fixture, "Shelf", shelf_size, Vector3(shelf_x, 2.7, -0.13)).cast_shadow = shelf_mode
 	box(fixture, "Floor", Vector3(24, 0.6, 24), Vector3(0, -0.3, 0))
 	var probe = Probe.new()
 	probe.fixture = fixture
@@ -42,6 +42,26 @@ func check_case(rotated, offset, shelf_size, shelf_x):
 	var result = {"support": measured["support"], "contact": measured["contact_from"], "normal": measured["hit_normal"], "mesh_height": vertices[0].y, "verified_gap": probe.run(null).get("travel")}
 	fixture.free()
 	return result
+
+func check_only_casters():
+	var fixture := Node3D.new()
+	root.add_child(fixture)
+	var subject = box(fixture, "Plank", Vector3.ONE, Vector3.UP * 5)
+	var shelf = box(fixture, "Shelf", Vector3(5, 1, 5), Vector3.ZERO)
+	shelf.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	var probe = Probe.new()
+	probe.fixture = fixture
+	var unsupported = probe.run(null)
+	assert(unsupported.ok and not unsupported.found and unsupported.excluded_native_support)
+	shelf.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	subject.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	assert(probe.run(null).failure_reason == "shadows_only_subject")
+	box(subject, "Badge", Vector3.ONE, Vector3.UP)
+	var supported = probe.run(null)
+	assert(supported.found and supported.support == "Shelf")
+	assert(is_equal_approx(supported.travel, 5.0))
+	fixture.free()
+
 
 func check_tessellated_slope(subdivisions):
 	var fixture = Node3D.new()
@@ -94,6 +114,7 @@ func _initialize():
 	call_deferred("run")
 
 func run():
+	check_only_casters()
 	var narrow = Vector3(0.6, 0.6, 6.5)
 	var offset = Vector3(1.75, 1.25, -0.7)
 	var rows = [
@@ -101,6 +122,7 @@ func run():
 		check_case(true, offset, narrow, 0.17),
 		check_case(true, offset, Vector3(8.8, 0.6, 6.5), 0.17),
 		check_case(true, offset, narrow, 8),
+		check_case(true, offset, narrow, 0.17, GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY),
 	]
 	var file = FileAccess.open("res://result.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"rows": rows, "slopes": [check_tessellated_slope(16), check_tessellated_slope(96)], "parents": [check_parent_write(1.0, false, false), check_parent_write(0.00005, false, false), check_parent_write(0.00005, true, false), check_parent_write(1.0, false, true)]}))

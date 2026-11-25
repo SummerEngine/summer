@@ -68,7 +68,7 @@ export interface SnapClient extends CapabilityAdvertisingClient {
 
 const RECOVERY_FAILURES = new Set(["gap_exceeds_hit_travel", "overlap_recovery_exceeded", "aligned_overlap_recovery_exceeded"]);
 /** These failures invalidate a provisional AABB seat or a subsequent triangle correction. */
-const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "translation_not_representable"]);
+const MESH_ROLLBACK_FAILURES = new Set(["mesh_edge_budget_exceeded", "translation_not_representable", "shadows_only_subject"]);
 /** Engine failures with visual_aabb evidence that the visible-mesh measurement retries. */
 const MESH_FALLBACK_FAILURES = new Set(["overlap_recovery_exceeded", "gap_exceeds_hit_travel", "surface_not_found"]);
 /** A visible-mesh gap this close to the requested one needs no move. */
@@ -396,9 +396,11 @@ function withMeshNote(receipt: unknown, note: JsonRecord | undefined): unknown {
  */
 async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, send: Send, context: MeshContext): Promise<{ receipt?: unknown; note?: JsonRecord }> {
   const probeArgs = { scenePath: args.scenePath, subjectPath: args.subjectPath, direction: args.direction, maxDistance: args.maxDistance, gap: args.gap };
-  const measure = await measureMeshSnap(client, probeArgs);
+  const nativeSupportPath = typeof context.engineResult?.supportPath === "string" ? context.engineResult.supportPath : undefined;
+  const measure = await measureMeshSnap(client, { ...probeArgs, nativeSupportPath });
   const probeRan = measure.ok || measure.failure_reason !== "engine_lacks_op";
-  const finish = async (note: JsonRecord) => {
+  const finish = async (note: { failure_reason: string; error: string }, correctionApplied = false) => {
+    if (measure.excluded_native_support) return refuseMeshPlacement({ ok: false, ...note }, correctionApplied);
     // The engine's own seat is saved; the probe run marked the tab unsaved.
     if (context.engineResult && probeRan) await send([{ op: "SaveScene" }]);
     return { note };
@@ -447,7 +449,7 @@ async function snapOnVisibleMesh(client: SnapClient, args: SnapToSurfaceArgs, se
     return finish({
       failure_reason: "verify_mismatch",
       error: `After the move the visible-mesh read found a gap of ${round4(finalGap)} m instead of ${args.gap}; the position was ${restored ? "restored" : "NOT restored, check it"}.`,
-    });
+    }, !restored);
   }
   const saved = await send([{ op: "SaveScene" }]);
   const snap = meshSnapResult(args, measure, finalGap, verify, context, moved);

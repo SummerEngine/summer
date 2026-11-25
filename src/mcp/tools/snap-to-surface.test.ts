@@ -529,6 +529,7 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
   it.each([
     [0, "mesh_edge_budget_exceeded"], [1, "mesh_edge_budget_exceeded"],
     [0, "translation_not_representable"], [1, "translation_not_representable"],
+    [0, "shadows_only_subject"],
   ] as const)("restores the live starting transform at read %i after %s", async (read, reason) => {
     const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0.42 });
     // The editor contains an unsaved pose that differs from the file.
@@ -539,6 +540,20 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     expect(fake.local[1]).toBe(0.123456789);
     expect(fake.savedLocalY()).toBe(0.123456789);
     expect(fake.unsaved).toBe(false);
+  });
+
+  it.each([true, false])("retains the native seat only if its support can draw (excluded %s)", async (excluded) => {
+    const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0.42 });
+    fake.probeOverride[0] = () => ({ ok: true, found: false, excluded_native_support: excluded });
+    const result = await snapToSurface(fake, fernArgs());
+    expect(fake.probes[0]?.native_support).toBe("Lane3/Bench");
+    if (excluded) {
+      expect(result).toMatchObject({ ok: false, results: [{ failure_reason: "surface_not_found", original_transform_preserved: true }] });
+      expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
+    } else {
+      expect(result).toMatchObject({ results: [{ ok: true, evidence: "visual_aabb", mesh_fallback: { failure_reason: "surface_not_found" } }, expect.anything()] });
+      expect(fake.savedLocalY()).not.toBe(FLOATING_3_5CM);
+    }
   });
 
   it("refuses the edge budget before any correction when the native operation failed", async () => {

@@ -144,13 +144,17 @@ func _extrude(points: Array, top: float, depth: float) -> ArrayMesh:
 	var pts := PackedVector2Array()
 	for p in points:
 		pts.append(Vector2(p[0], p[1]))
+	# Walk the outside walls in the same direction for either authored point order.
+	if not Geometry2D.is_polygon_clockwise(pts):
+		pts.reverse()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
 	var tri := Geometry2D.triangulate_polygon(pts)
-	for i in range(0, tri.size(), 3):
-		for k in [0, 2, 1]:
-			var p := pts[tri[i + k]]
-			st.add_vertex(Vector3(p.x, top, p.y))
+	# Godot's counterclockwise 2D triangles face up when mapped onto X/Z.
+	for index in tri:
+		var p := pts[index]
+		st.add_vertex(Vector3(p.x, top, p.y))
 	for i in pts.size():
 		var a := pts[i]
 		var b := pts[(i + 1) % pts.size()]

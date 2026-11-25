@@ -341,7 +341,7 @@ describe("summer_screenshot — fixed-pose framings + marks (fixed-pose framings
     expect(caption).toContain("framing: bookmark:hero");
     expect(caption).toContain('framing source: bookmark "hero"');
     expect(caption).toContain("camera pose: position Vector3(0, 5, 12), look_at Vector3(0, 1, 0), fov 55");
-    expect(caption).toContain("marks: 2 numbered label(s) drawn (3 candidate(s), 1 skipped off-screen/extent-less)");
+    expect(caption).toContain("marks: 2 numbered label(s) drawn (3 candidate(s), 1 skipped)");
     expect(caption).toContain("1 -> Props/Crate_02 (MeshInstance3D) @ 120,80 200x140");
     expect(caption).toContain("2 -> Ground (MeshInstance3D)");
     // Same-framing echo: no old-engine warning.

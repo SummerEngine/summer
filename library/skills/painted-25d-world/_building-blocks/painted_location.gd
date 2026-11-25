@@ -29,7 +29,8 @@ func _ready() -> void:
 	mat.set_shader_parameter("paint_size", paint_size)
 	for mi in $Painted.find_children("*", "MeshInstance3D", true, false):
 		# door slabs and steps stick out of the walls in the blockout; the painting already shows them
-		if mi.name.containsn("door") or mi.name.containsn("steps"):
+		var name_parts := String(mi.name).to_snake_case().rsplit("_", true, 1)
+		if name_parts[-1] in ["door", "steps"]:
 			mi.visible = false
 			continue
 		(mi as MeshInstance3D).material_override = mat

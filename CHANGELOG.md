@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Painted blockout cones and tapered cylinders now collide along their visible slope. Cylinders stretched into an ellipse also retain their collision footprint in Jolt.
+
 - Painted blockout spheres keep their authored squash and scale when toggling collision. Solid ellipsoids now use a collision hull built from the scaled mesh.
 
 - **Publish a game that was not made with Summer Engine.** `summer store upload-file` (`store.upload_file`, MCP `summer_publish_build`) takes the two kinds of file such a game has, and `summer store go-live` (`store.go_live`, MCP `summer_go_live`) releases them together.

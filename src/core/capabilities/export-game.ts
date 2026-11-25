@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { platform } from "node:os";
 import { engineSelectionFromEnv } from "../engine.js";
@@ -576,6 +576,16 @@ export async function exportGame(
   };
 }
 
+async function moveFile(from: string, to: string): Promise<void> {
+  try {
+    await rename(from, to);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+    await copyFile(from, to);
+    await unlink(from);
+  }
+}
+
 async function exportDownload(
   deps: ExportGameDependencies,
   binary: string,
@@ -636,7 +646,7 @@ async function exportDownload(
         // The macOS exporter writes the .app inside a .zip itself.
         const engineOut = join(work, `${slug}.zip`);
         await runExport(deps, binary, project, spec.name, engineOut, debug, timeoutMs, []);
-        await rename(engineOut, out);
+        await moveFile(engineOut, out);
         warnings.push("macOS shows players an unidentified-developer prompt for an ad hoc signed app; the store accepts it as is.");
       } else {
         const engineOut = join(work, target === "web" ? "index.html" : `${slug}.exe`);

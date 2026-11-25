@@ -142,3 +142,74 @@ export async function writeSummerBundle(path: string, options: BundleFixtureOpti
   await writeFile(path, bytes);
   return bytes;
 }
+
+/**
+ * Test fixture: a bundle whose server is a program, laid out as the bundle
+ * writer of a game not made with Summer Engine lays it out. Four entries,
+ * all stored uncompressed, in this order: summer-bundle.json (canonical JSON:
+ * sorted keys, no whitespace; client, compositionPath and export are null),
+ * config/summer.build.json (the Build declaration), config/world-definitions.json
+ * and server/program. The program here is arbitrary bytes, not an executable:
+ * Summer reads the real one, this package never does.
+ */
+export const PROGRAM_DECLARATION = {
+  executionMode: "hosted",
+  runtime: {
+    interfaces: { multiplayer: 7, session: 3 },
+    protocolVersion: "1.0.0",
+    queues: [{ maxPlayers: 8, minPlayers: 1, name: "play", policy: "fifo", worldDefinition: "arena" }],
+    scenes: ["arena"],
+    tickRate: 60,
+    worldDefinitions: ["world-definitions.json"],
+  },
+  schema: "summer.build.v2",
+  server: { kind: "program" },
+  version: "0.3.0",
+};
+
+const PROGRAM_DEFINITIONS = {
+  definitions: [
+    {
+      capacity: { max_players: 8 },
+      components: [{ component_id: "simulation", entry_point: "arena", owns: ["match"], profile: "server_program" }],
+      definition_id: "arena",
+      lifetime: "match_scoped",
+      schema: "summer.world-definition.v1",
+    },
+  ],
+  schema: "summer.world-definitions.v1",
+};
+
+export interface ProgramBundleFixtureOptions {
+  /** The Build declaration packaged as config/summer.build.json (default PROGRAM_DECLARATION); null leaves the entry out. */
+  declaration?: Record<string, unknown> | null;
+  /** server/program's bytes. */
+  program?: Buffer;
+  /** Edit the manifest before it is written. */
+  manifest?: (manifest: Record<string, any>) => void;
+}
+
+export function buildProgramBundle(options: ProgramBundleFixtureOptions = {}): Buffer {
+  const declaration = options.declaration === undefined ? PROGRAM_DECLARATION : options.declaration;
+  const files: ZipFixtureEntry[] = [
+    ...(declaration ? [{ name: "config/summer.build.json", data: Buffer.from(JSON.stringify(declaration)) }] : []),
+    { name: "config/world-definitions.json", data: Buffer.from(JSON.stringify(PROGRAM_DEFINITIONS)) },
+    { name: "server/program", data: options.program ?? Buffer.alloc(3000, 0x5a) },
+  ];
+  const manifest: Record<string, any> = {
+    client: null,
+    compositionPath: null,
+    export: null,
+    files: files.map((file) => ({ path: file.name, sha256: sha(file.data), size: file.data.length })),
+    schema: "summer.bundle.v2",
+    server: { kind: "program", path: "server/program" },
+  };
+  options.manifest?.(manifest);
+  return buildZip([{ name: "summer-bundle.json", data: Buffer.from(JSON.stringify(manifest)) }, ...files]);
+}
+
+export async function writeProgramBundle(path: string, options: ProgramBundleFixtureOptions = {}): Promise<Buffer> {
+  const bytes = buildProgramBundle(options);
+  await writeFile(path, bytes);
+  return bytes;
+}

@@ -8,9 +8,10 @@ import { getStoreAccessToken, OAuthError } from "../oauth.js";
 import { appendStoreJsonLine } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
+import { publishClient } from "./publish-client.js";
 import { publishDownload } from "./publish-download.js";
 import { CHECK_FIXES, summarizeChecks } from "./store-checks.js";
-import { BuildToolError, readSummerBundle, targetPlatformChange, type SummerBundle } from "./summer-bundle.js";
+import { BuildToolError, isProgramBundle, readBundle, targetPlatformChange, type ProgramBundle, type SummerBundle } from "./summer-bundle.js";
 
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
@@ -28,6 +29,12 @@ import { BuildToolError, readSummerBundle, targetPlatformChange, type SummerBund
  *
  * Mirrors Studio's export upload, including its idempotency keys, so a retry continues
  * the same publication instead of creating another one.
+ *
+ * A bundle whose server is a program (a game not made with Summer Engine)
+ * takes the same calls with another declaration: its packaged
+ * summer.build.json as it is, and no client field, because the Build is
+ * published without a client. Nothing is named afterwards; each client is
+ * uploaded to the Build on its own (publish-client.ts).
  *
  * Auth: the Summer store OAuth token from "summer login --store" (audience
  * mcp.summerengine.com/mcp), sent as a bearer token.
@@ -75,8 +82,13 @@ export interface PublishBuildInput {
    * A web build or native download (summer_export_game format "download"):
    * the store versions platform (web, macos-universal, windows-x64,
    * linux-x64). Read from the last export when it was a download.
+   * With buildId: the platform of that Build's client (macos, windows, web).
    */
   platform?: string;
+  /** The file is a client of this Build, whose server is a program (publish-client.ts). */
+  buildId?: string;
+  /** With buildId: what starts the client, as a path inside the archive. */
+  entry?: string;
   confirm?: boolean;
   /** How long to wait for Summer to make the Build before returning. */
   waitSeconds?: number;
@@ -397,6 +409,24 @@ function targetPlatforms(bundle: SummerBundle): string[] {
   return platforms;
 }
 
+/**
+ * A Build whose server is a program takes its version from its declaration.
+ * A clientVersion that says the same is accepted; another one is refused
+ * before any call, because it would not be the version that is published.
+ */
+function programVersion(bundle: ProgramBundle, clientVersion: string | undefined): string {
+  const asked = clientVersion?.trim();
+  const same = (a: string, b: string) => a.replace(/^v/, "") === b.replace(/^v/, "");
+  if (asked && !same(asked, bundle.version)) {
+    throw new BuildToolError(
+      "client_version_mismatch",
+      `clientVersion "${asked}" is not this bundle's version: its summer.build.json declares version "${bundle.version}", and for a Build whose server is a program the declaration decides.`,
+      `Recovery: call again without clientVersion (or with "${bundle.version}"). To publish another version, change version in summer.build.json and write the bundle again. Each client names its own version when it is uploaded.`
+    );
+  }
+  return bundle.version;
+}
+
 type GameSummary = { id: unknown; name: unknown; slug: unknown; status: unknown; targets: unknown };
 
 /** The signed-in person's store games, or why the store did not list them. */
@@ -500,6 +530,32 @@ async function sealWhenScanned(store: Store, publicationPath: string, key: strin
   }
 }
 
+/** Send a publication's bytes: open the part plan, PUT every part from disk, then seal, waiting up to sealWaitMs for the malware scan. */
+async function uploadSource(
+  store: Store,
+  publicationPath: string,
+  file: string,
+  digest: { sizeBytes: number; parts: string[] },
+  sealKey: string,
+  deps: PublishBuildDependencies,
+  sealWaitMs: number
+): Promise<void> {
+  const opened = await store.call<Record<string, any>>("POST", `${publicationPath}:source-upload`, { body: {} });
+  const plan = { partSizeBytes: Number(opened.upload?.partSizeBytes), partCount: Number(opened.upload?.partCount) };
+  if (!(plan.partSizeBytes > 0) || plan.partCount !== Math.max(1, Math.ceil(digest.sizeBytes / plan.partSizeBytes))) {
+    throw new BuildToolError("store_invalid_response", "The store's part plan does not fit this file.", "Recovery: retry; if it repeats, report the store as unhealthy.");
+  }
+  const partHashes = plan.partSizeBytes === PART_BYTES ? digest.parts : (await hashParts(file, plan.partSizeBytes)).parts;
+  await uploadParts(
+    async (numbers) => readGrants(await store.call("POST", `${publicationPath}:signParts`, { body: { parts: numbers.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })),
+    file,
+    digest.sizeBytes,
+    plan,
+    deps
+  );
+  await sealWhenScanned(store, publicationPath, sealKey, deps, deps.now() + sealWaitMs);
+}
+
 /**
  * Why the platform did not take a Build to players when asked. A game goes
  * live once its automated checks pass and Summer's staff review it afterwards
@@ -554,6 +610,14 @@ export async function publishBuild(
   if (!file) {
     throw new BuildToolError("export_required", "No export to upload.", "Recovery: run summer_export_game first, or pass file with the exported .zip.");
   }
+  // A client of a Build whose server is a program: the Build's own route, its own platforms.
+  const buildId = input.buildId?.trim();
+  if (buildId) {
+    return publishClient({ gameId, buildId, file, platform: input.platform, entry: input.entry, clientVersion: input.clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face }, deps);
+  }
+  if (input.entry?.trim()) {
+    throw new BuildToolError("build_required", "entry names what starts a client of a Build, and no buildId was given.", "Recovery: pass buildId too (the Build this client joins), or leave entry out to upload a bundle or a store download.");
+  }
   // The store's second path: a web build or native download becomes a store version.
   const platform = input.platform?.trim() || (last?.path === file ? last.storePlatform : undefined);
   if (platform) {
@@ -567,8 +631,13 @@ export async function publishBuild(
   if (extname(file).toLowerCase() !== ".zip") {
     throw new BuildToolError("export_format_unsupported", `${file} is not a summer.games .zip export.`, "Recovery: export with summer_export_game and upload that .zip.");
   }
+  // A bundle says which request publishes it: an Engine export names a client
+  // version and pack, a bundle whose server is a program names neither.
+  const read = await readBundle(file);
+  const program = isProgramBundle(read) ? read : null;
+  if (program) return publishProgramBundle(input, program, gameId, file, deps);
+  const bundle = read as SummerBundle;
   const clientVersion = normalizeClientVersion(input.clientVersion);
-  const bundle = await readSummerBundle(file);
   const platforms = targetPlatforms(bundle);
   const platformChange = targetPlatformChange(bundle);
   const digest = await hashParts(file, PART_BYTES);
@@ -631,20 +700,7 @@ export async function publishBuild(
     let publication = await store.call<Record<string, any>>("GET", publicationPath);
     let uploaded = false;
     if (publication.state === "uploading" && publication.progress?.phase !== "inspecting") {
-      const opened = await store.call<Record<string, any>>("POST", `${publicationPath}:source-upload`, { body: {} });
-      const plan = { partSizeBytes: Number(opened.upload?.partSizeBytes), partCount: Number(opened.upload?.partCount) };
-      if (!(plan.partSizeBytes > 0) || plan.partCount !== Math.max(1, Math.ceil(digest.sizeBytes / plan.partSizeBytes))) {
-        throw new BuildToolError("store_invalid_response", "The store's part plan does not fit this file.", "Recovery: retry; if it repeats, report the store as unhealthy.");
-      }
-      const partHashes = plan.partSizeBytes === PART_BYTES ? digest.parts : (await hashParts(file, plan.partSizeBytes)).parts;
-      await uploadParts(
-        async (numbers) => readGrants(await store.call("POST", `${publicationPath}:signParts`, { body: { parts: numbers.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })),
-        file,
-        digest.sizeBytes,
-        plan,
-        deps
-      );
-      await sealWhenScanned(store, publicationPath, key(`seal:${publicationId}`), deps, deps.now() + (input.waitSeconds ?? DEFAULT_WAIT_SECONDS) * 1000);
+      await uploadSource(store, publicationPath, file, digest, key(`seal:${publicationId}`), deps, (input.waitSeconds ?? DEFAULT_WAIT_SECONDS) * 1000);
       uploaded = true;
     }
 
@@ -754,6 +810,144 @@ export async function publishBuild(
           : checks.state === "checking"
             ? "Summer is still checking the client pack. Call summer_publish_build again with the same file and clientVersion to keep waiting; nothing is uploaded twice."
             : `Every automated check passed. Take it live with summer_go_live (gameId ${gameId}, publicationId ${publicationId}).`,
+    };
+  } catch (error) {
+    await appendStoreJsonLine("creator-audit.jsonl", {
+      ...audit,
+      outcome: "failed",
+      code: error instanceof BuildToolError ? error.code : "publish_build_failed",
+      status: error instanceof BuildToolError ? error.status ?? null : null,
+    });
+    throw error;
+  }
+}
+
+const PROGRAM_PUBLISH_NOTE =
+  "publish does nothing for a bundle whose server is a program: Summer publishes the Build once its own checks pass, and players get it when summer_go_live releases it with its clients.";
+
+/**
+ * Upload a bundle whose server is a program. The request is the one the
+ * bundle's writer names: the packaged declaration as the Build, and the
+ * source. No client version, entry point or platform is sent, because the
+ * Build is published without a client; the store refuses any of them. The
+ * publication is followed to its Build, or to the store's own refusal.
+ */
+async function publishProgramBundle(input: PublishBuildInput, bundle: ProgramBundle, gameId: string | undefined, file: string, deps: PublishBuildDependencies): Promise<PublishBuildResult> {
+  const version = programVersion(bundle, input.clientVersion);
+  const digest = await hashParts(file, PART_BYTES);
+  // publish makes an Engine Build available once its client pack passed. This Build has no client:
+  // Summer publishes it by its own checks, and players get it only through a release with its clients.
+  const publishNote = input.publish === true ? { publishNote: PROGRAM_PUBLISH_NOTE } : {};
+  const target = { gameId: gameId ?? null, file, sha256: digest.sha256, sizeBytes: digest.sizeBytes, serverKind: "program" as const, version, hosted: true, publish: false, ...publishNote };
+
+  if (!gameId) return listGamesOrThrow(deps);
+
+  if (input.confirm !== true) {
+    const checked = await checkStoreGame(gameId, [], deps);
+    return {
+      ok: true,
+      status: "confirmation_required",
+      target,
+      game: checked.game,
+      next: "Show the user this exact game (name and id), file, digest, size and version. This bundle carries the game's server as a program and no client: each client is uploaded to the Build afterwards. Only after they approve, call again with confirm=true. Nothing was uploaded.",
+    };
+  }
+
+  const audit = { at: new Date(deps.now()).toISOString(), operation: "publish_build", face: input.face, ...target };
+  const store = createStore(await resolveGatewayUrl(), await storeToken(deps), deps);
+  await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
+  // The same bytes are one declaration: a retry continues the same publication.
+  const key = (write: string) => createHash("sha256").update(`${gameId}:program:${digest.sha256}:${write}`).digest("hex");
+  const publications = `games/${seg(gameId)}/build-publications`;
+  const waitMs = (input.waitSeconds ?? DEFAULT_WAIT_SECONDS) * 1000;
+
+  try {
+    const accepted = await store
+      .call<Record<string, any>>("POST", publications, {
+        key: key("create:0"),
+        body: {
+          source: { kind: "exported-game", format: "summer-bundle", archiveSha256: digest.sha256, sizeBytes: digest.sizeBytes },
+          build: bundle.hostedBuild,
+        },
+      })
+      .catch((error: unknown) => {
+        // These exact bytes are a Build of the game already, or an upload still open, from another sign-in or an earlier day.
+        if (error instanceof BuildToolError && error.code === "artifact_exists") {
+          throw new BuildToolError(
+            "artifact_exists",
+            "This exact bundle is already a Build of this game, or an upload of it is still open.",
+            `Recovery: summer_go_live with gameId ${gameId} (confirm false) shows the game's newest Build with its publicationId and buildId. To publish the server again, change version in summer.build.json and write the bundle again.`,
+            error.status,
+            error.detail
+          );
+        }
+        throw error;
+      });
+    const publicationId = String(accepted.publicationId ?? "");
+    if (!publicationId) throw new BuildToolError("store_invalid_response", "The store did not return a publication id.", "Recovery: retry; the same upload continues.");
+    const publicationPath = `${publications}/${seg(publicationId)}`;
+
+    let publication = await store.call<Record<string, any>>("GET", publicationPath);
+    let uploaded = false;
+    if (publication.state === "uploading" && publication.progress?.phase !== "inspecting") {
+      await uploadSource(store, publicationPath, file, digest, key(`seal:${publicationId}`), deps, waitMs);
+      uploaded = true;
+    }
+
+    const deadline = deps.now() + waitMs;
+    for (;;) {
+      publication = await store.call<Record<string, any>>("GET", publicationPath);
+      if (INTAKE_DONE.includes(publication.state)) break;
+      if (publication.state === "failed" || publication.state === "cancelled") {
+        // The store names the cause (the entry, the field, the library): its words are the message.
+        const code = typeof publication.errorCode === "string" && publication.errorCode ? publication.errorCode : "publication_failed";
+        const owner = CHECK_FIXES[code]?.owner ?? "creator";
+        throw new BuildToolError(
+          code,
+          (typeof publication.errorMessage === "string" && publication.errorMessage) || INTAKE_FAILURES[code] || "Summer could not make a build from this upload.",
+          owner === "summer"
+            ? `Recovery: ${CHECK_FIXES[code]!.fix}`
+            : "Recovery: fix what the message names, write the bundle again and upload it. A refused upload records no Build.",
+          undefined,
+          { publicationId, failedCheck: { code, owner } }
+        );
+      }
+      if (deps.now() >= deadline) {
+        await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "processing", publicationId });
+        return {
+          ok: true,
+          status: "processing",
+          gameId,
+          publicationId,
+          buildId: accepted.buildId ?? publication.buildId ?? null,
+          serverKind: "program",
+          state: publication.state,
+          uploaded,
+          next: "Summer is still checking the bundle and building the server. Call summer_publish_build again with the same file to continue waiting; nothing is uploaded twice.",
+        };
+      }
+      await deps.sleep(POLL_MS);
+    }
+
+    const buildId = String(publication.buildId ?? accepted.buildId ?? "");
+    await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "succeeded", publicationId, buildId, published: false });
+    return {
+      ok: true,
+      status: "uploaded",
+      gameId,
+      publicationId,
+      buildId,
+      serverKind: "program",
+      state: publication.state,
+      version,
+      sha256: digest.sha256,
+      sizeBytes: digest.sizeBytes,
+      published: false,
+      ...publishNote,
+      next:
+        `Summer made Build ${buildId} from this server. It has no client yet: upload one archive per platform with summer_publish_build ` +
+        `(gameId ${gameId}, buildId ${buildId}, platform macos, windows or web, entry, clientVersion, file). Each answer carries a clientPackageId: ` +
+        `pass them to summer_go_live (gameId ${gameId}, publicationId ${publicationId}, clients) to release the server with its clients.`,
     };
   } catch (error) {
     await appendStoreJsonLine("creator-audit.jsonl", {

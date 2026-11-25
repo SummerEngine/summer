@@ -410,3 +410,27 @@ describe("a call with --dry-run is a dry run (allow rules rely on it)", () => {
     expect(local.out[0]).toMatch(/^Dry run:/);
   });
 });
+
+describe("store.upload_file and store.go_live take the inputs of a game not made with Summer Engine", () => {
+  it("passes buildId, entry, clients and remove through the closed-input check, and needs no clientVersion", async () => {
+    const d = deps();
+    expect(await runOpFromCli("store.upload_file", ["--game-id", "g1", "--file", "client.zip", "--build-id", "bld_1", "--platform", "macos", "--entry", "MyGame.app", "--client-version", "v1.0.0"], d)).toBe(0);
+    expect(d.dispatch).toHaveBeenLastCalledWith("summer_publish_build", { gameId: "g1", file: "client.zip", buildId: "bld_1", platform: "macos", entry: "MyGame.app", clientVersion: "v1.0.0" });
+    // A bundle whose server is a program names its own version.
+    expect(await runOpFromCli("store.upload_file", ["--game-id", "g1", "--file", "server.zip"], d)).toBe(0);
+    expect(d.dispatch).toHaveBeenLastCalledWith("summer_publish_build", { gameId: "g1", file: "server.zip" });
+    expect(await runOpFromCli("store.go_live", ["--game-id", "g1", "--clients", "cp_mac", "--clients", "cp_web", "--remove", "windows"], d)).toBe(0);
+    expect(d.dispatch).toHaveBeenLastCalledWith("summer_go_live", { gameId: "g1", clients: ["cp_mac", "cp_web"], remove: ["windows"] });
+    expect(d.err).toEqual([]);
+  });
+
+  it.each([
+    ["store.upload_file", { gameId: "g1", buildID: "bld_1" }, "buildID"],
+    ["store.go_live", { gameId: "g1", client: ["cp_mac"] }, "client"],
+  ] as const)("%s still refuses a field it does not declare", async (op, input, field) => {
+    const d = deps();
+    expect(await runOpFromCli(op, ["--input", JSON.stringify(input)], d)).toBe(1);
+    expect(d.err[0]).toContain(`${field}: not a field of this operation.`);
+    expect(d.dispatch).not.toHaveBeenCalled();
+  });
+});

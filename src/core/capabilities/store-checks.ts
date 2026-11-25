@@ -49,6 +49,17 @@ export const CHECK_FIXES: Record<string, CheckFix> = {
     fix: "Summer cannot run this kind of game on this platform yet (for example web for a game with a server). Export without that platform; ship web as a download (summer_export_game format download).",
   },
   qualification_revoked: { owner: "creator", fix: "Summer withdrew this platform's check result. Export a new version and upload it." },
+  // A client of a Build whose server is a program (client packages, kind program). The message names the member or value to change.
+  client_archive_invalid: { owner: "creator", fix: "Summer could not read this archive as the .zip a client is. Read message, make the archive again and upload it with a new clientVersion." },
+  client_archive_unsafe: { owner: "creator", fix: "The archive holds a path, link or size the Summer apps would refuse to unpack. Read message, change what it names, and upload the new archive with a new clientVersion." },
+  client_entry_missing: { owner: "creator", fix: "The archive does not hold exactly the entry that was declared. Pass entry as the path inside the archive that starts the game (index.html for web), or fix the archive, and upload with a new clientVersion." },
+  client_architecture_unsupported: { owner: "creator", fix: "The game's executable is not built for this platform: macOS needs an arm64 build, Windows an x86-64 one. Build it for that, and upload with a new clientVersion." },
+  client_archive_revoked: { owner: "creator", fix: "Summer withdrew this exact archive for this game, so it is not accepted again under any version. Upload corrected bytes." },
+  client_isolation_unsupported: { owner: "creator", fix: "The browser build asks for cross-origin isolation (threads), which the play page cannot give. Build it without threads and upload with a new clientVersion." },
+  web_client_game_priced: {
+    owner: "creator",
+    fix: "A game with a price cannot have a browser build yet. Remove the price and upload the same file and clientVersion again, or publish the macOS and Windows clients only.",
+  },
   // Summer's side: nothing for the creator to change.
   template_set_unavailable: { owner: "summer", fix: "Summer Games is still turning this Summer version on. Nothing to change: retry the same upload later." },
   capacity_limit_reached: { owner: "summer", fix: "Summer Games is busy. Retry the same upload in a few minutes." },

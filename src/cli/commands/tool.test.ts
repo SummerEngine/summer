@@ -11,6 +11,8 @@ import {
 } from "./tool.js";
 import { listToolDispatches } from "../../core/capabilities/tool-dispatch.js";
 import { EngineApiClient } from "../../core/api-client.js";
+import { goLive } from "../../core/capabilities/go-live.js";
+import { publishBuild } from "../../core/capabilities/publish-build.js";
 
 // The default dispatch context connects through EngineApiClient.connect();
 // stub that one seam so `summer tool` runs against a scripted engine.
@@ -18,6 +20,17 @@ vi.mock("../../core/api-client.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../core/api-client.js")>();
   return { ...actual, EngineApiClient: { connect: vi.fn() } };
 });
+
+// The store tools run for real behind `summer tool`; stub the two uploads' entry
+// points so the test sees what the command passes on and nothing asks a store.
+vi.mock("../../core/capabilities/publish-build.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../core/capabilities/publish-build.js")>()),
+  publishBuild: vi.fn(async () => ({ ok: true, status: "confirmation_required" })),
+}));
+vi.mock("../../core/capabilities/go-live.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../core/capabilities/go-live.js")>()),
+  goLive: vi.fn(async () => ({ ok: true, status: "confirmation_required" })),
+}));
 
 describe("summer tool command", () => {
   it("is registered as 'tool' with --list and --args; --json is a hidden deprecated alias", () => {
@@ -126,6 +139,23 @@ describe("summer tool command", () => {
     await expect(runToolCommand([tool, "--args", JSON.stringify(input)]))
       .rejects.toThrow(`${field}: not a field of this operation.`);
     expect(EngineApiClient.connect).not.toHaveBeenCalled();
+  });
+
+  it("passes the inputs of a game not made with Summer Engine through the unknown-field check to the store tools", async () => {
+    const upload = { gameId: "g1", file: "client.zip", buildId: "bld_1", platform: "macos", entry: "MyGame.app", clientVersion: "v1.0.0" };
+    await runToolCommand(["publish-build", "--args", JSON.stringify(upload)]);
+    expect(publishBuild).toHaveBeenLastCalledWith(expect.objectContaining({ ...upload, face: "cli" }));
+    // A bundle whose server is a program names its own version: no clientVersion.
+    await runToolCommand(["summer_publish_build", "--args", JSON.stringify({ gameId: "g1", file: "server.zip" })]);
+    expect(publishBuild).toHaveBeenLastCalledWith(expect.objectContaining({ file: "server.zip", clientVersion: undefined, buildId: undefined }));
+    const release = { gameId: "g1", clients: ["cp_mac"], remove: ["windows"] };
+    await runToolCommand(["go-live", "--args", JSON.stringify(release)]);
+    expect(goLive).toHaveBeenLastCalledWith(expect.objectContaining({ ...release, face: "cli" }));
+
+    vi.mocked(publishBuild).mockClear();
+    await expect(runToolCommand(["publish-build", "--args", JSON.stringify({ ...upload, buildID: "bld_1" })]))
+      .rejects.toThrow("buildID: not a field of this operation.");
+    expect(publishBuild).not.toHaveBeenCalled();
   });
 
   it("exits 1 and prints the engine's failure envelope when a read fails — the CLI twin of the MCP face's isError (E2E F-06)", async () => {

@@ -3,7 +3,7 @@ import { resolveGatewayUrl } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
 import { createStore, defaultDependencies, listGamesOrThrow, storeToken, type PublishBuildDependencies, type Store } from "./publish-build.js";
 import { droppedPlatforms, notUsedPlatforms, serverOnlyRefusal, type DroppedPlatform, type NotUsedPlatform } from "./release-drops.js";
-import { describeFailure, summarizeChecks, type PlatformCheck } from "./store-checks.js";
+import { describeFailure, summarizeChecks, type ChecksSummary, type PlatformCheck } from "./store-checks.js";
 import { BuildToolError } from "./summer-bundle.js";
 
 /**
@@ -18,6 +18,24 @@ import { BuildToolError } from "./summer-bundle.js";
  *   POST build-publications/{p}:publish                           a preview Build, made ready for players
  *   POST environments/env_production/release-drafts (+ :publish)  release the Build to players
  *   POST revisions/{r}:publish (If-Match)                         publish the store page
+ *
+ * A Build whose server is a program (a game not made with Summer Engine) has
+ * no client pack on its publication: its clients were uploaded one per
+ * platform (macOS, Windows, web), and each is admitted on its own. The call
+ * names the clients to release (clients, their ids), and each is read from
+ * the store before it is used:
+ *
+ *   GET  games/{g}/builds/{b}                                     the kind of server the Build has
+ *   GET  games/{g}/builds/{b}/client-packages/{c}                 each client the call names
+ *
+ * Its release is the server, the clients named, and the members of the same
+ * Build that players have now and that are not replaced. A platform players
+ * have now is never dropped by leaving it out: the call is blocked unless it
+ * names the platform in remove. The plan comes from the call's inputs and the
+ * store only, so a preview and its confirmation cannot differ.
+ *
+ * Who can find the store page (Public or Private) is never changed here; the
+ * answer says which it is when the store tells.
  *
  * An agent credential may call the three :publish actions without an owner
  * approval while the person's Agent permissions allow Publish (the platform
@@ -46,6 +64,10 @@ export interface GoLiveInput {
   gameId?: string;
   /** The bundle Build to release (build-publications id). Default: the newest export that passed its checks. */
   publicationId?: string;
+  /** A Build whose server is a program: the ids of its clients to release (clientPackageId from each client's upload). */
+  clients?: string[];
+  /** A Build whose server is a program: platforms players have now to take out of the release on purpose. */
+  remove?: string[];
   confirm?: boolean;
   waitSeconds?: number;
   face: "cli" | "mcp";
@@ -83,6 +105,33 @@ interface BuildState {
   /** Players get this Build now on these platforms. */
   livePlatforms: string[];
   failure?: ReturnType<typeof describeFailure>;
+  /** Set when the Build's server is a program: its clients, not a client pack, are released. */
+  serverKind?: "program";
+  /** A program Build's release, as the call's inputs and the store give it. */
+  plan?: ProgramPlan;
+}
+
+/** One platform's client in the release of a Build whose server is a program. */
+interface ProgramMember {
+  platform: string;
+  /** clients: named by this call; live: the member players have now, kept as it is. */
+  from: "clients" | "live";
+  /** Null for a kept member: the release names it by its qualification. */
+  clientPackageId: string | null;
+  /** Null while Summer still reads a named client. */
+  qualificationId: string | null;
+  version: string | null;
+}
+
+interface ProgramPlan {
+  /** Exactly what players will have per platform once this is released. */
+  members: ProgramMember[];
+  /** Platforms players have now that this release takes out, because the call named them in remove. */
+  removed: string[];
+  /** Platforms named in remove that players do not have now: nothing to take out. */
+  notLive: string[];
+  /** Why the plan cannot be released as asked: a client the store does not have or did not admit, a platform that would be lost. */
+  problems: Array<Record<string, unknown>>;
 }
 
 interface Snapshot {
@@ -145,6 +194,138 @@ function livePlatformsOf(release: Record<string, any> | null, buildId: string | 
   return release.targets.filter((target: Record<string, any>) => target?.buildId === buildId).map((target: Record<string, any>) => String(target.target));
 }
 
+/** What a call asks of a Build whose server is a program. */
+interface ProgramSelection {
+  clients: string[];
+  remove: string[];
+}
+
+const clean = (values: string[] | undefined) => [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))];
+
+/** The platforms Summer has a client on: what remove may name. A release never has a member for another. */
+const REMOVABLE = ["android", "ios", "macos", "web", "windows"];
+
+/** A platform's name as the creator reads it. */
+const NAMED: Record<string, string> = { macos: "macOS", windows: "Windows", web: "Web", ios: "iOS", android: "Android", linux: "Linux" };
+const named = (platform: string) => NAMED[platform] ?? platform;
+
+/**
+ * The release of a Build whose server is a program, or null for any other
+ * Build: the clients the call names, each read from the store and held to
+ * this Game and Build, plus the members of this Build that players have now
+ * and that are not replaced. A named client the store does not have here, did
+ * not admit, or that is not a client of a program is a problem, by name. So
+ * is a platform players have now that the release would leave without a
+ * client and that the call does not name in remove. A platform is live when
+ * players have exactly the client the plan names.
+ */
+async function programPlan(
+  store: Store,
+  gameId: string,
+  buildId: string,
+  environment: Record<string, any> | null,
+  release: Record<string, any> | null,
+  selection: ProgramSelection
+): Promise<{ checks: ChecksSummary; plan: ProgramPlan; livePlatforms: string[] } | null> {
+  const detail = await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/builds/${seg(buildId)}`));
+  if (detail?.manifest?.serverKind !== "program") return null;
+  // The plan keeps what players have now, so it must know it: when the store names an active release and
+  // its read does not answer one, nothing is planned. "Nothing is live" is never assumed from a failed read.
+  const activeId = text(environment?.activeReleaseId);
+  if (activeId && !(release?.status === "active" && Array.isArray(release.targets))) {
+    throw new BuildToolError(
+      "release_unreadable",
+      `The store names release ${activeId} as the one players have now, and reading it (environments/${ENVIRONMENT}/releases/${activeId}) did not answer an active release${text(release?.status) ? ` (its status reads "${release!.status}")` : ""}.`,
+      "Recovery: nothing was changed. Call summer_go_live again in a minute; if it repeats, report it to Summer with this message."
+    );
+  }
+  // What players have now, on every platform; the members of this Build can be kept as they are.
+  const live: Array<Record<string, any>> = activeId ? release!.targets.filter((target: Record<string, any>) => typeof target?.target === "string" && target.target !== "server") : [];
+  const problems: Array<Record<string, unknown>> = [];
+  const checks: PlatformCheck[] = [];
+  const chosen = new Map<string, ProgramMember>();
+
+  for (const clientPackageId of selection.clients) {
+    const field = `client ${clientPackageId}`;
+    const client = await optional(() => store.call<Record<string, any>>("GET", `games/${seg(gameId)}/builds/${seg(buildId)}/client-packages/${seg(clientPackageId)}`));
+    const platform = text(client?.platform);
+    if (!client || client.kind !== "program" || !platform) {
+      problems.push({
+        field,
+        code: "client_not_found",
+        fix: `"${clientPackageId}" is not a client of Build ${buildId} of this game. Pass the clientPackageId each client's upload answered with (summer_publish_build with buildId); for clients of another Build, pass that Build's publicationId too.`,
+      });
+      continue;
+    }
+    if (chosen.has(platform)) {
+      problems.push({ field, code: "client_platform_repeated", fix: `Two of the clients named are for ${named(platform)}: "${chosen.get(platform)!.clientPackageId}" and "${clientPackageId}". Pass one client per platform.` });
+      continue;
+    }
+    const qualificationId = client.state === "uploaded" ? text(client.qualificationId) : null;
+    chosen.set(platform, { platform, from: "clients", clientPackageId, qualificationId, version: text(client.version) });
+    if (qualificationId) checks.push({ platform, state: "passed" });
+    else if (client.state === "awaiting_upload") {
+      // Declared, and its bytes never sealed: no check is running, so waiting would never end.
+      checks.push({ platform, state: "failed", code: "client_upload_unfinished" });
+      problems.push({
+        field,
+        platform,
+        code: "client_upload_unfinished",
+        fix: `This client's upload was never finished, so Summer has nothing to check. Run its upload command again (summer_publish_build with the same file, buildId ${buildId}, platform ${platform}, entry and clientVersion): it continues the same client.`,
+      });
+    } else if (client.state === "rejected") {
+      const failure = describeFailure(text(client.verificationError) ?? "client_rejected", text(client.verificationMessage));
+      checks.push({ platform, state: "failed", ...failure });
+      problems.push({ field, platform, ...failure });
+    } else checks.push({ platform, state: "checking", ...(text(client.verificationMessage) ? { message: String(client.verificationMessage) } : {}) });
+  }
+
+  for (const platform of selection.remove) {
+    if (chosen.has(platform)) problems.push({ field: `platform ${platform}`, code: "remove_conflicts_with_client", fix: `${named(platform)} is named in remove and a client for it is named in clients. Keep one of the two.` });
+  }
+
+  const members: ProgramMember[] = [];
+  const removed: string[] = [];
+  const livePlatforms: string[] = [];
+  for (const platform of new Set([...chosen.keys(), ...live.map((target) => String(target.target))])) {
+    const now = live.find((target) => target.target === platform);
+    const mine = now && now.buildId === buildId ? now : null;
+    if (selection.remove.includes(platform)) {
+      if (now) removed.push(platform);
+      continue;
+    }
+    const client = chosen.get(platform);
+    if (client) {
+      members.push(client);
+      if (mine && client.qualificationId && mine.qualificationId === client.qualificationId) livePlatforms.push(platform);
+    } else if (mine && text(mine.qualificationId)) {
+      members.push({ platform, from: "live", clientPackageId: null, qualificationId: text(mine.qualificationId), version: null });
+      livePlatforms.push(platform);
+    } else {
+      // Players have this platform from another Build, and this release has no client for it.
+      problems.push({
+        field: `platform ${platform}`,
+        code: "platform_would_be_removed",
+        fix:
+          `${named(platform)} is live now with a client of another Build, and this release has no client of Build ${buildId} for it, so its players would lose the game. ` +
+          `Upload one (summer_publish_build with buildId ${buildId}, platform ${platform}) and name it in clients, or name ${platform} in remove to take it out on purpose.`,
+      });
+    }
+  }
+  if (!members.length && !problems.length) {
+    problems.push({
+      field: "build",
+      code: "client_required",
+      fix:
+        `This Build's server is a program, and no client of it is named or live, so players would have nothing to start. Upload one archive per platform with summer_publish_build ` +
+        `(buildId ${buildId}, platform macos, windows or web, entry, clientVersion), then call summer_go_live again with clients: the clientPackageId of each.`,
+    });
+  }
+  const state = checks.some((check) => check.state === "checking") ? "checking" : checks.some((check) => check.state === "failed") ? "failed" : "passed";
+  const notLive = selection.remove.filter((platform) => !live.some((target) => target.target === platform));
+  return { checks: { state, checks }, plan: { members, removed, notLive, problems }, livePlatforms };
+}
+
 /** What go-live asked for: the release it requested, the platforms its answer left out, and a refusal of the release. */
 interface Requested {
   releaseId: string | null;
@@ -152,9 +333,15 @@ interface Requested {
   notUsed: NotUsedPlatform[];
   /** The platform refused the release; its message, when it gave one. */
   refused: { message: string | null } | null;
+  /** A program Build's release that the store refused whole because of one of its clients: its code and message, and the platforms the plan kept from the live release. */
+  clientRefused: { code: string; message: string | null; kept: string[] } | null;
+  /** The game's release changed between this call's read and its release: nothing was released. */
+  changed: boolean;
+  /** Platforms the requested release took out on purpose (remove). */
+  removed: string[];
 }
 
-const fresh = (): Requested => ({ releaseId: null, dropped: [], notUsed: [], refused: null });
+const fresh = (): Requested => ({ releaseId: null, dropped: [], notUsed: [], refused: null, clientRefused: null, changed: false, removed: [] });
 
 /**
  * A store page whose platforms the release cannot serve keeps the previous
@@ -167,7 +354,7 @@ const serverOnlyFailure = (message?: unknown) => ({
   fix: `${serverOnlyRefusal(message)} Then call summer_go_live again (or set release stage coming_soon with store.update_listing).`,
 });
 
-async function read(store: Store, gameId: string, publicationId: string | undefined, requested: Requested = fresh()): Promise<Snapshot> {
+async function read(store: Store, gameId: string, publicationId: string | undefined, selection: ProgramSelection, requested: Requested = fresh()): Promise<Snapshot> {
   const game = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}`);
   const [revisions, review, publications, versions, environment] = await Promise.all([
     store.call<{ items?: Array<Record<string, any>> }>("GET", `games/${seg(gameId)}/revisions?limit=20`),
@@ -207,15 +394,22 @@ async function read(store: Store, gameId: string, publicationId: string | undefi
   if (chosen) {
     const buildId = text(chosen.buildId);
     const failed = chosen.state === "failed" || chosen.state === "cancelled";
+    // A bundle whose server is a program is an exported game that names no client version; a Summer
+    // Engine export always names one, and a Build Summer made from project source is not an exported
+    // game. Only a finished exported publication without a client version and without a client pack is
+    // asked what its Build's server is, so no Engine Build costs a request here or changes its answer.
+    const candidate = buildId && chosen.source?.kind === "exported-game" && INTAKE_DONE.includes(String(chosen.state)) && !chosen.clientPackage && !text(chosen.clientVersion);
+    const program = candidate ? await programPlan(store, gameId, buildId, environment, release, selection) : null;
     build = {
       publicationId: String(chosen.id ?? chosen.publicationId ?? publicationId),
       buildId,
       version: text(chosen.clientVersion) ?? text(chosen.version),
       state: String(chosen.state ?? ""),
       hosted: chosen.build?.executionMode ? chosen.build.executionMode === "hosted" : null,
-      checks: summarizeChecks(chosen),
-      livePlatforms: livePlatformsOf(release, buildId),
+      checks: program ? program.checks : summarizeChecks(chosen),
+      livePlatforms: program ? program.livePlatforms : livePlatformsOf(release, buildId),
       ...(failed ? { failure: describeFailure(text(chosen.errorCode), text(chosen.errorMessage)) } : {}),
+      ...(program ? { serverKind: "program" as const, plan: program.plan } : {}),
     };
   }
   const versionRows = (versions?.items ?? []).map((item) => ({
@@ -297,6 +491,8 @@ function sentBack(snapshot: Snapshot): GoLiveResult | null {
 
 /** Which client platforms of the Build passed and may be released, and which did not. */
 function releasable(build: BuildState): { targets: string[]; held: PlatformCheck[] } {
+  // A program Build releases its plan: each platform whose client Summer admitted, the browser's included.
+  if (build.plan) return { targets: build.plan.members.filter((member) => member.qualificationId).map((member) => member.platform), held: build.checks.checks.filter((check) => check.state === "failed") };
   const passed = build.checks.checks.filter((check) => check.state === "passed" && RELEASE_PLATFORMS.includes(check.platform)).map((check) => check.platform);
   return { targets: passed, held: build.checks.checks.filter((check) => check.state === "failed") };
 }
@@ -304,17 +500,21 @@ function releasable(build: BuildState): { targets: string[]; held: PlatformCheck
 function view(snapshot: Snapshot) {
   const { page, build } = snapshot;
   return {
-    game: { gameId: snapshot.game.id ?? null, name: text(snapshot.game.name) },
+    // storeVisibility (public or private) is the store's, as the game read carries it; this never changes it.
+    game: { gameId: snapshot.game.id ?? null, name: text(snapshot.game.name), ...(text(snapshot.game.storeVisibility) ? { storeVisibility: snapshot.game.storeVisibility } : {}) },
     page: page ? { revisionId: page.revisionId, state: page.state, name: page.name, platforms: page.platforms, live: page.state === "PUBLISHED" } : null,
     build: build
       ? {
           publicationId: build.publicationId,
+          buildId: build.buildId,
           version: build.version,
           state: build.state,
           checksState: build.failure ? "failed" : build.checks.state,
           checks: build.checks.checks,
           livePlatforms: build.livePlatforms,
           ...(build.failure ? { failure: build.failure } : {}),
+          // A program Build: exactly what players will have per platform, and what this release takes out.
+          ...(build.plan ? { serverKind: "program", willBeLive: build.plan.members, removed: build.plan.removed, ...(build.plan.notLive.length ? { removeNotLive: build.plan.notLive } : {}) } : {}),
         }
       : null,
     downloads: snapshot.versions,
@@ -331,8 +531,34 @@ function isLive(snapshot: Snapshot): boolean {
   if (!snapshot.build) return true;
   // A platform the release left out, or kept on its current client, never gets this Build: it is reported, not waited for.
   const reported = [...snapshot.dropped, ...snapshot.notUsed].map((item) => item.platform);
+  // A program Build is live when players have exactly its plan: every member, nothing left to take out, and nothing the call asked for refused.
+  const plan = snapshot.build.plan;
+  if (plan && (plan.problems.length || plan.removed.length || plan.members.some((member) => !member.qualificationId))) return false;
   const wanted = releasable(snapshot.build).targets.filter((platform) => !reported.includes(platform));
   return wanted.length > 0 && wanted.every((platform) => snapshot.build!.livePlatforms.includes(platform));
+}
+
+/**
+ * What "live" means for this game, said so it is true whoever can open the page: a Private page is
+ * live for its team, the players who own it and its testers only.
+ */
+function liveLine(snapshot: Snapshot): string {
+  const visibility = text(snapshot.game.storeVisibility);
+  if (visibility === "private") return "Live. The store page is Private: only the game's team, players who own it and invited testers can open it, and they get it now.";
+  const confirm = "Confirm it as a player on summer.games and in the Summer Games apps.";
+  return visibility === "public" ? `Live: players get it now. ${confirm}` : `Live: everyone who can see the store page gets it now. ${confirm}`;
+}
+
+/** The answer's view after a release was asked: what that release took out stays named once it is gone. */
+function viewAfter(snapshot: Snapshot, requested: Requested): Record<string, unknown> {
+  const shown = view(snapshot);
+  if (!requested.removed.length || !shown.build || !snapshot.build?.plan) return shown;
+  // Once it is gone the platform is no longer live: it was removed by this call, not "not live".
+  const notLive = snapshot.build.plan.notLive.filter((platform) => !requested.removed.includes(platform));
+  const build: Record<string, unknown> = { ...shown.build, removed: requested.removed };
+  if (notLive.length) build.removeNotLive = notLive;
+  else delete build.removeNotLive;
+  return { ...shown, build };
 }
 
 /** The creator-facing line for the platforms a release left out, or "". */
@@ -353,7 +579,11 @@ function blockers(snapshot: Snapshot): Array<Record<string, unknown>> {
   const build = snapshot.build;
   if (build?.failure) out.push({ field: "build", ...build.failure });
   if (build?.checks.packFailure) out.push({ field: "build", ...build.checks.packFailure });
-  if (build && !build.failure && build.checks.state !== "checking" && releasable(build).targets.length === 0) {
+  if (build?.plan && !build.failure) {
+    // Each is refused by name, before anything is asked of the store: a client it does not have for
+    // this Build or did not admit, and a platform players would lose.
+    for (const problem of build.plan.problems) out.push(problem);
+  } else if (build && !build.failure && build.checks.state !== "checking" && releasable(build).targets.length === 0) {
     out.push({ field: "build", code: "no_platform_passed", fix: "No phone or desktop platform of this Build passed its checks. Apply each check's fix, export again and upload with summer_publish_build." });
     for (const check of releasable(build).held) out.push({ field: `build ${check.platform}`, ...check });
   }
@@ -375,11 +605,46 @@ function permissionRefused(): GoLiveResult {
   };
 }
 
+/**
+ * The store's refusals of a whole release because of one client in it. A named client it will not
+ * release answers by name (web_client_game_priced, draft_not_ready). A member kept from the live
+ * release by its qualification answers a bare conflict when Summer withdrew that qualification.
+ */
+const CLIENT_REFUSALS = ["web_client_game_priced", "draft_not_ready", "conflict"];
+
+/** What to tell the creator when the store refuses a release because of one of its clients. */
+function clientRefusal(refused: { code: string; message: string | null; kept: string[] }, buildId: string | null): Record<string, unknown> {
+  const kept = refused.kept.map(named).join(", ");
+  return {
+    field: "release",
+    code: refused.code,
+    ...(refused.message ? { message: refused.message } : {}),
+    ...(refused.code === "conflict" && refused.kept.length ? { keptPlatforms: refused.kept } : {}),
+    fix:
+      refused.code === "web_client_game_priced"
+        ? "A game with a price cannot have a browser build yet. Remove the price, or call summer_go_live again without the web client in clients (and with web in remove when players have a browser build now)."
+        : refused.code === "conflict"
+          ? refused.kept.length
+            ? `The store will not release this set of clients, and does not say which one. This release keeps the client players have now on ${kept} as it is; Summer may have withdrawn one of them. ` +
+              `For that platform, upload a client again (summer_publish_build with buildId ${buildId}) and name it in clients, or name the platform in remove to take it out. Nothing was released.`
+            : "The store will not release this set of clients, and does not say why. Read what players have with summer_go_live (confirm false), then name the clients again. Nothing was released."
+          : "The store will not release one of the clients named, and its message says which platform. Upload that platform's client again as a new clientVersion and name the new one, or call summer_go_live again without it.",
+  };
+}
+
+/** The game's release changed while this call ran: its plan was made from what players had before. */
+const RELEASE_CHANGED = {
+  field: "release",
+  code: "release_changed",
+  fix: "The game's release changed while this ran, so nothing was released. Run summer_go_live again: it reads what players have now and plans from that.",
+};
+
 /** Make the Build ready for players and ask for its release; returns a hold when the platform declines. */
 async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, deps: PublishBuildDependencies, deadline: number, requested: Requested): Promise<Record<string, unknown> | null> {
   const build = snapshot.build!;
   const { targets } = releasable(build);
-  if (!build.buildId || !targets.length || targets.every((platform) => build.livePlatforms.includes(platform))) return null;
+  // Nothing to ask when players have every platform of this Build already; a program Build's plan may still take one out.
+  if (!build.buildId || !targets.length || (targets.every((platform) => build.livePlatforms.includes(platform)) && !build.plan?.removed.length)) return null;
   const publicationPath = `games/${seg(gameId)}/build-publications/${seg(build.publicationId)}`;
   let detail = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}/builds/${seg(build.buildId)}`);
   if (detail.status === "preview_ready") {
@@ -398,24 +663,46 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
   }
   const environment = snapshot.environment;
   if (environment?.desiredReleaseId && environment.desiredReleaseId !== environment.activeReleaseId) return null; // a release is already on its way
-  const pack = (await store.call<Record<string, any>>("GET", publicationPath)).clientPackage ?? {};
   const selection: Record<string, Record<string, string>> = {};
   const hosted = (detail.executionMode ?? (build.hosted ? "hosted" : "standalone")) === "hosted";
   if (hosted) selection.server = { buildId: build.buildId, qualificationId: "" };
-  for (const platform of targets) {
-    const check = (pack.verifications ?? []).find((row: Record<string, any>) => row.platform === platform && row.state === "ready" && row.qualificationId);
-    if (check) selection[platform] = { buildId: build.buildId, uploadId: String(pack.id), qualificationId: String(check.qualificationId) };
+  if (build.plan) {
+    // The whole release, member by member: a named client by its upload and the qualification it earned,
+    // a kept one by the qualification players have now. Listing all of them is what keeps a platform.
+    // In platform order, so the same members are the same request whatever order the call named them in.
+    for (const member of [...build.plan.members].sort((a, b) => (a.platform < b.platform ? -1 : a.platform > b.platform ? 1 : 0))) {
+      if (!member.qualificationId) continue;
+      const target: Record<string, string> = { buildId: build.buildId, qualificationId: member.qualificationId };
+      if (member.clientPackageId) target.uploadId = member.clientPackageId;
+      selection[member.platform] = target;
+    }
+  } else {
+    const pack = (await store.call<Record<string, any>>("GET", publicationPath)).clientPackage ?? {};
+    for (const platform of targets) {
+      const check = (pack.verifications ?? []).find((row: Record<string, any>) => row.platform === platform && row.state === "ready" && row.qualificationId);
+      if (check) selection[platform] = { buildId: build.buildId, uploadId: String(pack.id), qualificationId: String(check.qualificationId) };
+    }
   }
+  // An Engine Build's members follow from its publication. A program Build's are the call's choice, so
+  // its keys cover them: another choice after a refused release is another request, not a replay.
+  const chosen = build.plan ? [createHash("sha256").update(JSON.stringify(Object.keys(selection).sort().map((name) => [name, selection[name]!.uploadId ?? "", selection[name]!.qualificationId]))).digest("hex")] : [];
   const base = `${environment?.revision ?? 0}:${environment?.activeReleaseId ?? ""}`;
   const draft = await store.call<Record<string, any>>("POST", `games/${seg(gameId)}/environments/${ENVIRONMENT}/release-drafts`, {
     body: { title: build.version ?? "Release", notes: "", targets: selection },
-    key: keyOf(gameId, "draft", build.publicationId, base),
+    key: keyOf(gameId, "draft", build.publicationId, base, ...chosen),
   });
+  // The members were computed from what this call read. The draft says what it was saved against: when
+  // that is another release or another state of the environment, someone else released in between, and
+  // a complete publish of the old member list would drop what they added. Nothing is published then.
+  if (build.plan && (Number(draft.baseEnvironmentRevision) !== Number(environment?.revision ?? 0) || (text(draft.baseReleaseId) ?? "") !== (text(environment?.activeReleaseId) ?? ""))) {
+    requested.changed = true;
+    return null;
+  }
   let accepted: Record<string, any> | null;
   try {
     accepted = await store.call<Record<string, any>>("POST", `games/${seg(gameId)}/environments/${ENVIRONMENT}/release-drafts/${seg(String(draft.id))}:publish`, {
       body: { targets: Object.keys(selection), replaceTargets: true },
-      key: keyOf(gameId, "release", build.publicationId, base),
+      key: keyOf(gameId, "release", build.publicationId, base, ...chosen),
       // The proxy forwards x-summer-revision as If-Match (it passes no other header but idempotency-key).
       headers: { [REVISION_HEADER]: `"${draft.revision}"` },
     });
@@ -424,8 +711,20 @@ async function releaseBuild(store: Store, gameId: string, snapshot: Snapshot, de
       requested.refused = { message: text(error.detail?.message) };
       return null;
     }
+    // The store read a named client as admitted and still will not release it (a browser build of a game
+    // that has a price, a client Summer withdrew). Nothing was released; its own words say which.
+    if (build.plan && error instanceof BuildToolError && error.status === 409 && CLIENT_REFUSALS.includes(error.code)) {
+      requested.clientRefused = { code: error.code, message: text(error.message.replace(` ${error.recovery}`, "")), kept: build.plan.members.filter((member) => member.from === "live").map((member) => member.platform) };
+      return null;
+    }
+    // Another release was published while this one was being asked: the store's own fence. Nothing was released.
+    if (error instanceof BuildToolError && error.status === 409 && error.code === "etag_conflict") {
+      requested.changed = true;
+      return null;
+    }
     throw error;
   }
+  requested.removed = build.plan?.removed ?? [];
   requested.releaseId = text(accepted?.releaseId);
   requested.dropped = droppedPlatforms(accepted?.droppedTargets);
   requested.notUsed = notUsedPlatforms(accepted?.notUsedTargets);
@@ -474,16 +773,46 @@ async function publishPage(store: Store, gameId: string, snapshot: Snapshot): Pr
 export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuildDependencies> = {}): Promise<GoLiveResult> {
   const deps = { ...defaultDependencies, ...overrides };
   const gameId = input.gameId?.trim();
+  // The clients to release and the platforms to take out are this call's own inputs: nothing else decides them.
+  const selection: ProgramSelection = { clients: clean(input.clients), remove: clean(input.remove) };
+  // A name remove cannot mean anything by is refused before anything is read: a misspelt platform must not pass for one that is not live.
+  const misnamed = selection.remove.filter((platform) => !REMOVABLE.includes(platform));
+  if (misnamed.length) {
+    throw new BuildToolError(
+      "remove_invalid",
+      `remove names ${misnamed.map((platform) => `"${platform}"`).join(", ")}, which ${misnamed.length === 1 ? "is" : "are"} not a platform a client can have.`,
+      `Recovery: name platforms as ${REMOVABLE.join(", ")}.`
+    );
+  }
   if (!gameId) return listGamesOrThrow(deps);
   const store = createStore(await resolveGatewayUrl(), await storeToken(deps), deps);
   const deadline = deps.now() + Math.min(Math.max(input.waitSeconds ?? DEFAULT_WAIT_SECONDS, 0), 1800) * 1000;
-  let snapshot = await read(store, gameId, input.publicationId);
+  let snapshot = await read(store, gameId, input.publicationId, selection);
+  if ((selection.clients.length || selection.remove.length) && !snapshot.build?.plan) {
+    const build = snapshot.build;
+    throw new BuildToolError(
+      "clients_not_applicable",
+      "clients and remove choose the clients of a Build whose server is a program, once Summer has made it. " +
+        (!build
+          ? "This game has no uploaded Build."
+          : build.failure
+            ? `Publication ${build.publicationId} failed (${build.failure.code}), so no Build was made from it.`
+            : !INTAKE_DONE.includes(build.state)
+              ? `Summer is still making the Build of publication ${build.publicationId} (its state is "${build.state}").`
+              : `The Build of publication ${build.publicationId} is not one: a Summer Engine Build's platforms follow from its export.`),
+      !build || build.failure
+        ? "Recovery: upload the server bundle first (summer_publish_build), or pass publicationId of the Build those clients were uploaded to."
+        : !INTAKE_DONE.includes(build.state)
+          ? "Recovery: call again with the same clients once the Build is made; summer_publish_build with the same server bundle waits for it."
+          : "Recovery: call again without clients and remove, or pass publicationId of the Build those clients were uploaded to."
+    );
+  }
 
   const held = onHold(snapshot);
   if (held) return held;
   const back = sentBack(snapshot);
   if (back) return back;
-  if (isLive(snapshot)) return { ok: true, status: "live", ...view(snapshot), next: "Players get it now. Confirm it as a player on summer.games and in the Summer Games apps." };
+  if (isLive(snapshot)) return { ok: true, status: "live", ...view(snapshot), next: liveLine(snapshot) };
   const stops = blockers(snapshot);
   if (stops.length) return { ok: true, status: "blocked", ...view(snapshot), failures: stops, next: "Fix each failure, then call summer_go_live again." };
 
@@ -492,12 +821,23 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
       ok: true,
       status: "confirmation_required",
       ...view(snapshot),
-      next:
-        "Show the user this exact game, store page and build (version and platforms). Only after they approve going live, call again with confirm=true. Nothing was published.",
+      next: snapshot.build?.plan
+        ? "Show the user this exact game, store page and build: build.willBeLive is what players will have on each platform (from clients: a client this call names; from live: the one they have now, kept), and build.removed what is taken out. " +
+          (snapshot.build.plan.notLive.length ? `Named in remove and not live now, so there is nothing to take out: ${snapshot.build.plan.notLive.join(", ")}. ` : "") +
+          "Only after they approve going live, call again with confirm=true and the same clients and remove. Nothing was published."
+        : "Show the user this exact game, store page and build (version and platforms). Only after they approve going live, call again with confirm=true. Nothing was published.",
     };
   }
 
-  const audit = { at: new Date(deps.now()).toISOString(), operation: "go_live", face: input.face, gameId, revisionId: snapshot.page!.revisionId, publicationId: snapshot.build?.publicationId ?? null };
+  const audit = {
+    at: new Date(deps.now()).toISOString(),
+    operation: "go_live",
+    face: input.face,
+    gameId,
+    revisionId: snapshot.page!.revisionId,
+    publicationId: snapshot.build?.publicationId ?? null,
+    ...(snapshot.build?.plan ? { clients: selection.clients, remove: selection.remove } : {}),
+  };
   await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
   let hold: Record<string, unknown> | null = null;
   const requested = fresh();
@@ -505,7 +845,7 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     // The Build first: a released page needs a playable release (or one on its way).
     while (snapshot.build && snapshot.build.checks.state === "checking" && deps.now() < deadline) {
       await deps.sleep(POLL_MS);
-      snapshot = await read(store, gameId, snapshot.build.publicationId);
+      snapshot = await read(store, gameId, snapshot.build.publicationId, selection);
     }
     if (snapshot.build?.checks.state === "checking") {
       const since = stillCheckingSince(snapshot) ? `${STILL_CHECKING} ` : "";
@@ -516,6 +856,12 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
     if (snapshot.build) hold = await releaseBuild(store, gameId, snapshot, deps, deadline, requested);
     if (requested.refused) {
       return { ok: true, status: "blocked", ...view({ ...snapshot, dropped: requested.dropped, notUsed: requested.notUsed }), failures: [serverOnlyFailure(requested.refused.message)], next: `${serverOnlyRefusal(requested.refused.message)} Then call summer_go_live again.` };
+    }
+    if (requested.changed) {
+      return { ok: true, status: "blocked", ...view(snapshot), failures: [RELEASE_CHANGED], next: "The release changed while this ran; nothing was released. Run summer_go_live again." };
+    }
+    if (requested.clientRefused) {
+      return { ok: true, status: "blocked", ...view(snapshot), failures: [clientRefusal(requested.clientRefused, snapshot.build?.buildId ?? null)], next: "Nothing was released. Fix the failure, then call summer_go_live again." };
     }
     const refused = await publishPage(store, gameId, snapshot);
     if (refused) return { ...view(snapshot), ...refused };
@@ -528,7 +874,7 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
 
   // Watch until players get it, a check fails or the wait ends.
   for (;;) {
-    snapshot = await read(store, gameId, snapshot.build?.publicationId, requested);
+    snapshot = await read(store, gameId, snapshot.build?.publicationId, selection, requested);
     const stillHeld = onHold(snapshot);
     if (stillHeld) return stillHeld;
     const again = sentBack(snapshot);
@@ -539,11 +885,11 @@ export async function goLive(input: GoLiveInput, overrides: Partial<PublishBuild
       return {
         ok: true,
         status: "live",
-        ...view(snapshot),
+        ...viewAfter(snapshot, requested),
         ...(held.length ? { notReleased: held } : {}),
         next: held.length
           ? `Live. ${held.map((check) => check.platform).join(", ")} did not pass its checks and is not released: apply each fix and upload a new version.${droppedLine(snapshot)}`
-          : `Live: players get it now. Confirm it as a player on summer.games and in the Summer Games apps.${droppedLine(snapshot)}`,
+          : `${liveLine(snapshot)}${requested.removed.length ? ` Taken out as asked: ${requested.removed.map(named).join(", ")}.` : ""}${droppedLine(snapshot)}`,
       };
     }
     const failed = blockers(snapshot);

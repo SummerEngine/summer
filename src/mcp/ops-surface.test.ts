@@ -165,6 +165,62 @@ describe("closed MCP input objects", () => {
       await server.close();
     }
   });
+
+  describe("the store tools' inputs for a game not made with Summer Engine", () => {
+    const upload = { gameId: "g1", file: "client.zip", buildId: "bld_1", platform: "macos", entry: "MyGame.app", clientVersion: "v1.0.0" };
+    // A bundle whose server is a program names its own version: no clientVersion.
+    const server = { gameId: "g1", file: "server.zip" };
+    const release = { gameId: "g1", clients: ["cp_mac"], remove: ["windows"] };
+
+    it("reach summer_publish_build and summer_go_live by name, and a misspelled one is still refused", async () => {
+      const { server: mcp } = createMcpServer(resolveToolSelection({ profile: "engine" }, {}), { surface: "v3" });
+      const tools = (mcp as unknown as { _registeredTools: Record<string, { handler: unknown }> })._registeredTools;
+      const observe = vi.fn(async (_input: unknown) => envelope({ ok: true }));
+      for (const name of ["summer_publish_build", "summer_go_live"]) tools[name].handler = observe;
+      const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+      await mcp.connect(serverSide);
+      const client = new Client({ name: "input-contract-test", version: "1" });
+      await client.connect(clientSide);
+      try {
+        await client.callTool({ name: "summer_publish_build", arguments: upload });
+        await client.callTool({ name: "summer_publish_build", arguments: server });
+        await client.callTool({ name: "summer_go_live", arguments: release });
+        expect(observe.mock.calls.map(([args]) => args)).toEqual([
+          expect.objectContaining(upload), expect.objectContaining(server), expect.objectContaining(release),
+        ]);
+        expect(observe.mock.calls[1][0]).not.toHaveProperty("clientVersion");
+        for (const [name, args, field] of [
+          ["summer_publish_build", { ...upload, buildID: "bld_1" }, "buildID"],
+          ["summer_go_live", { ...release, client: ["cp_mac"] }, "client"],
+        ] as const) {
+          const refused = await client.callTool({ name, arguments: args });
+          expect(refused.isError).toBe(true);
+          expect(JSON.stringify(refused.content)).toContain(field);
+        }
+        expect(observe).toHaveBeenCalledTimes(3);
+      } finally {
+        await client.close();
+        await mcp.close();
+      }
+    });
+
+    it("pass the check of store.upload_file and store.go_live inside summer_call", async () => {
+      const { client, cloud, close } = await session("engine", "v4");
+      const call = async (op: string, input: Record<string, unknown>) =>
+        answerOf(await client.callTool({ name: "summer_call", arguments: { op, input, dryRun: true } }));
+      try {
+        expect(await call("store.upload_file", upload)).toMatchObject({ ok: true, status: "dry_run" });
+        expect(await call("store.upload_file", server)).toMatchObject({ ok: true, status: "dry_run" });
+        expect(await call("store.go_live", release)).toMatchObject({ ok: true, status: "dry_run" });
+        expect(await call("store.upload_file", { ...upload, buildID: "bld_1" })).toMatchObject({
+          ok: false, error: { code: "invalid_input", message: expect.stringContaining("buildID") },
+        });
+        expect(cloud.call).not.toHaveBeenCalled();
+      } finally {
+        await close();
+      }
+    });
+  });
 });
 
 describe("v4, engine profile", () => {

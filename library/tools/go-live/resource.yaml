@@ -1,7 +1,7 @@
 id: tool/go-live
 kind: tool
-version: 1.0.0
-summary: "Take a store game live: release its checked Build, publish its page, watch until players get it or name the failing check and fix. Confirm-gated."
+version: 1.1.1
+summary: "Take a store game live: release its checked Build, or a server with the clients you name, publish its page, then answer live or blocked. Confirm-gated."
 use_when:
   - '"make my game live"'
   - '"publish my game to players now"'
@@ -9,9 +9,12 @@ use_when:
   - '"release the build I uploaded"'
   - after summer_publish_build reports every automated check passed
   - watching a game until players get it, or finding which automated check failed
+  - releasing the server of a game not made with Summer Engine with its macOS, Windows and web clients (clients)
+  - '"release the new Mac client I uploaded"'
 do_not_use_when:
   - the user has not approved taking this exact store page and Build live
-  - the game is not uploaded yet - summer_export_game, then summer_publish_build
+  - the game is not uploaded yet - summer_export_game, then summer_publish_build (a game not made with Summer Engine - its server bundle, then each client with buildId)
+  - making a store page Public or Private - store.update_listing visibility; this never changes it
   - store page text, art or price - store.update_listing, store.set_art, pricing.set_base
   - the release checklist before going live - skill/release-checklist
 facets:
@@ -46,11 +49,21 @@ input_schema:
       description: The store game id (from games.list). Without it the call fails with game_required and lists your store games.
     publicationId:
       type: string
-      description: "The bundle Build to release: publicationId from summer_publish_build. Default: the newest uploaded export."
+      description: "The bundle Build to release: publicationId from summer_publish_build (for a game not made with Summer Engine, the one its server bundle's upload answered with). Default: the newest uploaded bundle."
+    clients:
+      type: array
+      items:
+        type: string
+      description: "For a Build whose server is a program (a game not made with Summer Engine): the clients to release, by the clientPackageId each client's upload answered with (macOS, Windows, web; one per platform). The release is the server, these clients, and the clients of the same Build players have now that these do not replace. A client that is not of this game and Build, or that Summer rejected, is refused by name before anything is released. A client-only update names just the new client. Leave it out for a Summer Engine Build."
+    remove:
+      type: array
+      items:
+        type: string
+      description: "For a Build whose server is a program: platforms players have now to take out of the release on purpose (android, ios, macos, web or windows; any other name is refused). Without it, a release that would leave such a platform without a client answers blocked and names it, so no platform is dropped by leaving it out. A platform named that players do not have now is left alone, and the answer lists it in build.removeNotLive."
     confirm:
       type: boolean
       default: false
-      description: Set true only after the user approves taking this exact page and Build live.
+      description: "Set true only after the user approves taking this exact page and Build live, with the same clients and remove as the preview. The answer is live (released and the store page published: everyone who can open the page gets it; a Private page stays Private), blocked (each failure with its fix; nothing was released), waiting, needs_changes or needs_permission."
     waitSeconds:
       type: integer
       minimum: 0

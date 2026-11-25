@@ -16,6 +16,13 @@ import { readZipEntries, readZipEntry, ZipReadError, type ZipEntry } from "../ut
  *   any number of config/ files.
  * In both, a hosted game always carries config/summer.build.json; a game
  * without a host may omit it.
+ *
+ * A hosted server is one of two kinds. A Summer Engine export carries
+ * server.pck beside client.pck. A game not made with Summer Engine carries its
+ * server as a program (manifest server.kind "program"): the bundle then holds
+ * no client.pck, and its clients are uploaded to the Build afterwards. For
+ * that kind this reads only what the upload sends, the packaged Build
+ * declaration; everything else about the bytes is the Platform's to judge.
  */
 
 export const BUNDLE_SCHEMA_V1 = "summer.bundle.v1";
@@ -131,12 +138,54 @@ export interface SummerBundle {
   files: BundleFile[];
 }
 
+/**
+ * A bundle whose hosted server is a program, not a Summer Engine pack. It has
+ * no client pack: the Build is published without a client.
+ */
+export interface ProgramBundle {
+  schema: BundleSchema;
+  serverKind: "program";
+  hosted: true;
+  /** config/summer.build.json as packaged: the Build declaration, sent as it is. */
+  hostedBuild: Record<string, unknown>;
+  /** The declaration's version, which is the Build's. */
+  version: string;
+}
+
+export function isProgramBundle(bundle: SummerBundle | ProgramBundle): bundle is ProgramBundle {
+  return (bundle as ProgramBundle).serverKind === "program";
+}
+
 function bundleError(message: string): BuildToolError {
   return new BuildToolError("bundle_invalid", message, AS_EXPORTED);
 }
 
-/** Read and check summer-bundle.json in an exported .zip. */
+const AS_WRITTEN = "Recovery: write the bundle again with the tool that made it and upload the .zip exactly as it was written.";
+
+/** A manifest of a schema this package does not read, or not a manifest at all. */
+function schemaError(manifest: Record<string, any> | null | undefined): BuildToolError {
+  const newer = typeof manifest?.schema === "string" && /^summer\.bundle\.v\d+$/.test(manifest.schema) && !BUNDLE_SCHEMAS.includes(manifest.schema as BundleSchema);
+  return new BuildToolError(
+    "bundle_invalid",
+    newer
+      ? `${BUNDLE_MANIFEST} is a ${manifest!.schema} manifest, newer than this summer-engine package reads (${BUNDLE_SCHEMAS.join(", ")}).`
+      : `${BUNDLE_MANIFEST} is not a ${BUNDLE_SCHEMAS.join(" or ")} manifest.`,
+    newer ? "Recovery: update the summer-engine package (npx -y summer-engine@latest), then upload the same export." : "Recovery: update Summer Engine and export again."
+  );
+}
+
+/** Read and check summer-bundle.json in a Summer Engine export (.zip). */
 export async function readSummerBundle(path: string): Promise<SummerBundle> {
+  const bundle = await readBundle(path);
+  if (isProgramBundle(bundle)) throw bundleError(`${path} carries a server program, not a Summer Engine export.`);
+  return bundle;
+}
+
+/**
+ * Read what a bundle (.zip) declares: a Summer Engine export, checked as
+ * before, or a bundle whose server is a program.
+ */
+export async function readBundle(path: string): Promise<SummerBundle | ProgramBundle> {
   let entries: ZipEntry[];
   try {
     entries = await readZipEntries(path);
@@ -148,7 +197,7 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
   const byName = new Map(entries.map((entry) => [entry.name, entry]));
   const manifestEntry = byName.get(BUNDLE_MANIFEST);
   const clientEntry = byName.get(BUNDLE_CLIENT);
-  if (!manifestEntry || !clientEntry) {
+  if (!manifestEntry) {
     throw bundleError(`${path} is not a summer.games export: it has no ${BUNDLE_MANIFEST} and ${BUNDLE_CLIENT}.`);
   }
   if (
@@ -171,9 +220,18 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
     if (error instanceof ZipReadError) throw bundleError(`${BUNDLE_MANIFEST} could not be read: ${error.message}`);
     throw bundleError(`${BUNDLE_MANIFEST} is not valid JSON.`);
   }
+  const schema = manifest?.schema as BundleSchema;
+  // The manifest says who supplies the server. A program is not read as an
+  // Engine export: it has no client pack, scene or composition to check.
+  if (manifest?.server && typeof manifest.server === "object" && manifest.server.kind === "program") {
+    if (!BUNDLE_SCHEMAS.includes(schema)) throw schemaError(manifest);
+    return readProgramBundle(path, schema, byName.get(BUNDLE_BUILD));
+  }
+  if (!clientEntry) {
+    throw bundleError(`${path} is not a summer.games export: it has no ${BUNDLE_CLIENT}. Only a bundle whose server is a program stands without one.`);
+  }
   const client = manifest?.client;
   const mainScene = typeof client?.mainScene === "string" ? client.mainScene : null;
-  const schema = manifest?.schema as BundleSchema;
   if (
     !BUNDLE_SCHEMAS.includes(schema) ||
     client?.path !== BUNDLE_CLIENT ||
@@ -182,15 +240,7 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
     !client.targetPlatforms.every((value: unknown) => typeof value === "string") ||
     !Array.isArray(manifest.files)
   ) {
-    throw new BuildToolError(
-      "bundle_invalid",
-      typeof manifest?.schema === "string" && /^summer\.bundle\.v\d+$/.test(manifest.schema) && !BUNDLE_SCHEMAS.includes(schema)
-        ? `${BUNDLE_MANIFEST} is a ${manifest.schema} manifest, newer than this summer-engine package reads (${BUNDLE_SCHEMAS.join(", ")}).`
-        : `${BUNDLE_MANIFEST} is not a ${BUNDLE_SCHEMAS.join(" or ")} manifest.`,
-      typeof manifest?.schema === "string" && /^summer\.bundle\.v\d+$/.test(manifest.schema) && !BUNDLE_SCHEMAS.includes(schema)
-        ? "Recovery: update the summer-engine package (npx -y summer-engine@latest), then upload the same export."
-        : "Recovery: update Summer Engine and export again."
-    );
+    throw schemaError(manifest);
   }
 
   const hosted = Boolean(manifest.server);
@@ -276,6 +326,39 @@ export async function readSummerBundle(path: string): Promise<SummerBundle> {
     ...(hostedBuild ? { hostedBuild } : {}),
     files,
   };
+}
+
+/**
+ * The one thing the upload of a program bundle sends from inside it: the Build
+ * declaration. It is read whole, so what would make the request meaningless
+ * is said here in plain words instead of coming back as a bare refusal: no
+ * declaration, one that names no version, or one that does not say what the
+ * manifest says about the server. Everything else is the store's to judge.
+ */
+const MAX_DECLARATION_BYTES = 64 * 1024;
+
+async function readProgramBundle(path: string, schema: BundleSchema, config: ZipEntry | undefined): Promise<ProgramBundle> {
+  const refuse = (message: string) => new BuildToolError("bundle_invalid", message, AS_WRITTEN);
+  if (config && config.uncompressedSize > MAX_DECLARATION_BYTES) {
+    throw refuse(`${BUNDLE_BUILD} is ${config.uncompressedSize} bytes; a Build declaration is at most ${MAX_DECLARATION_BYTES} bytes.`);
+  }
+  let build: unknown;
+  try {
+    build = config ? JSON.parse((await readZipEntry(path, config, MAX_DECLARATION_BYTES)).toString("utf8")) : undefined;
+  } catch {
+    build = undefined;
+  }
+  if (!build || typeof build !== "object" || Array.isArray(build)) {
+    throw refuse(`${BUNDLE_BUILD} is missing or is not a JSON object: it is the Build declaration this upload sends.`);
+  }
+  const declaration = build as Record<string, any>;
+  if (declaration.server?.kind !== "program") {
+    throw refuse(`${BUNDLE_MANIFEST} says the server is a program, but ${BUNDLE_BUILD} does not declare server.kind "program". The two must say the same.`);
+  }
+  if (typeof declaration.version !== "string" || !declaration.version.trim()) {
+    throw refuse(`${BUNDLE_BUILD} names no version. The Build takes its version from there.`);
+  }
+  return { schema, serverKind: "program", hosted: true, hostedBuild: declaration, version: declaration.version };
 }
 
 /** "sha256:<hex>" and size of a whole file, streamed. */

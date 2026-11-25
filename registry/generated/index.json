@@ -1579,7 +1579,7 @@
       "id": "skill/environment-kit",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "a989f37b831a3ed298f3749b306f7993db3c2c159865c0e337ae6c45b37e8834",
+      "content_hash": "2eedbe7d945c7bb97369c352b2da2c84d5456999c4ae6653981c0e7aec603f76",
       "summary": "Generate a modular environment kit: walls, floor tiles, pillars, doors, arches in one visual style.",
       "use_when": [
         "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces",

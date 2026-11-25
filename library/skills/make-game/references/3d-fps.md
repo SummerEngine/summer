@@ -81,7 +81,7 @@ Movement (in `_physics_process`, never `_process`):
 ```gdscript
 func _handle_movement(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
+	var direction := (global_basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	if direction:
 		velocity.x = lerpf(velocity.x, direction.x * current_speed, acceleration * delta)
 		velocity.z = lerpf(velocity.z, direction.z * current_speed, acceleration * delta)

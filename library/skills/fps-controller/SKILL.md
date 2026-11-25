@@ -92,7 +92,7 @@ Each frame, `_physics_process` runs these steps in this exact order. Reordering 
 2. **Apply gravity** (asymmetric — heavier when falling).
 3. **Update coyote timer.** Reset to full when grounded, tick down when airborne.
 4. **Update jump buffer + fire jump** if both timers are active. Clearing the buffer on press-instead-of-fire is the bug everyone makes.
-5. **Read input, build wish-direction in worldspace** by rotating the local 2D input through `transform.basis`.
+5. **Convert movement input to world space.** Keep the body upright. Its `global_basis` includes yaw inherited from a rotated room or spawn point. Use that heading for movement and let the Head pitch independently.
 6. **Pick acceleration / friction** based on grounded state, then `move_toward` the horizontal velocity toward `wish_dir * target_speed`.
 7. **Apply external velocity, save it for next-frame subtraction, decay it** via `move_toward(0, damping * delta)`.
 8. **`move_and_slide()`** — last, after everything else has settled `velocity`.
@@ -181,9 +181,9 @@ func _physics_process(delta: float) -> void:
         _jump_buffer_timer = 0.0
         _coyote_timer = 0.0
 
-    # 5. Build wish-direction in worldspace from camera yaw.
+    # 5. Use the body’s world heading for horizontal movement.
     var input_v := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-    var wish_dir := (transform.basis * Vector3(input_v.x, 0.0, input_v.y))
+    var wish_dir := (global_basis * Vector3(input_v.x, 0.0, input_v.y))
     wish_dir.y = 0.0
     wish_dir = wish_dir.normalized() if wish_dir.length() > 0.001 else Vector3.ZERO
 

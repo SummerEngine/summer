@@ -150,7 +150,7 @@
     {
       "id": "skill/brainstorm-game",
       "name": "brainstorm-game",
-      "description": "Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md.",
+      "description": "Turn a game idea into a one-page brief in .summer/GameSoul.md.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -392,7 +392,7 @@
     {
       "id": "skill/design-mechanic",
       "name": "design-mechanic",
-      "description": "Design one mechanic in detail (input, feedback, failure modes, tunables) as a doc plus a script stub.",
+      "description": "Design one game mechanic, document it and draft a script stub.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -520,6 +520,19 @@
       "domains": [
         "character-controller",
         "gameplay"
+      ]
+    },
+    {
+      "id": "skill/game-design",
+      "name": "game-design",
+      "description": "Review a game or interview its creator about the design.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/game-design/",
+      "domains": [
+        "game-design",
+        "playtest"
       ]
     },
     {

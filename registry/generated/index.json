@@ -708,8 +708,8 @@
       "id": "skill/brainstorm-game",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "361b17750d9b43b96bf7738f7506c2c5b352501749a6bcb2e99f615413741d4f",
-      "summary": "Turn a vague game idea into a 1-page brief (genre, scope, core loop, mechanics) in .summer/GameSoul.md.",
+      "content_hash": "4551f0a64ab3c8fe7d5ea2b9b24d68dd3f43b397b8818122b9494129132b2f0b",
+      "summary": "Turn a game idea into a one-page brief in .summer/GameSoul.md.",
       "use_when": [
         "the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan",
         "the user has a genre, theme, or one-line pitch but no core loop, scope, or brief yet"
@@ -1397,8 +1397,8 @@
       "id": "skill/design-mechanic",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "8cd3a0c3c20da73089e316282d1d196faf91548c574a6ae578ff628e15f7213e",
-      "summary": "Design one mechanic in detail (input, feedback, failure modes, tunables) as a doc plus a script stub.",
+      "content_hash": "4a8a0bfe19e4189b10faa424b0bc8c50d10f58dcbbf76548caeb402908156366",
+      "summary": "Design one game mechanic, document it and draft a script stub.",
       "use_when": [
         "designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables",
         "add a grappling hook, dash, double jump, wall run, or parry"
@@ -1778,6 +1778,32 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/game-design",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "c7b20501a8ae552da3f361b2a13076b30443c179e157630b94c79dd47e8e36d2",
+      "summary": "Review a game or interview its creator about the design.",
+      "use_when": [
+        "the creator invokes /game-design or asks for a game design review of an existing project, recording, or ruleset",
+        "the creator wants a design interview to find the first playable moment and choose what to test",
+        "the creator needs help deciding how to design a story scene, map route, visual style, spell, or effect for a specific player experience"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "game-design",
+          "playtest"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {

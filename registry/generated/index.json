@@ -11426,7 +11426,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "c1c80d46ad8c8b4cf53c8b6849dfc09b530d958fd370d8ec8965a5f75462e407",
+      "content_hash": "36292594df37a6f6c957d11b4af57a5018a28cb2040dc023107ae14aebdc0ef7",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

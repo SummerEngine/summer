@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildWorldSnapshotOp, shapeWorldSnapshot, WORLD_SNAPSHOT_DEFAULT_MAX_NODES } from "./world-snapshot.js";
+import { buildWorldSnapshotOp, shapeWorldSnapshot, WORLD_SNAPSHOT_DEFAULT_MAX_NODES, worldSnapshotInputShape } from "./world-snapshot.js";
+import { localInputSchema } from "../ops/catalog.js";
 import { dispatchTool } from "./tool-dispatch.js";
 
 function node(path: string, cls: string, extra: Record<string, unknown> = {}) {
@@ -34,6 +35,17 @@ const envelope = {
 type Shaped = { results: Array<Record<string, unknown> & { nodes: Array<Record<string, unknown>> }> };
 
 describe("summer_world_snapshot filters", () => {
+  it("advertises scene-space transforms and sprite state on both discovery schemas", () => {
+    const fields = worldSnapshotInputShape.fields;
+    for (const key of ["global_pos", "global_rot_deg", "flip_h", "animation", "unavailable", "hint"]) {
+      expect(fields.description).toContain(key);
+    }
+    expect(localInputSchema("engine.world_snapshot")).toMatchObject({
+      properties: { fields: { description: fields.description, items: { type: "string" } } },
+    });
+    expect(fields.parse(["future_native_field"])).toEqual(["future_native_field"]);
+  });
+
   it("lists at most the default cap and keeps whole-scene counts and the snapshot id", () => {
     const shaped = (shapeWorldSnapshot(envelope, {}) as Shaped).results[0]!;
     expect(shaped.nodes).toHaveLength(WORLD_SNAPSHOT_DEFAULT_MAX_NODES);

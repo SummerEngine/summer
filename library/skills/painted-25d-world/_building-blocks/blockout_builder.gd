@@ -58,7 +58,7 @@ func _walls(o: Dictionary) -> void:
 func _build(o: Dictionary) -> void:
 	var mesh: Mesh
 	var shape: Shape3D
-	var sphere_scale := Vector3.ONE
+	var object_scale := _v(o.scale) if o.kind != "poly" and o.has("scale") else Vector3.ONE
 	match o.kind:
 		"box":
 			var b := BoxMesh.new()
@@ -79,29 +79,29 @@ func _build(o: Dictionary) -> void:
 			c.height = o.height
 			c.radial_segments = 24
 			mesh = c
-			var s := CylinderShape3D.new()
-			s.radius = maxf(o.r_top, o.r_bot)
-			s.height = o.height
-			shape = s
+			var scale_abs := object_scale.abs()
+			if o.get("solid", false) and scale_abs[scale_abs.min_axis_index()] > 0.0 and maxf(c.top_radius, c.bottom_radius) > 0.0 and c.height > 0.0:
+				if c.top_radius == c.bottom_radius and scale_abs.x == scale_abs.z:
+					var s := CylinderShape3D.new()
+					s.radius = c.top_radius * scale_abs.x
+					s.height = c.height * scale_abs.y
+					shape = s
+				else:
+					shape = _scaled_hull(c, object_scale)
 		"sphere":
 			var sp := SphereMesh.new()
 			sp.radius = o.radius
 			sp.height = o.radius * 2.0
 			mesh = sp
-			if o.has("scale"):
-				sphere_scale = _v(o.scale)
-			sphere_scale.y *= float(o.get("sy", 1.0))
-			var radii := sphere_scale.abs() * sp.radius
+			object_scale.y *= float(o.get("sy", 1.0))
+			var radii := object_scale.abs() * sp.radius
 			if o.get("solid", false) and radii[radii.min_axis_index()] > 0.0:
 				if radii.x == radii.y and radii.y == radii.z:
 					var s := SphereShape3D.new()
 					s.radius = radii.x
 					shape = s
 				else:
-					var hull := ConvexPolygonShape3D.new()
-					var vertices: PackedVector3Array = sp.get_mesh_arrays()[Mesh.ARRAY_VERTEX]
-					hull.points = Transform3D.IDENTITY.scaled(sphere_scale) * vertices
-					shape = hull
+					shape = _scaled_hull(sp, object_scale)
 		"poly":
 			mesh = _extrude(o.points, o.top, o.depth)
 			shape = mesh.create_trimesh_shape()
@@ -125,13 +125,19 @@ func _build(o: Dictionary) -> void:
 	if o.kind != "poly":
 		holder.position = _v(o.pos)
 		holder.rotation_degrees = Vector3(o.get("rot_x", 0.0), o.get("yaw", 0.0), o.get("rot_z", 0.0))
-		if o.kind == "sphere":
-			mi.scale = sphere_scale
-		elif o.has("scale"):
-			holder.scale = _v(o.scale)
 		if o.kind == "cyl":
-			holder.position += holder.basis.y * (float(o.height) * 0.5)
+			holder.position += holder.basis.y * (float(o.height) * object_scale.y * 0.5)
+		if o.kind == "sphere" or o.kind == "cyl":
+			mi.scale = object_scale
+		elif o.has("scale"):
+			holder.scale = object_scale
 	add_child(holder)
+
+func _scaled_hull(mesh: PrimitiveMesh, scale_vector: Vector3) -> ConvexPolygonShape3D:
+	var hull := ConvexPolygonShape3D.new()
+	var vertices: PackedVector3Array = mesh.get_mesh_arrays()[Mesh.ARRAY_VERTEX]
+	hull.points = Transform3D.IDENTITY.scaled(scale_vector) * vertices
+	return hull
 
 ## A flat polygon (x, z points) extruded from top down by depth, with side walls.
 func _extrude(points: Array, top: float, depth: float) -> ArrayMesh:

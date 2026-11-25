@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- Painted blockout spheres keep their authored squash and scale when toggling collision. Solid ellipsoids now use a collision hull built from the scaled mesh.
+
 - **Publish a game that was not made with Summer Engine.** `summer store upload-file` (`store.upload_file`, MCP `summer_publish_build`) takes the two kinds of file such a game has, and `summer store go-live` (`store.go_live`, MCP `summer_go_live`) releases them together.
   - **The server.** Upload a `summer.bundle.v2` bundle whose server is a program: it becomes a Build without a client, and the answer carries its `buildId`. The command follows the upload until Summer has made the Build, or answers with the store's own code and message. `clientVersion` is not needed: the bundle's `summer.build.json` names the version. The same version is accepted; a different one is refused before anything is sent, naming both. `publish` does nothing for this kind of bundle, and the answer says so.
   - **The clients.** New inputs `buildId` and `entry`: with `buildId`, the file is uploaded as a client of that Build, for `platform` `macos`, `windows` or `web`, with `entry` (what starts it; `index.html` for web) and `clientVersion`. The answer carries a `clientPackageId` once Summer admitted the archive, and the go-live call that releases it; a rejected archive answers with the store's code and message (a game with a price takes no browser build, for example). **An agent sign-in can finish a client upload only while the person's Agent permissions allow Publish** (Summer Studio, Agent permissions); the preview warns when it is off, before any byte is sent.
@@ -12,6 +14,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - **`summer_go_live` says what "live" means for a Private page.** It never changes who can find the store page. When the page is Private the answer says so ("only the game's team, players who own it and invited testers can open it"), and `game.storeVisibility` carries `public` or `private`; it no longer says "players get it now" for a page the public cannot open.
 
 - Mesh port connections use the actual position of a fixed target opening under a translated or rotated parent.
+
+- Painted 2.5D rooms and full-frame proof shots keep the entire painting visible when the game window changes shape.
 
 - Port connections and surface attachments ask Godot to verify the full local transform before writing. They now work under small, invertible parent scales and leave the scene untouched when the requested pose would lose precision.
 

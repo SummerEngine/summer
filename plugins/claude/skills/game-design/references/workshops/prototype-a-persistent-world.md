@@ -1,0 +1,21 @@
+# Prototype a persistent world
+
+In a cliffside town, players can install steps to help the next person reach a seed exchange. Write down three visits at the start of the workshop. In the first, a builder places a step. In the second, a visitor takes the route and leaves an empty seed packet in the exchange tray. In the third, the builder returns to find the step worn smooth and the tray full. Decide which of those changes could be made by a player, which could happen while everyone is away and which need to survive a restart. Let a tester act as the returning builder. Ask who might have filled the tray and which marks in the scene suggest an answer. If the tester infers an automatic refill, try one trace a visitor can leave, such as a labelled seed packet.
+
+## Play a session with paper and tokens
+
+On a facilitator's map, draw a freight line from a dispatch shed to a sorting fork. The left spur leads to a lower platform and the right spur to a ramp. Make one parcel token with a steel clip and one with a wooden handle. The line slopes toward the ramp. A magnet at the fork diverts parcels with steel clips to the lower platform. Each player can inspect their parcel and one receiving point before they choose where to wait. Make the walk between points take longer than the trip of a parcel. At the receiving point, tell the player only what arrives there.
+
+Run the steel parcel. Before the wooden parcel moves, ask where the player would wait and what they expect to pass the fork. If they understand the magnet but cannot find the other platform, add a route cue. If they can name the route but misread the handle, show how to inspect it. If they suggest tying a cord to the parcel, decide how much this action would add to the activity before modeling ropes. Test precise catches or simultaneous players in the game with the intended controls.
+
+Write out one turn from each player's view, including what a remote player sees before another player's action is confirmed. For a long delay, compare holding a crate at its original spot with showing its expected movement and correcting it once confirmed. Ask each player whether the crate already cleared the track before they stepped onto it. The model can settle the rule for moving a crate. The game must also communicate when that move took effect for each person.
+
+## Check what a changing world asks of players
+
+On delivery maps with and without the morning wind, the exposed bridge closes during strong gusts and the tunnel stays open. Ask the player to draw a route before setting out and point to the cue that guided them. If they recognize the windsock and resent the detour, decide whether the trip exists to reward route planning or get companions together. When a fast-travel shortcut leaves players unable to find a nearby stop, compare two rides of equal duration. Show landmarks during one of them. Later, ask players to order the landmarks and return to one without route guidance. If both versions produce the same unaided return, look at how the paths connect around the stop.
+
+If players think a workshop event starts whenever staff see them winning, give one group an observable trigger. A kiln can open when its gauge reaches the marked temperature. Keep the actual start time and the reward fixed for the other group. Afterward, ask players to explain why the kiln opened at that moment and propose an action that might have delayed it. If both groups predict the start and object to losing an item, examine the penalty. A live referee can improvise in a game that promises that kind of event.
+
+When completing an order automatically begins the next, a player can miss the chance to end a session. Try acknowledging one completed order and leaving the next available to select. Ask what the player finished and whether they felt free to stop. Look for voluntary returns alongside session length. A short visit with a clear finish may be what the town needs.
+
+At the end, enact the three visits again. Confirm what a second account can see, what can happen with no players present and what remains after a reload. For a player-made step, also test who can add or remove it. A ready-made decoration and a staircase assembled through the world's rules can look the same while offering different work to their makers.

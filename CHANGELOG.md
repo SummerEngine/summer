@@ -13,6 +13,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Asset inspection includes visible Sprite3D bounds and the selected frame of each AnimatedSprite3D when measuring a saved scene, including framed textures and billboards.
 
 - Zooming to a numbered mark uses the full camera pose from the request. Camera coordinates reported by zoom and debug views can be used again without losing the view direction.
+- Shot scoring renders its brightness and texture checks at the requested camera aspect, keeping them aligned with the measured rays.
 - Shot sheets compare each bookmark with its previous render in the same view, including normals, lighting, unshaded, overdraw and wireframe.
 - Scene creation validates the requested root with the editor before writing. An open, registered GDScript with a zero-argument constructor stays attached to its native Node base. Unknown, abstract and non-Node roots report an error.
 - Connecting mesh openings checks that the selected subject opening follows the moving piece and that its target stays put.
@@ -31,6 +32,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Live 3D spatial reads use Godot’s world transform. Inactive scenes and assets retain their own transform frames.
 - Framing keeps the nearest face of a small 3D subject beyond the preview camera’s near clipping plane and reports the projected fill when the lens limits a close-up.
 - Framing uses Godot’s full mesh bounds and camera coordinates, keeping small subjects centred in close-up previews.
+- Camera visibility checks preserve the original physics ray when testing face winding. Close-ups of small, front-facing meshes now report clearance overlaps without a false back-face warning.
 - Eye-level frame shots use the spawn camera’s rendered eye position, including its horizontal and vertical offsets.
 - Zooming in on narrow seams preserves the requested strip and centres it between the image bars.
 - Placing and repeating 3D scenes preserves small offsets, scales and full transforms under scaled parents. Large coordinates also retain their exponent.

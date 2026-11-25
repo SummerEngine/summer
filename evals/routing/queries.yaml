@@ -112,6 +112,10 @@ queries:
     expected: [tool/app-dock]
 
   # ── Gameplay & design ──────────────────────────────────────────────────
+  - query: "/game-design interview me about my puzzle game"
+    expected: [skill/game-design]
+  - query: "review my game's design and tell me what to test first"
+    expected: [skill/game-design]
   - query: "add a grappling hook"
     expected: [skill/design-mechanic]
   - query: "design a boss arena for level 3"

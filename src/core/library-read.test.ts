@@ -3,7 +3,7 @@ import { join, posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   FOOTER_SUFFIX,
-  LINKED_FILE_EXTENSIONS,
+  isReadableLibraryText,
   feedbackFooter,
   readLibraryEntry,
   readLibraryInputSchema,
@@ -213,6 +213,23 @@ describe("input schema", () => {
 // it: reference/kit-placement-tools was not_found and part "resource"
 // returned only resource.yaml.
 describe("linked files load through read_library", () => {
+  it("lists the painted world helpers and returns their packaged source", async () => {
+    const entry = "skill/painted-25d-world";
+    const guide = await readLibraryEntry(entry, "skill");
+    if (!guide.ok) throw new Error("painted world guide is missing");
+
+    for (const name of ["cam.py", "preview.py", "overlay.py", "detail4k.py"]) {
+      const target = `_building-blocks/tools/${name}`;
+      const id = `${entry}/${target}`;
+      expect(guide.links).toContainEqual({ target, id });
+      const result = await readLibraryEntry(id);
+      if (!result.ok) throw new Error(`missing helper ${id}`);
+      const libPath = `library/skills/painted-25d-world/${target}`;
+      const source = readFileSync(join(PACKAGE_ROOT, libPath), "utf8");
+      expect(result.text).toContain(`--- ${libPath} ---\n${source}\n${result.footer}`);
+    }
+  });
+
   it("loads a skill's linked reference by <entry id>/<link as written>, with the parent's footer", async () => {
     const result = await readLibraryEntry("skill/spatial-placement/references/kit-placement-tools.md");
     if (!result.ok) throw new Error(`expected ok: ${result.hint}`);
@@ -326,8 +343,7 @@ describe("every link in every library skill resolves through read_library", () =
         // Both IDs return the file's text or tell the agent where to find a packaged asset.
         const asWritten = `skill/${slug}/${posix.join(posix.dirname(file), target.split("#")[0]!)}`;
         const targetPath = posix.normalize(posix.join("library/skills", slug, posix.dirname(file), decodeURIComponent(target)));
-        const extension = posix.extname(targetPath).toLowerCase();
-        const expectedContent = LINKED_FILE_EXTENSIONS.has(extension)
+        const expectedContent = isReadableLibraryText(targetPath)
           ? readFileSync(join(PACKAGE_ROOT, ...targetPath.split("/")), "utf-8").split("\n").find((line) => line.trim())?.trim() ?? ""
           : `it ships at ${targetPath} in the package`;
         for (const id of [asWritten, canonical]) {

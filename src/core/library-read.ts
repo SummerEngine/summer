@@ -76,6 +76,17 @@ export const LINKED_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
   ".tres",
   ".csv",
 ]);
+const PAINTED_WORLD_HELPER_SOURCES = new Set([
+  "library/skills/painted-25d-world/_building-blocks/tools/cam.py",
+  "library/skills/painted-25d-world/_building-blocks/tools/preview.py",
+  "library/skills/painted-25d-world/_building-blocks/tools/overlay.py",
+  "library/skills/painted-25d-world/_building-blocks/tools/detail4k.py",
+]);
+
+export function isReadableLibraryText(libraryPath: string): boolean {
+  return LINKED_FILE_EXTENSIONS.has(posix.extname(libraryPath).toLowerCase()) || PAINTED_WORLD_HELPER_SOURCES.has(libraryPath);
+}
+
 /** A linked file larger than this is refused rather than dumped. */
 export const LINKED_FILE_MAX_BYTES = 256 * 1024;
 /** How long a hosted skill read waits for the hosted Summer Engine MCP. */
@@ -526,7 +537,7 @@ export async function readLibraryEntry(
     let links: Array<{ target: string; id: string | null }> = [];
     if (part === "resource") {
       sections.push(`--- ${relPath}/resource.yaml ---\n${resourceYaml}`);
-    } else if (!LINKED_FILE_EXTENSIONS.has(extension)) {
+    } else if (!isReadableLibraryText(libPath)) {
       sections.push(`--- ${libPath} ---\n(not a text file read_library loads: ${extension || "no extension"}; it ships at ${libPath} in the package)`);
     } else if (size > LINKED_FILE_MAX_BYTES) {
       sections.push(`--- ${libPath} ---\n(${size} bytes, over the ${LINKED_FILE_MAX_BYTES}-byte limit for a linked file; it ships at ${libPath} in the package)`);

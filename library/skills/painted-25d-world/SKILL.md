@@ -129,8 +129,8 @@ for a frame centred on (cx, cy, cz), 60 m back along the view.
 
 **Write the blockout as a spec** (`_building-blocks/blockout_builder.gd` documents the JSON: box, prism, cyl,
 sphere, poly ground, invisible wall blockers). The same file drives the engine (the builder is the location's
-`Painted` node) and an engine-free wireframe preview over the concept (`tools/preview.py`), so the fitting loop
-needs no engine runs.
+`Painted` node) and the [wireframe preview](_building-blocks/tools/preview.py) over the concept. Pass each helper's
+`_building-blocks/tools/...` link target as the library reader's `id`, or open it relative to this guide in an installed copy.
 
 - **Gable roofs are two parts:** a wall-coloured prism for the gable triangle plus two thin slanted roof slabs
   with an overhang. A single roof-coloured prism makes the painter paint roof on the gable wall.
@@ -145,7 +145,7 @@ flower beds, barrels, crates, benches, lanterns and window boxes wherever the co
 comes back as a sparse painting. Only truly flat detail (cobbles, rugs, grass) can stay paint-only.
 
 **Match the concept.** Read positions straight from the concept by inverting the orthographic camera
-(`tools/cam.py <height> <px,py> ...` does it). With the
+(use [the camera helper](_building-blocks/tools/cam.py) as `python3 cam.py <height> <px,py> ...`). With the
 concept W x H pixels, `s` = pixels per metre (W / frame width), `elev` = 30 degrees and a pixel (sx, sy) on the
 ground (a wall's bottom corner):
 
@@ -157,7 +157,7 @@ world = target + right_ground * u + far_ground * v
 ```
 
 Three wall-bottom corners give a footprint; the ridge gives the roof height. Draw the spec over the concept with
-`tools/preview.py` and move blocks until the red silhouettes line up, then build it in the engine.
+[the wireframe preview](_building-blocks/tools/preview.py) and move blocks until the red silhouettes line up, then build it in the engine.
 If the blockout does not match the concept, the painting will not match the blocks.
 
 ### 3. Render the blockout from the paint camera
@@ -211,7 +211,7 @@ style description into the prompt in words and keep the colour key. Use `model: 
 Summer model that returns 2048 px.
 
 **Check alignment before you use it.** Overlay the blockout's edges (red) on the painting
-(`tools/overlay.py <blockout.png> <painting.png> <out.png>`) and look: roof lines,
+(use [the edge overlay](_building-blocks/tools/overlay.py) as `python3 overlay.py <blockout.png> <painting.png> <out.png>`) and look: roof lines,
 wall corners, the well and the stall must sit on the red lines. Reject any painting where objects moved, were
 added, or the framing zoomed; generate again rather than project a drifted painting.
 
@@ -221,8 +221,7 @@ Painting pixels per metre must be at least the screen's pixels per metre. A 4K p
 40 m frame gives 137 px/m; a 16 m view on a 1080p-class game view needs about 96-120 px/m, so it stays sharp. A
 2048 px painting over 32 m (64 px/m) is soft at that view. For bigger worlds use more frames, not a wider frame.
 
-**4K through Summer:** no Summer image model returns 4K. `tools/detail4k.py <painting_2k.png> <out_dir> "<style
-words>"` upscales the 2K paint-over 2x, cuts nine overlapping 2048x1152 tiles, runs a strict "redraw sharper,
+**4K through Summer:** no Summer image model returns 4K. [The tiled detail helper](_building-blocks/tools/detail4k.py), called with `python3 detail4k.py <painting_2k.png> <out_dir> "<style words>"`, upscales the 2K paint-over 2x, cuts nine overlapping 2048x1152 tiles, runs a strict "redraw sharper,
 pixel-aligned" image-to-image pass on each with `seedream-5-pro` and blends them back. Nine generations; the
 alignment holds.
 

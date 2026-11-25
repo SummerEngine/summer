@@ -727,6 +727,7 @@ export async function measure(client: PlacementClient, args: MeasureArgs): Promi
   if (args.a === args.b) throw new ToolInputError("a and b must be different nodes.");
   const read = await runPlacementProbe(client, tool, {
     cmd: "bounds",
+    include_grids: true,
     scene_path: args.scenePath,
     space_node: args.space === "local" ? args.a : "",
     nodes: [{ path: args.a }, { path: args.b }],
@@ -736,7 +737,7 @@ export async function measure(client: PlacementClient, args: MeasureArgs): Promi
   const [a, b] = [nodes[0]!, nodes[1]!];
   for (const node of [a, b]) {
     if (!node.intervals) {
-      return fail(tool, "no_visual_bounds", `${node.path} has no visible GeometryInstance3D bounds to measure.`);
+      return fail(tool, "no_visual_bounds", `${node.path} has no visible mesh bounds to measure.`);
     }
   }
   const names = WORLD_AXES;
@@ -784,6 +785,7 @@ async function measurePlane(
   if (new Set(nodes).size !== nodes.length) throw new ToolInputError("nodes must not contain duplicates.");
   const read = await runPlacementProbe(client, tool, {
     cmd: "bounds",
+    include_grids: true,
     scene_path: args.scenePath,
     space_node: args.space === "local" ? nodes[0] : "",
     nodes: nodes.map((path) => ({ path })),
@@ -911,6 +913,7 @@ export async function raycast(client: PlacementClient, args: RaycastArgs): Promi
   const tool = "summer_raycast";
   const read = await runPlacementProbe(client, tool, {
     cmd: "raycast",
+    include_grids: true,
     scene_path: args.scenePath,
     origin: args.origin,
     direction: args.direction,

@@ -9237,7 +9237,7 @@
       "id": "tool/measure",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "6cf4decb8cc695922546875eb8e32c80746e033af939a6e350c1d793998ad089",
+      "content_hash": "7074aeb424cad0fc823f67255de600c3f062ef354f5a8c39a81386f885e99a66",
       "summary": "Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.",
       "use_when": [
         "checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis",
@@ -9705,7 +9705,7 @@
       "id": "tool/raycast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "fb7381ac587dc1b32c3da5111fc36b6b9b7a1d9d07126d4a966cdf75590c92ab",
+      "content_hash": "468e5b590001eec1dfd194e6d043447cf32202e7c2c9e654bdb1dc34d8d8ec0d",
       "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
       "use_when": [
         "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",

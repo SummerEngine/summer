@@ -606,6 +606,32 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
       expect(template, forbidden).not.toContain(forbidden);
     }
   });
+
+  it("proceeds with SnapToSurface when the target scene is not yet open in an editor tab", async () => {
+    const fake = new FakeSnapEngine(0.25, [{ path: "Ground/Floor", top: 0 }]);
+    const baseExecute = fake.executeIdentityBoundOps.bind(fake);
+    let sceneOpened = false;
+    fake.executeIdentityBoundOps = async (ops, options) => {
+      if (ops[0]?.op === "RunSceneScript" && !sceneOpened) {
+        return {
+          status: "ok",
+          results: [{ op: "RunSceneScript", ok: true, result: { ok: false, failure_reason: "scene_not_open", error: `Scene ${SCENE} is not open in the editor` } }],
+        };
+      }
+      if (ops[0]?.op === "SnapToSurface") sceneOpened = true;
+      return baseExecute(ops, options);
+    };
+
+    const result = (await snapToSurface(fake, args())) as { ok?: boolean; results: Array<Record<string, unknown>> };
+    expect(result.ok).not.toBe(false);
+    expect(result.results.find((r) => r.op === "SnapToSurface")).toMatchObject({
+      ok: true,
+      evidence: "physics",
+      supportPath: "Ground/Floor",
+      finalGap: 0,
+    });
+    expect(fake.sent.map((chunk) => chunk.map((op) => op.op))).toEqual([["SnapToSurface"], ["SaveScene"]]);
+  });
 });
 
 type RegisteredTool = { name: string; handler: (args: Record<string, unknown>) => Promise<unknown> };

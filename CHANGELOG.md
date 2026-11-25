@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **`summer_snap_to_surface` works on scenes that are not open yet.** The pre-snap transform probe no longer aborts with `scene_not_open` before `SnapToSurface` can open and snap the target scene.
+
 - Screenshot checks recognize fine patterns and color detail within JPEG blocks. A solid-color frame now describes the measured image and leaves scene visibility open.
 
 - Visual measurement, raycasts and adjacent placement use Godot’s evaluated CSG solid. Subtraction cutters no longer produce phantom ray hits or extra gaps.

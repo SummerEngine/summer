@@ -256,7 +256,7 @@ export async function snapToSurface(client: SnapClient, args: SnapToSurfaceArgs)
   // Capture Godot’s exact live local transform, including any unsaved edit, for rollback.
   const start = await measureMeshSnap(client, { ...args, captureTransform: true });
   const originalTransform = start.ok ? start.transform : undefined;
-  if (!originalTransform && (start.ok || start.failure_reason !== "engine_lacks_op")) {
+  if (!originalTransform && (start.ok || (start.failure_reason !== "engine_lacks_op" && start.failure_reason !== "scene_not_open"))) {
     const error = start.ok ? "The starting transform could not be read." : start.error;
     return { ok: false, error, results: [{ op: "SnapToSurface", ok: false, failure_reason: start.ok ? "snap_start_unavailable" : start.failure_reason, error }] };
   }

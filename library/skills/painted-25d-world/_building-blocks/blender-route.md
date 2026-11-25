@@ -7,14 +7,14 @@ It gives the same picture as `paint_projection.gdshader`.
    Z-up axes (90 - 30 down, 45 around), `ortho_scale` = frame width in metres. Render it (Workbench, studio light,
    outlines on) at 2048x1152 or larger.
 2. Paint over the render (SKILL.md step 4) and resize the painting to the exact render size.
-3. Project: for every mesh, add one UV layer and set each loop's UV to the camera-view position of its vertex.
+3. For every mesh in the `blockout` collection and its child collections, add a UV layer and set each loop's UV to the camera-view position of its vertex.
 
 ```python
 import bpy
 from bpy_extras.object_utils import world_to_camera_view
 
 scene, cam = bpy.context.scene, bpy.data.objects["PaintCamera"]
-for ob in bpy.data.collections["blockout"].objects:
+for ob in bpy.data.collections["blockout"].all_objects:
     if ob.type != "MESH":
         continue
     # A linked duplicate has its own world position but shares mesh UVs.

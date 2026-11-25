@@ -79,10 +79,9 @@ func _aspect() -> float:
 func _physics_process(_delta: float) -> void:
 	var size: Vector2 = location.paint_size
 	var aspect := _aspect()
-	var fit := minf(size.x, size.y / aspect)   # the widest view that stays inside the painting
 	var cam_basis: Basis = location.paint_cam.global_basis
 	if location.frame_whole or full_view:
-		game_cam.size = fit
+		game_cam.size = maxf(size.x, size.y / aspect)
 		game_cam.global_position = location.paint_cam.global_position
 		return
 	# keep the player inside the painting (move along the ground, not through the air)
@@ -93,6 +92,7 @@ func _physics_process(_delta: float) -> void:
 		var fwd := -cam_basis.z
 		var far := Vector3(fwd.x, 0, fwd.z).normalized()
 		player.global_position += cam_basis.x * (clamped.x - c.x) + far * (clamped.y - c.y) / far.dot(cam_basis.y)
+	var fit := minf(size.x, size.y / aspect)   # the widest view that stays inside the painting
 	game_cam.size = minf(view_width, fit)
 	var view := Vector2(game_cam.size, game_cam.size * aspect)
 	var t: Vector2 = location.plane(player.global_position + Vector3(0, 1, 0)).clamp(-(size - view) / 2.0, (size - view) / 2.0)

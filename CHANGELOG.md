@@ -42,6 +42,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Connecting mesh ports on pipes under scaled, rotated parents now aligns their opening planes and measures the requested gap along the target opening’s outward normal.
 - Repeating a scene along a line accepts short parent-local spans and small nonzero direction vectors, including under scaled parents.
+- Camera shot scoring and previews use the editor’s visible depth range, so distant walls and terrain stay visible and count toward the frame instead of being marked as sky.
 - Failed editor plugin enables now report the native error code, plugin path and specific recovery hint through MCP.
 
 - **Still-shot replacement in `content.make` no longer reuses occupied clip windows.** Computing occupied intervals now looks up each existing shot's duration from its original index in `cuts` instead of the filtered array index or the still shot's duration.

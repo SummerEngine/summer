@@ -103,6 +103,7 @@ var _material_flag_cache: Dictionary = {}
 
 # Render mode state.
 var _normals_world: World3D = null
+var _preview_camera: Camera3D
 
 
 func _ready() -> void:
@@ -135,21 +136,25 @@ func _ready() -> void:
 	_scene_root_name = String(packed.get_state().get_node_name(0))
 	_result["scene_root_name"] = _scene_root_name
 	_result["stage"] = "configured"
+	_write_result()
+	get_viewport().disable_3d = true
+	# ScenePreview creates and selects its framing camera after adding this wrapper.
+	call_deferred("_start_preview")
+
+
+func _start_preview() -> void:
+	_preview_camera = get_viewport().get_camera_3d()
+	if _preview_camera == null:
+		_preview_camera = Camera3D.new()
+		add_child(_preview_camera)
 	var mode := String(_cfg.get("mode", ""))
 	if mode == "render":
 		_setup_render()
 		if _cfg.has("occlusion"):
-			# Deferred like the analyze pass; ScenePreview flushes it before the
-			# first draw, so result.json carries it when the image is read.
-			call_deferred("_render_occlusion")
+			_render_occlusion()
 	elif mode == "analyze":
-		get_viewport().disable_3d = true
 		_setup_image_checks()
-		_write_result()
-		# Deferred so CSG roots and @tool scripts that settle with call_deferred
-		# have run before the geometry is read. ScenePreview iterates the main
-		# loop after instantiating, which flushes this call.
-		call_deferred("_analyze")
+		_analyze()
 	else:
 		_fail("bad_mode", "Unknown seeing mode '" + mode + "'.")
 
@@ -1011,6 +1016,11 @@ var _t_sweep := 0
 var _t_grid := 0
 
 
+# ScenePreview's free camera extends the scene clip range for a long eye-to-aim distance.
+func _pose_far(pos: Vector3, look: Vector3) -> float:
+	return maxf(_preview_camera.far, pos.distance_to(look) * 10.0)
+
+
 func _measure_all(candidates: Array) -> Array:
 	var spec: Dictionary = _cfg.get("measure", {})
 	var out: Array = []
@@ -1025,6 +1035,7 @@ func _measure_all(candidates: Array) -> Array:
 			var l := _vec(rec["look_at"])
 			cam.global_transform = Transform3D(_look_basis(p, l), p)
 			cam.fov = float(rec["fov"])
+			cam.far = _pose_far(p, l)
 	_result["measure_ms"] = {"lens": _t_lens / 1000, "sweeps": _t_sweep / 1000, "grid": _t_grid / 1000}
 	_measurements = out
 	return out
@@ -1052,8 +1063,7 @@ func _setup_image_checks() -> void:
 		var l := _vec((cand as Dictionary).get("look_at"), p + Vector3(0, 0, -1))
 		cam.global_transform = Transform3D(_look_basis(p, l), p)
 		cam.fov = float((cand as Dictionary).get("fov", 60.0))
-		cam.near = 0.05
-		cam.far = 1000.0
+		cam.near = _preview_camera.near
 		cam.current = true
 		_checks.append({"vp": sv, "cam": cam, "i": i, "done": false})
 		i += 1
@@ -1273,9 +1283,9 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	# surface met from BEHIND (culled: the image looks through it). Back faces
 	# of soft surfaces and transparent back faces are not drawn: the ray goes on.
 	var t_grid := Time.get_ticks_usec()
+	var far := _pose_far(pos, look)
 	var cols := int(spec.get("grid_cols", 16))
 	var rows := int(spec.get("grid_rows", 9))
-	var max_dist := float(spec.get("max_ray", 600.0))
 	var basis := _look_basis(pos, look)
 	var tan_v := tan(deg_to_rad(fov) * 0.5)
 	var tan_h := tan_v * aspect
@@ -1285,8 +1295,8 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		for i in cols:
 			var x := ((i + 0.5) / cols * 2.0 - 1.0) * tan_h
 			var y := (1.0 - (j + 0.5) / rows * 2.0) * tan_v
-			var dir := (basis * Vector3(x, y, -1.0)).normalized()
-			var cell := _grid_cell(pos, dir, max_dist, all_mask)
+			var depth_step := basis * Vector3(x, y, -1.0)
+			var cell := _grid_cell(pos, depth_step, far, all_mask)
 			codes += String(cell[0])
 			dists.append(cell[1])
 	rec["grid"] = codes
@@ -1309,9 +1319,10 @@ func _lens_problem(pos: Vector3, fwd: Vector3, lens_r: float) -> String:
 	return ""
 
 
-func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array:
-	var start := pos
-	var end := pos + dir * max_dist
+func _grid_cell(pos: Vector3, depth_step: Vector3, far: float, mask: int) -> Array:
+	var start := pos + depth_step * _preview_camera.near
+	var end := pos + depth_step * far
+	var dir := depth_step.normalized()
 	for _step in 6:
 		var hit := _ray(start, end, mask | LAYER_SEE, true)
 		if hit.is_empty():
@@ -1495,10 +1506,6 @@ func _sees_node(cam: Vector3, target: Vector3, own: String, mask: int) -> Dictio
 
 func _setup_render() -> void:
 	var vp := get_viewport()
-	# The preview viewport's own camera would render the whole scene once more,
-	# hidden behind the opaque grid. Turn its 3D pass off; the tiles below render
-	# through their own SubViewports that SHARE this world.
-	vp.disable_3d = true
 	var world: World3D = vp.find_world_3d()
 	var canvas_size := _vec2i(_cfg.get("canvas", [1024, 576]))
 	var layer := CanvasLayer.new()
@@ -1601,8 +1608,8 @@ func _make_shot_tile(t: Dictionary, world: World3D, layer: CanvasLayer, info: Di
 	var pos := _vec(pose.get("position"))
 	var look := _vec(pose.get("look_at"), pos + Vector3(0, 0, -1))
 	cam.global_transform = Transform3D(_look_basis(pos, look), pos)
-	var near := float(pose.get("near", 0.05))
-	var far := float(pose.get("far", 1000.0))
+	var near := float(pose.get("near", _preview_camera.near))
+	var far := float(pose.get("far", _pose_far(pos, look)))
 	var fov := float(pose.get("fov", 60.0))
 	var crop: Array = pose.get("crop", [])
 	if crop.size() == 4:

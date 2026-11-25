@@ -30,12 +30,13 @@
  *     through the parent's transform.
  *
  * Meshes whose shader writes POSITION (screen-space quads) and non-mesh
- * geometry (CSG, MultiMesh, sprites) are skipped and counted. It reads the
+ * geometry (CSG, sprites) are skipped and counted. It reads the
  * scene only; the mutation is an ordinary SetProp + SaveScene sent by
  * surface-snap.ts.
  */
 import { GRIDMAP_GEOMETRY_GDSCRIPT } from "./gridmap-geometry.js";
-import { PARENT_TRANSLATION_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
+import { MULTIMESH_GEOMETRY_GDSCRIPT } from "./multimesh-geometry.js";
+import { PARENT_TRANSLATION_GDSCRIPT, PLACEMENT_WORLD_GDSCRIPT, SCENE_SPACE_GDSCRIPT } from "./scene-space.js";
 
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
 import { asRecord, type JsonRecord } from "../util/json.js";
@@ -166,6 +167,7 @@ extends RefCounted
 
 const ARGS_B64 = __SUMMER_SNAP_MESH_ARGS__
 const MAX_NODES = 60000
+const MAX_MULTIMESH_INSTANCES = 60000
 const MAX_SUPPORT_TRIS = 400000
 const MAX_SUBJECT_SAMPLES = 6000
 const MAX_REVERSE_VERTS = 150000
@@ -193,7 +195,7 @@ func run(_ctx):
 	var result = _measure(root, subject, args)
 	if args.has("native_support"):
 		var support = _node(root, String(args["native_support"]))
-		if support is GeometryInstance3D and not _draws_surface(support, root):
+		if support is MultiMeshInstance3D or (support is GeometryInstance3D and not _draws_surface(support, root)):
 			result["excluded_native_support"] = true
 	return result
 
@@ -208,15 +210,23 @@ func _measure(root, subject, args):
 	var skipped = {"screen_space": 0, "not_mesh": 0, "shadows_only": 0}
 	var sub_faces = PackedVector3Array()
 	var subject_meshes = _mesh_items(subject, root, null, skipped)
+	if subject_meshes is Dictionary:
+		return subject_meshes
+	var multimesh_subject = skipped.has("multimesh_instances")
 	var supports = _mesh_items(root, root, subject, skipped)
+	if supports is Dictionary:
+		return supports
+	var has_multimesh = skipped.has("multimesh_instances")
+	if has_multimesh and skipped.has("node_budget"):
+		return _fail("multimesh_budget_exceeded", "The scene traversal exceeded the budget for measuring drawn MultiMesh instances.")
 	if skipped.has("grid_budget") or (skipped.has("grid_meshes") and skipped.has("node_budget")):
 		return _fail("grid_mesh_budget_exceeded", "Too many GridMap mesh entries to verify the first surface.")
 	var parent = _parent_xf(subject, root)
 	var start_local = subject.position
 	var start_offset = Vector3.ZERO
-	var replay_start = skipped.has("grid_meshes") and args.has("initial_transform")
+	var replay_start = (has_multimesh or skipped.has("grid_meshes")) and args.has("initial_transform")
 	if replay_start:
-		# An earlier editor can seat on a mesh below a GridMap. Cast from the captured
+		# Native aggregate bounds can seat below or between drawn instances. Replay the captured
 		# starting pose so a first surface above that provisional seat can still win.
 		var initial: Transform3D = str_to_var(args.initial_transform)
 		if not initial.basis.is_equal_approx(subject.transform.basis):
@@ -228,8 +238,13 @@ func _measure(root, subject, args):
 			return _fail("independent_subject_geometry", "visible geometry does not inherit the subject's transform: " + _rel(root, it[0]))
 		var pose = it[1]
 		pose.origin += start_offset
-		sub_faces.append_array(pose * it[2].get_faces())
+		var faces = it[2].get_faces()
+		if multimesh_subject and faces.size() > MAX_SUPPORT_TRIS * 3 - sub_faces.size():
+			return _fail("multimesh_budget_exceeded", "The subject has too many visible triangles to expand its MultiMesh instances.")
+		sub_faces.append_array(pose * faces)
 	if sub_faces.size() < 3:
+		if multimesh_subject:
+			return _fail("no_drawn_multimesh_subject", "The subject has no drawn triangles to seat.")
 		if skipped["shadows_only"] > 0 and subject_meshes.is_empty() and skipped["not_mesh"] == 0 and skipped["screen_space"] == 0 and not skipped.has("node_budget"):
 			return _fail("shadows_only_subject", "The subject only has shadows-only geometry; it has no visible surface to seat.")
 		return _fail("no_subject_mesh", "the subject has no visible mesh triangles to measure")
@@ -269,13 +284,15 @@ func _measure(root, subject, args):
 		var wb = it[1] * it[3]
 		if not column.intersects(wb.grow(0.001)):
 			continue
-		var faces = it[1] * it[2].get_faces()
+		var faces = it[2].get_faces()
 		if faces.size() < 3:
 			continue
 		tris += floori(faces.size() / 3.0)
 		if tris > MAX_SUPPORT_TRIS:
+			if has_multimesh:
+				return _fail("multimesh_budget_exceeded", "Too many triangles in the swept column to verify the MultiMesh contact.")
 			return _fail("grid_mesh_budget_exceeded" if skipped.has("grid_meshes") else "mesh_budget_exceeded", "the meshes around the subject have more than " + str(MAX_SUPPORT_TRIS) + " triangles; the visible-mesh measurement stops rather than miss a surface")
-		sup_faces.append_array(faces)
+		sup_faces.append_array(it[1] * faces)
 		ranges.append([tris, it[0]])
 	var stats = {"samples": 0, "subject_vertices": verts.size(), "support_meshes": ranges.size(), "support_triangles": tris, "extent": hi - lo, "skipped": skipped, "subject_colliders": _count_colliders(subject)}
 	if tris == 0:
@@ -564,6 +581,8 @@ func _rel(root, n):
 ${SCENE_SPACE_GDSCRIPT}
 ${PARENT_TRANSLATION_GDSCRIPT}
 ${GRIDMAP_GEOMETRY_GDSCRIPT}
+${MULTIMESH_GEOMETRY_GDSCRIPT}
+${PLACEMENT_WORLD_GDSCRIPT}
 
 # Mesh, scene-space transform, local bounds and owning node for every drawn entry.
 func _mesh_items(start, root, exclude, skipped):
@@ -571,6 +590,7 @@ func _mesh_items(start, root, exclude, skipped):
 	var stack = [start]
 	var subject = exclude if exclude != null else start
 	var world = subject.get_world_3d() if subject.is_inside_tree() else null
+	var instance_world = _placement_world(subject)
 	var visited = 0
 	while stack.size() > 0:
 		visited += 1
@@ -587,6 +607,11 @@ func _mesh_items(start, root, exclude, skipped):
 						skipped["screen_space"] += 1
 					else:
 						out.append([n, _world_xf(n, root), n.mesh, n.get_aabb()])
+			elif n is MultiMeshInstance3D:
+				if _placement_world(n) == instance_world:
+					var failure = _append_multimesh(n, root, out, skipped)
+					if not failure.is_empty():
+						return failure
 			else:
 				skipped["not_mesh"] += 1
 		elif n.is_class("GridMap") and _visible(n, root) and (world == null or n.get_world_3d() == world):
@@ -614,6 +639,31 @@ func _mesh_items(start, root, exclude, skipped):
 	return out
 
 
+func _append_multimesh(node, root, entries, skipped):
+	var mm = node.multimesh
+	skipped.multimesh_instances = skipped.get("multimesh_instances", 0)
+	if mm == null or mm.mesh == null:
+		return {}
+	var count = _drawn_instances(node)
+	if count == 0:
+		return {}
+	if _screen_space(mm.mesh, node):
+		skipped.screen_space += 1
+		return {}
+	if mm.transform_format != MultiMesh.TRANSFORM_3D:
+		return _fail("unsupported_multimesh_format", "Visible triangle contact requires 3D MultiMesh transforms.")
+	if not _can_read_multimesh_transforms():
+		return _fail("multimesh_backend_unavailable", "The renderer cannot read the MultiMesh instance transforms needed for visible contact.")
+	if count > MAX_MULTIMESH_INSTANCES - skipped.multimesh_instances:
+		return _fail("multimesh_budget_exceeded", "Too many drawn MultiMesh instances to verify the first surface.")
+	skipped.multimesh_instances += count
+	var frame = _world_xf(node, root)
+	var bounds = mm.mesh.get_aabb()
+	for i in range(count):
+		entries.append([node, _drawn_instance_transform(node, frame, i), mm.mesh, bounds])
+	return {}
+
+
 # A mesh whose shader writes POSITION is drawn in screen space (a post quad):
 # its triangles are not where the scene shows anything.
 func _screen_space(mesh, mi = null):
@@ -621,7 +671,11 @@ func _screen_space(mesh, mi = null):
 	if mi != null and mi.material_override != null:
 		mats.append(mi.material_override)
 	for s in range(mesh.get_surface_count()):
-		var m = mi.get_active_material(s) if mi != null else mesh.surface_get_material(s)
+		var m = mesh.surface_get_material(s)
+		if mi is MeshInstance3D:
+			m = mi.get_active_material(s)
+		elif mi != null and mi.material_override != null:
+			m = mi.material_override
 		if m != null:
 			mats.append(m)
 	for m in mats:

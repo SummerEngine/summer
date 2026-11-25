@@ -64,6 +64,25 @@ func _inherits_3d(node, ancestor):
 	return ancestor is Node3D
 `;
 
+export const PLACEMENT_WORLD_GDSCRIPT = String.raw`
+# Use the effective world in a live tree. Detached tabs can still have owned
+# or explicitly assigned worlds. A null world there means the scene default.
+func _placement_world(node):
+	if node.is_inside_tree():
+		if node is Node3D:
+			return node.get_world_3d()
+		var view = node if node is Viewport else node.get_viewport()
+		return view.find_world_3d() if view != null else null
+	var cur = node
+	while cur != null:
+		if cur is Viewport:
+			var world = cur.find_world_3d()
+			if world != null:
+				return world
+		cur = cur.get_parent()
+	return null
+`;
+
 // GDScript scalars retain the precision of the JSON numbers; Vector3 can round them.
 export const REQUEST_DISTANCE_GDSCRIPT = String.raw`
 func _distance_to_request(actual: Vector3, requested, origin := Vector3.ZERO):

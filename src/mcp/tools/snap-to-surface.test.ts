@@ -579,6 +579,13 @@ describe("summer_snap_to_surface: props without colliders (visible-mesh fallback
     expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
   });
 
+  it.each(["multimesh_budget_exceeded", "multimesh_backend_unavailable", "unsupported_multimesh_format"])("restores a provisional native seat after %s", async (failure_reason) => {
+    const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0 });
+    fake.probeOverride[0] = () => ({ ok: false, failure_reason, error: "cannot verify drawn instances" });
+    expect(await snapToSurface(fake, fernArgs())).toMatchObject({ ok: false, results: [{ failure_reason, original_transform_preserved: true }] });
+    expect(fake.savedLocalY()).toBe(FLOATING_3_5CM);
+  });
+
   it("restores the original pose if a fresh read contradicts a replayed GridMap sweep", async () => {
     const fake = new FakeMeshSnapEngine(FLOATING_3_5CM, 0, 0.045, { seatOnAabbTop: 0 });
     fake.probeOverride[0] = (answer) => ({ ...answer, correction_distance: 0 });

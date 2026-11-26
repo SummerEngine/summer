@@ -23,6 +23,7 @@
  * describe no file that names a server or a URL, so there is nothing to write
  * for it.
  */
+import { stripBom } from "../util/json-file.js";
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isHomeOrRoot } from "../local-project.js";
@@ -108,7 +109,7 @@ export function writeClaudeLaunchConfig(sessionRoot: string, options: LaunchConf
     return { status: "created", path, entry, autoVerify: true };
   }
 
-  const text = readFileSync(path, "utf-8");
+  const text = stripBom(readFileSync(path, "utf-8"));
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

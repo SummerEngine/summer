@@ -1,3 +1,4 @@
+import { parseJsonText } from "../util/json-file.js";
 import { readFile } from "node:fs/promises";
 import { extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { BuildToolError } from "./summer-bundle.js";
@@ -266,7 +267,7 @@ export async function readItemsManifest(project: string, file?: string): Promise
   }
   let document: unknown;
   try {
-    document = JSON.parse(text);
+    document = parseJsonText(text);
   } catch (error) {
     throw new BuildToolError("items_manifest_invalid", `${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}.`, "Recovery: fix the JSON and call again.");
   }

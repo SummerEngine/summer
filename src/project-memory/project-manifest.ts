@@ -6,6 +6,7 @@
  * conversation. Merged, never clobbered: any other keys already in the file
  * survive a rewrite.
  */
+import { parseJsonText } from "../core/util/json-file.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -33,7 +34,7 @@ export function readProjectManifest(projectDir: string): ProjectManifest | null 
   if (!existsSync(file)) return null;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(readFileSync(file, "utf-8"));
+    parsed = parseJsonText(readFileSync(file, "utf-8"));
   } catch (err) {
     throw new Error(`${file} exists but is not valid JSON: ${(err as Error).message}`);
   }

@@ -1,5 +1,7 @@
 import { accessSync, constants as fsConstants, existsSync, readFileSync, statSync, type Stats } from "fs";
-import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
+import { writeFileAtomically } from "../core/util/atomic-write.js";
+import { parseJsonText } from "../core/util/json-file.js";
+import { copyFile, mkdir, readFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { Document, isMap, parseDocument } from "yaml";
@@ -691,7 +693,7 @@ async function readJsonConfig(path: string): Promise<JsonObject> {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = parseJsonText(content);
   } catch (error) {
     throw new SetupError("config_invalid", `Could not parse JSON in ${path}: ${formatError(error)}`);
   }
@@ -985,8 +987,9 @@ function isJsonObject(value: unknown): value is JsonObject {
 }
 
 async function writeTextFile(path: string, content: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, content, { encoding: "utf-8", mode: 0o600 });
+  // Agent configs hold far more than our entry (some keep the agent's
+  // whole user state in the same file): never truncate one in place.
+  await writeFileAtomically(path, content, { mode: 0o600, dirMode: 0o700 });
 }
 
 function ensureTrailingNewline(value: string): string {

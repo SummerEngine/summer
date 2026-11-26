@@ -1,3 +1,4 @@
+import { parseJsonText } from "./util/json-file.js";
 import {
   appendFile,
   chmod,
@@ -132,7 +133,7 @@ export async function readStoreJson<T>(name: string): Promise<T | null> {
   const raw = await readStoreText(name);
   if (raw === null) return null;
   try {
-    return JSON.parse(raw) as T;
+    return parseJsonText(raw) as T;
   } catch {
     throw new SummerStoreError(
       "invalid_store_json",

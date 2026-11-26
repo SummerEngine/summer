@@ -1,3 +1,4 @@
+import { parseJsonText } from "../util/json-file.js";
 import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { constants } from "node:fs";
@@ -109,7 +110,7 @@ async function projectIn(dir: string, names: string[]): Promise<GameProject | nu
 
 async function usesThree(packageJson: string): Promise<boolean> {
   try {
-    const parsed = JSON.parse(await readFile(packageJson, "utf8")) as Record<string, Record<string, unknown> | undefined>;
+    const parsed = parseJsonText(await readFile(packageJson, "utf8")) as Record<string, Record<string, unknown> | undefined>;
     return Boolean(parsed.dependencies?.three ?? parsed.devDependencies?.three);
   } catch {
     return false;

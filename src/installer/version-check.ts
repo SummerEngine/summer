@@ -12,6 +12,7 @@
  * to false-alarm a user just because their wifi is flaky.
  */
 
+import { parseJsonText } from "../core/util/json-file.js";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { parse as parseYaml } from "yaml";
@@ -682,7 +683,7 @@ export function readRecordedMcpServer(
   }
   let parsed: unknown;
   try {
-    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : JSON.parse(text);
+    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : parseJsonText(text);
   } catch {
     return null;
   }
@@ -727,7 +728,7 @@ export function listsSummerEngine(text: string, format: McpFormat): boolean {
   if (format === "toml-array") return new RegExp(`^\\s*name\\s*=\\s*"${SUMMER_MCP_SERVER_NAME}"`, "m").test(text);
   let parsed: unknown;
   try {
-    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : JSON.parse(text);
+    parsed = format === "yaml-goose" || format === "yaml-hermes" ? parseYaml(text) : parseJsonText(text);
   } catch {
     return false;
   }

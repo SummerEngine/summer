@@ -1,3 +1,4 @@
+import { parseJsonText } from "../util/json-file.js";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -439,7 +440,7 @@ async function alignBuildDeclaration(project: string, targets: readonly string[]
   if (!existsSync(path)) return;
   let build: Record<string, unknown>;
   try {
-    build = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+    build = parseJsonText(await readFile(path, "utf8")) as Record<string, unknown>;
   } catch {
     throw new BuildToolError("build_declaration_invalid", "summer.build.json is not valid JSON.", "Recovery: fix summer.build.json, then export again.");
   }

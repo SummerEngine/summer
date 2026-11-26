@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- `summer setup` and Summer's project files now accept a UTF-8 byte order mark, which Windows PowerShell 5 and some Windows editors add: agent configs, command allow rules, `.summer/project.json`, `summer.items.json`, `summer.build.json` and the preview launch config. Setup also replaces agent config files in one step, so an interrupted write no longer leaves one half written.
+
 - Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
 
 - Raycasts and pair/plane measurements now read drawn GridMap cells and stored baked meshes, so a raised tiled shelf can be reported before the floor below it.

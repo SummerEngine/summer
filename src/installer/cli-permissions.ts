@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
-import { chmod, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
+import { writeFileAtomically } from "../core/util/atomic-write.js";
+import { parseJsonText } from "../core/util/json-file.js";
 import { dirname, join } from "node:path";
 import { CLI_AREAS } from "../core/ops/areas.js";
 import { localEntries } from "../core/ops/catalog.js";
@@ -129,26 +131,11 @@ export function allowRulesPath(agent: SupportedAgent, scope: "user" | "project",
   return ctx.env.SUMMER_CLAUDE_SETTINGS_FILE || (scope === "project" ? join(ctx.cwd, ".claude", "settings.local.json") : join(ctx.home, ".claude", "settings.json"));
 }
 
-/**
- * Write next to the file, then rename over it, so Claude Code never reads
- * half a file. A symlinked settings file (a dotfiles repo) is written through
- * the link, in its real folder, and keeps its mode.
- */
-async function writeAtomically(path: string, text: string): Promise<void> {
-  const target = existsSync(path) ? await realpath(path) : path;
-  await mkdir(dirname(target), { recursive: true });
-  const mode = existsSync(target) ? (await stat(target)).mode & 0o7777 : undefined;
-  const temp = `${target}.summer-${process.pid}.tmp`;
-  await writeFile(temp, text, mode === undefined ? {} : { mode });
-  if (mode !== undefined) await chmod(temp, mode);
-  await rename(temp, target);
-}
-
 async function readClaudeSettings(path: string): Promise<{ settings: Record<string, unknown>; permissions: Record<string, unknown>; allow: unknown[] }> {
   let settings: unknown = {};
   if (existsSync(path)) {
     try {
-      settings = JSON.parse(await readFile(path, "utf8"));
+      settings = parseJsonText(await readFile(path, "utf8"));
     } catch {
       throw new Error(`${path} is not valid JSON, so Summer left its allow rules alone. Fix the file, then run setup again.`);
     }
@@ -172,13 +159,13 @@ export async function addAllowRules(agent: SupportedAgent, path: string, write: 
     const text = codexRules();
     const rules = text.split("\n").filter((line) => line.startsWith("    pattern = ")).map((line) => line.trim());
     const changed = (existsSync(path) ? await readFile(path, "utf8") : "") !== text;
-    if (write && changed) await writeAtomically(path, text);
+    if (write && changed) await writeFileAtomically(path, text);
     return { agent, path, rules, changed: changed ? rules : [], wrote: write && changed };
   }
   const rules = claudeAllowRules();
   const { settings, permissions, allow } = await readClaudeSettings(path);
   const added = rules.filter((rule) => !allow.includes(rule));
-  if (write && added.length > 0) await writeAtomically(path, `${JSON.stringify({ ...settings, permissions: { ...permissions, allow: [...allow, ...added] } }, null, 2)}\n`);
+  if (write && added.length > 0) await writeFileAtomically(path, `${JSON.stringify({ ...settings, permissions: { ...permissions, allow: [...allow, ...added] } }, null, 2)}\n`);
   return { agent, path, rules, changed: added, wrote: write && added.length > 0 };
 }
 
@@ -194,7 +181,7 @@ export async function removeAllowRules(agent: SupportedAgent, path: string, writ
   const { settings, permissions, allow } = await readClaudeSettings(path);
   const removed = allow.filter((rule): rule is string => typeof rule === "string" && ours.has(rule));
   if (write && removed.length > 0) {
-    await writeAtomically(path, `${JSON.stringify({ ...settings, permissions: { ...permissions, allow: allow.filter((rule) => !removed.includes(rule as string)) } }, null, 2)}\n`);
+    await writeFileAtomically(path, `${JSON.stringify({ ...settings, permissions: { ...permissions, allow: allow.filter((rule) => !removed.includes(rule as string)) } }, null, 2)}\n`);
   }
   return { agent, path, rules: [], changed: removed, wrote: write && removed.length > 0 };
 }

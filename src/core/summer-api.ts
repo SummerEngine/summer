@@ -53,6 +53,57 @@ const defaults: SummerApiDependencies = {
 
 export type Job = Record<string, unknown> & { id: string; state: string };
 
+/** Some of a finished job's files could not be saved; `saved` holds the ones that were. */
+export class SummerApiDownloadError extends SummerApiError {
+  constructor(
+    failures: string[],
+    readonly saved: string[],
+    readonly savedByJob: Record<string, string[]> = {}
+  ) {
+    super("download_failed", failures.join(" "), 502);
+  }
+}
+
+/** Following stopped on an error. The job or batch still exists: `latest` is the last state read. */
+export class SummerApiFollowError extends SummerApiError {
+  constructor(
+    cause: unknown,
+    readonly latest: Job | Batch
+  ) {
+    super(
+      cause instanceof SummerApiError ? cause.code : "request_failed",
+      cause instanceof Error ? cause.message : String(cause),
+      cause instanceof SummerApiError ? cause.status : 502
+    );
+  }
+}
+
+/** The most status reads in a row that may fail for a passing reason before following stops. */
+export const MAX_POLL_FAILURES = 5;
+
+/** A failure that says nothing about the request itself: no answer, a busy server or a server error. */
+function isTransient(error: unknown): boolean {
+  if (!(error instanceof SummerApiError)) return false;
+  return error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500;
+}
+
+const sentence = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\.$/, "");
+
+/**
+ * A POST that spends credits failed without a clear refusal, so Summer may have
+ * accepted it. Name the Idempotency-Key: repeating the call with it cannot run
+ * (or charge) the same work twice, while a new key would.
+ */
+function withRetryKey(error: unknown, key: string, what: "job" | "batch"): unknown {
+  if (!isTransient(error)) return error;
+  return new SummerApiError(
+    error instanceof SummerApiError ? error.code : "request_failed",
+    `${sentence(error)}. Summer may still have accepted this ${what}. To retry without paying twice, repeat it with idempotency key ${key}.`,
+    error instanceof SummerApiError ? error.status : 502,
+    { ...(error instanceof SummerApiError ? error.body : {}), idempotencyKey: key }
+  );
+}
+
 async function call(
   method: "GET" | "POST",
   path: string,
@@ -86,7 +137,7 @@ async function send(
   deps: SummerApiDependencies
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const gateway = await resolveGatewayUrl();
-  const res = await deps.fetch(`${gateway}/v1${path}`, {
+  const request: RequestInit = {
     method,
     headers: {
       ...summerRequestHeaders(),
@@ -96,6 +147,10 @@ async function send(
     },
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
     signal: AbortSignal.timeout(90_000),
+  };
+  // Status 0: the request went out and no answer came back. Anything thrown before this line never left the computer.
+  const res = await deps.fetch(`${gateway}/v1${path}`, request).catch((error: unknown) => {
+    throw new SummerApiError("request_failed", error instanceof Error ? error.message : String(error), 0);
   });
   const body = ((await res.json().catch(() => null)) ?? {}) as Record<string, unknown>;
   if (res.ok) return { status: res.status, body };
@@ -142,10 +197,15 @@ export async function runJob(
   options: { quoteId?: string; idempotencyKey?: string; waitSeconds?: number } = {},
   overrides: Partial<SummerApiDependencies> = {}
 ): Promise<Job> {
-  const headers: Record<string, string> = { "Idempotency-Key": options.idempotencyKey ?? randomUUID() };
+  const key = options.idempotencyKey ?? randomUUID();
+  const headers: Record<string, string> = { "Idempotency-Key": key };
   if (options.waitSeconds) headers.Prefer = `wait=${Math.min(60, Math.max(1, Math.round(options.waitSeconds)))}`;
-  const { body } = await call("POST", "/jobs", { body: { model, input, ...(options.quoteId ? { quoteId: options.quoteId } : {}) }, headers, key: "required" }, { ...defaults, ...overrides });
-  return jobOf(body);
+  try {
+    const { body } = await call("POST", "/jobs", { body: { model, input, ...(options.quoteId ? { quoteId: options.quoteId } : {}) }, headers, key: "required" }, { ...defaults, ...overrides });
+    return jobOf(body);
+  } catch (error) {
+    throw withRetryKey(error, key, "job");
+  }
 }
 
 export async function getJob(jobId: string, overrides: Partial<SummerApiDependencies> = {}): Promise<Job> {
@@ -161,10 +221,16 @@ export async function waitForJob(job: Job, options: { timeoutMs?: number } = {},
   const deps = { ...defaults, ...overrides };
   const until = deps.now() + (options.timeoutMs ?? MAX_JOB_WAIT_MS);
   let current = job;
+  let failures = 0;
   while (!isFinished(current) && deps.now() < until) {
     const after = typeof current.pollAfterSeconds === "number" ? current.pollAfterSeconds : 5;
     await deps.sleep(Math.min(30, Math.max(2, after)) * 1000);
-    current = await getJob(current.id, deps);
+    try {
+      current = await getJob(current.id, deps);
+      failures = 0;
+    } catch (error) {
+      if (!isTransient(error) || ++failures >= MAX_POLL_FAILURES) throw new SummerApiFollowError(error, current);
+    }
   }
   return current;
 }
@@ -187,14 +253,21 @@ export async function downloadJobFiles(job: Job, dir: string, overrides: Partial
   const target = resolve(dir);
   await mkdir(target, { recursive: true });
   const saved: string[] = [];
+  const failures: string[] = [];
+  // One failed file never stops the others: each was already paid for.
   for (const [index, asset] of assets.entries()) {
     if (typeof asset.fileUrl !== "string") continue;
-    const res = await deps.fetch(asset.fileUrl, { signal: AbortSignal.timeout(120_000) });
-    if (!res.ok) throw new SummerApiError("download_failed", `Could not download ${asset.fileUrl} (${res.status}).`, res.status);
-    const path = join(target, jobFileName(String(asset.assetId ?? `${job.id}-${index + 1}`), asset.fileUrl));
-    await writeFile(path, Buffer.from(await res.arrayBuffer()));
-    saved.push(path);
+    try {
+      const res = await deps.fetch(asset.fileUrl, { signal: AbortSignal.timeout(120_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const path = join(target, jobFileName(String(asset.assetId ?? `${job.id}-${index + 1}`), asset.fileUrl));
+      await writeFile(path, Buffer.from(await res.arrayBuffer()));
+      saved.push(path);
+    } catch (error) {
+      failures.push(`Could not download ${asset.fileUrl} (${sentence(error)}).`);
+    }
   }
+  if (failures.length) throw new SummerApiDownloadError(failures, saved);
   return saved;
 }
 
@@ -271,10 +344,25 @@ export async function createBatch(
   overrides: Partial<SummerApiDependencies> = {}
 ): Promise<Batch> {
   const deps = { ...defaults, ...overrides };
-  const headers = { "Idempotency-Key": options.idempotencyKey ?? randomUUID() };
-  const batch = batchOf((await call("POST", "/batches", { body: { jobs }, headers, key: "required" }, deps)).body);
+  const key = options.idempotencyKey ?? randomUUID();
+  let batch: Batch;
+  try {
+    batch = batchOf((await call("POST", "/batches", { body: { jobs }, headers: { "Idempotency-Key": key }, key: "required" }, deps)).body);
+  } catch (error) {
+    throw withRetryKey(error, key, "batch");
+  }
   // A replayed batch answers its job count only: read its jobs.
-  return Array.isArray(batch.jobs) ? batch : getBatch(batch.id, deps);
+  if (Array.isArray(batch.jobs)) return batch;
+  try {
+    return await getBatch(batch.id, deps);
+  } catch (error) {
+    throw new SummerApiError(
+      error instanceof SummerApiError ? error.code : "request_failed",
+      `Batch ${batch.id} is queued, but reading it failed: ${sentence(error)}. Read it by its id; do not queue it again.`,
+      error instanceof SummerApiError ? error.status : 502,
+      { batchId: batch.id, idempotencyKey: key }
+    );
+  }
 }
 
 export const isBatchFinished = (batch: Batch) => batch.jobs.length > 0 && batch.jobs.every(isFinished);
@@ -284,9 +372,15 @@ export async function waitForBatch(batch: Batch, options: { timeoutMs?: number }
   const deps = { ...defaults, ...overrides };
   const until = deps.now() + (options.timeoutMs ?? MAX_BATCH_WAIT_MS);
   let current = batch;
+  let failures = 0;
   while (!isBatchFinished(current) && deps.now() < until) {
     await deps.sleep(10_000);
-    current = await getBatch(current.id, deps);
+    try {
+      current = await getBatch(current.id, deps);
+      failures = 0;
+    } catch (error) {
+      if (!isTransient(error) || ++failures >= MAX_POLL_FAILURES) throw new SummerApiFollowError(error, current);
+    }
   }
   return current;
 }
@@ -294,22 +388,83 @@ export async function waitForBatch(batch: Batch, options: { timeoutMs?: number }
 /** Every done job's files under `dir`, by job id. */
 export async function downloadBatchFiles(batch: Batch, dir: string, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, string[]>> {
   const files: Record<string, string[]> = {};
+  const failures: string[] = [];
   for (const job of batch.jobs) {
-    if (job.state === "done") files[job.id] = await downloadJobFiles(job, dir, overrides);
+    if (job.state !== "done") continue;
+    try {
+      files[job.id] = await downloadJobFiles(job, dir, overrides);
+    } catch (error) {
+      if (error instanceof SummerApiDownloadError) files[job.id] = error.saved;
+      failures.push(`Job ${job.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
+  if (failures.length) throw new SummerApiDownloadError(failures, Object.values(files).flat(), files);
   return files;
+}
+
+export interface Problem {
+  code: string;
+  message: string;
+}
+
+function problemOf(error: unknown): Problem {
+  return { code: error instanceof SummerApiError ? error.code : "request_failed", message: error instanceof Error ? error.message : String(error) };
+}
+
+export interface SettleOptions {
+  follow: boolean;
+  /** Save the finished files here. */
+  dir?: string;
+  timeoutMs?: number;
+}
+
+/**
+ * Follow an existing job and save its files. The job is already paid for, so
+ * this never throws: a failure comes back as `error` beside the job, whose id
+ * is how to pick it up again without running (and paying for) it twice.
+ */
+export async function settleJob(job: Job, options: SettleOptions, overrides: Partial<SummerApiDependencies> = {}): Promise<{ job: Job; files?: string[]; error?: Problem }> {
+  let final = job;
+  if (options.follow && !isFinished(job)) {
+    try {
+      final = await waitForJob(job, { timeoutMs: options.timeoutMs }, overrides);
+    } catch (error) {
+      return { job: error instanceof SummerApiFollowError ? (error.latest as Job) : job, error: problemOf(error) };
+    }
+  }
+  if (options.dir === undefined || final.state !== "done") return { job: final };
+  try {
+    return { job: final, files: await downloadJobFiles(final, options.dir, overrides) };
+  } catch (error) {
+    return { job: final, files: error instanceof SummerApiDownloadError ? error.saved : [], error: problemOf(error) };
+  }
+}
+
+/** settleJob for a batch: it never throws, so the batch id is never lost. */
+export async function settleBatch(batch: Batch, options: SettleOptions, overrides: Partial<SummerApiDependencies> = {}): Promise<{ batch: Batch; files?: Record<string, string[]>; error?: Problem }> {
+  let final = batch;
+  if (options.follow && !isBatchFinished(batch)) {
+    try {
+      final = await waitForBatch(batch, { timeoutMs: options.timeoutMs }, overrides);
+    } catch (error) {
+      return { batch: error instanceof SummerApiFollowError ? (error.latest as Batch) : batch, error: problemOf(error) };
+    }
+  }
+  if (options.dir === undefined) return { batch: final };
+  try {
+    return { batch: final, files: await downloadBatchFiles(final, options.dir, overrides) };
+  } catch (error) {
+    return { batch: final, files: error instanceof SummerApiDownloadError ? error.savedByJob : {}, error: problemOf(error) };
+  }
 }
 
 /** summer_api_batch: follow when asked (within one call's time), save files when `out` is given. */
 export async function batchToolResult(batch: Batch, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, unknown>> {
-  const follow = args.wait === true || typeof args.out === "string";
-  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, { timeoutMs: TOOL_JOB_WAIT_MS }, overrides) : batch;
-  const files = typeof args.out === "string" ? await downloadBatchFiles(final, args.out, overrides) : undefined;
-  return {
-    batch: final,
-    ...(files ? { files } : {}),
-    ...(isBatchFinished(final) ? {} : { next: `Call summer_api_batch with batchId ${final.id} (wait: true${typeof args.out === "string" ? ", out" : ""}) to keep following it.` }),
-  };
+  const dir = typeof args.out === "string" ? args.out : undefined;
+  const settled = await settleBatch(batch, { follow: args.wait === true || dir !== undefined, dir, timeoutMs: TOOL_JOB_WAIT_MS }, overrides);
+  const again = `Call summer_api_batch with batchId ${settled.batch.id} (wait: true${dir !== undefined ? ", out" : ""})`;
+  if (settled.error) return { ok: false, ...settled, next: `The batch exists: do not queue it again. ${again} to retry.` };
+  return { ...settled, ...(isBatchFinished(settled.batch) ? {} : { next: `${again} to keep following it.` }) };
 }
 
 /** The answer the summer_api_* MCP tools (and `summer tool api-*`) give: the result, or {ok:false, error}. */
@@ -327,8 +482,10 @@ export const TOOL_JOB_WAIT_MS = 50_000;
 
 /** summer_api_run and summer_api_job: follow when asked (within one call's time), save files when `out` is given. */
 export async function jobToolResult(job: Job, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, unknown>> {
-  const follow = args.wait === true || typeof args.out === "string";
-  const final = follow && !isFinished(job) ? await waitForJob(job, { timeoutMs: TOOL_JOB_WAIT_MS }, overrides) : job;
-  const files = typeof args.out === "string" && final.state === "done" ? await downloadJobFiles(final, args.out, overrides) : undefined;
-  return { job: final, ...(files ? { files } : {}), ...(isFinished(final) ? {} : { next: `Call summer_api_job with jobId ${final.id} (wait: true) to keep following it.` }) };
+  const dir = typeof args.out === "string" ? args.out : undefined;
+  const settled = await settleJob(job, { follow: args.wait === true || dir !== undefined, dir, timeoutMs: TOOL_JOB_WAIT_MS }, overrides);
+  if (settled.error) {
+    return { ok: false, ...settled, next: `The job exists: do not run it again. Call summer_api_job with jobId ${settled.job.id} (wait: true${dir !== undefined ? ", out" : ""}) to retry.` };
+  }
+  return { ...settled, ...(isFinished(settled.job) ? {} : { next: `Call summer_api_job with jobId ${settled.job.id} (wait: true) to keep following it.` }) };
 }

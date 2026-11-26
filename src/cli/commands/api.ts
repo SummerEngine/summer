@@ -5,8 +5,6 @@ import {
   SummerApiError,
   cancelJob,
   createBatch,
-  downloadBatchFiles,
-  downloadJobFiles,
   estimateJob,
   getJob,
   isFinished,
@@ -14,8 +12,8 @@ import {
   isBatchFinished,
   parseBatchLines,
   runJob,
-  waitForBatch,
-  waitForJob,
+  settleBatch,
+  settleJob,
   type Batch,
   type Job,
   type SummerApiDependencies,
@@ -79,15 +77,16 @@ export async function parseInput(text: string | undefined): Promise<Record<strin
 /** Run one api command: its answer as JSON or as the summary, its errors as one line (or one JSON object). */
 export async function runApiAction(
   opts: JsonOption,
-  work: () => Promise<{ data: unknown; summary: string[] }>,
+  work: () => Promise<{ data: unknown; summary: string[]; failed?: boolean }>,
   io: ApiCommandIo = defaultIo()
 ): Promise<number> {
   const json = opts.json === true || !io.isTTY;
   try {
-    const { data, summary } = await work();
+    // `failed`: the work exists (its answer is printed) but something after it did not finish.
+    const { data, summary, failed } = await work();
     if (json) io.print(JSON.stringify(data, null, 2));
     else for (const line of summary) io.print(line);
-    return 0;
+    return failed ? 1 : 0;
   } catch (error) {
     if (error instanceof SummerApiError && error.code === "api_not_open") {
       io.printError(API_NOT_OPEN);
@@ -115,13 +114,20 @@ function jobSummary(job: Job, files: string[] = []): string[] {
 }
 
 /** --wait and --download for a job that came back: follow it, then save its files. */
-async function finish(job: Job, opts: { wait?: boolean; download?: string | boolean }): Promise<{ data: unknown; summary: string[] }> {
-  const follow = opts.wait === true || opts.download !== undefined;
-  const final = follow && !isFinished(job) ? await waitForJob(job) : job;
-  const dir = typeof opts.download === "string" ? opts.download : ".";
-  const files = opts.download !== undefined && final.state === "done" ? await downloadJobFiles(final, dir) : [];
-  return { data: { job: final, ...(opts.download !== undefined ? { files } : {}) }, summary: jobSummary(final, files) };
+async function finish(job: Job, opts: { wait?: boolean; download?: string | boolean }): Promise<{ data: unknown; summary: string[]; failed: boolean }> {
+  const dir = downloadDir(opts.download);
+  const settled = await settleJob(job, { follow: opts.wait === true || dir !== undefined, dir });
+  const files = settled.files ?? [];
+  const summary = jobSummary(settled.job, files);
+  if (settled.error) summary.push(`  ${settled.error.message}`, `  The job exists: do not run it again. Retry with: summer api jobs ${settled.job.id} ${dir !== undefined ? "--download" : "--wait"}`);
+  return {
+    data: { ...(settled.error ? { ok: false } : {}), job: settled.job, ...(dir !== undefined ? { files } : {}), ...(settled.error ? { error: settled.error } : {}) },
+    summary,
+    failed: Boolean(settled.error),
+  };
 }
+
+const downloadDir = (download: string | boolean | undefined) => (download === undefined ? undefined : typeof download === "string" ? download : ".");
 
 function batchSummary(batch: Batch, files: Record<string, string[]> = {}): string[] {
   const counts = Object.entries(batch.counts ?? {}).map(([state, count]) => `${count} ${state}`).join(", ");
@@ -139,7 +145,7 @@ export async function runBatch(
   file: string,
   opts: { idempotencyKey?: string; wait?: boolean; download?: string | boolean },
   overrides: Partial<SummerApiDependencies> = {}
-): Promise<{ data: unknown; summary: string[] }> {
+): Promise<{ data: unknown; summary: string[]; failed: boolean }> {
   let text: string;
   try {
     text = await readTextFile(file);
@@ -147,10 +153,15 @@ export async function runBatch(
     throw new SummerApiError("invalid_input", `Cannot read the batch file ${file}.`, 400);
   }
   const batch = await createBatch(parseBatchLines(text), opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}, overrides);
-  const follow = opts.wait === true || opts.download !== undefined;
-  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, {}, overrides) : batch;
-  const files = opts.download !== undefined ? await downloadBatchFiles(final, typeof opts.download === "string" ? opts.download : ".", overrides) : undefined;
-  return { data: { batch: final, ...(files ? { files } : {}) }, summary: batchSummary(final, files) };
+  const dir = downloadDir(opts.download);
+  const settled = await settleBatch(batch, { follow: opts.wait === true || dir !== undefined, dir }, overrides);
+  const summary = batchSummary(settled.batch, settled.files);
+  if (settled.error) summary.push(`  ${settled.error.message}`, `  Batch ${settled.batch.id} exists: do not queue it again. Follow or download each of its jobs with: summer api jobs <id> --download`);
+  return {
+    data: { ...(settled.error ? { ok: false } : {}), batch: settled.batch, ...(settled.files ? { files: settled.files } : {}), ...(settled.error ? { error: settled.error } : {}) },
+    summary,
+    failed: Boolean(settled.error),
+  };
 }
 
 const exit = (code: number) => {

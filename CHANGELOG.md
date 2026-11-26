@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- `summer api` and the `summer_api_*` tools keep the job or batch id when following or downloading fails, so you can resume it without paying to run it again. Brief status-check errors are retried, one failed file no longer stops the other downloads, and an unclear create request names the idempotency key to retry with.
+
 - Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
 
 - Raycasts and pair/plane measurements now read drawn GridMap cells and stored baked meshes, so a raised tiled shelf can be reported before the floor below it.

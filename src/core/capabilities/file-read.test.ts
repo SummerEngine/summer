@@ -138,3 +138,54 @@ describe("JSON selection", () => {
     ).rejects.toThrow(/Invalid arguments for read-file/);
   });
 });
+
+describe("paging a file larger than the engine's read window", () => {
+  const text = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n") + "\n"; // 7 bytes a line, 8 for the last
+
+  /** Follow next_offset to the end, as the tool's description tells a caller to. */
+  async function pageThrough(client: ReturnType<typeof fileClient>, args: Partial<ReadFileArgs>) {
+    const pages: Awaited<ReturnType<typeof read>>[] = [];
+    let offset: number | null = 0;
+    while (offset !== null) {
+      expect(pages.length).toBeLessThan(20);
+      const page = await read(client, { ...args, offset });
+      pages.push(page);
+      offset = page.data.window.next_offset as number | null;
+    }
+    return pages;
+  }
+
+  it("ends line paging at the window and never returns the half line as a whole one", async () => {
+    // 25 bytes: three whole lines and "line" of the fourth.
+    const pages = await pageThrough(fileClient(text, { truncatedAt: 25 }), { limit: 2 });
+    expect(pages.map((page) => page.data.content)).toEqual(["line 1\nline 2", "line 3"]);
+    expect(pages.at(-1)!.data.window).toMatchObject({ next_offset: null, eof: false, read_window_end: true, total_lines: 3 });
+  });
+
+  it("keeps a last line the window ends exactly after", async () => {
+    const pages = await pageThrough(fileClient(text, { truncatedAt: 21 }), { limit: 10 });
+    expect(pages.map((page) => page.data.content)).toEqual(["line 1\nline 2\nline 3"]);
+  });
+
+  it("marks a single line longer than the window as cut, and stops", async () => {
+    const pages = await pageThrough(fileClient("x".repeat(100), { truncatedAt: 40 }), { limit: 5 });
+    expect(pages).toHaveLength(1);
+    expect(pages[0]!.data.window).toMatchObject({ next_offset: null, read_window_end: true, line_cut_by_read_window: true });
+  });
+
+  it("says a line offset past the window cannot be read", async () => {
+    expect(await read(fileClient(text, { truncatedAt: 25 }), { offset: 3, limit: 2 })).toMatchObject({ ok: false, failure_reason: "offset_beyond_read_window" });
+  });
+
+  it("ends byte paging at the window too", async () => {
+    const pages = await pageThrough(fileClient(text, { truncatedAt: 25 }), { unit: "bytes", max_bytes: 10 });
+    expect(pages.map((page) => page.data.content).join("")).toBe(text.slice(0, 25));
+    expect(pages.at(-1)!.data.window).toMatchObject({ next_offset: null, eof: false, read_window_end: true });
+  });
+
+  it("does not take a small byte request for the end of the window", async () => {
+    const result = await read(fileClient(text), { unit: "bytes", offset: 0, limit: 7 });
+    expect(result.data.window).toMatchObject({ next_offset: 7, eof: false });
+    expect(result.data.window).not.toHaveProperty("read_window_end");
+  });
+});

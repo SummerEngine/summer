@@ -214,11 +214,23 @@ function lineWindow(
   limit: number | undefined,
   maxBytes: number,
   sourceCut: boolean
-): WindowResult {
+): WindowResult | JsonRecord {
   const lines = text.split("\n");
   // A trailing newline ends the last line; it does not start another one.
-  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+  const endsWithNewline = lines.length > 1 && lines[lines.length - 1] === "";
+  if (endsWithNewline) lines.pop();
+  // The engine's window can end mid-line. That half line is not a line of the
+  // file, so it is dropped, unless it is all there is: then it is marked cut.
+  const endsMidLine = sourceCut && !endsWithNewline;
+  const onlyHalfLine = endsMidLine && lines.length === 1;
+  if (endsMidLine && !onlyHalfLine) lines.pop();
   const total = lines.length;
+  if (sourceCut && offset > 0 && offset >= total) {
+    return failure(
+      "offset_beyond_read_window",
+      `Line offset ${offset} is past the engine's 1 MB read window for this file, which holds ${total} whole line${total === 1 ? "" : "s"}. Only the first 1 MB can be read.`
+    );
+  }
   const wanted = lines.slice(offset, limit !== undefined ? offset + limit : undefined);
   const kept: string[] = [];
   let bytes = 0;
@@ -244,6 +256,8 @@ function lineWindow(
   const returned = kept.length;
   const nextOffset = offset + returned;
   const eof = !sourceCut && !cutByMaxBytes && nextOffset >= total;
+  // Nothing after this can be read: next_offset must not send the caller back.
+  const windowEnd = sourceCut && nextOffset >= total;
   return {
     content: kept.join("\n"),
     complete: offset === 0 && eof,
@@ -256,8 +270,10 @@ function lineWindow(
       end_line: returned > 0 ? offset + returned : null,
       total_lines: total,
       ...(sourceCut ? { total_lines_is_lower_bound: true } : {}),
-      next_offset: eof ? null : nextOffset,
+      next_offset: eof || windowEnd ? null : nextOffset,
       eof,
+      ...(windowEnd ? { read_window_end: true } : {}),
+      ...(onlyHalfLine && returned > 0 ? { line_cut_by_read_window: true } : {}),
       ...(cutByMaxBytes ? { cut_by_max_bytes: true } : {}),
     },
   };
@@ -285,6 +301,7 @@ function byteWindow(
   while (end > start && end < buffer.length && (buffer[end]! & 0xc0) === 0x80) end--;
   const cutByMaxBytes = limit !== undefined && limit > maxBytes && end < buffer.length;
   const eof = end >= buffer.length && !sourceCut;
+  const windowEnd = sourceCut && end >= buffer.length;
   return {
     content: buffer.subarray(start, end).toString("utf8"),
     complete: start === 0 && eof,
@@ -296,8 +313,9 @@ function byteWindow(
       end_byte: end,
       returned: end - start,
       total_bytes: totalBytes,
-      next_offset: eof ? null : end,
+      next_offset: eof || windowEnd ? null : end,
       eof,
+      ...(windowEnd ? { read_window_end: true } : {}),
       ...(cutByMaxBytes ? { cut_by_max_bytes: true } : {}),
     },
   };

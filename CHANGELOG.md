@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- `summer_read_file` paging stops at the engine's 1 MB read window. For larger files, line paging could return the same `next_offset` forever and showed the half line at the window's edge as a whole one. The result now answers `read_window_end: true` with no `next_offset`, and a line offset past the window says so.
+
 - Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
 
 - Raycasts and pair/plane measurements now read drawn GridMap cells and stored baked meshes, so a raised tiled shelf can be reported before the floor below it.

@@ -214,11 +214,14 @@ function lineWindow(
   limit: number | undefined,
   maxBytes: number,
   sourceCut: boolean
-): WindowResult {
+): WindowResult | JsonRecord {
   const lines = text.split("\n");
   // A trailing newline ends the last line; it does not start another one.
   if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
   const total = lines.length;
+  if (sourceCut && offset >= total) {
+    return failure("offset_beyond_read_window", `Line offset ${offset} exceeds the available prefix of this file.`);
+  }
   const wanted = lines.slice(offset, limit !== undefined ? offset + limit : undefined);
   const kept: string[] = [];
   let bytes = 0;
@@ -234,6 +237,9 @@ function lineWindow(
       const buffer = Buffer.from(line, "utf8");
       let end = maxBytes;
       while (end > 0 && (buffer[end]! & 0xc0) === 0x80) end--;
+      if (end === 0 && buffer.length > 0) {
+        return failure("byte_window_too_small", "Increase max_bytes to return the first UTF-8 character.");
+      }
       kept.push(buffer.subarray(0, end).toString("utf8"));
       cutByMaxBytes = true;
       break;
@@ -256,7 +262,8 @@ function lineWindow(
       end_line: returned > 0 ? offset + returned : null,
       total_lines: total,
       ...(sourceCut ? { total_lines_is_lower_bound: true } : {}),
-      next_offset: eof ? null : nextOffset,
+      next_offset: nextOffset < total ? nextOffset : null,
+      ...(sourceCut && nextOffset >= total ? { read_window_exhausted: true } : {}),
       eof,
       ...(cutByMaxBytes ? { cut_by_max_bytes: true } : {}),
     },
@@ -283,6 +290,9 @@ function byteWindow(
   const span = Math.min(limit ?? maxBytes, maxBytes);
   let end = Math.min(buffer.length, start + span);
   while (end > start && end < buffer.length && (buffer[end]! & 0xc0) === 0x80) end--;
+  if (end === start && start < buffer.length) {
+    return failure("byte_window_too_small", "Increase limit and max_bytes to fit the next UTF-8 character.");
+  }
   const cutByMaxBytes = limit !== undefined && limit > maxBytes && end < buffer.length;
   const eof = end >= buffer.length && !sourceCut;
   return {
@@ -296,7 +306,8 @@ function byteWindow(
       end_byte: end,
       returned: end - start,
       total_bytes: totalBytes,
-      next_offset: eof ? null : end,
+      next_offset: end < buffer.length ? end : null,
+      ...(sourceCut && end === buffer.length ? { read_window_exhausted: true } : {}),
       eof,
       ...(cutByMaxBytes ? { cut_by_max_bytes: true } : {}),
     },
@@ -338,7 +349,7 @@ export async function readProjectFileWindow(client: ReadFileClient, args: ReadFi
     if (sourceCut) {
       return failure(
         "file_too_large_for_json",
-        `${path} is ${totalBytes} bytes, over the 1 MB read window, so it cannot be parsed as a whole. Page it with offset/limit instead.`
+        `${path} is ${totalBytes} bytes, over the 1 MB read window, so it cannot be parsed as a whole. Use offset/limit to inspect its available prefix.`
       );
     }
     let parsed: unknown;

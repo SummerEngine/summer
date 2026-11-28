@@ -138,3 +138,27 @@ describe("JSON selection", () => {
     ).rejects.toThrow(/Invalid arguments for read-file/);
   });
 });
+
+describe("continuation at the editor read boundary", () => {
+  // A million bytes end on a newline; the file has one more line outside the editor response.
+  const content = "abcd\n".repeat(200_000) + "outside\n";
+
+  it.each([
+    ["lines", 199_999, 200_000],
+    ["bytes", 999_999, 1_000_000],
+  ] as const)("ends %s paging without claiming end of file", async (unit, last, outside) => {
+    const client = fileClient(content);
+    const page = await read(client, { unit, offset: last, limit: 1 });
+    expect(page.data.window).toMatchObject({ next_offset: null, eof: false });
+    expect(page.data.truncated).toBe(true);
+    expect(await read(client, { unit, offset: outside, limit: 1 })).toMatchObject({
+      ok: false, failure_reason: "offset_beyond_read_window",
+    });
+  });
+
+  it("refuses a byte budget smaller than the next character", async () => {
+    expect(await read(fileClient("猫"), { unit: "bytes", limit: 1 })).toMatchObject({
+      ok: false, failure_reason: "byte_window_too_small",
+    });
+  });
+});

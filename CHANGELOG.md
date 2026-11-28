@@ -8,6 +8,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 - Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
 
+- File reads now stop offering continuation offsets at the end of the editor’s readable prefix. A byte limit too small for the next UTF-8 character returns an error.
+
 - Raycasts and pair/plane measurements now read drawn GridMap cells and stored baked meshes, so a raised tiled shelf can be reported before the floor below it.
 
 - Asset inspection measures the saved baked mesh of a GridMap when present. Unbaked grids keep their per-cell mesh measurements.

@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- The CLI and MCP tools now include the accepted job or batch ID when polling or downloading fails, so you can resume existing work.
+
 - Asset inspection distinguishes unbaked GridMap items that only cast shadows, including items that share a mesh with a visible cell.
 
 - Raycasts and pair/plane measurements now read drawn GridMap cells and stored baked meshes, so a raised tiled shelf can be reported before the floor below it.

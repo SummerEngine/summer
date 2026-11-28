@@ -35,6 +35,21 @@ export class SummerApiError extends Error {
   }
 }
 
+/** A successful submission already returned a receipt, even when the next read fails. */
+class AcceptedWorkError extends SummerApiError {
+  constructor(error: unknown, readonly receipt: { jobId: string } | { batchId: string }) {
+    const id = "jobId" in receipt ? receipt.jobId : receipt.batchId;
+    const resume = "jobId" in receipt ? "Use summer api jobs with this ID." : "Use summer_api_batch with this batchId.";
+    const reason = error instanceof Error ? error.message : String(error);
+    super(
+      error instanceof SummerApiError ? error.code : "request_failed",
+      `Summer accepted ${id}. ${resume} ${reason}`,
+      error instanceof SummerApiError ? error.status : 502,
+      { details: receipt }
+    );
+  }
+}
+
 export interface SummerApiDependencies {
   fetch: typeof fetch;
   sleep: (ms: number) => Promise<void>;
@@ -274,7 +289,12 @@ export async function createBatch(
   const headers = { "Idempotency-Key": options.idempotencyKey ?? randomUUID() };
   const batch = batchOf((await call("POST", "/batches", { body: { jobs }, headers, key: "required" }, deps)).body);
   // A replayed batch answers its job count only: read its jobs.
-  return Array.isArray(batch.jobs) ? batch : getBatch(batch.id, deps);
+  if (Array.isArray(batch.jobs)) return batch;
+  try {
+    return await getBatch(batch.id, deps);
+  } catch (error) {
+    throw new AcceptedWorkError(error, { batchId: batch.id });
+  }
 }
 
 export const isBatchFinished = (batch: Batch) => batch.jobs.length > 0 && batch.jobs.every(isFinished);
@@ -301,15 +321,19 @@ export async function downloadBatchFiles(batch: Batch, dir: string, overrides: P
 }
 
 /** summer_api_batch: follow when asked (within one call's time), save files when `out` is given. */
-export async function batchToolResult(batch: Batch, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, unknown>> {
-  const follow = args.wait === true || typeof args.out === "string";
-  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, { timeoutMs: TOOL_JOB_WAIT_MS }, overrides) : batch;
-  const files = typeof args.out === "string" ? await downloadBatchFiles(final, args.out, overrides) : undefined;
-  return {
-    batch: final,
-    ...(files ? { files } : {}),
-    ...(isBatchFinished(final) ? {} : { next: `Call summer_api_batch with batchId ${final.id} (wait: true${typeof args.out === "string" ? ", out" : ""}) to keep following it.` }),
-  };
+export async function batchToolResult(batch: Batch, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}, timeoutMs = TOOL_JOB_WAIT_MS) {
+  try {
+    const follow = args.wait === true || typeof args.out === "string";
+    const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, { timeoutMs }, overrides) : batch;
+    const files = typeof args.out === "string" ? await downloadBatchFiles(final, args.out, overrides) : undefined;
+    return {
+      batch: final,
+      ...(files ? { files } : {}),
+      ...(isBatchFinished(final) ? {} : { next: `Call summer_api_batch with batchId ${final.id} (wait: true${typeof args.out === "string" ? ", out" : ""}) to keep following it.` }),
+    };
+  } catch (error) {
+    throw new AcceptedWorkError(error, { batchId: batch.id });
+  }
 }
 
 /** The answer the summer_api_* MCP tools (and `summer tool api-*`) give: the result, or {ok:false, error}. */
@@ -317,6 +341,7 @@ export async function summerApiToolAnswer(work: () => Promise<Record<string, unk
   try {
     return { ok: true, ...(await work()) };
   } catch (error) {
+    if (error instanceof AcceptedWorkError) return { ok: false, error: { code: error.code, message: error.message, details: error.receipt } };
     if (error instanceof SummerApiError) return { ok: false, error: { code: error.code, message: error.message } };
     return { ok: false, error: { code: "request_failed", message: error instanceof Error ? error.message : String(error) } };
   }
@@ -326,9 +351,13 @@ export async function summerApiToolAnswer(work: () => Promise<Record<string, unk
 export const TOOL_JOB_WAIT_MS = 50_000;
 
 /** summer_api_run and summer_api_job: follow when asked (within one call's time), save files when `out` is given. */
-export async function jobToolResult(job: Job, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}): Promise<Record<string, unknown>> {
-  const follow = args.wait === true || typeof args.out === "string";
-  const final = follow && !isFinished(job) ? await waitForJob(job, { timeoutMs: TOOL_JOB_WAIT_MS }, overrides) : job;
-  const files = typeof args.out === "string" && final.state === "done" ? await downloadJobFiles(final, args.out, overrides) : undefined;
-  return { job: final, ...(files ? { files } : {}), ...(isFinished(final) ? {} : { next: `Call summer_api_job with jobId ${final.id} (wait: true) to keep following it.` }) };
+export async function jobToolResult(job: Job, args: { wait?: boolean; out?: string }, overrides: Partial<SummerApiDependencies> = {}, timeoutMs = TOOL_JOB_WAIT_MS) {
+  try {
+    const follow = args.wait === true || typeof args.out === "string";
+    const final = follow && !isFinished(job) ? await waitForJob(job, { timeoutMs }, overrides) : job;
+    const files = typeof args.out === "string" && final.state === "done" ? await downloadJobFiles(final, args.out, overrides) : undefined;
+    return { job: final, ...(files ? { files } : {}), ...(isFinished(final) ? {} : { next: `Call summer_api_job with jobId ${final.id} (wait: true) to keep following it.` }) };
+  } catch (error) {
+    throw new AcceptedWorkError(error, { jobId: job.id });
+  }
 }

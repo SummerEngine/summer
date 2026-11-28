@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../../core/store.js";
-import { API_NOT_OPEN, SIGN_IN_GONE_MESSAGE, estimateJob, getJob, jobToolResult, listModels, runJob, SummerApiError } from "../../core/summer-api.js";
+import { API_NOT_OPEN, SIGN_IN_GONE_MESSAGE, createBatch, summerApiToolAnswer, estimateJob, getJob, jobToolResult, listModels, runJob, SummerApiError } from "../../core/summer-api.js";
 import { apiCommand, runApiAction } from "./api.js";
 import { runTokenCommand } from "./token.js";
 import { OAuthError } from "../../core/oauth.js";
@@ -143,4 +143,34 @@ describe("while Summer has not opened the API", () => {
 
 it("names motion in the dedicated CLI filter help", () => {
   expect(apiCommand.commands.find((command) => command.name() === "models")!.helpInformation()).toContain("motion");
+});
+
+describe("recovery after paid work was accepted", () => {
+  it.each(["poll", "download"])("keeps the accepted job ID after a %s failure", async (stage) => {
+    const job = { id: "accepted-42", state: stage === "poll" ? "running" : "done",
+      result: { assets: [{ assetId: "preview", fileUrl: "https://files.example/preview.png" }] } };
+    const api = fakeApi((call) => call.method === "POST"
+      ? Response.json({ job }, { status: 201 })
+      : new Response(null, { status: 503 }));
+    const deps = { fetch: api.fetch, token: signedIn, sleep: noSleep };
+    const result = await summerApiToolAnswer(async () => {
+      const accepted = await runJob("image/default", {}, {}, deps);
+      return jobToolResult(accepted, { out: root }, deps);
+    });
+    expect(result).toMatchObject({ ok: false, error: { code: stage === "poll" ? "request_failed" : "download_failed", details: { jobId: job.id }, message: expect.stringContaining(job.id) } });
+    expect(api.calls.map((call) => call.method)).toEqual(["POST", "GET"]);
+  });
+
+  it("prints the accepted batch ID when a replay receipt cannot be expanded", async () => {
+    const api = fakeApi((call) => call.method === "POST"
+      ? Response.json({ batch: { id: "batch-17" } })
+      : new Response(null, { status: 503 }));
+    const print = vi.fn();
+    const status = await runApiAction({ json: true }, async () => ({
+      data: await createBatch([{ model: "image/default", input: {} }], {}, { token: signedIn, fetch: api.fetch }), summary: [],
+    }), { isTTY: false, print, printError: vi.fn() });
+    expect(status).toBe(1);
+    expect(JSON.parse(print.mock.calls[0][0])).toMatchObject({ error: { details: { batchId: "batch-17" } } });
+    expect(api.calls.map((call) => call.method)).toEqual(["POST", "GET"]);
+  });
 });

@@ -506,13 +506,7 @@ Agents: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigra
 
 ## Contributing
 
-The library grows by PR, and CI holds the line:
-
-1. **Report a bad entry.** Open an issue quoting the prompt and the response — or, if you're an agent, file `docs.feedback` through `summer_call` after a verified failure.
-2. **Improve or add an entry.** Add `library/<kind>/<slug>/` with a `resource.yaml` (plus `SKILL.md` for skills). Run `npm run validate:library`, regenerate with `node scripts/generate-registry/cli.ts`, and commit both. Schema, capability lint, and registry parity are enforced in CI.
-
-[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) is the contributor guide; [`docs/design/CONTRACT.md`](./docs/design/CONTRACT.md) is the rulebook.
-Testing an unpublished build end to end against the real engine and a real agent: [`docs/TESTING.md`](./docs/TESTING.md).
+Public contributions go through issues only. You can report a bug, request a feature, or suggest a library change. The Summer team handles implementation internally. Agents can also report a verified library problem through `docs.feedback` in `summer_call`. See the [contributing guidelines](CONTRIBUTING.md).
 
 ## Docs
 

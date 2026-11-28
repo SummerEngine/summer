@@ -1,3 +1,5 @@
+<!-- External contributors should [open an issue](https://github.com/SummerEngine/summer/issues/new/choose). The Summer team closes external pull requests. [Contribution policy](https://github.com/SummerEngine/summer/blob/main/CONTRIBUTING.md) -->
+
 ## What changed
 
 <!-- One or two sentences: what is different for the person using Summer, and why. -->

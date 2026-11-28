@@ -5,8 +5,10 @@ import {
   SummerApiError,
   cancelJob,
   createBatch,
-  downloadBatchFiles,
-  downloadJobFiles,
+  batchToolResult,
+  jobToolResult,
+  MAX_BATCH_WAIT_MS,
+  MAX_JOB_WAIT_MS,
   estimateJob,
   getJob,
   isFinished,
@@ -14,8 +16,6 @@ import {
   isBatchFinished,
   parseBatchLines,
   runJob,
-  waitForBatch,
-  waitForJob,
   type Batch,
   type Job,
   type SummerApiDependencies,
@@ -89,7 +89,7 @@ export async function runApiAction(
     else for (const line of summary) io.print(line);
     return 0;
   } catch (error) {
-    if (error instanceof SummerApiError && error.code === "api_not_open") {
+    if (error instanceof SummerApiError && error.code === "api_not_open" && error.message === API_NOT_OPEN) {
       io.printError(API_NOT_OPEN);
       return 1;
     }
@@ -116,11 +116,9 @@ function jobSummary(job: Job, files: string[] = []): string[] {
 
 /** --wait and --download for a job that came back: follow it, then save its files. */
 async function finish(job: Job, opts: { wait?: boolean; download?: string | boolean }): Promise<{ data: unknown; summary: string[] }> {
-  const follow = opts.wait === true || opts.download !== undefined;
-  const final = follow && !isFinished(job) ? await waitForJob(job) : job;
-  const dir = typeof opts.download === "string" ? opts.download : ".";
-  const files = opts.download !== undefined && final.state === "done" ? await downloadJobFiles(final, dir) : [];
-  return { data: { job: final, ...(opts.download !== undefined ? { files } : {}) }, summary: jobSummary(final, files) };
+  const out = typeof opts.download === "string" ? opts.download : opts.download !== undefined ? "." : undefined;
+  const { job: final, files } = await jobToolResult(job, { wait: opts.wait, out }, {}, MAX_JOB_WAIT_MS);
+  return { data: { job: final, ...(out !== undefined ? { files: files ?? [] } : {}) }, summary: jobSummary(final, files) };
 }
 
 function batchSummary(batch: Batch, files: Record<string, string[]> = {}): string[] {
@@ -147,9 +145,8 @@ export async function runBatch(
     throw new SummerApiError("invalid_input", `Cannot read the batch file ${file}.`, 400);
   }
   const batch = await createBatch(parseBatchLines(text), opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : {}, overrides);
-  const follow = opts.wait === true || opts.download !== undefined;
-  const final = follow && !isBatchFinished(batch) ? await waitForBatch(batch, {}, overrides) : batch;
-  const files = opts.download !== undefined ? await downloadBatchFiles(final, typeof opts.download === "string" ? opts.download : ".", overrides) : undefined;
+  const out = typeof opts.download === "string" ? opts.download : opts.download !== undefined ? "." : undefined;
+  const { batch: final, files } = await batchToolResult(batch, { wait: opts.wait, out }, overrides, MAX_BATCH_WAIT_MS);
   return { data: { batch: final, ...(files ? { files } : {}) }, summary: batchSummary(final, files) };
 }
 

@@ -135,5 +135,5 @@ After you have **verified** an entry's result in-engine — not before — you m
 - The rules of the system: [`docs/design/CONTRACT.md`](docs/design/CONTRACT.md) · why they are the rules: [`docs/design/DECISIONS.md`](docs/design/DECISIONS.md)
 - Template pinning and the digest formula: [`library/templates/README.md`](library/templates/README.md)
 - Which agents are supported and how each is wired: [`integrations/README.md`](integrations/README.md)
-- Contributing to this repo: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) · coming from v2: [`docs/MIGRATION-V2-V3.md`](docs/MIGRATION-V2-V3.md)
+- Public contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md) · maintainer development guide: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) · coming from v2: [`docs/MIGRATION-V2-V3.md`](docs/MIGRATION-V2-V3.md)
 - Human-facing overview and install: [`README.md`](README.md)
